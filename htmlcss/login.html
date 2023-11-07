@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="css/styles.css">
+    <script defer src="js/scripts.js"></script>
+</head>
+<body>
+    <main id="login">
+        <div class="container">
+            <aside>
+                <div class="logo"></div>
+            </aside>
+            <main>
+                <h1 class="title">Login</h1>
+                <p class="description">Bem-vindo! Por favor, faça o login para entrar.</p>
+                <form action="dashboard.html">
+                    <div class="row">
+                        <label for="email">E-mail</label>
+                        <div class="input-group">
+                            <span class="icon"><i class="fa fa-envelope"></i></span>
+                            <input type="email" name="email" id="email" placeholder="Digite seu e-mail">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label for="password">Senha</label>
+                        <div class="input-group">
+                            <span class="icon"><i class="fa fa-lock"></i></span>
+                            <input type="password" name="password" id="password" placeholder="Digite sua senha">
+                        </div>
+                        <p class="forget-password">
+                            <a href="#">Esqueceu sua senha?</a>
+                        </p>
+                    </div>
+                    <div class="row actions">
+                        <button type="submit" class="btn-submit">Login</button>
+                    </div>
+                </form>
+            </main>
+        </div>
+    </main>
+</body>
+</html>
