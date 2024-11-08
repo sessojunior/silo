@@ -689,4 +689,129 @@ export default async function HomePage() {
 
 Referência: [Documentação do Auth.js](https://authjs.dev/getting-started/session-management/get-session).
 
-### 4.7. Salvando dados do usuário no banco de dados
+### 4.4. Magic Links e OTP
+
+Os Magic Links funcionam da seguinte forma:
+
+1. O usuário fornece apenas seu e-mail no formulário de login.
+2. Um token de verificação (sequência hexadecimal de 32 caracteres) é enviado por e-mail e tem 24 horas para ser usado antes de expirar.
+3. Se o token expirar, o usuário terá que solicitar um novo.
+4. Se o usuário clicar no link enviado por e-mail dentro das 24 horas, o usuário será redirecionado para a página da administração.
+
+Apesar de algumas vantagens, os Magic Links exigem a mesma sessão de navegador, o que é problemático em dispositivos móveis. Se o usuário solicita no Chrome e abre no Safari ou no navegador do aplicativo de e-mail, a transação falha, parecendo que precisa fazer login repetidamente.
+
+Você pode perguntar, por que não deixar os clientes usarem uma senha? Essencialmente, as senhas [não são seguras o suficiente](https://auth0.com/blog/is-passwordless-authentication-more-secure-than-passwords/). E a indústria de software está mudando para não usá-las mais.
+
+#### 4.4.1. Usando OTP ao invés de Magic Links
+
+Sugiro usar OTPs (senhas de uso único). Embora o Auth.js não ofereça atualmente o OTP como um provedor integrado, ele pode ser personalizado para enviar OTPs em vez de Magic Links.
+
+O processo de login usando OTP ficará assim:
+
+1. O usuário fornece apenas seu e-mail no formulário de login.
+2. Um token personalizado de verificação (6 dígitos aleatórios) é enviado por e-mail e tem apenas alguns minutos para ser usado antes de expirar.
+3. Se o token expirar, o usuário terá que solicitar um novo.
+4. Quando o usuário receber o token por e-mail o usuário deverá inserir o token no formulário de login que apareceu na tela após ele ter digitado seu e-mail.
+5. Se o token estiver correto, o usuário será redirecionado para a página da administração.
+
+##### Provedor de e-mail
+
+Um provedor de e-mail pode ser usado com JWT e uma sessão de banco de dados. É necessário configurar o banco de dados para que o Auth.js possa salvar os tokens de verificação e procurá-los quando o usuário tentar fazer login.
+
+Não é possível habilitar um provedor de e-mail sem usar um banco de dados. Neste projeto iremos utilizar o banco de dados **Vercel Postgres** com o adaptador **Drizzle ORM** e o provedor **Sendgrid**.
+
+-------------- CONTINUAR AQUI - AINDA NÃO TERMINEI --------------
+
+##### Configuração do adaptador Drizzle ORM do Auth.js
+
+Certifique-se de que as dependências abaixo já estão instaladas:
+
+```bash
+npm i drizzle-orm @auth/drizzle-adapter
+npm i -D drizzle-kit
+```
+
+Adicione a variável de ambiente **AUTH_DRIZZLE_URL** no arquivo **.env.local** com o mesmo valor de **POSTGRES_URL**:
+
+```bash
+AUTH_DRIZZLE_URL=************
+```
+
+Atualize o arquivo **src/drizzle/schema.ts** com o seguinte conteúdo:
+
+```typescript
+...
+Conteúdo está na aba PostgreSQL em https://authjs.dev/getting-started/adapters/drizzle
+...
+```
+
+Referência: [Documentação do Auth.js - Drizzle ORM Adapter](https://authjs.dev/getting-started/adapters/drizzle).
+
+##### Configuração do Sendgrid
+
+##### Adaptador de banco de dados
+
+Certifique-se de ter configurado um adaptador de banco de dados , pois, conforme mencionado anteriormente, um banco de dados é necessário para que o login sem senha funcione, pois os tokens de verificação precisam ser armazenados.
+
+##### Configurar variáveis ​​de ambiente
+
+O Auth.js irá automaticamente pegá-los se formatados como o exemplo acima. Você também pode usar um nome diferente para as variáveis ​​de ambiente se necessário, mas então você precisará passá-las para o provedor manualmente.
+
+.env AUTH_SENDGRID_KEY=abc123
+
+##### Sendgrid como provedor
+
+Vamos habilitar Sendgridcomo uma opção de login em nossa configuração Auth.js. Você terá que importar o Sendgridprovedor do pacote e passá-lo para o array de provedores que configuramos anteriormente no arquivo de configuração Auth.js:
+
+./auth.ts
+
+##### Adicionar botão de login
+
+Em seguida, podemos adicionar um botão de login em algum lugar do seu aplicativo, como a Navbar. Isso enviará um e-mail ao usuário contendo o link mágico para fazer login.
+
+./components/sign-in.tsx
+
+##### Botão de Login por e-mail
+
+Inicie seu aplicativo, assim que o usuário digitar seu Email e clicar no botão de login por e-mail, ele será redirecionado para uma página que pede para ele verificar seu email. Quando ele clicar no link em seu email, ele será conectado.
+
+Confira nossa página Personalização de e-mails com links mágicos para saber como alterar a aparência dos e-mails que o usuário recebe para fazer login.
+
+Para mais informações sobre este provedor, acesse a página de documentação do Sendgrid.
+
+Referência: [Documentação do Auth.js - Magic Links](https://authjs.dev/getting-started/authentication/email).
+
+-------------- CONTINUAR AQUI - AINDA NÃO TERMINEI --------------
+
+##### Geração de tokens personalizados
+
+Para gerar tokens personalizados, temos que alterar o token já gerado pelo Auth.js para corresponder ao formato OTP de 6 dígitos aleatórios.
+
+Modifique o arquivo **src/auth.ts** adicionando o provedor Sendgrid com as seguintes alterações:
+
+```typescript
+...
+import Sendgrid from "next-auth/providers/sendgrid"
+import { randomInt } from "crypto"
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+	providers: [
+		Sendgrid({
+			async generateVerificationToken() {
+				return gernerateOTP().toString()
+			},
+			maxAge: 3 * 60, // 3 minutos
+		}),
+		...
+	],
+	...
+})
+
+function gernerateOTP() {
+	return randomInt(100000, 999999)
+}
+```
+
+-------------- CONTINUAR AQUI - AINDA NÃO TERMINEI --------------
+
+Referência: [Artigo do Linkedin - Ditching Magic Links for OTP: A Tutorial for Next.js and NextAuth](https://www.linkedin.com/pulse/ditching-magic-links-otp-tutorial-nextjs-nextauth-will-olson-smo3c/).
