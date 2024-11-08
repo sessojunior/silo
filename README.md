@@ -505,22 +505,22 @@ export function SignInWithGoogleButton() {
 Adicione o componente **SignInWithGoogleButton** no componente de formulário de login **src/components/login-form.tsx**:
 
 ```typescript
-// ...
+...
 import { SignInWithGoogleButton } from "./login-google-button"
 
 export function LoginForm() {
 	return (
 		<Card className='mx-auto max-w-xs'>
-			{/* ... */}
+			...
 			<CardContent>
 				<div className='grid gap-4'>
-					{/* ... */}
+					...
 					<Button type='submit' className='w-full'>
 						Login
 					</Button>
 					<SignInWithGoogleButton />
 				</div>
-				{/* ... */}
+				...
 			</CardContent>
 		</Card>
 	)
@@ -532,10 +532,9 @@ export function LoginForm() {
 Modifique o arquivo **src/auth.ts** adicionando uma callback com uma URL de redirecionamento personalizada padrão após a autenticação com o Google:
 
 ```typescript
-// ...
-
+...
 export const { handlers, signIn, signOut, auth } = NextAuth({
-	{/* ... */}
+	...
 	callbacks: {
 		async redirect({ baseUrl }) {
 			return `${baseUrl}/admin`
