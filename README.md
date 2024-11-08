@@ -364,3 +364,249 @@ npm run dev
 E veja os dados na tela.
 
 ## 4. Configuração do Auth.js
+
+Iremos integrar o Auth.js para implementar a autenticação de usuários.
+
+### 4.1. Instale as dependências
+
+Execute no terminal:
+
+```bash
+npm i next-auth@beta @auth/drizzle-adapter
+```
+
+Esses comandos instalarão o Auth.js e o adaptador de autenticação Drizzle para o Auth.JS.
+
+Em seguida execute o comando:
+
+```bash
+npx auth secret
+```
+
+Esse comando adicionará ao arquivo **.env.local** a variável de ambiente **AUTH_SECRET** com um valor aleatório. Essa variável de ambiente é usada para criptografar tokens e hashes de verificação de e-mail.
+
+### 4.2. Crie os arquivos de configuração iniciais
+
+Crie o arquivo **src/auth.ts** na raiz do projeto com o seguinte conteúdo:
+
+```typescript
+import NextAuth from "next-auth"
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+	providers: [],
+})
+```
+
+Iremos atualizar o arquivo **src/auth.ts** posteriormente com os provedores de autenticação.
+
+Em seguida crie o arquivo manipulador de rota em **/app/api/auth/[...nextauth]/route.ts** com o seguinte conteúdo:
+
+```typescript
+import { handlers } from "@/auth"
+export const { GET, POST } = handlers
+```
+
+Adicione o middleware **src/middleware.ts** para manter a sessão ativa. Isso atualizará a expiração da sessão toda vez que for chamada. Insira o seguinte conteúdo:
+
+```typescript
+export { auth as middleware } from "@/auth"
+
+export const config = {
+	matcher: ["/admin/:path*"],
+}
+```
+
+O middleware de autenticação garante que a página **/admin** seja acessível apenas para usuários autenticados.
+
+### 4.3. Configure os métodos de autenticação
+
+O Auth.js recomenda o OAuth como o principal método de autenticação. O O Auth.js salva a sessão em um cookie por padrão usando JWT criptografado. Para persistir os dados do usuário é necessário usar os adaptadores de banco de dados.
+
+Neste projeto iremos configurar mais de um método de autenticação. Tendo vários provedores configurados, o Auth.js tentará vinculá-los no banco de dados.
+
+Por exemplo, se um usuário já tiver feito login com o Google e, portanto, tiver uma entrada de tabela **users** e **account** associada a esse e-mail, e tentar fazer login com outro método usando o mesmo endereço de e-mail, as duas contas serão vinculadas.
+
+### 4.4. OAuth
+
+O Auth.js vem com mais de 80 provedores pré-configurados. Neste projeto iremos configurar apenas o provedor OAuth do Google, que é o mais popular de todos.
+
+#### 4.4.1. Configure o OAuth do Google no Google Console
+
+Para configurar o OAuth do Google, siga os passos abaixo:
+
+1. Acesse o console de desenvolvedor do Google: https://console.developers.google.com/.
+2. Clique em **Selecionar um projeto** e depois em **Novo Projeto** para criar um novo projeto.
+3. Defina um nome para o projeto, por exemplo, **Silo**, e clique em **Criar**.
+4. Com o projeto selecionado, vá até **Tela de permissão OAuth** no menu lateral.
+5. Em **User Type**, escolha **Externo** e clique em **Criar**.
+6. Preencha os detalhes da tela de consentimento, com o nome do aplicativo, e-mail para suporte do usuário, e-mail de contato do desenvolvedor e informações adicionais que deseja exibir aos usuários. Em seguida, clique em **Salvar e Continuar**.
+7. Após configurar a tela de consentimento, vá até **Credenciais** no menu lateral e clique em **Criar Credenciais** > **ID do cliente OAuth**.
+8. Em **Tipo de aplicativo**, selecione **Aplicativo da Web**.
+9. Defina um nome para as credenciais, como por exemplo, **Auth Vercel Next**. Anote o ID do cliente e a Chave secreta do cliente, pois serão usadas depois.
+10. Na lista de **IDs do Cliente OAuth 2.0**, no nome da credencial que criou, clique no ícone de caneta, **Editar cliente OAuth**.
+11. Em **URIs de redirecionamento autorizados**, clique em **Adicionar URI** para adicionar uma URL de redirecionamento: **[url-do-projeto]/api/auth/callback/google**. Substitua **[url-do-projeto]** pela URL do seu projeto. Em ambiente de desenvolvimento, a URL de redirecionamento deve ficar, por exemplo, assim **http://localhost:3000/api/auth/callback/google**. Depois clique em **Salvar**.
+12. Para pegar novamente as credenciais, entre na tela de **Credenciais**, no menu lateral, clique no nome do cliente que você deu em **IDs do cliente OAuth 2.0**. Em **Additional information**, copie o **ID do cliente** e em **Chaves secretas do cliente** copie a **Chave secreta do cliente**.
+
+Variáveis de Ambiente:
+
+Adicione essas variáveis de ambiente no arquivo **.env.local**:
+
+```bash
+GOOGLE_CLIENT_ID=seu-google-client-id
+GOOGLE_CLIENT_SECRET=seu-google-client-secret
+```
+
+O Auth.js irá automaticamente pegar as variáveis de ambiente se estiverem com os nomes que estão no exemplo acima.
+
+#### 4.4.2. Configure o OAuth do Google no Auth.js
+
+Modifique o arquivo **src/auth.ts** para usar o provedor do Google:
+
+```typescript
+import NextAuth from "next-auth"
+import Google from "next-auth/providers/google"
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+	providers: [
+		Google({
+			clientId: process.env.GOOGLE_CLIENT_ID!,
+			clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+		}),
+	],
+})
+```
+
+As variáveis de ambiente **GOOGLE_CLIENT_ID** e **GOOGLE_CLIENT_SECRET** devem corresponder exatamente aos nomes das variáveis de ambiente definidas no arquivo **.env.local**.
+
+##### 4.4.3. Crie um componente botão de login com o Google
+
+Crie o arquivo **src/components/login-google-button.tsx** com o seguinte conteúdo:
+
+```typescript
+import { signIn } from "@/auth"
+import { Button } from "@/components/ui/button"
+
+export function SignInWithGoogleButton() {
+	return (
+		<form
+			action={async () => {
+				"use server"
+				await signIn("google")
+			}}
+		>
+			<Button variant='outline' type='submit' className='w-full'>
+				Login com Google
+			</Button>
+		</form>
+	)
+}
+```
+
+Adicione o componente **SignInWithGoogleButton** no componente de formulário de login **src/components/login-form.tsx**:
+
+```typescript
+// ...
+import { SignInWithGoogleButton } from "./login-google-button"
+
+export function LoginForm() {
+	return (
+		<Card className='mx-auto max-w-xs'>
+			{/* ... */}
+			<CardContent>
+				<div className='grid gap-4'>
+					{/* ... */}
+					<Button type='submit' className='w-full'>
+						Login
+					</Button>
+					<SignInWithGoogleButton />
+				</div>
+				{/* ... */}
+			</CardContent>
+		</Card>
+	)
+}
+```
+
+#### 4.4.4. Personalize a página de callback após o login com o Google
+
+Modifique o arquivo **src/auth.ts** adicionando uma callback com uma URL de redirecionamento personalizada padrão após a autenticação com o Google:
+
+```typescript
+// ...
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+	{/* ... */}
+	callbacks: {
+		async redirect({ url, baseUrl }) {
+			return `${baseUrl}/admin`
+		},
+	},
+})
+```
+
+Após a modificação, quando o usuário fizer o login com o Google, ele será redirecionado para a rota **/admin**.
+
+#### 4.4.5. Teste o login com o Google
+
+Teste a aplicação, clicando no botão **Login com Google**. Se funcionar, você será redirecionado para o Google e, uma vez autenticado, redirecionado de volta para o aplicativo.
+
+### 4.5.
+
+O logout pode ser feito de forma semelhante ao login. A maioria das estruturas oferece um método tanto do lado do cliente quanto do lado do servidor para efetuar o logout.
+
+#### 4.5.1. Crie um botão de logout
+
+Crie o arquivo **src/components/logout-button.tsx** com o seguinte conteúdo:
+
+```typescript
+import { signOut } from "@/auth"
+import { Button } from "@/components/ui/button"
+
+export function SignOutButton() {
+	return (
+		<form
+			action={async () => {
+				"use server"
+				await signOut()
+			}}
+		>
+			<Button variant='default' type='submit'>
+				Sair
+			</Button>
+		</form>
+	)
+}
+```
+
+Crie a página principal da administração **src/app/admin/page.tsx** e insira nela o botão de logout:
+
+```typescript
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+import { SignOutButton } from "@/components/logout-button"
+
+export default async function AdminPage() {
+	const session = await auth()
+	if (!session) redirect("/login")
+
+	return (
+		<main className='flex flex-col items-center justify-center min-h-screen bg-gray-50'>
+			<h1 className='text-6xl font-bold text-gray-800 mb-2'>Silo</h1>
+			<h2 className='text-2xl font-bold text-gray-800 mb-6'>Sistema de Gerenciamento de Serviços</h2>
+			<p className='text-gray-600 mb-4'>Esta é uma rota privada. Não pode ser acessada se não tiver feito o login.</p>
+
+			<div className='space-x-4'>
+				<pre>{JSON.stringify(session, null, 2)}</pre>
+			</div>
+
+			<div className='space-x-4'>
+				<SignOutButton />
+			</div>
+		</main>
+	)
+}
+```
+
+Teste o botão de logout. Ao clicar em sair, a página deve ser redirecionada para a tela de login.
+
+Ao sair de um provedor OAuth como o Google usando o Auth.js, o usuário não será desconectado do Google em nenhum outro lugar.
