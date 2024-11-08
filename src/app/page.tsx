@@ -1,9 +1,11 @@
+import { auth } from "@/auth"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 import { getUsers, getUsers2 } from "@/drizzle/db"
 
 export default async function HomePage() {
+	const session = await auth()
 	const data = await getUsers()
 	const data2 = await getUsers2()
 
@@ -27,6 +29,20 @@ export default async function HomePage() {
 				<div>sql-like: {JSON.stringify(data)}</div>
 				<div>relational: {JSON.stringify(data2)}</div>
 			</div>
+
+			{!session ? (
+				<div className='m-4'>Usuário não autenticado.</div>
+			) : (
+				<div className='flex flex-col justify-center items-center text-center mt-8'>
+					<h3>Usuário autenticado:</h3>
+					<div>{JSON.stringify(session, null, 2)}</div>
+					<div className='m-4'>
+						<Link href='/admin/profile'>
+							<Button variant='default'>Perfil do usuário</Button>
+						</Link>
+					</div>
+				</div>
+			)}
 		</main>
 	)
 }

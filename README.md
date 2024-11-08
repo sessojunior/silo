@@ -537,7 +537,7 @@ Modifique o arquivo **src/auth.ts** adicionando uma callback com uma URL de redi
 export const { handlers, signIn, signOut, auth } = NextAuth({
 	{/* ... */}
 	callbacks: {
-		async redirect({ url, baseUrl }) {
+		async redirect({ baseUrl }) {
 			return `${baseUrl}/admin`
 		},
 	},
@@ -550,7 +550,7 @@ Após a modificação, quando o usuário fizer o login com o Google, ele será r
 
 Teste a aplicação, clicando no botão **Login com Google**. Se funcionar, você será redirecionado para o Google e, uma vez autenticado, redirecionado de volta para o aplicativo.
 
-### 4.5.
+### 4.5. Logout
 
 O logout pode ser feito de forma semelhante ao login. A maioria das estruturas oferece um método tanto do lado do cliente quanto do lado do servidor para efetuar o logout.
 
@@ -595,6 +595,8 @@ export default async function AdminPage() {
 			<h2 className='text-2xl font-bold text-gray-800 mb-6'>Sistema de Gerenciamento de Serviços</h2>
 			<p className='text-gray-600 mb-4'>Esta é uma rota privada. Não pode ser acessada se não tiver feito o login.</p>
 
+			<h3 className='text-2xl font-bold text-gray-800 mb-6'>Administração</h3>
+
 			<div className='space-x-4'>
 				<pre>{JSON.stringify(session, null, 2)}</pre>
 			</div>
@@ -610,3 +612,82 @@ export default async function AdminPage() {
 Teste o botão de logout. Ao clicar em sair, a página deve ser redirecionada para a tela de login.
 
 Ao sair de um provedor OAuth como o Google usando o Auth.js, o usuário não será desconectado do Google em nenhum outro lugar.
+
+Referência: [Documentação do Auth.js](https://authjs.dev/getting-started/session-management/login).
+
+### 4.6. Protegendo rotas e exibindo o perfil do usuário
+
+Para exibir o perfil do usuário, crie a página **src/app/admin/profile/page.tsx** com o seguinte conteúdo:
+
+```typescript
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+import { SignOutButton } from "@/components/logout-button"
+
+export default async function AdminPage() {
+	const session = await auth()
+	if (!session) redirect("/login")
+
+	return (
+		<main className='flex flex-col items-center justify-center min-h-screen bg-gray-50'>
+			<h1 className='text-6xl font-bold text-gray-800 mb-2'>Silo</h1>
+			<h2 className='text-2xl font-bold text-gray-800 mb-6'>Sistema de Gerenciamento de Serviços</h2>
+			<p className='text-gray-600 mb-4'>Esta é uma rota privada. Não pode ser acessada se não tiver feito o login.</p>
+
+			<h3 className='text-2xl font-bold text-gray-800 mb-6'>Perfil do usuário</h3>
+
+			<div>{session?.user && session.user.image && <img src={session.user.image} alt='Avatar do usuário' />}</div>
+
+			<div className='space-x-4'>
+				<pre>{JSON.stringify(session, null, 2)}</pre>
+			</div>
+
+			<div className='space-x-4'>
+				<SignOutButton />
+			</div>
+		</main>
+	)
+}
+```
+
+O script abaixo protege a página de acessos não autenticados, redirecionando o usuário para a página de login.
+
+```typescript
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+...
+const session = await auth()
+if (!session) redirect("/login")
+```
+
+A página inicial exibe se o usuário está autenticado ou não, sem redirecioná-lo. Altere o script da página inicial adicionando o seguinte:
+
+```typescript
+import { auth } from "@/auth"
+...
+export default async function HomePage() {
+	const session = await auth()
+	...
+	return (
+		<main className='flex flex-col items-center justify-center min-h-screen bg-gray-50'>
+			{!session ? (
+				<div className='m-4'>Usuário não autenticado.</div>
+			) : (
+				<div className='flex flex-col justify-center items-center text-center mt-8'>
+					<h3>Usuário autenticado:</h3>
+					<div>{JSON.stringify(session, null, 2)}</div>
+					<div className='m-4'>
+						<Link href='/admin/profile'>
+							<Button variant='default'>Perfil do usuário</Button>
+						</Link>
+					</div>
+				</div>
+			)}
+		</main>
+	)
+}
+```
+
+Referência: [Documentação do Auth.js](https://authjs.dev/getting-started/session-management/get-session).
+
+### 4.7. Salvando dados do usuário no banco de dados

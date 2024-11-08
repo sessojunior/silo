@@ -12,7 +12,9 @@ export default async function AdminPage() {
 			<h2 className='text-2xl font-bold text-gray-800 mb-6'>Sistema de Gerenciamento de Serviços</h2>
 			<p className='text-gray-600 mb-4'>Esta é uma rota privada. Não pode ser acessada se não tiver feito o login.</p>
 
-			<h3 className='text-2xl font-bold text-gray-800 mb-6'>Administração</h3>
+			<h3 className='text-2xl font-bold text-gray-800 mb-6'>Perfil do usuário</h3>
+
+			<div>{session?.user && session.user.image && <img src={session.user.image} alt='Avatar do usuário' />}</div>
 
 			<div className='space-x-4'>
 				<pre>{JSON.stringify(session, null, 2)}</pre>
