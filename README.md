@@ -49,15 +49,35 @@ Inicialize o Shadcn/ui. Selecione **Default**, **Zinc** e **yes** para **CSS var
 npx shadcn-ui@latest init
 ```
 
-Adicione os seguintes componentes do Shadcn/ui:
+Adicione o seguinte bloco com componentes do Shadcn/ui, mas não sobrescreva os arquivos existentes. Isso irá instalar as dependências corretamente.
 
 ```bash
-npx shadcn@latest add button card input label
+npx shadcn@latest add login-01
 ```
 
-### 1.3. Configuração do projeto na Vercel
+Apague o arquivo **app/login/page.tsx** criado, pois ele irá gerar conflito com o que já existe na rota **auth/login/page.tsx**.
+
+### 1.3. Envie os dados para o Github
+
+Crie um repositório no Github de nome **silo**, deixe-o público e em seguida:
+
+```bash
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/<seu-username-github>/silo.git
+git push -u origin main
+```
+
+### 1.4. Configuração do projeto na Vercel
 
 Crie um projeto na Vercel:
+
+1. No seu [painel na Vercel](https://vercel.com/dashboard), clique em **Import** da opção **Import Project**.
+2. Selecione o repositório **silo** criado no Github e clique em **Import**.
+3. Deixe as opções padrão e clique em **Deploy**.
+
+Após o deplo
 
 ```bash
 npx vercel
@@ -81,7 +101,7 @@ Faça o deploy na Vercel:
 npx vercel
 ```
 
-Crie um banco de dados Postgres na Vercel
+Crie um banco de dados Postgres na Vercel:
 
 1. No seu [painel na Vercel](https://vercel.com/dashboard), crie ou selecione o projeto com o qual irá trabalhar.
 2. Selecione a aba **Storage** e depois clique no botão **Create** do **Postgres**.
