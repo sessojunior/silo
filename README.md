@@ -222,7 +222,7 @@ Instale o pacote **@next/env** para carregar as variáveis ​​de ambiente for
 npm i @next/env
 ```
 
-Crie o arquivo de configuração **src/drizzle/env.ts** com o seguinte conteúdo:
+Crie o arquivo de configuração **src/lib/env.ts** com o seguinte conteúdo:
 
 ```typescript
 import { loadEnvConfig } from "@next/env"
@@ -231,10 +231,10 @@ const projectDir = process.cwd()
 loadEnvConfig(projectDir)
 ```
 
-O arquivo **src/drizzle/env.ts** irá carregar as variáveis de ambiente automaticamente. Certifique-se de colocá-lo no início dos arquivos do projeto, dessa forma:
+O arquivo **src/lib/env.ts** irá carregar as variáveis de ambiente automaticamente. Certifique-se de colocá-lo no início dos arquivos do projeto, dessa forma:
 
 ```typescript
-import "@/drizzle/env"
+import "@/lib/env"
 ```
 
 ### 3.4. Crie o arquivo de configuração
@@ -242,7 +242,7 @@ import "@/drizzle/env"
 Crie o arquivo **drizzle.config.ts** na raiz do projeto e importe a configuração das variáveis ​​de ambiente. Adicione o caminho para o arquivo de esquema e a variável de ambiente **POSTGRES_URL** da Vercel:
 
 ```typescript
-import "@/drizzle/env"
+import "@/lib/env"
 import { defineConfig } from "drizzle-kit"
 
 export default defineConfig({
@@ -290,7 +290,7 @@ Clique no [endereço URL informado](https://local.drizzle.studio/) pelo Drizzle 
 Crie o arquivo **src/drizzle/db.ts** com o seguinte conteúdo:
 
 ```typescript
-import "@/drizzle/env"
+import "@/lib/env"
 import { drizzle } from "drizzle-orm/vercel-postgres"
 import { sql } from "@vercel/postgres"
 import { UsersTable } from "@/drizzle/schema"

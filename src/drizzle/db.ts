@@ -1,4 +1,4 @@
-import "@/drizzle/env"
+import "@/lib/env"
 import { drizzle } from "drizzle-orm/vercel-postgres"
 import { sql } from "@vercel/postgres"
 import { UsersTable } from "@/drizzle/schema"
