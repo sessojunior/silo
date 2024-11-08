@@ -1,7 +1,12 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
-export default function HomePage() {
+import { getUsers, getUsers2 } from "@/drizzle/db"
+
+export default async function HomePage() {
+	const data = await getUsers()
+	const data2 = await getUsers2()
+
 	return (
 		<main className='flex flex-col items-center justify-center min-h-screen bg-gray-50'>
 			<h1 className='text-6xl font-bold text-gray-800 mb-2'>Silo</h1>
@@ -15,6 +20,12 @@ export default function HomePage() {
 				<Link href='/register'>
 					<Button variant='outline'>Registre-se</Button>
 				</Link>
+			</div>
+
+			<div className='flex flex-col justify-center items-center text-center mt-8'>
+				<h3>Testando a aplicação:</h3>
+				<div>sql-like: {JSON.stringify(data)}</div>
+				<div>relational: {JSON.stringify(data2)}</div>
 			</div>
 		</main>
 	)
