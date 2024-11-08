@@ -34,28 +34,73 @@ Este guia terá como base a documentação oficial da [Vercel](https://vercel.co
 
 ### 1.1. Instalação do Next.js
 
-Inicie um novo projeto Next.js com TypeScript:
+Inicie um novo projeto Next.js. Selecione **Yes** para **TypeScript**, **ESLint**, **Tailwind CSS**, **`src` directory** e **App Router** e selecione **No** para customizar **import alias**:
 
 ```bash
-npx create-next-app@latest silo --typescript
+mkdir silo
 cd silo
+npx create-next-app@14 .
 ```
+
+Faça uma limpeza nos arquivos:
+
+Na página inicial (**@/app/page.tsx**) deixa assim:
+
+```typescript
+export default function Home() {
+	return <div>Página inicial</div>
+}
+```
+
+No arquivo de layout global (**@/app/layout.tsx**), deixe assim:
+
+```typescript
+import type { Metadata } from "next"
+import "./globals.css"
+
+export const metadata: Metadata = {
+	title: "Silo",
+	description: "Sistema de gerenciamento de serviços",
+}
+
+export default function RootLayout({
+	children,
+}: Readonly<{
+	children: React.ReactNode
+}>) {
+	return (
+		<html lang='pt-br'>
+			<body>{children}</body>
+		</html>
+	)
+}
+```
+
+No arquivo de estilização do CSS global (**@/app/globals.css**), deixe assim:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+Por fim, exclua o diretório **@/app/fonts**.
 
 ### 1.2. Instalação do Shadcn/ui
 
 Inicialize o Shadcn/ui. Selecione **Default**, **Zinc** e **yes** para **CSS variables**:
 
 ```bash
-npx shadcn-ui@latest init
+npx shadcn@latest init
 ```
 
-Adicione o seguinte bloco com componentes do Shadcn/ui, mas não sobrescreva os arquivos existentes. Isso irá instalar as dependências corretamente.
+Adicione o seguinte bloco com componentes do Shadcn/ui, mas não sobrescreva os arquivos de página existentes. Isso irá instalar as dependências corretamente.
 
 ```bash
 npx shadcn@latest add login-01
 ```
 
-Apague o arquivo **app/login/page.tsx** criado, pois ele irá gerar conflito com o que já existe na rota **auth/login/page.tsx**.
+Mova o arquivo **app/login/page.tsx** criado para **app/(auth)/login/page.tsx**, criando um diretório superior **app/(auth)**.
 
 ### 1.3. Envie os dados para o Github
 
