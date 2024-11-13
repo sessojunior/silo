@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 import { SignInWithGoogleButton } from "./login-google-button"
+import { MdKey } from "react-icons/md"
+import { MdOutlineMailLock } from "react-icons/md"
 
 export function LoginForm() {
 	return (
@@ -34,12 +36,12 @@ export function LoginForm() {
 					</Button>
 					<Link href='/login-link-email' className='underline'>
 						<Button variant='outline' className='w-full'>
-							Link por e-mail
+							<MdOutlineMailLock /> Link por e-mail
 						</Button>
 					</Link>
 					<Link href='/login-otp-email' className='underline'>
 						<Button variant='outline' className='w-full'>
-							Token por e-mail
+							<MdKey /> Receber token por e-mail
 						</Button>
 					</Link>
 					<SignInWithGoogleButton />
@@ -47,7 +49,7 @@ export function LoginForm() {
 				<div className='mt-4 text-center text-sm'>
 					Não tem uma conta?{" "}
 					<Link href='/register' className='underline'>
-						Registre-se
+						Cadastre-se
 					</Link>
 				</div>
 			</CardContent>

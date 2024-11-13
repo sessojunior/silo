@@ -1,5 +1,6 @@
 import { signIn } from "@/auth-node"
 import { Button } from "@/components/ui/button"
+import { FcGoogle } from "react-icons/fc"
 
 export function SignInWithGoogleButton() {
 	return (
@@ -10,7 +11,7 @@ export function SignInWithGoogleButton() {
 			}}
 		>
 			<Button variant='outline' type='submit' className='w-full'>
-				Acessar com Google
+				<FcGoogle /> Login com Google
 			</Button>
 		</form>
 	)
