@@ -34,12 +34,12 @@ export function LoginForm() {
 					</Button>
 					<Link href='/login-link-email' className='underline'>
 						<Button variant='outline' className='w-full'>
-							Login com link por e-mail
+							Link por e-mail
 						</Button>
 					</Link>
 					<Link href='/login-otp-email' className='underline'>
 						<Button variant='outline' className='w-full'>
-							Login com chave por e-mail
+							Token por e-mail
 						</Button>
 					</Link>
 					<SignInWithGoogleButton />

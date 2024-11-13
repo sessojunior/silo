@@ -1,13 +1,45 @@
-import Link from "next/link"
+"use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-import { signIn } from "@/auth"
+import { signIn } from "next-auth/react"
 
-export function LoginLinkEmailForm() {
+interface Props {
+	initialEmail?: string
+	onEmailSubmitted: (email: string) => void
+}
+
+export default function LoginLinkEmailForm({ initialEmail = "", onEmailSubmitted }: Props) {
+	const [email, setEmail] = useState(initialEmail)
+	const [error, setError] = useState<string | null>(null)
+	const [isSubmitting, setIsSubmitting] = useState(false)
+
+	async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+		e.preventDefault()
+		setError(null)
+		setIsSubmitting(true)
+
+		try {
+			const response = await signIn("sendgrid-link", { email, redirect: false })
+			console.log("response", response)
+
+			if (response?.error) {
+				throw new Error(response.error)
+			}
+
+			console.log("E-mail enviado com sucesso para:", email)
+			onEmailSubmitted(email)
+		} catch (err) {
+			setError("Erro ao enviar o e-mail. Tente novamente.")
+		} finally {
+			setIsSubmitting(false)
+		}
+	}
+
 	return (
 		<Card className='mx-auto max-w-xs'>
 			<CardHeader>
@@ -15,31 +47,18 @@ export function LoginLinkEmailForm() {
 				<CardDescription>Digite seu e-mail abaixo. Você receberá um link por e-mail para fazer login.</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<div className='grid gap-4'>
-					<form
-						action={async (formData) => {
-							"use server"
-							await signIn("sendgrid-link", formData)
-						}}
-						className='grid gap-4'
-					>
-						<div className='grid gap-2'>
-							<Label htmlFor='email'>E-mail</Label>
-							<Input id='email' type='email' name='email' placeholder='seu@email.com' required />
-						</div>
-						<div className='grid gap-2'>
-							<Button type='submit' className='w-full'>
-								Login
-							</Button>
-						</div>
-					</form>
-				</div>
-				<div className='mt-4 text-center text-sm'>
-					Não tem uma conta?{" "}
-					<Link href='/register' className='underline'>
-						Registre-se
-					</Link>
-				</div>
+				<form onSubmit={handleSubmit} className='grid gap-4'>
+					<div className='grid gap-2'>
+						<Label htmlFor='email'>E-mail</Label>
+						<Input id='email' type='email' name='email' placeholder='seu@email.com' value={email} onChange={(e) => setEmail(e.target.value)} required />
+						{error && <p className='text-red-600 text-sm'>{error}</p>}
+					</div>
+					<div className='grid gap-2'>
+						<Button type='submit' disabled={isSubmitting} className='w-full'>
+							{isSubmitting ? "Enviando..." : "Login"}
+						</Button>
+					</div>
+				</form>
 			</CardContent>
 		</Card>
 	)

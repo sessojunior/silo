@@ -1,4 +1,4 @@
-import { signOut } from "@/auth"
+import { signOut } from "@/auth-node"
 import { Button } from "@/components/ui/button"
 
 export function SignOutButton() {

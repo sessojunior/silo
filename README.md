@@ -12,21 +12,57 @@ Este é um sistema de gerenciamento de serviços chamado Silo. O sistema inclui 
 ## Índice
 
 1. Configuração do projeto
+   - Instalação do Next.js
+   - Instalação do Shadcn/ui
+   - Enviando dados para o Github
 2. Configuração do projeto na Vercel
+   - Criando o projeto na Vercel
+   - Criando o banco de dados Postgres na Vercel
+   - Salvando as variáveis de ambiente do banco de dados
 3. Configuração do banco de Dados com Drizzle ORM
+   - Instalando as dependências
+   - Configurando o esquema
+   - Carregando as variáveis de ambiente
+   - Criando o arquivo de configuração
+   - Gerando as tabelas
+   - Usando o Drizzle-Studio
+   - Criando a conexão com o banco de dados e funções auxiliares
+   - Testando a aplicação
 4. Configuração do Auth.js
+   - Instalando as dependências
+   - Criando os arquivos de configuração iniciais
+   - Configurando os métodos de autenticação
+   - OAuth
+     - Configurando o OAuth do Google no Google Console
+     - Configurando o OAuth do Google no Auth.js
+     - Criando um componente botão de login com o Google
+     - Personalizando a página de callback após o login com o Google
+     - Testando o login com o Google
+   - Logout
+     - Criando um botão de logout
+   - Protegendo rotas e exibindo o perfil do usuário
+   - Magic Links
+   - Usando o Drizzle ORM e o Sendgrid
+     - Configurando o Drizzle ORM
+     - Configurando o Sendgrid como provedor de e-mail
+   - OTP ao invés de Magic Links
+     - Gerando tokens personalizados
+     - Criando página de login com OTP
+     - Evoluindo o formulário de login com OTP
+     - Instalando o Zod e React Hook Form
+     - Evoluindo páginas do fluxo de login com OTP
+     - Resumindo o fluxo de login por OTP
+   - Login com e-mail e senha
+   -
+   -
+   -
 5. Implementação das páginas
-   - Página Inicial
    - Página de Registro
    - Confirmação de e-mail
    - Página de Login (E-mail e Senha)
-   - Login com Código de E-mail
-   - Login com Google
    - Esqueceu a senha
    - Recuperação de senha
-6. Protegendo rotas
-7. Implementação do logout
-8. Considerações finais
+6. Considerações finais
 
 Este guia terá como base a documentação oficial da [Vercel](https://vercel.com/docs/storage/vercel-postgres/using-an-orm#drizzle), do [Drizzle ORM](https://orm.drizzle.team/docs/zod), do [Auth.js](https://authjs.dev/getting-started/authentication/credentials), do [Shadcn/ui](https://ui.shadcn.com/docs/installation/next) e do [React Hook Form](https://react-hook-form.com/get-started).
 
@@ -102,7 +138,7 @@ npx shadcn@latest add login-01
 
 Mova o arquivo **src/app/login/page.tsx** criado para **src/app/(auth)/login/page.tsx**, criando um diretório superior.
 
-### 1.3. Envie os dados para o Github
+### 1.3. Enviando dados para o Github
 
 Crie um repositório no Github de nome **silo**, deixe-o público e em seguida:
 
@@ -116,7 +152,7 @@ git push -u origin main
 
 ## 2. Configuração do projeto na Vercel
 
-### 2.1. Crie um projeto na Vercel
+### 2.1. Criando o projeto na Vercel
 
 Siga os passos abaixo:
 
@@ -138,7 +174,7 @@ Instale a última versão do Vercel CLI, de forma global:
 npm i -g vercel@latest
 ```
 
-### 2.2. Crie um banco de dados Postgres na Vercel
+### 2.2. Criando o banco de dados Postgres na Vercel
 
 Siga os passos abaixo:
 
@@ -152,7 +188,7 @@ Siga os passos abaixo:
 
 Agora temos um banco de dados PostgreSQL não populado.
 
-### 2.3. Salve as variáveis de ambiente do banco de dados
+### 2.3. Salvando as variáveis de ambiente do banco de dados
 
 Para conectar o projeto ao banco de dados da Vercel Postgres, é preciso de algumas credenciais. Ao conectar esse banco de dados ao projeto, essas credenciais são geradas e disponibilizadas como variáveis ​​de ambiente.
 
@@ -173,7 +209,7 @@ POSTGRES_DATABASE="************"
 
 Iremos utilizar o Drizzle ORM para conectar ao banco de dados da Vercel Postgres.
 
-### 3.1. Instale as dependências
+### 3.1. Instalando as dependências
 
 Execute no terminal:
 
@@ -184,7 +220,7 @@ npm i -D drizzle-kit
 
 O **drizzle-orm** serve para escrever as consultas e o **drizzle-kit** é uma dependência de desenvolvimento para definir o esquema e gerenciar migrações.
 
-### 3.2. Configure o esquema
+### 3.2. Configurando o esquema
 
 Crie o arquivo **src/drizzle/schema.ts** com o seguinte conteúdo:
 
@@ -214,7 +250,7 @@ O schema é uma estrutura do PostgreSQL que define o esquema do banco de dados. 
 
 Sempre que for alterar a estrutura do banco de dados, altere o arquivo **src/drizzle/schema.ts** e execute o comando **npx drizzle-kit push** no terminal para atualizar as tabelas no banco de dados na Vercel Postgres.
 
-### 3.3. Carregue as variáveis de ambiente
+### 3.3. Carregando as variáveis de ambiente
 
 Instale o pacote **@next/env** para carregar as variáveis ​​de ambiente fora do tempo de execução do Next.js:
 
@@ -242,7 +278,7 @@ O arquivo **src/lib/env.ts** irá carregar as variáveis de ambiente automaticam
 import "@/lib/env"
 ```
 
-### 3.4. Crie o arquivo de configuração
+### 3.4. Criando o arquivo de configuração
 
 Crie o arquivo **drizzle.config.ts** na raiz do projeto e importe a configuração das variáveis ​​de ambiente. Adicione o caminho para o arquivo de esquema e a variável de ambiente **POSTGRES_URL** da Vercel:
 
@@ -264,7 +300,7 @@ export default defineConfig({
 
 Os arquivos de migrações ficarão no diretório **src/drizzle/migrations**. Porém, neste projeto não estamos utilizando scripts de migração e seeds.
 
-### 3.5. Gere as tabelas
+### 3.5. Gerando as tabelas
 
 Use a CLI **drizzle-kit** para gerar as tabelas do banco de dados, com o comando abaixo:
 
@@ -276,7 +312,7 @@ Depois de executar este comando, você poderá visualizar as tabelas no seu [pai
 
 Sempre que for alterar a estrutura do banco de dados, altere o arquivo **src/drizzle/schema.ts** e execute o comando **npx drizzle-kit push** no terminal para atualizar as tabelas no banco de dados na Vercel Postgres.
 
-### 3.6. Usar o Drizzle-Studio
+### 3.6. Usando o Drizzle-Studio
 
 O [Drizzle-Studio](https://orm.drizzle.team/drizzle-studio/overview) é a nova maneira de gerenciar os bancos de dados SQL em projetos Drizzle, de forma gráfica. Ele permite que você navegue, adicione, exclua e atualize tudo com base no esquema SQL do Drizzle.
 
@@ -290,7 +326,7 @@ Enquanto estiver executando o comando, você poderá editar e visualizar de form
 
 Clique no [endereço URL informado](https://local.drizzle.studio/) pelo Drizzle Studio no terminal para acessar o Drizzle Studio.
 
-### 3.7. Crie a conexão com o banco de dados e funções auxiliares
+### 3.7. Criando a conexão com o banco de dados e funções auxiliares
 
 Crie o arquivo **src/drizzle/db.ts** com o seguinte conteúdo:
 
@@ -321,7 +357,7 @@ export const getUsers2 = async () => {
 }
 ```
 
-### 3.8. Teste a aplicação
+### 3.8. Testando a aplicação
 
 Adicione alguns usuários manualmente com o Drizzle Studio. Depois, modifique a página inicial **src/app/page.tsx** para ficar com o seguinte conteúdo:
 
@@ -372,7 +408,7 @@ E veja os dados na tela.
 
 Iremos integrar o Auth.js para implementar a autenticação de usuários.
 
-### 4.1. Instale as dependências
+### 4.1. Instalando as dependências
 
 Execute no terminal:
 
@@ -390,7 +426,7 @@ npx auth secret
 
 Esse comando adicionará ao arquivo **.env.local** a variável de ambiente **AUTH_SECRET** com um valor aleatório. Essa variável de ambiente é usada para criptografar tokens e hashes de verificação de e-mail.
 
-### 4.2. Crie os arquivos de configuração iniciais
+### 4.2. Criando os arquivos de configuração iniciais
 
 Crie o arquivo **src/auth.ts** na raiz do projeto com o seguinte conteúdo:
 
@@ -423,7 +459,7 @@ export const config = {
 
 O middleware de autenticação garante que a página **/admin** seja acessível apenas para usuários autenticados.
 
-### 4.3. Configure os métodos de autenticação
+### 4.3. Configurando os métodos de autenticação
 
 O Auth.js recomenda o OAuth como o principal método de autenticação. O O Auth.js salva a sessão em um cookie por padrão usando JWT criptografado. Para persistir os dados do usuário é necessário usar os adaptadores de banco de dados.
 
@@ -435,7 +471,7 @@ Por exemplo, se um usuário já tiver feito login com o Google e, portanto, tive
 
 O Auth.js vem com mais de 80 provedores pré-configurados. Neste projeto iremos configurar apenas o provedor OAuth do Google, que é o mais popular de todos.
 
-#### 4.4.1. Configure o OAuth do Google no Google Console
+#### 4.4.1. Configurando o OAuth do Google no Google Console
 
 Para configurar o OAuth do Google, siga os passos abaixo:
 
@@ -463,7 +499,7 @@ GOOGLE_CLIENT_SECRET=seu-google-client-secret
 
 O Auth.js irá automaticamente pegar as variáveis de ambiente se estiverem com os nomes que estão no exemplo acima.
 
-#### 4.4.2. Configure o OAuth do Google no Auth.js
+#### 4.4.2. Configurando o OAuth do Google no Auth.js
 
 Modifique o arquivo **src/auth.ts** para usar o provedor do Google:
 
@@ -483,7 +519,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
 As variáveis de ambiente **GOOGLE_CLIENT_ID** e **GOOGLE_CLIENT_SECRET** devem corresponder exatamente aos nomes das variáveis de ambiente definidas no arquivo **.env.local**.
 
-##### 4.4.3. Crie um componente botão de login com o Google
+##### 4.4.3. Criando um componente botão de login com o Google
 
 Crie o arquivo **src/components/login-google-button.tsx** com o seguinte conteúdo:
 
@@ -532,7 +568,7 @@ export function LoginForm() {
 }
 ```
 
-#### 4.4.4. Personalize a página de callback após o login com o Google
+#### 4.4.4. Personalizando a página de callback após o login com o Google
 
 Modifique o arquivo **src/auth.ts** adicionando uma callback com uma URL de redirecionamento personalizada padrão após a autenticação com o Google:
 
@@ -550,7 +586,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
 Após a modificação, quando o usuário fizer o login com o Google, ele será redirecionado para a rota **/admin**.
 
-#### 4.4.5. Teste o login com o Google
+#### 4.4.5. Testando o login com o Google
 
 Teste a aplicação, clicando no botão **Login com Google**. Se funcionar, você será redirecionado para o Google e, uma vez autenticado, redirecionado de volta para o aplicativo.
 
@@ -558,7 +594,7 @@ Teste a aplicação, clicando no botão **Login com Google**. Se funcionar, voc�
 
 O logout pode ser feito de forma semelhante ao login. A maioria das estruturas oferece um método tanto do lado do cliente quanto do lado do servidor para efetuar o logout.
 
-#### 4.5.1. Crie um botão de logout
+#### 4.5.1. Criando um botão de logout
 
 Crie o arquivo **src/components/logout-button.tsx** com o seguinte conteúdo:
 
@@ -694,7 +730,7 @@ export default async function HomePage() {
 
 Referência: [Documentação do Auth.js](https://authjs.dev/getting-started/session-management/get-session).
 
-### 4.4. Magic Links
+### 4.7. Magic Links
 
 Os Magic Links funcionam da seguinte forma:
 
@@ -707,13 +743,13 @@ Vamos iniciar a configuração do Magic Links usando o Drizzle ORM e o Sendgrid.
 
 Referência: [Documentação do Auth.js - Magic Links](https://authjs.dev/getting-started/authentication/email).
 
-##### Usando o Drizzle ORM e o Sendgrid
+### 4.8. Usando o Drizzle ORM e o Sendgrid
 
 Um provedor de e-mail pode ser usado com JWT e uma sessão de banco de dados. É necessário configurar o banco de dados para que o Auth.js possa salvar os tokens de verificação e procurá-los quando o usuário tentar fazer login.
 
 Não é possível habilitar um provedor de e-mail sem usar um banco de dados. Neste projeto iremos utilizar o banco de dados **Vercel Postgres** com o adaptador **Drizzle ORM** e o **Sendgrid** como provedor de e-mail.
 
-##### Configurando o Drizzle ORM
+#### 4.8.1. Configurando o Drizzle ORM
 
 Para usar este adaptador, é preciso já ter ter configurado o Drizzle ORM e o Drizzle Kit no projeto. O Drizzle Kit é configurado por meio do arquivo de configuração **drizzle.config.ts**.
 
@@ -863,23 +899,23 @@ Com isso finalizamos a configuração do adaptador de banco de dados.
 
 Referência: [Documentação do Auth.js - Drizzle ORM Adapter](https://authjs.dev/getting-started/adapters/drizzle).
 
-##### Configurando o Sendgrid como provedor de e-mail
+#### 4.8.2. Configurando o Sendgrid como provedor de e-mail
 
 Agora vamos configurar uma variável de ambiente para o Sendgrid.
 
 No arquivo **.env.local**, adicione as seguintes variáveis ​​de ambiente:
 
 ```bash
-AUTH_SENDGRID_KEY=seu-sendgrid-key
+SENDGRID_KEY=seu-sendgrid-key
 AUTH_EMAIL_FROM=seu-email-de-remetente
 ```
 
-Para obter a chave e colocar na variável de ambiente **AUTH_SENDGRID_KEY** é preciso criar uma chave de API no SendGrid. Para isso, vamos seguir os seguintes passos:
+Para obter a chave e colocar na variável de ambiente **SENDGRID_KEY** é preciso criar uma chave de API no SendGrid. Para isso, vamos seguir os seguintes passos:
 
 1. Acesse sua conta no [SendGrid](https://sendgrid.com/) e no menu lateral, clique em **Settings** e depois e em **API Keys**.
 2. Clique no botão **Create API Key**.
 3. Dê um nome para a API Key, por exemplo, **Silo Auth Drizzle Next** e defina as permissões como **Full Access**.
-4. Clique sobre a chave de API criada para copiá-la e salve-a na variável de ambiente **AUTH_SENDGRID_KEY**. Essa chave é exibida apenas uma única vez. Em seguida, clique em **Done** para sair.
+4. Clique sobre a chave de API criada para copiá-la e salve-a na variável de ambiente **SENDGRID_KEY**. Essa chave é exibida apenas uma única vez. Em seguida, clique em **Done** para sair.
 
 Caso perca a chave de API do Sendgrid será necessário criar outra, repetindo os passos acima.
 
@@ -903,7 +939,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ...
   providers: [
 		SendgridProvider({
-      apiKey: process.env.AUTH_SENDGRID_KEY,
+      apiKey: process.env.SENDGRID_KEY,
       from: process.env.AUTH_EMAIL_FROM,
     }),
 		...
@@ -1012,7 +1048,7 @@ Desta forma concluímos a configuração do login por e-mail.
 
 Referência: [Documentação do Auth.js - Magic Links](https://authjs.dev/getting-started/authentication/email).
 
-### 4.4. Usando OTP ao invés de Magic Links
+### 4.9. OTP ao invés de Magic Links
 
 Apesar de algumas vantagens, os Magic Links exigem a mesma sessão de navegador, o que é problemático em dispositivos móveis. Se o usuário solicita no Chrome e abre no Safari ou no navegador do aplicativo de e-mail, a transação falha, parecendo que precisa fazer login repetidamente.
 
@@ -1028,32 +1064,36 @@ O processo de login usando OTP (login com chave por e-mail) ficará assim:
 4. Quando o usuário receber o token por e-mail o usuário deverá inserir o token no formulário de login que apareceu na tela após ele ter digitado seu e-mail.
 5. Se o token estiver correto, o usuário será redirecionado para a página da administração.
 
-#### Geração de tokens personalizados
+#### 4.9.1. Gerando tokens personalizados
 
 Para gerar tokens personalizados, temos que alterar o token já gerado pelo Auth.js para corresponder ao formato OTP de 6 dígitos aleatórios.
 
 Para isso iremos adicionar a geração de OTP à função do Sendgrid, substituindo o uso da função nativa **generateVeriticationToken()** do Sendgrid.
 
-Altere o arquivo **src/auth.ts** com as alterações a seguir:
+Altere o arquivo **src/auth.ts** para o seguinte conteúdo a seguir:
 
 ```typescript
-...
+import NextAuth from "next-auth"
+import GoogleProvider from "next-auth/providers/google"
+import SendgridProvider from "next-auth/providers/sendgrid"
 import { randomInt } from "crypto"
-...
-
-// Função para gerar OTP
-function generateOTP() {
-	return randomInt(100000, 999999).toString()
-}
+import { DrizzleAdapter } from "@auth/drizzle-adapter"
+import { db } from "@/drizzle/db"
+import * as schema from "@/drizzle/schema"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+	adapter: DrizzleAdapter(db, {
+		usersTable: schema.users,
+		accountsTable: schema.accounts,
+		sessionsTable: schema.sessions,
+		verificationTokensTable: schema.verificationTokens,
+	}),
 	providers: [
-		...
 		// Provedor SendGrid para link de verificação com OTP que expira em 24 horas
 		SendgridProvider({
 			id: "sendgrid-link",
-			apiKey: process.env.AUTH_SENDGRID_KEY,
-			from: process.env.AUTH_EMAIL_FROM,
+			apiKey: process.env.SENDGRID_KEY,
+			from: process.env.EMAIL_FROM,
 			maxAge: 24 * 60 * 60, // Expira em 24 horas para links
 			async sendVerificationRequest({ identifier: to, provider, url }) {
 				const { host } = new URL(url)
@@ -1066,7 +1106,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 					body: JSON.stringify({
 						personalizations: [{ to: [{ email: to }] }],
 						from: { email: provider.from },
-						subject: `Sign in to ${host}`,
+						subject: `Fazer login em ${host}`,
 						content: [
 							{ type: "text/plain", value: `Login com link: ${url}` },
 							{ type: "text/html", value: `<p>Faça login clicando no link: <a href="${url}">Fazer login</a></p>` },
@@ -1080,45 +1120,92 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 		// Provedor SendGrid para link de verificação com OTP que expira em 3 minutos
 		SendgridProvider({
 			id: "sendgrid-otp",
-			apiKey: process.env.AUTH_SENDGRID_KEY,
-			from: process.env.AUTH_EMAIL_FROM,
-			maxAge: 3 * 60, // Expira em 3 minutos para OTP
-			async sendVerificationRequest({ identifier: to, provider }) {
-				const otpToken = generateOTP()
-				const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${provider.apiKey}`,
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						personalizations: [{ to: [{ email: to }] }],
-						from: { email: provider.from },
-						subject: "Seu código de verificação",
-						content: [
-							{
-								type: "text/plain",
-								value: `Seu código de verificação é: ${otpToken}`,
-							},
-							{
-								type: "text/html",
-								value: `<p>Seu código de verificação é: <strong>${otpToken}</strong></p>`,
-							},
-						],
-					}),
-				})
-				if (!res.ok) throw new Error("Erro do Sendgrid: " + (await res.text()))
+			apiKey: process.env.SENDGRID_KEY,
+			from: process.env.EMAIL_FROM,
+			maxAge: 5 * 60, // Expira em 5 minutos para OTP
+			generateVerificationToken: async () => {
+				const token = randomInt(1000, 9999)
+				return token.toString() // Retorna o OTP com 4 dígitos
+			},
+			async sendVerificationRequest({ identifier: to, token, provider }) {
+				try {
+					// Salvar o OTP no banco de dados (verificationTokens)
+					await db.insert(schema.verificationTokens).values({
+						identifier: to,
+						token: token,
+						expires: new Date(Date.now() + 5 * 60 * 1000), // Expira em 5 minutos
+					})
+					const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+						method: "POST",
+						headers: {
+							Authorization: `Bearer ${provider.apiKey}`,
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							personalizations: [{ to: [{ email: to }] }],
+							from: { email: provider.from },
+							subject: "Seu código de verificação",
+							content: [
+								{
+									type: "text/plain",
+									value: `Seu código de verificação é: ${token}`,
+								},
+								{
+									type: "text/html",
+									value: `<p>Seu código de verificação é: <strong>${token}</strong>.</p>`,
+								},
+							],
+						}),
+					})
+					if (!res.ok) {
+						console.error("Erro ao enviar o OTP:", await res.text())
+						throw new Error("Erro ao enviar o OTP com SendGrid")
+					} else {
+						console.log("OTP enviado com sucesso para o e-mail:", to)
+						console.log("OTP:", token)
+					}
+				} catch (error) {
+					console.error("Erro ao processar o OTP:", error)
+					throw new Error("Erro ao processar a verificação do OTP")
+				}
 			},
 		}),
-		...
+		GoogleProvider({
+			clientId: process.env.GOOGLE_CLIENT_ID!,
+			clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+		}),
 	],
-	...
+	callbacks: {
+		async redirect({ url, baseUrl }) {
+			return url.startsWith(baseUrl) ? url : baseUrl
+		},
+		async signIn({ user, account, profile, email, credentials }) {
+			console.log("Tentativa de login com usuário:", user)
+			console.log("Provedor chamado:", account?.provider) // Deve mostrar 'sendgrid-otp'
+			console.log("Credenciais:", credentials)
+			return true
+		},
+		async session({ session, token }) {
+			console.log("Sessão iniciada para o usuário:", session.user)
+			return session
+		},
+		async jwt({ token, user, account }) {
+			console.log("Token JWT:", token)
+			return token
+		},
+	},
 })
 ```
 
 Como SendgridProvider não possui a função **generateVerificationToken()**, substituímos a lógica com um código personalizado que gera o OTP utilizando **generateOTP()**. Alteramos a função **sendVerificationRequest()**. Agora, em vez de enviar o link de verificação, estamos enviando diretamente o OTP no corpo do e-mail. O corpo do e-mail agora contém o OTP gerado, enviado por meio do SendGrid através da chave de API. O token gerado (OTP) é enviado tanto no formato texto quanto HTML.
 
 Com isso agora temos dois provedores Sendgrid. Um para o link de autenticação que expira em 24 horas. Outro com o OTP de 6 dígitos que expira em 3 minutos. Nos componentes agora devemos alterar a função para fazer login usando o id **sendgrid-otp** ou **sendgrid-link**.
+
+Quando utilizarmos o OTP reduzimos a complexidade do token e infelizmente tornamos os ataques de força bruta mais fáceis. Então, como prevenção, ajustamos a duração de expiração do token para 3 minutos ao invés de 24 horas.
+
+Para personalizar o e=mail, acesse a documentação: [Auth.js - Email](https://next-auth.js.org/providers/email#customizing-emails).
+
+#### 4.9.2. Criando página de login com OTP
 
 Em **src/components/login-link-email-form.tsx** altere o form para usar link:
 
@@ -1261,7 +1348,7 @@ export function LoginForm() {
 					...
 					<Link href='/login-otp-email' className='underline'>
 						<Button variant='outline' className='w-full'>
-							Login com chave por e-mail
+							Login com token por e-mail
 						</Button>
 					</Link>
 					...
@@ -1273,13 +1360,245 @@ export function LoginForm() {
 }
 ```
 
-No próximo passo iremos criar o formulário de login com OTP.
+#### 4.9.3. Evoluindo o formulário de login com OTP
+
+No próximo passo iremos criar o formulário de login com OTP, para que o usuário digite a chave que recebeu por e-mail.
+
+Vamos alterar a página **src/app/(auth)/login-otp-email/page.tsx** para o seguinte conteúdo:
+
+```tsx
+"use client"
+
+import LoginOtpEmailForm from "@/components/login-otp-email-form"
+import LoginOtpKeyForm from "@/components/login-otp-key-form"
+
+import { useState } from "react"
+
+export default function LoginOtpEmailPage() {
+	const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
+
+	return (
+		<div className='flex flex-col h-screen w-full items-center justify-center px-4'>
+			<h1 className='text-6xl font-bold text-gray-800 mb-6'>Silo</h1>
+			{!verificationEmail ? <LoginOtpEmailForm onEmailSubmitted={setVerificationEmail} /> : <LoginOtpKeyForm email={verificationEmail} />}
+		</div>
+	)
+}
+```
+
+Neste arquivo adicionamos variáveis de estado para controlar a transição entre as etapas de gerenciamento de fluxo entre envio de e-mail e a verificação de OTP.
+
+#### 4.9.4. Instalando o Zod e React Hook Form
+
+Vamos instalar algumas dependências para tratamento e validação usando formulários:
+
+```bash
+npm install @hookform/resolvers zod react-hook-form
+```
+
+#### 4.9.5. Evoluindo páginas do fluxo de login com OTP
+
+Em seguida alteramos o componente **src/components/login-otp-email-form.tsx** para o seguinte conteúdo:
+
+```tsx
+"use client"
+
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+
+import { signIn } from "next-auth/react"
+
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+
+interface Props {
+	onEmailSubmitted: (email: string) => void
+}
+
+// Esquema de validação com Zod
+const emailSchema = z.object({
+	email: z.string().email("Por favor, insira um e-mail válido"),
+})
+
+type EmailFormData = z.infer<typeof emailSchema>
+
+export default function LoginOtpEmailForm({ onEmailSubmitted }: Props) {
+	const {
+		register,
+		handleSubmit,
+		formState: { errors, isSubmitting },
+	} = useForm<EmailFormData>({
+		resolver: zodResolver(emailSchema),
+	})
+
+	const [error, setError] = useState<string | null>(null)
+	const router = useRouter()
+
+	async function onSubmit(data: EmailFormData) {
+		setError(null)
+
+		const response = await signIn("sendgrid-otp", { email: data.email, redirect: false })
+		if (response?.error) {
+			setError("Erro ao enviar o e-mail. Tente novamente.")
+		} else {
+			onEmailSubmitted(data.email) // Passa para o próximo estágio
+		}
+	}
+
+	return (
+		<Card className='mx-auto max-w-xs'>
+			<CardHeader>
+				<CardTitle className='text-2xl'>Login</CardTitle>
+				<CardDescription>Digite seu e-mail abaixo. Você receberá uma chave por e-mail para fazer login.</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<div className='grid gap-4'>
+					<form onSubmit={handleSubmit(onSubmit)} className='grid gap-4'>
+						<div className='grid gap-2'>
+							<Label htmlFor='email'>E-mail</Label>
+							<Input id='email' type='email' placeholder='seu@email.com' {...register("email")} />
+						</div>
+						{errors.email && <p className='text-red-600 text-sm'>{errors.email.message}</p>}
+						{error && <p className='text-red-600 text-sm'>{error}</p>}
+						<div className='grid gap-2'>
+							<Button type='submit' disabled={isSubmitting} className='w-full'>
+								{isSubmitting ? "Enviando..." : "Login"}
+							</Button>
+						</div>
+					</form>
+				</div>
+				<div className='mt-4 text-center text-sm'>
+					Não tem uma conta?{" "}
+					<Link href='/register' className='underline'>
+						Registre-se
+					</Link>
+				</div>
+			</CardContent>
+		</Card>
+	)
+}
+```
+
+Este componente renderiza um formulário simples para que o usuário insira seu e-mail e envie a solicitação de OTP. O tratamento de erros ocorre ao capturar erros diretamente da resposta signIn, que redireciona o usuário em caso de erro.
+
+Altere o componente **src/components/login-otp-key-form.tsx** para o seguinte conteúdo:
+
+```tsx
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+
+interface Props {
+	email: string
+}
+
+// Esquema de validação para OTP
+const otpSchema = z.object({
+	code: z.string().length(4, "O código deve ter 4 dígitos").regex(/^\d+$/, "O código deve conter apenas números"),
+})
+
+type OTPFormData = z.infer<typeof otpSchema>
+
+export default function LoginOtpKeyForm({ email }: Props) {
+	const {
+		register,
+		handleSubmit,
+		formState: { errors, isSubmitting },
+	} = useForm<OTPFormData>({
+		resolver: zodResolver(otpSchema),
+	})
+
+	const [error, setError] = useState<string | null>(null)
+	const router = useRouter()
+
+	async function onSubmit(data: OTPFormData) {
+		setError(null)
+
+		const otpRequestURL = `/api/auth/callback/sendgrid?email=${encodeURIComponent(email)}&token=${encodeURIComponent(data.code)}&callbackUrl=${encodeURIComponent("/admin")}`
+
+		const response = await fetch(otpRequestURL)
+
+		if (response.ok && response.url.includes("/admin")) {
+			router.push(response.url)
+		} else {
+			setError("Código de verificação inválido. Tente novamente.")
+		}
+	}
+
+	return (
+		<Card className='mx-auto max-w-xs'>
+			<CardHeader>
+				<CardTitle className='text-2xl'>Login</CardTitle>
+				<CardDescription>Digite o código de verificação enviado para o e-mail.</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<form onSubmit={handleSubmit(onSubmit)} className='grid gap-4'>
+					<div className='grid gap-2'>
+						<Label htmlFor='code'>Código OTP</Label>
+						<Input id='code' type='text' placeholder='000000' {...register("code")} />
+						{errors.code && <p className='text-red-600 text-sm'>{errors.code.message}</p>}
+						{error && <p className='text-red-600 text-sm'>{error}</p>}
+					</div>
+					<p className='text-sm'>
+						Lembre-se, o código expira em <strong>5 minutos</strong>.
+					</p>
+					<Button type='submit' disabled={isSubmitting} className='w-full'>
+						{isSubmitting ? "Verificando..." : "Verificar"}
+					</Button>
+				</form>
+			</CardContent>
+		</Card>
+	)
+}
+```
+
+Este componente permite que o usuário insira o OTP recebido por e-mail. Ele envia a solicitação de verificação ao servidor e trata erros diretamente, exibindo-os abaixo do campo de OTP.
+
+#### 4.9.6. Resumindo o fluxo de login por OTP
+
+Dessa forma, o fluxo fica simplificado, permitindo a transição do envio de e-mail para a verificação do OTP:
+
+1. Página **src/app/(auth)/login-otp-email/page.tsx**:
+
+- Verifica se o e-mail já foi submetido.
+- Renderiza **LoginOtpEmailForm** para envio de e-mail ou **LoginOtpKeyForm** para verificação OTP com base no estado.
+
+2. Componente **src/components/login-otp-email-form**:
+
+- Coleta o e-mail do usuário.
+- Envia o e-mail para o servidor via signIn.
+- Em caso de erro, exibe a mensagem diretamente abaixo do campo de e-mail.
+
+3. Componente **src/components/login-otp-key-form**:
+
+- Recebe o código OTP do usuário.
+- Verifica o código enviado.
+- Exibe erros de verificação diretamente no formulário caso o código seja inválido.
+
+### 4.10. Login com e-mail e senha
+
+Agora vamos fazer a autenticação com e-mail e senha.
 
 -------------- CONTINUAR DAQUI PRA FRENTE - AINDA NÃO TERMINEI --------------
 
 (...)
-
-Agora iremos alterar a página que é exibida após clicar em fazer login por e-mail, tanto por link quanto por OTP.
 
 (...)
 

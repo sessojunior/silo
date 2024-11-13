@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { auth } from "@/auth-node"
 import { redirect } from "next/navigation"
 import { SignOutButton } from "@/components/logout-button"
 

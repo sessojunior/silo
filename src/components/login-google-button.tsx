@@ -1,4 +1,4 @@
-import { signIn } from "@/auth"
+import { signIn } from "@/auth-node"
 import { Button } from "@/components/ui/button"
 
 export function SignInWithGoogleButton() {
@@ -10,7 +10,7 @@ export function SignInWithGoogleButton() {
 			}}
 		>
 			<Button variant='outline' type='submit' className='w-full'>
-				Login com Google
+				Acessar com Google
 			</Button>
 		</form>
 	)

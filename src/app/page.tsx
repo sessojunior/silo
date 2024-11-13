@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { auth } from "@/auth-node"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
