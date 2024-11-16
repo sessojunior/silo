@@ -1,15 +1,18 @@
 import NextAuth from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 import SendgridProvider from "next-auth/providers/sendgrid"
 import NodemailerProvider from "next-auth/providers/nodemailer"
 import { createTransport } from "nodemailer"
-import { randomInt } from "crypto"
+import { createHash, randomInt } from "crypto"
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
+import { eq } from "drizzle-orm"
 import { db } from "@/drizzle/db" // Configuração do Drizzle ORM
 import * as schema from "@/drizzle/schema"
 
 console.log("Configuração do NextAuth iniciada...")
 export const { handlers, signIn, signOut, auth } = NextAuth({
+	debug: true, // Adicione esta linha para ativar o debug
 	adapter: DrizzleAdapter(db, {
 		usersTable: schema.users,
 		accountsTable: schema.accounts,
@@ -17,6 +20,49 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 		verificationTokensTable: schema.verificationTokens,
 	}),
 	providers: [
+		// Provedor de credenciais para login com e-mail e senha
+		CredentialsProvider({
+			id: "credentials",
+			name: "Credentials",
+			credentials: {
+				email: {},
+				password: {},
+			},
+			authorize: async (credentials) => {
+				console.log("Credenciais recebidas no authorize:", credentials)
+				try {
+					const email = credentials?.email as string
+					const password = credentials?.password as string
+					console.log("email", email, "password", password)
+
+					if (!email || !password) {
+						console.error("Credenciais incompletas")
+						throw new Error("E-mail e senha são obrigatórios.")
+					}
+
+					// Verifique se o usuário existe no banco de dados
+					const user = await db
+						.select()
+						.from(schema.users)
+						.where(eq(schema.users.email, email))
+						.then((users) => users[0])
+
+					if (!user) {
+						throw new Error("Usuário não encontrado.")
+					}
+
+					// Valida a senha
+					if (!isPasswordValid(password, user.password as string)) {
+						throw new Error("Senha inválida.")
+					}
+
+					console.log("Autenticação bem-sucedida:", user)
+					return { id: user.id, name: user.name, email: user.email }
+				} catch (error) {
+					return null
+				}
+			},
+		}),
 		// Provedor SendGrid para link de verificação com OTP que expira em 24 horas
 		SendgridProvider({
 			id: "sendgrid-link",
@@ -92,7 +138,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 	callbacks: {
 		async redirect({ url, baseUrl }) {
 			console.log("Callback `redirect`: url:", url, "baseUrl:", baseUrl)
-
 			// Redireciona para /admin
 			const redirectUrl = `${baseUrl}/admin`
 			console.log("Redirecionando para:", redirectUrl)
@@ -106,9 +151,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 		async session({ session, token }) {
 			console.log("Token recebido no callback `session`:", token)
 			console.log("Sessão antes da modificação:", session)
-
-			session.user.id = token.id as string
-
+			if (token) {
+				session.user.id = token.id as string
+				session.user.email = token.email as string
+			}
 			console.log("Sessão após a modificação:", session)
 			return session
 		},
@@ -117,6 +163,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 			// Adiciona o ID do usuário ao token quando o usuário faz login
 			if (user) {
 				token.id = user.id // Certifique-se de que o `user` tem a propriedade `id`
+				token.email = user.email
 				console.log("Token modificado com ID:", token)
 			}
 			return token
@@ -124,10 +171,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 	},
 })
 console.log("Configuração do NextAuth concluída...")
-
-function generateOTP() {
-	return randomInt(1000, 9999).toString() // Retorna o OTP com 4 dígitos
-}
 
 function text(params: { token: string; host: string }) {
 	return `Login com ${params.host}
@@ -140,9 +183,7 @@ function text(params: { token: string; host: string }) {
 
 function html(params: { token: string; host: string }) {
 	const { token, host } = params
-
 	const escapedHost = host.replace(/\\./g, "&#8203;.")
-
 	const color = {
 		background: "#f9f9f9",
 		text: "#444",
@@ -177,4 +218,13 @@ function html(params: { token: string; host: string }) {
   </table>
 </body>
   `
+}
+
+function generateOTP() {
+	return randomInt(1000, 9999).toString() // Retorna o OTP com 4 dígitos
+}
+
+function isPasswordValid(inputPassword: string, hashedPassword: string): boolean {
+	const inputPasswordHash = createHash("sha256").update(inputPassword).digest("hex")
+	return inputPasswordHash === hashedPassword
 }
