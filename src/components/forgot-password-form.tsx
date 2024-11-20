@@ -26,7 +26,7 @@ export function ForgotPasswordForm() {
 			})
 
 			if (response.ok) {
-				setMessage("Um e-mail de recuperação foi enviado. Verifique sua caixa de entrada.")
+				setMessage("Um e-mail de recuperação foi enviado. Aguarde alguns minutos e verifique sua caixa de entrada.")
 				setEmail("")
 			} else {
 				const data = await response.json()
@@ -53,7 +53,7 @@ export function ForgotPasswordForm() {
 							<Input id='email' type='email' value={email} onChange={(e) => setEmail(e.target.value)} placeholder='seu@email.com' autoComplete='email' required />
 						</div>
 						{error && <p className='text-red-500 text-sm'>{error}</p>}
-						{message && <p className='text-green-500 text-sm'>{message}</p>}
+						{message && <p className='text-green-700 text-sm'>{message}</p>}
 						<Button type='submit' className='w-full' disabled={isSubmitting}>
 							{isSubmitting ? "Enviando..." : "Enviar"}
 						</Button>

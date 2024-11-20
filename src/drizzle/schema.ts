@@ -10,6 +10,8 @@ export const users = pgTable("users", {
 	password: text("password"), // Campo opcional
 	emailVerified: timestamp("emailVerified", { mode: "date" }),
 	image: text("image"),
+	resetToken: text("resetToken"), // Novo campo para armazenar o token de redefinição
+	resetTokenExpires: timestamp("resetTokenExpires", { mode: "date" }), // Novo campo para expiração do token
 	createdAt: timestamp("createdAt").defaultNow().notNull(),
 })
 
