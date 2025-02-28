@@ -52,9 +52,9 @@
 		<p class="mt-8 text-sm">
 			<NuxtLink class="font-semibold text-primary underline-offset-2 hover:underline dark:text-white" to="/forgot-password">Esqueceu a senha?</NuxtLink>
 		</p>
-		<p class="mt-4 text-sm text-muted-foreground dark:text-white">
+		<p class="mt-4 text-sm dark:text-white">
 			Não possui uma conta?
-			<NuxtLink class="font-semibold text-primary underline-offset-2 hover:underline dark:text-white" to="/signup">Crie uma agora</NuxtLink>
+			<NuxtLink class="font-semibold text-primary underline-offset-2 hover:underline dark:text-white" to="/create-account">Crie uma agora</NuxtLink>
 		</p>
 	</NuxtLayout>
 </template>

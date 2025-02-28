@@ -18,15 +18,19 @@
 		</div>
 
 		<div class="hidden min-h-screen flex-grow md:flex md:w-1/2 lg:w-1/2">
-			<NuxtImg src="/placeholder.svg" alt="Fundo" class="size-full h-screen object-cover" />
+			<NuxtImg src="/background-1.png" alt="Fundo" class="size-full h-screen object-cover" />
 		</div>
 
 		<div class="fixed bottom-5 right-5 z-20">
-			<button type="button" class="hs-dark-mode hs-dark-mode-active:hidden inline-flex items-center justify-center h-10 w-10 bg-neutral-800 rounded-full text-sm text-white hover:bg-black focus:outline-none focus:bg-black" data-hs-theme-click-value="dark">
-				<Icon name="lucide:moon" class="shrink-0 size-5" />
+			<button type="button" class="hs-dark-mode-active:hidden block hs-dark-mode font-medium rounded-full focus:outline-none text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800" data-hs-theme-click-value="dark">
+				<span class="group inline-flex shrink-0 justify-center items-center size-9">
+					<Icon name="lucide:moon" class="shrink-0 size-5" />
+				</span>
 			</button>
-			<button type="button" class="hs-dark-mode hs-dark-mode-active:inline-flex hidden items-center justify-center h-10 w-10 bg-neutral-100 rounded-full text-sm text-neutral-900 hover:bg-white focus:outline-none focus:bg-white" data-hs-theme-click-value="light">
-				<Icon name="lucide:sun" class="shrink-0 size-5" />
+			<button type="button" class="hs-dark-mode-active:block hidden hs-dark-mode font-medium text-gray-800 rounded-full hover:bg-gray-200 focus:outline-none focus:bg-gray-200 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800" data-hs-theme-click-value="light">
+				<span class="group inline-flex shrink-0 justify-center items-center size-9">
+					<Icon name="lucide:sun" class="shrink-0 size-5" />
+				</span>
 			</button>
 		</div>
 	</div>
