@@ -17,10 +17,12 @@
 			</div>
 		</div>
 
+		<!-- Background -->
 		<div class="hidden min-h-screen flex-grow md:flex md:w-1/2 lg:w-1/2">
 			<NuxtImg src="/background-1.png" alt="Fundo" class="size-full h-screen object-cover" />
 		</div>
 
+		<!-- Toogle dark/light mode -->
 		<div class="fixed bottom-5 right-5 z-20">
 			<button type="button" class="hs-dark-mode-active:hidden block hs-dark-mode font-medium rounded-full focus:outline-none text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800" data-hs-theme-click-value="dark">
 				<span class="group inline-flex shrink-0 justify-center items-center size-9">
