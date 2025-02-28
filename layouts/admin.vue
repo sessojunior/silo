@@ -12,7 +12,8 @@
 						</button>
 					</div>
 					<!-- Title -->
-					<div class="hidden sm:block">
+					<div class="hidden sm:flex items-center gap-x-2">
+						<Icon name="lucide:house" class="shrink-0 size-8 text-neutral-400" />
 						<h2 class="text-xl font-medium text-neutral-800 dark:text-neutral-100">Visão geral</h2>
 					</div>
 					<!-- Buttons & dropdown -->
@@ -310,7 +311,7 @@
 
 		<!-- Content -->
 		<div class="w-full lg:ps-64">
-			<div class="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-neutral-100 dark:bg-neutral-800 h-[calc(100svh-64px)] dark:text-white">
+			<div class="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-neutral-50 dark:bg-neutral-800 h-[calc(100svh-64px)] dark:text-white">
 				<!-- Page content -->
 				<slot />
 			</div>
