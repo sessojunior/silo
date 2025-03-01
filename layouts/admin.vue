@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<!-- Header -->
-		<header class="sticky top-0 inset-x-0 h-16 w-full flex flex-wrap flex-shrink-0 md:justify-start md:flex-nowrap z-[48] bg-white border-b text-sm py-2.5 lg:ps-[260px] dark:bg-neutral-800 dark:border-neutral-700">
+		<header class="sticky top-0 inset-x-0 h-16 w-full flex flex-wrap flex-shrink-0 md:justify-start md:flex-nowrap z-[48] bg-[#FDFDFD] border-b text-sm py-2.5 lg:ps-[260px] dark:bg-neutral-800 dark:border-neutral-700">
 			<nav class="px-4 flex items-center w-full">
 				<div class="w-full flex items-center justify-between gap-x-2">
 					<!-- Navigation Toggle -->
@@ -13,7 +13,7 @@
 					</div>
 					<!-- Title -->
 					<div class="hidden sm:flex items-center gap-x-2">
-						<Icon name="lucide:house" class="shrink-0 size-8 text-neutral-400" />
+						<Icon name="lucide:house" class="shrink-0 size-7 text-neutral-400" />
 						<h2 class="text-xl font-medium text-neutral-800 dark:text-neutral-100">Visão geral</h2>
 					</div>
 					<!-- Buttons & dropdown -->
@@ -39,10 +39,14 @@
 						<div class="relative inline-block">
 							<button type="button" class="size-[38px] relative inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-full border border-transparent text-gray-800 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700">
 								<Icon name="lucide:inbox" class="shrink-0 size-4" />
-								<span class="absolute top-0 end-0 block size-2.5 rounded-full ring-2 ring-white bg-red-400 dark:ring-neutral-900"></span>
+								<span class="flex absolute top-0 end-0 size-2.5">
+									<span class="animate-ping absolute inline-flex size-full rounded-full bg-red-400 opacity-75 dark:bg-red-600"></span>
+									<span class="relative inline-flex rounded-full size-2.5 bg-red-500"></span>
+								</span>
 								<span class="sr-only">Mensagens</span>
 							</button>
 						</div>
+
 						<!-- Divider -->
 						<div class="h-8 w-0.5 mx-1 bg-neutral-100 dark:bg-neutral-800"></div>
 						<!-- Dropdown -->
@@ -92,7 +96,7 @@
 		</header>
 
 		<!-- Sidebar -->
-		<div id="hs-application-sidebar" class="hs-overlay [--auto-close:lg] hs-overlay-open:translate-x-0 -translate-x-full transition-all duration-300 transform w-[260px] h-full hidden fixed inset-y-0 start-0 z-[60] bg-white border-e border-gray-200 lg:block lg:translate-x-0 lg:end-auto lg:bottom-0 dark:bg-neutral-800 dark:border-neutral-700" role="dialog" tabindex="-1" aria-label="Sidebar">
+		<div id="hs-application-sidebar" class="hs-overlay [--auto-close:lg] hs-overlay-open:translate-x-0 -translate-x-full transition-all duration-300 transform w-[260px] h-full hidden fixed inset-y-0 start-0 z-[60] bg-[#FDFDFD] border-e border-gray-200 lg:block lg:translate-x-0 lg:end-auto lg:bottom-0 dark:bg-neutral-800 dark:border-neutral-700" role="dialog" tabindex="-1" aria-label="Sidebar">
 			<!-- Body -->
 			<div class="relative flex flex-col h-full max-h-full">
 				<div class="px-4 h-16 flex flex-shrink-0 items-center justify-between border-b border-b-transparent">
@@ -310,8 +314,8 @@
 		<!-- End Sidebar -->
 
 		<!-- Content -->
-		<div class="w-full lg:ps-64">
-			<div class="p-4 sm:p-6 space-y-4 sm:space-y-6 bg-neutral-50 dark:bg-neutral-800 h-[calc(100svh-64px)] dark:text-white">
+		<div class="w-full lg:pl-[260px]">
+			<div class="h-[calc(100svh-64px)] dark:text-white">
 				<!-- Page content -->
 				<slot />
 			</div>
