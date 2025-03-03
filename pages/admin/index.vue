@@ -6,72 +6,17 @@
         <!-- Graphs -->
         <div class="grid grid-cols-2 border-b border-b-[#F3F3F3]">
           <div class="flex flex-col border-r border-r-[#F3F3F3] px-8 py-6">
-            <h3 class="pb-2 text-lg font-medium">Histórico de incidentes</h3>
-            <div>Gráfico de coluna, com datas e porcentagens</div>
+            <h3 class="pb-2 text-lg font-medium">Incidentes por data</h3>
+            <div class="w-full -mb-10">
+              <ColumnChart />
+            </div>
           </div>
           <div class="flex flex-col px-8 py-6">
             <h3 class="pb-2 text-lg font-medium">Causas de problemas</h3>
             <div class="flex">
-              <div
-                class="flex flex-col flex-wrap gap-x-6 gap-y-1 text-xs text-gray-600"
-              >
-                <div class="flex items-center">
-                  <div
-                    class="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-[#34A383]"
-                  ></div>
-                  <div>
-                    <span>Rede externa: <span class="font-bold">65</span></span>
-                  </div>
-                </div>
-                <div class="flex items-center">
-                  <div
-                    class="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-[#E6463B]"
-                  ></div>
-                  <div>
-                    <span
-                      >Servidor indisponível:
-                      <span class="font-bold">17</span></span
-                    >
-                  </div>
-                </div>
-                <div class="flex items-center">
-                  <div
-                    class="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-[#F5683E]"
-                  ></div>
-                  <div>
-                    <span>Falha humana: <span class="font-bold">21</span></span>
-                  </div>
-                </div>
-                <div class="flex items-center">
-                  <div
-                    class="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-[#4E67C9]"
-                  ></div>
-                  <div>
-                    <span>Rede interna: <span class="font-bold">48</span></span>
-                  </div>
-                </div>
-                <div class="flex items-center">
-                  <div
-                    class="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-[#DFDBD7]"
-                  ></div>
-                  <div>
-                    <span
-                      >Erro no modelo: <span class="font-bold">121</span></span
-                    >
-                  </div>
-                </div>
-                <div class="flex items-center">
-                  <div
-                    class="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-[#F5AF53]"
-                  ></div>
-                  <div>
-                    <span
-                      >Outros problemas: <span class="font-bold">12</span></span
-                    >
-                  </div>
-                </div>
+              <div class="w-full">
+                <DonutChart />
               </div>
-              <div>Radial</div>
             </div>
           </div>
         </div>
@@ -88,7 +33,7 @@
             </div>
             <div class="relative">
               <div
-                class="my-2 flex h-2 w-[320px] gap-0.5 overflow-hidden rounded bg-gray-100 text-xs"
+                class="my-2 flex h-2 w-full gap-0.5 overflow-hidden rounded bg-gray-100 text-xs"
               >
                 <div class="w-[70%] rounded-full bg-[#15CDCD]"></div>
                 <div class="w-[17%] rounded-full bg-[#F4A540]"></div>
@@ -143,31 +88,427 @@
 
         <!-- Products & tasks -->
         <div class="flex flex-col px-8 py-6">
-          <h3 class="pb-2 text-lg font-medium">Produtos & tasks</h3>
-          <div class="flex flex-col">
+          <h3 class="pb-2 text-lg font-medium text-red-300">Não iniciado</h3>
+
+          <div class="mt-4 flex flex-col">
             <!-- Product item -->
-            <div class="flex">
-              <div class="flex">65%</div>
-              <div class="flex">Produto 1</div>
-              <div class="flex">Barra com status dos produtos</div>
-              <div class="flex">Barra de progresso</div>
-              <div class="flex">2h 43 min</div>
-            </div>
-            <!-- Product item -->
-            <div class="flex">
-              <div class="flex">84%</div>
-              <div class="flex">Produto 2</div>
-              <div class="flex">Barra com status dos produtos</div>
-              <div class="flex">Barra de progresso</div>
-              <div class="flex">38 min</div>
-            </div>
-            <!-- Product item -->
-            <div class="flex">
-              <div class="flex">21%</div>
-              <div class="flex">Produto 3</div>
-              <div class="flex">Barra com status dos produtos</div>
-              <div class="flex">Barra de progresso</div>
-              <div class="flex">30 min</div>
+            <div class="flex flex-col">
+              <div class="flex w-full flex-row gap-2">
+                <div class="flex">
+                  <!-- Button & name -->
+                  <div class="mr-2">
+                    <button
+                      type="button"
+                      class="h-10 w-10 inline-flex items-center justify-center rounded-lg border border-gray-100 bg-white text-gray-800 shadow-sm hover:bg-gray-50 focus:outline-none focus:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+                    >
+                      <Icon class="size-4" name="lucide:box" />
+                    </button>
+                  </div>
+                  <div class="flex w-full flex-col">
+                    <div class="font-medium py-0.5">Produto 1</div>
+                    <div class="flex flex-col items-center">
+                      <div class="w-40 text-xs leading-none">
+                        86% <span class="text-neutral-200">•</span> 17 dez.
+                        17:35
+                      </div>
+                      <div class="w-40 text-xs py-1.5 leading-none">
+                        <div
+                          class="inline-flex py-1.5 px-2 rounded-md bg-orange-50 border border-orange-100"
+                        >
+                          <span
+                            class="text-[10px] text-nowrap uppercase text-orange-400"
+                            >P. Normal</span
+                          >
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-col">
+                  <div class="flex justify-between w-full">
+                    <!-- Turn Progress -->
+                    <div class="flex flex-grow flex-col">
+                      <!-- Time timeline -->
+                      <div class="h-8">
+                        <!-- Timeline-->
+                        <div class="flex">
+                          <div
+                            class="flex gap-x-0.5 p-1.5 rounded-md hover:bg-orange-50"
+                          >
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                          </div>
+                          <div
+                            class="flex gap-x-0.5 p-1.5 rounded-md hover:bg-orange-50"
+                          >
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-orange-300"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-orange-300"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                          </div>
+                          <div
+                            class="flex gap-x-0.5 p-1.5 rounded-md hover:bg-orange-50"
+                          >
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                          </div>
+                          <div
+                            class="flex gap-x-0.5 p-1.5 rounded-md hover:bg-orange-50"
+                          >
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-red-400"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-orange-300"
+                            ></div>
+                          </div>
+                          <div
+                            class="flex gap-x-0.5 p-1.5 rounded-md hover:bg-orange-50"
+                          >
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-orange-300"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-orange-300"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                          </div>
+                          <div
+                            class="flex gap-x-0.5 p-1.5 rounded-md hover:bg-orange-50"
+                          >
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-orange-300"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-orange-300"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-red-400"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-red-400"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-orange-200"
+                            ></div>
+                            <div
+                              class="w-1.5 h-5 rounded-full bg-green-200"
+                            ></div>
+                          </div>
+                          <!-- Collapse -->
+                          <div class="flex">
+                            <!-- Collapse trigger -->
+                            <button
+                              type="button"
+                              class="hs-collapse-toggle flex gap-x-0.5 p-1.5 rounded-full hover:bg-neutral-100 group"
+                              aria-expanded="false"
+                              id="hs-basic-collapse-p1"
+                              aria-controls="hs-basic-collapse-content"
+                              data-hs-collapse="#hs-basic-collapse-content"
+                            >
+                              <div
+                                class="w-5 h-5 text-[10px] text-center text-white flex items-center justify-center rounded-full bg-neutral-200 group-hover:bg-neutral-400"
+                              >
+                                <Icon
+                                  class="hs-collapse-open:rotate-180 size-4 transition-all duration-300"
+                                  name="lucide:chevron-down"
+                                />
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- Collapse Content -->
+                      <div
+                        id="hs-basic-collapse-content"
+                        aria-labelledby="hs-basic-collapse-p1"
+                        class="hs-collapse w-full overflow-hidden transition-[height] duration-300"
+                      >
+                        <div class="flex flex-col px-1.5">
+                          <div class="flex items-center gap-x-1 pb-1.5">
+                            <span class="text-xs pt-0.5">Outubro, 2025</span>
+                          </div>
+                          <div class="flex mb-1">
+                            <div class="flex-col border-r border-r-neutral-200">
+                              <div class="w-4 h-4"></div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center pt-0.5 text-xs text-center"
+                              >
+                                0
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center pt-0.5 text-xs text-center"
+                              >
+                                6
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center pt-0.5 text-xs text-center"
+                              >
+                                12
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center pt-0.5 text-xs text-center"
+                              >
+                                18
+                              </div>
+                            </div>
+                            <div
+                              class="flex-col border-r border-r-neutral-200 hover:bg-neutral-100"
+                            >
+                              <div
+                                class="w-4 h-4 text-xs text-center font-medium"
+                              >
+                                1
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center"
+                              >
+                                <div
+                                  class="w-4 h-4 flex items-center justify-center rounded-full hover:bg-neutral-200"
+                                ></div>
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center"
+                              >
+                                <div
+                                  class="w-4 h-4 flex items-center justify-center rounded-full hover:bg-neutral-200"
+                                >
+                                  <div
+                                    class="w-2.5 h-2.5 rounded-full bg-red-500"
+                                  ></div>
+                                </div>
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center"
+                              >
+                                <div
+                                  class="w-4 h-4 flex items-center justify-center rounded-full hover:bg-neutral-200"
+                                ></div>
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center"
+                              >
+                                <div
+                                  class="w-4 h-4 flex items-center justify-center rounded-full hover:bg-neutral-200"
+                                ></div>
+                              </div>
+                            </div>
+                            <div
+                              class="flex-col border-r border-r-neutral-200 hover:bg-neutral-100"
+                            >
+                              <div
+                                class="w-4 h-4 text-xs text-center font-medium"
+                              >
+                                2
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center"
+                              >
+                                <div
+                                  class="w-4 h-4 flex items-center justify-center rounded-full hover:bg-neutral-200"
+                                ></div>
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center"
+                              >
+                                <div
+                                  class="w-4 h-4 flex items-center justify-center rounded-full hover:bg-neutral-200"
+                                ></div>
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center"
+                              >
+                                <div
+                                  class="w-4 h-4 flex items-center justify-center rounded-full hover:bg-neutral-200"
+                                >
+                                  <div
+                                    class="w-2.5 h-2.5 rounded-full bg-orange-400"
+                                  ></div>
+                                </div>
+                              </div>
+                              <div
+                                class="w-4 h-4 flex justify-center items-center"
+                              >
+                                <div
+                                  class="w-4 h-4 flex items-center justify-center rounded-full hover:bg-neutral-200"
+                                >
+                                  <div
+                                    class="w-2.5 h-2.5 rounded-full bg-orange-400"
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- Barra de turno -->
+                      <div class="h-8">
+                        <div class="flex">
+                          <div
+                            class="flex gap-x-0.5 p-1.5 rounded-full hover:bg-orange-50"
+                          >
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-green-500"
+                            >
+                              0
+                            </div>
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-red-500"
+                            >
+                              6
+                            </div>
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-red-500"
+                            >
+                              12
+                            </div>
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-green-500"
+                            >
+                              18
+                            </div>
+                          </div>
+                          <div
+                            class="flex gap-x-0.5 p-1.5 rounded-full hover:bg-orange-50"
+                          >
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-green-500"
+                            >
+                              0
+                            </div>
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-orange-500"
+                            >
+                              6
+                            </div>
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-green-500"
+                            >
+                              12
+                            </div>
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-orange-500"
+                            >
+                              18
+                            </div>
+                          </div>
+                          <div
+                            class="flex gap-x-0.5 p-1.5 rounded-full hover:bg-orange-50"
+                          >
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-green-500"
+                            >
+                              0
+                            </div>
+                            <div
+                              class="w-5 h-5 text-xs text-center text-white flex items-center justify-center rounded-full bg-green-500"
+                            >
+                              6
+                            </div>
+                            <div
+                              class="w-5 h-5 text-xs text-center text-neutral-500 flex items-center justify-center rounded-full bg-neutral-100"
+                            >
+                              12
+                            </div>
+                            <div
+                              class="w-5 h-5 text-xs text-center text-neutral-500 flex items-center justify-center rounded-full bg-neutral-100"
+                            >
+                              18
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -211,7 +552,8 @@
                       :max="100"
                       size="20"
                       strokeWidth="16px"
-                      colorUnfilled="#15CDCD"
+                      colorUnfilled="#77C3FA"
+                      rounded
                       class="mr-1"
                     />
                     <span class="pr-3 text-xl font-medium"> 79% </span>
@@ -235,9 +577,10 @@
                     size="60"
                     strokeWidth="12px"
                     colorUnfilled="#C39BF4"
+                    rounded
                     class="mb-1"
                     ><span class="pt-0.5 text-sm font-bold leading-none"
-                      >62%</span
+                      >15%</span
                     ></CircleProgressBar
                   >
                 </div>
@@ -253,6 +596,7 @@
                     size="60"
                     strokeWidth="12px"
                     colorUnfilled="#6EC9AF"
+                    rounded
                     class="mb-1"
                     ><span class="pt-0.5 text-sm font-bold leading-none"
                       >15%</span
@@ -271,6 +615,7 @@
                     size="60"
                     strokeWidth="12px"
                     colorUnfilled="#F69493"
+                    rounded
                     class="mb-1"
                     ><span class="pt-0.5 text-sm font-bold leading-none"
                       >81%</span
@@ -287,6 +632,7 @@
                     size="60"
                     strokeWidth="12px"
                     colorUnfilled="#BCBFBE"
+                    rounded
                     class="mb-1"
                     ><span class="pt-0.5 text-sm font-bold leading-none"
                       >12%</span
@@ -300,11 +646,6 @@
             <!-- Ongoing projects -->
             <div class="flex flex-col py-6">
               <h3 class="pb-2 text-lg font-medium">Projetos em andamento</h3>
-              <p class="text-sm">
-                Tem
-                <span class="rounded border px-1 py-0.5 font-medium">3</span>
-                projetos em andamento no momento.
-              </p>
               <div class="mt-4 flex flex-col gap-3">
                 <!-- Project item -->
                 <div class="flex w-full flex-row text-sm">
@@ -331,7 +672,7 @@
                         aria-valuemax="100"
                       >
                         <div
-                          class="w-[56%] flex flex-col justify-center overflow-hidden bg-blue-200 text-xs text-white text-center whitespace-nowrap transition duration-500 dark:bg-blue-500"
+                          class="w-[56%] flex flex-col justify-center overflow-hidden bg-[#77C3FA] text-xs text-white text-center whitespace-nowrap transition duration-500 dark:bg-blue-500"
                         ></div>
                       </div>
                     </div>
@@ -362,7 +703,7 @@
                         aria-valuemax="100"
                       >
                         <div
-                          class="w-[78%] flex flex-col justify-center overflow-hidden bg-blue-200 text-xs text-white text-center whitespace-nowrap transition duration-500 dark:bg-blue-500"
+                          class="w-[78%] flex flex-col justify-center overflow-hidden bg-[#77C3FA] text-xs text-white text-center whitespace-nowrap transition duration-500 dark:bg-blue-500"
                         ></div>
                       </div>
                     </div>
@@ -393,7 +734,7 @@
                         aria-valuemax="100"
                       >
                         <div
-                          class="w-[19%] flex flex-col justify-center overflow-hidden bg-blue-200 text-xs text-white text-center whitespace-nowrap transition duration-500 dark:bg-blue-500"
+                          class="w-[19%] flex flex-col justify-center overflow-hidden bg-[#77C3FA] text-xs text-white text-center whitespace-nowrap transition duration-500 dark:bg-blue-500"
                         ></div>
                       </div>
                     </div>
