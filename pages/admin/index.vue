@@ -94,19 +94,19 @@
           <!-- Products & tasks -->
           <div class="flex flex-col px-8 py-6">
             <h3 class="pb-2 text-lg font-medium text-red-300">Não iniciado</h3>
-            <div class="mt-4 flex flex-col">
+            <div class="mt-2 flex flex-col">
               <!-- Product item -->
               <Product1 />
               <!-- Product item -->
               <Product2 />
             </div>
             <h3 class="pb-2 text-lg font-medium text-orange-300">Rodando</h3>
-            <div class="mt-4 flex flex-col">
+            <div class="mt-2 flex flex-col">
               <!-- Product item -->
               <Product3 />
             </div>
             <h3 class="pb-2 text-lg font-medium text-green-300">Finalizado</h3>
-            <div class="mt-4 flex flex-col"></div>
+            <div class="mt-2 flex flex-col"></div>
           </div>
         </div>
       </div>
