@@ -1,23 +1,27 @@
 <template>
   <NuxtLayout name="admin">
-    <div class="flex w-full">
+    <div class="flex w-full bg-white dark:bg-neutral-900">
       <!-- Side left -->
       <div class="flex flex-grow flex-col">
         <div
           class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-track]:bg-neutral-700 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500"
         >
           <!-- Graphs -->
-          <div class="grid grid-cols-2 border-b border-b-[#F3F3F3]">
-            <div class="flex flex-col border-r border-r-[#F3F3F3] px-8 py-6">
+          <div
+            class="grid grid-cols-2 border-b border-b-neutral-200 dark:border-b-neutral-700"
+          >
+            <div
+              class="flex flex-col border-r border-r-neutral-200 dark:border-r-neutral-700 px-8 py-6"
+            >
               <h3 class="pb-2 text-lg font-medium">Incidentes por data</h3>
-              <div class="w-full -mb-10">
+              <div class="w-full max-w-96 mx-auto -mb-10">
                 <ColumnChart />
               </div>
             </div>
             <div class="flex flex-col px-8 py-6">
               <h3 class="pb-2 text-lg font-medium">Causas de problemas</h3>
               <div class="flex">
-                <div class="w-full">
+                <div class="w-full max-w-96 mx-auto">
                   <DonutChart />
                 </div>
               </div>
@@ -25,8 +29,9 @@
           </div>
 
           <!-- Stats -->
-          <div class="flex flex-col border-b border-b-[#F3F3F3] px-8 py-6">
-            <h3 class="pb-2 text-lg font-medium">Status dos produtos</h3>
+          <div
+            class="flex flex-col border-b border-b-neutral-200 dark:border-b-neutral-700 px-8 py-6"
+          >
             <div class="flex flex-col">
               <div class="flex gap-4">
                 <div><span class="text-xl font-bold">32</span> produtos</div>
@@ -36,14 +41,16 @@
               </div>
               <div class="relative">
                 <div
-                  class="my-2 flex h-2 w-full gap-0.5 overflow-hidden rounded bg-gray-100 text-xs"
+                  class="my-2 flex h-2 w-full gap-0.5 overflow-hidden rounded bg-neutral-100 dark:bg-neutral-700 text-xs"
                 >
                   <div class="w-[70%] rounded-full bg-[#15CDCD]"></div>
                   <div class="w-[17%] rounded-full bg-[#F4A540]"></div>
                   <div class="w-[4%] rounded-full bg-[#E47174]"></div>
                 </div>
                 <div class="flex items-center text-xs text-muted-foreground">
-                  <div class="flex flex-wrap gap-x-6 gap-y-1 text-gray-600">
+                  <div
+                    class="flex flex-wrap gap-x-6 gap-y-1 text-neutral-600 dark:text-neutral-200"
+                  >
                     <div class="flex items-center">
                       <div
                         class="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-[#15CDCD]"
@@ -93,19 +100,19 @@
 
           <!-- Products & tasks -->
           <div class="flex flex-col px-8 py-6">
-            <h3 class="pb-2 text-lg font-medium text-red-300">Não iniciado</h3>
+            <h3 class="pb-2 text-lg font-medium text-red-500">Não iniciado</h3>
             <div class="mt-2 flex flex-col">
               <!-- Product item -->
               <Product1 />
               <!-- Product item -->
               <Product2 />
             </div>
-            <h3 class="pb-2 text-lg font-medium text-orange-300">Rodando</h3>
+            <h3 class="pb-2 text-lg font-medium text-orange-500">Rodando</h3>
             <div class="mt-2 flex flex-col">
               <!-- Product item -->
               <Product3 />
             </div>
-            <h3 class="pb-2 text-lg font-medium text-green-300">Finalizado</h3>
+            <h3 class="pb-2 text-lg font-medium text-green-500">Finalizado</h3>
             <div class="mt-2 flex flex-col"></div>
           </div>
         </div>
@@ -113,27 +120,31 @@
 
       <!-- Side right -->
       <div
-        class="hidden w-[400px] flex-shrink-0 flex-col border-l-2 border-l-[#F3F3F3] lg:flex"
+        class="hidden w-[400px] flex-shrink-0 flex-col border-l border-l-neutral-200 dark:border-l-neutral-700 lg:flex"
       >
         <div
           class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-track]:bg-neutral-700 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500"
         >
           <div class="px-8 py-6">
             <!-- Resume text -->
-            <div class="flex flex-col border-b border-b-[#F3F3F3] pb-6">
+            <div
+              class="flex flex-col border-b border-b-neutral-200 dark:border-b-neutral-700 pb-6"
+            >
               <h2 class="pb-4 text-xl font-medium">Resumo do dia</h2>
               <p class="text-sm">
                 Hoje você tem
-                <span class="rounded border px-1 py-0.5 font-medium">20%</span>
+                <strong>20%</strong>
                 mais problemas que o normal, você resolveu
                 <strong>3 problemas</strong> em dois projetos, mas o foco está
-                <span class="rounded border px-1 py-0.5 font-medium">12%</span>
+                <strong>12%</strong>
                 menor.
               </p>
             </div>
 
             <!-- Activity resume -->
-            <div class="grid grid-cols-2 border-b border-b-[#F3F3F3] py-6">
+            <div
+              class="grid grid-cols-2 border-b border-b-neutral-200 dark:border-b-neutral-700 py-6"
+            >
               <div>
                 <h4 class="pb-2 text-sm font-medium">Processos rodando</h4>
                 <div>
@@ -163,9 +174,11 @@
             </div>
 
             <!-- Radial Progress -->
-            <div class="grid w-full grid-cols-4 border-b border-b-[#F3F3F3]">
+            <div
+              class="grid w-full grid-cols-4 border-b border-b-neutral-200 dark:border-b-neutral-700"
+            >
               <div
-                class="flex flex-col items-center justify-center border-r border-r-[#F3F3F3] px-2 py-6"
+                class="flex flex-col items-center justify-center border-r border-r-neutral-200 dark:border-r-neutral-700 px-2 py-6"
               >
                 <div>
                   <CircleProgressBar
@@ -184,7 +197,7 @@
                 <div class="text-sm font-medium">Produtos</div>
               </div>
               <div
-                class="flex flex-col items-center justify-center border-r border-r-[#F3F3F3] px-2 py-6"
+                class="flex flex-col items-center justify-center border-r border-r-neutral-200 dark:border-r-neutral-700 px-2 py-6"
               >
                 <div>
                   <CircleProgressBar
@@ -203,7 +216,7 @@
                 <div class="text-sm font-medium">Processos</div>
               </div>
               <div
-                class="flex flex-col items-center justify-center border-r border-r-[#F3F3F3] px-2 py-6"
+                class="flex flex-col items-center justify-center border-r border-r-neutral-200 dark:border-r-neutral-700 px-2 py-6"
               >
                 <div>
                   <CircleProgressBar
@@ -346,6 +359,4 @@
   </NuxtLayout>
 </template>
 
-<script setup lang="ts">
-import { CircleProgressBar } from "circle-progress.vue";
-</script>
+<script setup lang="ts"></script>

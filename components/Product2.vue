@@ -32,9 +32,10 @@
           </div>
           <div class="text-xs py-1.5 flex items-center leading-none">
             <div
-              class="inline-flex py-1 px-2 rounded-md bg-orange-50 border border-orange-100"
+              class="inline-flex py-2 px-2.5 rounded-md bg-orange-100 dark:bg-orange-600"
             >
-              <span class="text-[10px] text-nowrap uppercase text-orange-500"
+              <span
+                class="text-[10px] text-nowrap uppercase text-orange-500 dark:text-white"
                 >P. Normal</span
               >
             </div>

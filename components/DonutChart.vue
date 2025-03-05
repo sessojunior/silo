@@ -63,3 +63,15 @@ const chartOptions = {
   ],
 };
 </script>
+
+<style>
+.apexcharts-pie-series path {
+  @apply dark:stroke-neutral-800 !important;
+}
+.apexcharts-legend-marker svg path {
+  @apply dark:stroke-neutral-800 !important;
+}
+.apexcharts-legend-text {
+  @apply dark:text-neutral-200 !important;
+}
+</style>

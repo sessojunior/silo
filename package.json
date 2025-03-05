@@ -15,7 +15,6 @@
     "@nuxtjs/google-fonts": "^3.2.0",
     "@nuxtjs/tailwindcss": "^6.13.1",
     "apexcharts": "^4.5.0",
-    "circle-progress.vue": "^3.3.0",
     "nuxt": "^3.15.4",
     "preline": "^2.7.0",
     "vue": "latest",

@@ -32,9 +32,10 @@
           </div>
           <div class="text-xs py-1.5 flex items-center leading-none">
             <div
-              class="inline-flex py-1 px-2 rounded-md bg-red-50 border border-red-100"
+              class="inline-flex py-2 px-2.5 rounded-md bg-red-100 dark:bg-red-600"
             >
-              <span class="text-[10px] text-nowrap uppercase text-red-500"
+              <span
+                class="text-[10px] text-nowrap uppercase text-red-500 dark:text-white"
                 >P. Urgente</span
               >
             </div>

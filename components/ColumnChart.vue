@@ -70,3 +70,18 @@ const chartOptions = {
   },
 };
 </script>
+
+<style>
+.apexcharts-canvas text tspan {
+  @apply dark:fill-neutral-100 !important;
+}
+.apexcharts-grid rect {
+  @apply dark:even:fill-neutral-700 dark:odd:fill-none !important;
+}
+.apexcharts-tooltip-title {
+  @apply dark:text-neutral-800 !important;
+}
+.apexcharts-tooltip-text {
+  @apply dark:text-neutral-800 !important;
+}
+</style>

@@ -32,9 +32,10 @@
           </div>
           <div class="text-xs py-1.5 flex items-center leading-none">
             <div
-              class="inline-flex py-1 px-2 rounded-md bg-green-100 border border-green-200"
+              class="inline-flex py-2 px-2.5 rounded-md bg-green-100 dark:bg-green-700"
             >
-              <span class="text-[10px] text-nowrap uppercase text-green-500"
+              <span
+                class="text-[10px] text-nowrap uppercase text-green-600 dark:text-white"
                 >P. Baixa</span
               >
             </div>
