@@ -1,0 +1,38 @@
+/* Google Fonts: Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+/* Fontes personalizadas */
+@theme {
+	--font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+	--font-inter: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Tema dark */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tailwind */
+@import 'tailwindcss';
+
+/* Preline UI */
+@import '../static/preline/variants.css';
+
+/* Plugins do Tailwind */
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/* Plugin: Iconify: https://iconify.design/docs/usage/css/tailwind/tailwind4/ */
+@plugin "@iconify/tailwind4" {
+	prefix: 'icon';
+	scale: 1.2;
+}
+
+/* Adiciona cursor-pointer aos botões */
+@layer base {
+	button:not(:disabled),
+	[role='button']:not(:disabled) {
+		cursor: pointer;
+	}
+}
+
+/* Padrão de estilo hover em todos os dispositivos */
+@custom-variant hover (&:hover);
