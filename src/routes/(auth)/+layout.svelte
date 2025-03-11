@@ -3,9 +3,9 @@
 </script>
 
 <div class="flex min-h-screen justify-between bg-white dark:bg-neutral-900">
-	<div class="w-full md:w-1/2 md:max-w-[600px]">
+	<div class="h-screen w-full md:w-1/2 md:max-w-[600px]">
 		<div
-			class="size-full h-screen overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+			class="size-full overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
 		>
 			<div class="flex h-full w-full flex-col">
 				<div class="flex">
@@ -30,25 +30,37 @@
 
 	<!-- Toogle dark/light mode -->
 	<div class="fixed right-5 bottom-5 z-20">
-		<button
-			type="button"
-			class="hs-dark-mode-active:hidden hs-dark-mode block rounded-full font-medium text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
-			data-hs-theme-click-value="dark"
-			aria-label="Trocar tema para escuro"
-		>
-			<span class="group inline-flex size-9 shrink-0 items-center justify-center">
-				<span class="icon-[lucide--moon] size-5 shrink-0"></span>
-			</span>
-		</button>
-		<button
-			type="button"
-			class="hs-dark-mode-active:block hs-dark-mode hidden rounded-full font-medium text-gray-800 hover:bg-gray-200 focus:bg-gray-200 focus:outline-none dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
-			data-hs-theme-click-value="light"
-			aria-label="Trocar tema para claro"
-		>
-			<span class="group inline-flex size-9 shrink-0 items-center justify-center">
-				<span class="icon-[lucide--sun] size-5 shrink-0"></span>
-			</span>
-		</button>
+		{@render toggleThemeButton()}
 	</div>
 </div>
+
+{#snippet toggleThemeButton()}
+	<button
+		type="button"
+		class="hs-dark-mode-active:hidden hs-dark-mode block rounded-full font-medium text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+		data-hs-theme-click-value="dark"
+		aria-label="Trocar tema para escuro"
+	>
+		<span class="group inline-flex size-9 shrink-0 items-center justify-center">
+			<span class="icon-[lucide--moon] size-5 shrink-0"></span>
+		</span>
+	</button>
+	<button
+		type="button"
+		class="hs-dark-mode-active:block hs-dark-mode hidden rounded-full font-medium text-gray-800 hover:bg-gray-200 focus:bg-gray-200 focus:outline-none dark:text-neutral-200 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
+		data-hs-theme-click-value="light"
+		aria-label="Trocar tema para claro"
+	>
+		<span class="group inline-flex size-9 shrink-0 items-center justify-center">
+			<span class="icon-[lucide--sun] size-5 shrink-0"></span>
+		</span>
+	</button>
+{/snippet}
+
+{#snippet scrollBar()}
+	<div
+		class="size-full overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-gray-100 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+	>
+		{@render children()}
+	</div>
+{/snippet}
