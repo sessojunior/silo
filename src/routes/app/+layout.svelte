@@ -3,7 +3,7 @@
 
 	const user = {
 		avatar: 'https://avatars.githubusercontent.com/u/141470722?v=4',
-		username: 'Mario Junior',
+		name: 'Mario Junior',
 		team: 'Engenheiro de software'
 	}
 
@@ -189,6 +189,38 @@
 		],
 		user: user
 	}
+
+	const profile = {
+		avatar: user.avatar,
+		name: user.name,
+		team: user.team,
+		links: [
+			{
+				id: '1',
+				icon: 'icon-[lucide--user-round-pen]',
+				title: 'Alterar perfil',
+				url: '#'
+			},
+			{
+				id: '2',
+				icon: 'icon-[lucide--settings-2]',
+				title: 'Preferências',
+				url: '#'
+			},
+			{
+				id: '3',
+				icon: 'icon-[lucide--shield-check]',
+				title: 'Segurança',
+				url: '#'
+			},
+			{
+				id: '4',
+				icon: 'icon-[lucide--log-out]',
+				title: 'Sair',
+				url: '#'
+			}
+		]
+	}
 </script>
 
 <div>
@@ -265,83 +297,7 @@
 					<!-- Divider -->
 					<div class="mx-1 h-8 w-0.5 bg-neutral-100 dark:bg-neutral-800"></div>
 					<!-- Dropdown -->
-					<div class="hs-dropdown relative inline-flex [--placement:bottom-right]">
-						<button
-							id="hs-dropdown-account"
-							type="button"
-							class="group inline-flex items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-neutral-800 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white"
-							aria-haspopup="menu"
-							aria-expanded="false"
-							aria-label="Dropdown"
-						>
-							<!-- <div class="relative inline-block">
-									<span class="inline-flex items-center justify-center size-[46px] rounded-full bg-neutral-500 text-sm font-semibold text-white leading-none border-2 group-hover:border-4 group-focus:border-4 border-neutral-200 dark:border-neutral-700 group-focus:border-neutral-200 dark:group-focus:border-neutral-700">MJ</span>
-									<span class="absolute bottom-0 end-0 block size-3 rounded-full ring-2 ring-white bg-teal-400 dark:ring-neutral-800"></span>
-								</div> -->
-							<div class="relative inline-block">
-								<img
-									class="inline-block size-[46px] rounded-full border-2 border-neutral-200 group-hover:border-4 group-focus:border-4 group-focus:border-neutral-200 dark:border-neutral-700 dark:group-focus:border-neutral-700"
-									src={user.avatar}
-									alt="Avatar"
-								/>
-								<span
-									class="absolute end-0 bottom-0 block size-3 rounded-full bg-teal-400 ring-2 ring-white dark:ring-neutral-800"
-								></span>
-							</div>
-							<div
-								class="flex size-6 shrink-0 items-center justify-center rounded-full group-hover:bg-neutral-200 group-focus:bg-neutral-100 dark:group-hover:bg-neutral-700 dark:group-focus:bg-neutral-700"
-							>
-								<span class="icon-[lucide--chevron-down] size-4 shrink-0 text-neutral-400"></span>
-							</div>
-						</button>
-						<!-- Dropdown Menu -->
-						<div
-							class="hs-dropdown-menu duration hs-dropdown-open:opacity-100 mt-2 hidden min-w-60 rounded-lg bg-white opacity-0 shadow-md transition-[opacity,margin] before:absolute before:start-0 before:-top-4 before:h-4 before:w-full after:absolute after:start-0 after:-bottom-4 after:h-4 after:w-full dark:divide-neutral-700 dark:border dark:border-neutral-700 dark:bg-neutral-800"
-							role="menu"
-							aria-orientation="vertical"
-							aria-labelledby="hs-dropdown-account"
-						>
-							<div class="rounded-t-lg bg-neutral-100 px-5 py-3 dark:bg-neutral-700">
-								<p class="text-sm font-medium text-neutral-800 dark:text-neutral-200">
-									{user.username}
-								</p>
-								<p class="text-xs text-neutral-500 dark:text-neutral-400">
-									{user.team}
-								</p>
-							</div>
-							<div class="space-y-0.5 p-1.5">
-								<a
-									class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 dark:focus:bg-neutral-700 dark:focus:text-neutral-300"
-									href="#"
-								>
-									<span class="icon-[lucide--user-round-pen] size-4 shrink-0 text-neutral-400"
-									></span>
-									Alterar perfil
-								</a>
-								<a
-									class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 dark:focus:bg-neutral-700 dark:focus:text-neutral-300"
-									href="#"
-								>
-									<span class="icon-[lucide--settings-2] size-4 shrink-0 text-neutral-400"></span>
-									Preferências
-								</a>
-								<a
-									class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 dark:focus:bg-neutral-700 dark:focus:text-neutral-300"
-									href="#"
-								>
-									<span class="icon-[lucide--shield-check] size-4 shrink-0 text-neutral-400"></span>
-									Segurança
-								</a>
-								<a
-									class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 dark:focus:bg-neutral-700 dark:focus:text-neutral-300"
-									href="#"
-								>
-									<span class="icon-[lucide--log-out] size-4 shrink-0 text-neutral-400"></span>
-									Sair
-								</a>
-							</div>
-						</div>
-					</div>
+					{@render profileDropdown(profile)}
 				</div>
 			</div>
 		</nav>
@@ -430,7 +386,7 @@
 						<img class="inline-block size-[40px] rounded-full" src={user.avatar} alt="Avatar" />
 						<div class="w-[140px]">
 							<p class="truncate text-sm leading-none font-medium text-neutral-700 dark:text-white">
-								{user.username}
+								{user.name}
 							</p>
 							<p class="truncate text-xs text-neutral-500 dark:text-neutral-300">{user.team}</p>
 						</div>
@@ -558,5 +514,65 @@
 		<p class="text-medium mt-1 mb-2 text-sm text-neutral-500 dark:text-neutral-200">
 			{item.description}
 		</p>
+	</div>
+{/snippet}
+
+{#snippet profileDropdown(profile: any)}
+	<div class="hs-dropdown relative inline-flex [--placement:bottom-right]">
+		<button
+			id="hs-dropdown-account"
+			type="button"
+			class="group inline-flex items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-neutral-800 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white"
+			aria-haspopup="menu"
+			aria-expanded="false"
+			aria-label="Dropdown"
+		>
+			<!-- <div class="relative inline-block">
+        <span class="inline-flex items-center justify-center size-[46px] rounded-full bg-neutral-500 text-sm font-semibold text-white leading-none border-2 group-hover:border-4 group-focus:border-4 border-neutral-200 dark:border-neutral-700 group-focus:border-neutral-200 dark:group-focus:border-neutral-700">MJ</span>
+        <span class="absolute bottom-0 end-0 block size-3 rounded-full ring-2 ring-white bg-teal-400 dark:ring-neutral-800"></span>
+      </div> -->
+			<div class="relative inline-block">
+				<img
+					class="inline-block size-[46px] rounded-full border-2 border-neutral-200 group-hover:border-4 group-focus:border-4 group-focus:border-neutral-200 dark:border-neutral-700 dark:group-focus:border-neutral-700"
+					src={profile.avatar}
+					alt="Avatar"
+				/>
+				<span
+					class="absolute end-0 bottom-0 block size-3 rounded-full bg-teal-400 ring-2 ring-white dark:ring-neutral-800"
+				></span>
+			</div>
+			<div
+				class="flex size-6 shrink-0 items-center justify-center rounded-full group-hover:bg-neutral-200 group-focus:bg-neutral-100 dark:group-hover:bg-neutral-700 dark:group-focus:bg-neutral-700"
+			>
+				<span class="icon-[lucide--chevron-down] size-4 shrink-0 text-neutral-400"></span>
+			</div>
+		</button>
+		<!-- Dropdown Menu -->
+		<div
+			class="hs-dropdown-menu duration hs-dropdown-open:opacity-100 mt-2 hidden min-w-60 rounded-lg bg-white opacity-0 shadow-md transition-[opacity,margin] before:absolute before:start-0 before:-top-4 before:h-4 before:w-full after:absolute after:start-0 after:-bottom-4 after:h-4 after:w-full dark:divide-neutral-700 dark:border dark:border-neutral-700 dark:bg-neutral-800"
+			role="menu"
+			aria-orientation="vertical"
+			aria-labelledby="hs-dropdown-account"
+		>
+			<div class="rounded-t-lg bg-neutral-100 px-5 py-3 dark:bg-neutral-700">
+				<p class="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+					{profile.name}
+				</p>
+				<p class="text-xs text-neutral-500 dark:text-neutral-400">
+					{profile.team}
+				</p>
+			</div>
+			<div class="space-y-0.5 p-1.5">
+				{#each profile.links as link (link.id)}
+					<a
+						class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 dark:focus:bg-neutral-700 dark:focus:text-neutral-300"
+						href={link.url}
+					>
+						<span class="{link.icon} size-4 shrink-0 text-neutral-400"></span>
+						{link.title}
+					</a>
+				{/each}
+			</div>
+		</div>
 	</div>
 {/snippet}
