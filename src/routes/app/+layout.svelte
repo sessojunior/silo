@@ -4,7 +4,7 @@
 	const user = {
 		avatar: 'https://avatars.githubusercontent.com/u/141470722?v=4',
 		name: 'Mario Junior',
-		team: 'Engenheiro de software'
+		email: 'mario.sesso@inpe.br'
 	}
 
 	const logo = {
@@ -183,8 +183,7 @@
 			{
 				id: '1',
 				title: 'O que há de novo?',
-				description:
-					'Você pode conferir todas as novidades dessa nova versão do dashboard no aplicativo Silo.'
+				description: 'Você pode conferir todas as novidades dessa nova versão do dashboard no aplicativo Silo.'
 			}
 		],
 		user: user
@@ -193,7 +192,7 @@
 	const profile = {
 		avatar: user.avatar,
 		name: user.name,
-		team: user.team,
+		email: user.email,
 		links: [
 			{
 				id: '1',
@@ -226,7 +225,7 @@
 <div>
 	<!-- Header -->
 	<header
-		class="sticky inset-x-0 top-0 z-[48] flex h-16 w-full flex-shrink-0 flex-wrap border-b border-b-neutral-200 bg-neutral-50 py-2.5 text-sm md:flex-nowrap md:justify-start lg:ps-[260px] dark:border-neutral-700 dark:bg-neutral-800"
+		class="sticky inset-x-0 top-0 z-[48] flex h-16 w-full flex-shrink-0 flex-wrap border-b border-b-neutral-200 bg-neutral-50 py-2.5 md:flex-nowrap md:justify-start lg:ps-[260px] dark:border-neutral-700 dark:bg-neutral-800"
 	>
 		<nav class="flex w-full items-center px-4">
 			<div class="flex w-full items-center justify-between gap-x-2">
@@ -234,7 +233,7 @@
 				<div class="lg:hidden">
 					<button
 						type="button"
-						class="relative inline-flex size-[38px] items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+						class="relative inline-flex size-[38px] items-center justify-center gap-x-2 rounded-full border border-transparent text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
 						aria-haspopup="dialog"
 						aria-expanded="false"
 						aria-controls="hs-application-sidebar"
@@ -247,7 +246,7 @@
 				</div>
 				<!-- Title -->
 				<div class="hidden items-center gap-x-2 sm:flex">
-					<h2 class="text-xl font-medium text-neutral-800 dark:text-neutral-100">Visão geral</h2>
+					<h2 class="px-4 text-2xl font-medium text-neutral-800 dark:text-neutral-100">Visão geral</h2>
 				</div>
 				<!-- Buttons & dropdown -->
 				<div class="flex flex-row items-center justify-end gap-1">
@@ -285,9 +284,7 @@
 						>
 							<span class="icon-[lucide--inbox] size-4 shrink-0"></span>
 							<span class="absolute end-0 top-0 flex size-2.5">
-								<span
-									class="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75 dark:bg-red-600"
-								></span>
+								<span class="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75 dark:bg-red-600"></span>
 								<span class="relative inline-flex size-2.5 rounded-full bg-red-500"></span>
 							</span>
 							<span class="sr-only">Mensagens</span>
@@ -313,9 +310,7 @@
 	>
 		<!-- Body -->
 		<div class="relative flex h-full max-h-full flex-col">
-			<div
-				class="flex h-16 flex-shrink-0 items-center justify-between border-b border-b-transparent px-4"
-			>
+			<div class="flex h-16 flex-shrink-0 items-center justify-between border-b border-b-transparent px-4">
 				<!-- Logo -->
 				<div class="flex gap-2">
 					{#if sidebar.logo.image}
@@ -349,10 +344,7 @@
 								<li class="pt-6">
 									<div class="px-4 text-xs text-neutral-400 uppercase">{menu.title}</div>
 									{#if menu.items}
-										<nav
-											class="hs-accordion-group flex w-full flex-col flex-wrap p-3"
-											data-hs-accordion-always-open
-										>
+										<nav class="hs-accordion-group flex w-full flex-col flex-wrap p-2" data-hs-accordion-always-open>
 											<ul class="flex flex-col space-y-1">
 												{#each menu.items as item (item.id)}
 													{@render menuItem(item)}
@@ -371,8 +363,7 @@
 							{@render blockItem({
 								id: '1',
 								title: 'O que há de novo?',
-								description:
-									'Você pode conferir todas as novidades dessa nova versão do dashboard no aplicativo Silo.'
+								description: 'Você pode conferir todas as novidades dessa nova versão do dashboard no aplicativo Silo.'
 							})}
 						{/each}
 					</div>
@@ -385,10 +376,10 @@
 					<div class="flex items-center gap-2">
 						<img class="inline-block size-[40px] rounded-full" src={user.avatar} alt="Avatar" />
 						<div class="w-[140px]">
-							<p class="truncate text-sm leading-none font-medium text-neutral-700 dark:text-white">
+							<p class="text-md truncate leading-none font-medium text-neutral-700 dark:text-white">
 								{user.name}
 							</p>
-							<p class="truncate text-xs text-neutral-500 dark:text-neutral-300">{user.team}</p>
+							<p class="truncate text-sm text-neutral-500 dark:text-neutral-300">{user.email}</p>
 						</div>
 					</div>
 					<button
@@ -442,9 +433,7 @@
 		class="relative inline-flex size-8 items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 lg:hidden dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
 		data-hs-overlay="#hs-application-sidebar"
 	>
-		<span
-			class="icon-[lucide--panel-left-close] size-4 shrink-0 text-neutral-400 dark:text-neutral-600"
-		></span>
+		<span class="icon-[lucide--panel-left-close] size-4 shrink-0 text-neutral-400 dark:text-neutral-600"></span>
 		<span class="sr-only">Fechar</span>
 	</button>
 {/snippet}
@@ -455,26 +444,17 @@
 			<div class="hs-accordion" id={item.id}>
 				<button
 					type="button"
-					class="hs-accordion-toggle flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 text-start text-sm font-medium text-neutral-800 hover:bg-neutral-200 focus:bg-neutral-100 focus:outline-none dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+					class="hs-accordion-toggle text-md flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 text-start font-medium text-neutral-800 hover:bg-neutral-200 focus:bg-neutral-100 focus:outline-none dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
 					aria-expanded="false"
 					aria-controls="{item.id}-child"
 				>
 					<span class="{item.icon} size-4 shrink-0 text-neutral-400"></span>
 					{item.title}
-					<span
-						class="icon-[lucide--chevron-up] hs-accordion-active:block ms-auto hidden size-4 text-neutral-400"
-					></span>
-					<span
-						class="icon-[lucide--chevron-down] hs-accordion-active:hidden ms-auto block size-4 text-neutral-400"
-					></span>
+					<span class="icon-[lucide--chevron-up] hs-accordion-active:block ms-auto hidden size-4 text-neutral-400"></span>
+					<span class="icon-[lucide--chevron-down] hs-accordion-active:hidden ms-auto block size-4 text-neutral-400"></span>
 				</button>
-				<div
-					id="{item.id}-child"
-					class="hs-accordion-content hidden w-full overflow-hidden transition-[height] duration-300"
-					role="region"
-					aria-labelledby={item.id}
-				>
-					<ul class="space-y-1 ps-8 pt-1">
+				<div id="{item.id}-child" class="hs-accordion-content hidden w-full overflow-hidden transition-[height] duration-300" role="region" aria-labelledby={item.id}>
+					<ul class="space-y-1 pt-1">
 						{#each item.items as subItem (subItem.id)}
 							{@render menuItem(subItem)}
 						{/each}
@@ -484,7 +464,7 @@
 		{:else}
 			<a
 				href={item.url}
-				class="flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-200 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:hover:text-neutral-300"
+				class="text-md flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 font-medium text-neutral-800 hover:bg-neutral-200 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:hover:text-neutral-300"
 			>
 				<span class="{item.icon} size-4 shrink-0 text-neutral-400"></span>
 				{item.title}
@@ -494,10 +474,7 @@
 {/snippet}
 
 {#snippet blockItem(item: any)}
-	<div
-		id="alert-sidebar-{item.id}"
-		class="m-4 mt-auto rounded-lg border border-neutral-200 bg-neutral-100 px-4 py-3 text-sm dark:border-neutral-700 dark:bg-neutral-700"
-	>
+	<div id="alert-sidebar-{item.id}" class="text-md m-4 mt-auto rounded-lg border border-neutral-200 bg-neutral-100 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-700">
 		<div class="flex items-center justify-between">
 			<p class="text-md font-semibold text-neutral-800 dark:text-white">
 				{item.title}
@@ -537,9 +514,7 @@
 					src={profile.avatar}
 					alt="Avatar"
 				/>
-				<span
-					class="absolute end-0 bottom-0 block size-3 rounded-full bg-teal-400 ring-2 ring-white dark:ring-neutral-800"
-				></span>
+				<span class="absolute end-0 bottom-0 block size-3 rounded-full bg-teal-400 ring-2 ring-white dark:ring-neutral-800"></span>
 			</div>
 			<div
 				class="flex size-6 shrink-0 items-center justify-center rounded-full group-hover:bg-neutral-200 group-focus:bg-neutral-100 dark:group-hover:bg-neutral-700 dark:group-focus:bg-neutral-700"
@@ -555,17 +530,17 @@
 			aria-labelledby="hs-dropdown-account"
 		>
 			<div class="rounded-t-lg bg-neutral-100 px-5 py-3 dark:bg-neutral-700">
-				<p class="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+				<p class="text-md leading-none font-medium text-neutral-800 dark:text-neutral-200">
 					{profile.name}
 				</p>
-				<p class="text-xs text-neutral-500 dark:text-neutral-400">
-					{profile.team}
+				<p class="text-sm text-neutral-500 dark:text-neutral-400">
+					{profile.email}
 				</p>
 			</div>
 			<div class="space-y-0.5 p-1.5">
 				{#each profile.links as link (link.id)}
 					<a
-						class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 dark:focus:bg-neutral-700 dark:focus:text-neutral-300"
+						class="text-md flex items-center gap-x-3 rounded-lg px-3 py-2 font-medium text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 dark:focus:bg-neutral-700 dark:focus:text-neutral-300"
 						href={link.url}
 					>
 						<span class="{link.icon} size-4 shrink-0 text-neutral-400"></span>
