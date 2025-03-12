@@ -36,3 +36,31 @@
 
 /* Padrão de estilo hover em todos os dispositivos */
 @custom-variant hover (&:hover);
+
+/* Modo dark do Apexcharts: gráfico de colunas */
+.apexcharts-canvas text tspan {
+	@apply dark:!fill-neutral-100;
+}
+.apexcharts-grid rect {
+	@apply dark:odd:!fill-none dark:even:!fill-neutral-700;
+}
+.apexcharts-tooltip-title {
+	@apply dark:!text-neutral-800;
+}
+.apexcharts-tooltip-text {
+	@apply dark:!text-neutral-800;
+}
+
+/* Modo dark do Apexcharts: gráfico de donut ou pizza */
+.apexcharts-pie-series path {
+	@apply dark:!stroke-neutral-800;
+}
+.apexcharts-legend-marker svg path {
+	@apply dark:!stroke-neutral-800;
+}
+.apexcharts-legend {
+	@apply !p-0;
+}
+.apexcharts-legend-text {
+	@apply dark:!text-neutral-200;
+}

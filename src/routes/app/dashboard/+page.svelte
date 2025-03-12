@@ -1,5 +1,7 @@
 <script lang="ts">
 	import Product from '$lib/dashboard/Product.svelte'
+	import ChartColumn from '$lib/dashboard/ChartColumn.svelte'
+	import ChartDonut from '$lib/dashboard/ChartDonut.svelte'
 </script>
 
 <div class="flex w-full bg-white dark:bg-neutral-900">
@@ -9,18 +11,18 @@
 			class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-100 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
 		>
 			<!-- Graphs -->
-			<div class="grid grid-cols-2 border-b border-b-neutral-200 dark:border-b-neutral-700">
+			<div class="flex flex-col border-b border-b-neutral-200 md:grid md:grid-cols-2 dark:border-b-neutral-700">
 				<div class="flex flex-col border-r border-r-neutral-200 p-8 dark:border-r-neutral-700">
 					<h3 class="pb-2 text-xl font-medium">Incidentes por data</h3>
-					<div class="mx-auto -mb-10 w-full max-w-96">
-						<!-- <ColumnChart /> -->
+					<div class="mx-auto -mb-4 w-full">
+						<ChartColumn />
 					</div>
 				</div>
 				<div class="flex flex-col p-8">
 					<h3 class="pb-2 text-xl font-medium">Causas de problemas</h3>
 					<div class="flex">
-						<div class="mx-auto w-full max-w-96">
-							<!-- <DonutChart /> -->
+						<div class="mx-auto w-full">
+							<ChartDonut />
 						</div>
 					</div>
 				</div>

@@ -28,14 +28,14 @@
 	</div>
 	<div class="mt-1.5 flex items-center justify-between">
 		<!-- Popover -->
-		<div class="hs-tooltip inline-block [--trigger:hover] sm:[--placement:right]">
+		<div class="hs-tooltip inline-block [--trigger:hover] sm:[--placement:top]">
 			<!-- Popover Trigger -->
 			<div class="hs-tooltip-toggle">
 				<!-- Linha do tempo -->
 				<ProductTimeline />
 				<!-- Popover Content -->
 				<div
-					class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible invisible absolute z-10 hidden rounded-xl border border-gray-100 bg-white text-start opacity-0 shadow-md transition-opacity after:absolute after:-start-4 after:top-0 after:h-full after:w-4 dark:border-neutral-700 dark:bg-neutral-800"
+					class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible invisible absolute z-[80] hidden rounded-xl border border-gray-100 bg-white text-start opacity-0 shadow-md transition-opacity after:absolute after:-start-4 after:top-0 after:h-full after:w-4 dark:border-neutral-700 dark:bg-neutral-800"
 					role="tooltip"
 				>
 					<div class="flex items-center justify-between border-b border-neutral-200 bg-white px-4 py-3">
@@ -61,7 +61,6 @@
 						</div>
 					</div>
 					<div class="m-4 flex flex-col gap-4">
-						<ProductCalendar />
 						<ProductCalendar />
 						<ProductCalendar />
 					</div>
