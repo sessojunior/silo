@@ -23,10 +23,6 @@
 </script>
 
 <!-- Mês -->
-<!-- <div class="text-md flex justify-between border-b border-neutral-200 px-4 py-3 text-neutral-800">
-	<div class="text-neutral-600">{monthFullName(calendar.month)}</div>
-	<div class="text-neutral-400">{calendar.year}</div>
-</div> -->
 <div class="flex px-2">
 	<!-- Turnos -->
 	<div class="flex-col py-2">

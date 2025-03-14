@@ -376,7 +376,7 @@
 					<div class="flex items-center gap-2">
 						<img class="inline-block size-[40px] rounded-full" src={user.avatar} alt="Avatar" />
 						<div class="w-[140px]">
-							<p class="text-md truncate leading-none font-medium text-neutral-700 dark:text-white">
+							<p class="truncate text-base leading-none font-medium text-neutral-700 dark:text-white">
 								{user.name}
 							</p>
 							<p class="truncate text-sm text-neutral-500 dark:text-neutral-300">{user.email}</p>
@@ -444,7 +444,7 @@
 			<div class="hs-accordion" id={item.id}>
 				<button
 					type="button"
-					class="hs-accordion-toggle text-md flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 text-start font-medium text-neutral-800 hover:bg-neutral-200 focus:bg-neutral-100 focus:outline-none dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+					class="hs-accordion-toggle flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 text-start text-base font-medium text-neutral-800 hover:bg-neutral-200 focus:bg-neutral-100 focus:outline-none dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
 					aria-expanded="false"
 					aria-controls="{item.id}-child"
 				>
@@ -464,7 +464,7 @@
 		{:else}
 			<a
 				href={item.url}
-				class="text-md flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 font-medium text-neutral-800 hover:bg-neutral-200 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:hover:text-neutral-300"
+				class="flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 text-base font-medium text-neutral-800 hover:bg-neutral-200 dark:text-neutral-200 dark:hover:bg-neutral-700 dark:hover:text-neutral-300"
 			>
 				<span class="{item.icon} size-4 shrink-0 text-neutral-400"></span>
 				{item.title}
@@ -474,9 +474,9 @@
 {/snippet}
 
 {#snippet blockItem(item: any)}
-	<div id="alert-sidebar-{item.id}" class="text-md m-4 mt-auto rounded-lg border border-neutral-200 bg-neutral-100 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-700">
+	<div id="alert-sidebar-{item.id}" class="m-4 mt-auto rounded-lg border border-neutral-200 bg-neutral-100 px-4 py-3 text-base dark:border-neutral-700 dark:bg-neutral-700">
 		<div class="flex items-center justify-between">
-			<p class="text-md font-semibold text-neutral-800 dark:text-white">
+			<p class="text-base font-semibold text-neutral-800 dark:text-white">
 				{item.title}
 			</p>
 			<button
@@ -530,7 +530,7 @@
 			aria-labelledby="hs-dropdown-account"
 		>
 			<div class="rounded-t-lg bg-neutral-100 px-5 py-3 dark:bg-neutral-700">
-				<p class="text-md leading-none font-medium text-neutral-800 dark:text-neutral-200">
+				<p class="text-base leading-none font-medium text-neutral-800 dark:text-neutral-200">
 					{profile.name}
 				</p>
 				<p class="text-sm text-neutral-500 dark:text-neutral-400">
@@ -540,7 +540,7 @@
 			<div class="space-y-0.5 p-1.5">
 				{#each profile.links as link (link.id)}
 					<a
-						class="text-md flex items-center gap-x-3 rounded-lg px-3 py-2 font-medium text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 dark:focus:bg-neutral-700 dark:focus:text-neutral-300"
+						class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-base font-medium text-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-300 dark:focus:bg-neutral-700 dark:focus:text-neutral-300"
 						href={link.url}
 					>
 						<span class="{link.icon} size-4 shrink-0 text-neutral-400"></span>

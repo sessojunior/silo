@@ -2,13 +2,14 @@
 	import Product from '$lib/dashboard/Product.svelte'
 	import ChartColumn from '$lib/dashboard/ChartColumn.svelte'
 	import ChartDonut from '$lib/dashboard/ChartDonut.svelte'
+	import ChartLine from '$lib/dashboard/ChartLine.svelte'
 </script>
 
 <div class="flex w-full bg-white dark:bg-neutral-900">
 	<!-- Side left -->
 	<div class="flex flex-grow flex-col">
 		<div
-			class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-100 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+			class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
 		>
 			<!-- Stats -->
 			<div class="flex flex-col border-b border-b-neutral-200 p-8 pb-10 dark:border-b-neutral-700">
@@ -46,48 +47,63 @@
 				})}
 			</div>
 
-			<!-- Graphs -->
-			<div class="flex flex-col border-b border-b-neutral-200 md:grid md:grid-cols-2 dark:border-b-neutral-700">
-				<div class="flex flex-col border-r border-r-neutral-200 p-8 dark:border-r-neutral-700">
-					<h3 class="pb-2 text-xl font-medium">Incidentes por data</h3>
-					<div class="mx-auto -mb-4 w-full">
-						<ChartColumn />
-					</div>
-				</div>
-				<div class="flex flex-col p-8">
-					<h3 class="pb-2 text-xl font-medium">Causas de problemas</h3>
-					<div class="flex">
-						<div class="mx-auto w-full">
-							<ChartDonut />
+			<!-- Columns -->
+			<div class="flex flex-col divide-neutral-200 border-neutral-200 md:grid md:grid-cols-2 md:divide-x dark:border-neutral-700 dark:border-b-neutral-700">
+				<!-- Column left -->
+				<div class="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-700">
+					<!-- Products & tasks -->
+					<!-- Item 1 -->
+					<div class="p-8">
+						<h3 class="pb-4 text-xl font-medium text-neutral-500">Produtos não iniciados</h3>
+						<div class="flex flex-col gap-3">
+							<!-- Product item -->
+							<Product id="bam" name="BAM" progress={84} priority="low" date="21 mar. 16:35" />
+							<!-- Product item -->
+							<Product id="smec" name="SMEC" progress={91} priority="normal" date="21 mar. 09:41" />
 						</div>
 					</div>
-				</div>
-			</div>
-
-			<!-- Products & tasks -->
-			<div class="flex flex-col lg:grid lg:grid-cols-2">
-				<!-- Item 1 -->
-				<div class="border-r border-b border-neutral-200 p-8 dark:border-neutral-700">
-					<h3 class="pb-4 text-xl font-medium text-neutral-500">Produtos não iniciados</h3>
-					<div class="flex flex-col gap-3">
-						<!-- Product item -->
-						<Product id="bam" name="BAM" progress={84} priority="low" date="21 mar. 16:35" />
-						<!-- Product item -->
-						<Product id="smec" name="SMEC" progress={91} priority="normal" date="21 mar. 09:41" />
+					<!-- Item 2 -->
+					<div class="p-8">
+						<h3 class="pb-4 text-xl font-medium text-orange-500">Produtos rodando</h3>
+						<div class="flex flex-col">
+							<!-- Product item -->
+							<Product id="brams_15km" name="BRAMS 15 km" progress={78} priority="urgent" date="21 mar. 11:17" />
+						</div>
+					</div>
+					<!-- Item 3 -->
+					<div class="p-8">
+						<h3 class="pb-4 text-xl font-medium text-green-500">Produtos finalizados</h3>
+						<div class="flex flex-col"></div>
 					</div>
 				</div>
-				<!-- Item 2 -->
-				<div class="border-b border-b-neutral-200 p-8 dark:border-b-neutral-700">
-					<h3 class="pb-4 text-xl font-medium text-orange-500">Produtos rodando</h3>
-					<div class="flex flex-col">
-						<!-- Product item -->
-						<Product id="brams_15km" name="BRAMS 15 km" progress={78} priority="urgent" date="21 mar. 11:17" />
+				<!-- Column right -->
+				<div class="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-700">
+					<!-- Charts -->
+					<!-- Item 1 -->
+					<div class="flex flex-col p-8">
+						<h3 class="pb-2 text-xl font-medium">Incidentes por data</h3>
+						<div class="mx-auto -mb-4 w-full">
+							<ChartColumn />
+						</div>
 					</div>
-				</div>
-				<!-- Item 3 -->
-				<div class="p-8">
-					<h3 class="pb-4 text-xl font-medium text-green-500">Produtos finalizados</h3>
-					<div class="flex flex-col"></div>
+					<!-- Item 2 -->
+					<div class="flex flex-col p-8">
+						<h3 class="pb-2 text-xl font-medium">Causas de problemas</h3>
+						<div class="flex">
+							<div class="mx-auto w-full">
+								<ChartDonut />
+							</div>
+						</div>
+					</div>
+					<!-- Item 3 -->
+					<div class="flex flex-col p-8">
+						<h3 class="pb-2 text-xl font-medium">Problemas & soluções</h3>
+						<div class="flex">
+							<div class="mx-auto w-full">
+								<ChartLine />
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -96,13 +112,13 @@
 	<!-- Side right -->
 	<div class="hidden w-[400px] flex-shrink-0 flex-col border-l border-l-neutral-200 2xl:flex dark:border-l-neutral-700">
 		<div
-			class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-100 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+			class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
 		>
 			<div class="p-8">
 				<!-- Resume text -->
 				<div class="flex flex-col border-b border-b-neutral-200 pb-6 dark:border-b-neutral-700">
 					<h3 class="pb-4 text-2xl font-medium">Resumo do dia</h3>
-					<p class="text-md">
+					<p class="text-base">
 						Hoje você tem
 						<strong>20%</strong>
 						mais problemas que o normal, você resolveu
@@ -115,13 +131,13 @@
 				<!-- Activity resume -->
 				<div class="grid grid-cols-2 border-b border-b-neutral-200 py-6 dark:border-b-neutral-700">
 					<div>
-						<h4 class="text-md pb-2 font-medium">Tempo parado</h4>
+						<h4 class="pb-2 text-base font-medium">Tempo parado</h4>
 						<div>
 							<span class="text-xl font-medium">6h 18min</span>
 						</div>
 					</div>
 					<div>
-						<h4 class="text-md pb-2 font-medium">Produtos finalizados</h4>
+						<h4 class="pb-2 text-base font-medium">Produtos finalizados</h4>
 						<div>
 							<span class="flex items-center">
 								{@render circleProgress({
@@ -241,7 +257,7 @@
 			strokeWidth: 4,
 			showText: true,
 			size: 'size-20',
-			fontSize: 'text-md',
+			fontSize: 'text-base',
 			fontColor: 'text-neutral-600',
 			fontColorDark: 'text-neutral-200',
 			colorFilled: 'text-neutral-200',
@@ -249,7 +265,7 @@
 			colorUnfilled: color,
 			colorDarkUnfilled: colorDark
 		})}
-		<div class="text-md font-medium">{name}</div>
+		<div class="text-base font-medium">{name}</div>
 	</div>
 {/snippet}
 

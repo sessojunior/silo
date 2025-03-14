@@ -52,6 +52,9 @@
 }
 
 /* Modo dark do Apexcharts: gráfico de donut ou pizza */
+.apexcharts-legend-text {
+	@apply !font-sans;
+}
 .apexcharts-pie-series path {
 	@apply dark:!stroke-neutral-800;
 }

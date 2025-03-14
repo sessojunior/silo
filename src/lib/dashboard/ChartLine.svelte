@@ -11,54 +11,62 @@
 
 	let series = $state([
 		{
-			name: 'Incidentes',
-			data: [44, 55, 41, 67, 22, 43, 21, 33, 45, 31]
+			name: 'Problemas',
+			data: [45, 52, 38, 24, 33, 26, 21, 20, 6, 8, 15, 10]
+		},
+		{
+			name: 'Soluções',
+			data: [35, 41, 62, 42, 13, 18, 29, 37, 36, 51, 32, 35]
 		}
 	])
 
 	let chartOptions = $state({
 		chart: {
-			type: 'bar',
+			type: 'line',
 			toolbar: {
 				show: false
-			}
-		},
-		plotOptions: {
-			bar: {
-				borderRadius: 8,
-				columnWidth: '50%'
+			},
+			zoom: {
+				enabled: false
 			}
 		},
 		dataLabels: {
 			enabled: false
 		},
 		stroke: {
-			width: 0
+			width: [5, 7, 5],
+			curve: 'straight',
+			dashArray: [0, 8, 5]
 		},
-		grid: {
-			show: false,
-			row: {
-				colors: ['#fff', '#f2f2f2']
+		markers: {
+			size: 0,
+			hover: {
+				sizeOffset: 6
 			}
 		},
 		xaxis: {
-			labels: {
-				rotate: -45
-			},
-			categories: ['25/02', '26/02', '27/02', '28/02', '01/03', '02/03', '03/03', '04/03', '05/03', '06/03']
+			categories: ['01/01', '02/01', '03/01', '04/01', '05/01', '06/01', '07/01', '08/01', '09/01', '10/01', '11/01', '12/01']
 		},
-		fill: {
-			type: 'gradient',
-			gradient: {
-				shade: 'light',
-				type: 'horizontal',
-				shadeIntensity: 0.25,
-				gradientToColors: undefined,
-				inverseColors: true,
-				opacityFrom: 0.85,
-				opacityTo: 0.85,
-				stops: [50, 0, 100]
-			}
+		tooltip: {
+			y: [
+				{
+					title: {
+						formatter: function (val: string) {
+							return val + ':'
+						}
+					}
+				},
+				{
+					title: {
+						formatter: function (val: string) {
+							return val + ' documentadas:'
+						}
+					}
+				}
+			]
+		},
+		grid: {
+			borderColor: '#f1f1f1'
 		}
 	})
 
@@ -67,12 +75,11 @@
 		chart = new ApexCharts(chartContainer, {
 			chart: chartOptions.chart,
 			series,
-			plotOptions: chartOptions.plotOptions,
 			dataLabels: chartOptions.dataLabels,
 			stroke: chartOptions.stroke,
 			grid: chartOptions.grid,
 			xaxis: chartOptions.xaxis,
-			fill: chartOptions.fill
+			tooltip: chartOptions.tooltip
 		})
 
 		chart.render()

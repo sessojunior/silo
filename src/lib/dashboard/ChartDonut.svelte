@@ -5,7 +5,7 @@
 	let chart: any = null
 
 	let series = $state([65, 17, 21, 48, 121])
-	let labels = $state(['Rede externa', 'Servidor indisponível', 'Falha humana', 'Rede interna', 'Erro no software'])
+	let labels = $state(['Hoje você tem', 'Servidor indisponível', 'Falha humana', 'Rede interna', 'Erro no software'])
 
 	let chartOptions = $state({
 		chart: {
@@ -26,7 +26,7 @@
 			show: true,
 			position: 'left',
 			height: '100%',
-			formatter: (val: string, opts: any) => `<span class="text-sm md:text-md"><span class="pl-1 font-bold">${val}</span>: ${opts.w.globals.series[opts.seriesIndex]}</span>`
+			formatter: (val: string, opts: any) => `<span class="text-sm pl-1">${val}: <span class="font-bold">${opts.w.globals.series[opts.seriesIndex]}</span></span>`
 		},
 		responsive: [
 			{
@@ -60,4 +60,4 @@
 	})
 </script>
 
-<div bind:this={chartContainer} class="w-full"></div>
+<div bind:this={chartContainer} class="w-full max-w-lg"></div>
