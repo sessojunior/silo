@@ -10,7 +10,7 @@
 <!-- Time timeline -->
 <div class="h-8">
 	<!-- Timeline-->
-	<div class="flex rounded-md bg-neutral-100 hover:bg-neutral-200 dark:hover:bg-neutral-700">
+	<div class="flex">
 		<div class={week}>
 			<div class={green}></div>
 			<div class={green}></div>

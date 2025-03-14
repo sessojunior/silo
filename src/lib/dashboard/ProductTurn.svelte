@@ -71,9 +71,12 @@
 			<!-- Popover -->
 			<div class="hs-tooltip inline-block [--trigger:focus] sm:[--placement:top]">
 				<!-- Popover Trigger -->
-				<button type="button" class="hs-tooltip-toggle rounded-full bg-neutral-100 hover:bg-neutral-200 focus:bg-neutral-200 focus:outline-hidden dark:hover:bg-neutral-700">
-					<!-- Dia -->
-					<div class="flex gap-x-0.5 rounded-full bg-neutral-100 p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-700">
+				<button
+					type="button"
+					class="hs-tooltip-toggle rounded-full bg-neutral-100 hover:bg-neutral-200 focus:outline-hidden dark:bg-neutral-900 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+				>
+					<!-- Barra de Dia -->
+					<div class="flex gap-x-0.5 rounded-full p-1.5">
 						{#each day.turns as turn, j}
 							<!-- Turno -->
 							{#if turn.status === 'pending'}

@@ -610,7 +610,9 @@
 </script>
 
 <!-- Produto item -->
-<div class="flex flex-col rounded-lg border border-dashed border-neutral-200 bg-white p-4 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+<div
+	class="flex flex-col rounded-lg border border-dashed border-neutral-200 bg-white p-4 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800"
+>
 	<div class="flex items-center justify-between">
 		<!-- Produto -->
 		<div class="flex flex-col">
@@ -633,7 +635,10 @@
 		<!-- Popover -->
 		<div class="hs-tooltip inline-block [--trigger:focus] sm:[--placement:top]">
 			<!-- Popover Trigger -->
-			<button type="button" class="hs-tooltip-toggle rounded-md bg-neutral-100 hover:bg-neutral-200 focus:bg-neutral-200 focus:outline-hidden dark:hover:bg-neutral-700">
+			<button
+				type="button"
+				class="hs-tooltip-toggle rounded-lg bg-neutral-100 hover:bg-neutral-200 focus:bg-neutral-200 focus:outline-hidden dark:bg-neutral-900 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+			>
 				<!-- Linha do tempo -->
 				<ProductTimeline />
 				<!-- Popover Content -->

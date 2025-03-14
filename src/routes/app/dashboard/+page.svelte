@@ -54,7 +54,7 @@
 					<!-- Products & tasks -->
 					<!-- Item 1 -->
 					<div class="p-8">
-						<h3 class="pb-4 text-xl font-medium text-neutral-500">Produtos não iniciados</h3>
+						<h3 class="pb-4 text-xl font-medium text-neutral-500 dark:text-neutral-400">Produtos não iniciados</h3>
 						<div class="flex flex-col gap-3">
 							<!-- Product item -->
 							<Product id="bam" name="BAM" progress={84} priority="low" date="21 mar. 16:35" />
@@ -215,12 +215,12 @@
 	<div class="flex flex-col">
 		<div class="flex gap-4">
 			<div>
-				<span class="text-2xl font-medium text-neutral-800">{items.reduce((total: number, item: any) => total + item.progress, 0)}</span>
-				<span class="text-xl font-medium text-neutral-800">produtos</span>
+				<span class="text-2xl font-medium text-neutral-800 dark:text-neutral-200">{items.reduce((total: number, item: any) => total + item.progress, 0)}</span>
+				<span class="text-xl font-medium text-neutral-800 dark:text-neutral-200">produtos</span>
 			</div>
 			<div>
-				<span class="text-2xl font-medium text-neutral-800">{items.reduce((total: number, item: any) => total + item.incidents, 0)}</span>
-				<span class="text-xl font-medium text-neutral-800">incidentes hoje</span>
+				<span class="text-2xl font-medium text-neutral-800 dark:text-neutral-200">{items.reduce((total: number, item: any) => total + item.incidents, 0)}</span>
+				<span class="text-xl font-medium text-neutral-800 dark:text-neutral-200">incidentes hoje</span>
 			</div>
 		</div>
 		<div class="relative">
