@@ -48,7 +48,7 @@
 			</div>
 
 			<!-- Columns -->
-			<div class="flex flex-col divide-neutral-200 border-neutral-200 md:grid md:grid-cols-2 md:divide-x dark:border-neutral-700 dark:border-b-neutral-700">
+			<div class="flex flex-col divide-neutral-200 border-neutral-200 md:grid md:grid-cols-2 md:divide-x dark:divide-neutral-700 dark:border-neutral-700 dark:border-b-neutral-700">
 				<!-- Column left -->
 				<div class="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-700">
 					<!-- Products & tasks -->
