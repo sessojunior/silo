@@ -5,7 +5,7 @@
 	let chart: any = null
 
 	let series = $state([65, 17, 21, 48, 121])
-	let labels = $state(['Hoje você tem', 'Servidor indisponível', 'Falha humana', 'Rede interna', 'Erro no software'])
+	let labels = $state(['Rede externa', 'Servidor indisponível', 'Falha humana', 'Rede interna', 'Erro no software'])
 
 	let chartOptions = $state({
 		chart: {
