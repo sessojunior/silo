@@ -1,4 +1,34 @@
 <script lang="ts">
+	interface Problems {
+		id: string
+		title: string
+		date: string
+		description: string
+		solutions: number
+	}
+	interface Solution {
+		id: string
+		replyId: string | null
+		date: string
+		userId: number
+		userName: string
+		description: string
+		verified: boolean
+	}
+	interface Screenshot {
+		id: string
+		src: string
+		alt: string
+	}
+	interface Problem {
+		id: string
+		title: string
+		date: string
+		description: string
+		screenshots: Screenshot[]
+		solutions: Solution[]
+	}
+
 	const docs = [
 		{
 			icon: null,
@@ -379,6 +409,144 @@
 			}
 		]
 	}
+	const problems: Problems[] = [
+		{
+			id: '1',
+			title: 'Problema augue velit sagittis in purus blandit vulputate 1',
+			date: '2025-02-09 07:08:00',
+			description:
+				'Praesent augue velit, sagittis in purus blandit, vulputate volutpat est. Etiam vel justo justo. Praesent eget tempor lectus, sed placerat turpis. Cras consequat et lacus et suscipit. Nam vitae turpis feugiat, interdum nunc a, tincidunt velit...',
+			solutions: 5
+		},
+		{
+			id: '2',
+			title: 'Problema eget vulputate 2',
+			date: '2025-01-09 11:47:00',
+			description:
+				'Aenean ut turpis dui. Pellentesque a efficitur odio, eu volutpat nisi. Nulla ornare tincidunt auctor. Nam ac velit mi. Phasellus sit amet mauris id ipsum interdum dapibus eu et sem. Vivamus vestibulum mi nisl, eu rutrum quam cursus in. Duis vitae mattis mi, at suscipit massa...',
+			solutions: 0
+		},
+		{
+			id: '3',
+			title: 'Problema placerat turpis interdum vulputate volutpat nunc 3',
+			date: '2025-02-13 13:45:00',
+			description:
+				'Nunc a nisi ipsum. Mauris iaculis metus ut euismod venenatis. Ut commodo, elit ac accumsan vulputate, urna purus sodales augue, ut congue enim tortor ac lacus. Morbi finibus tellus vel turpis fermentum, nec iaculis nisi posuere. Suspendisse sit amet blandit ligula, vitae auctor ligula...',
+			solutions: 2
+		}
+	]
+	// const problems: Problems[] = []
+	const problem = {
+		id: '1',
+		title: 'Problema augue velit sagittis in purus blandit vulputate 1',
+		date: '2025-02-09 07:08:00',
+		description: `
+	    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean quis efficitur tellus. Suspendisse vitae justo lacinia, dictum orci mattis, fermentum dui.</p>
+	    <p>
+	      Nulla efficitur porta velit, in sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Donec vehicula nulla quis laoreet convallis. In malesuada
+	      ligula vel molestie sagittis.
+	    </p>
+	    <p>Cras non lacus id est accumsan vestibulum.</p>
+	  `,
+		screenshots: [
+			{ id: '1', src: 'https://confluence.ecmwf.int/download/attachments/52464844/worddavf74394bf4344047a1d0f1835d6740525.png', alt: 'Screenshot 1' },
+			{ id: '2', src: 'https://confluence.ecmwf.int/download/attachments/52464881/worddav2b63bcd14ea990b6058f3dd44b65ab79.png', alt: 'Screenshot 2' }
+		],
+		// solutions: []
+		solutions: [
+			{
+				id: '1.1',
+				replyId: null,
+				date: '2025-02-17 11:39:00',
+				user: {
+					id: '1',
+					name: 'Ronaldo Gaúcho',
+					avatar: 'https://randomuser.me/api/portraits/men/1.jpg'
+				},
+				description:
+					'Praesent eget tempor lectus, sed placerat turpis. Phasellus sit amet mauris id ipsum interdum dapibus eu et sem. Vivamus vestibulum mi nisl, eu rutrum quam cursus in. Cras consequat et lacus et suscipit. Morbi finibus tellus vel turpis fermentum, nec iaculis nisi posuere. Suspendisse sit amet blandit ligula.',
+				verified: false
+			},
+			{
+				id: '1.2',
+				replyId: null,
+				date: '2025-02-15 22:40',
+				user: {
+					id: '2',
+					name: 'Angélica Carioca',
+					avatar: 'https://randomuser.me/api/portraits/women/2.jpg'
+				},
+				description:
+					'Phasellus sit amet mauris id ipsum interdum dapibus eu et sem. Morbi finibus tellus vel turpis fermentum, nec iaculis nisi posuere. Suspendisse sit amet blandit ligula.',
+				verified: false
+			},
+			{
+				id: '1.2.1',
+				replyId: '1.2',
+				date: '2025-02-16 11:32:00',
+				user: {
+					id: '3',
+					name: 'Rafael Dias',
+					avatar: 'https://randomuser.me/api/portraits/men/3.jpg'
+				},
+				description: 'Quisque eget est ipsum. Phasellus a augue a nibh placerat facilisis?',
+				verified: false
+			},
+			{
+				id: '1.2.2',
+				replyId: '1.2',
+				date: '2025-02-16 21:07:00',
+				user: {
+					id: '4',
+					name: 'Anderson Santos',
+					avatar: 'https://randomuser.me/api/portraits/men/4.jpg'
+				},
+				description: 'Ut id libero non tortor ullamcorper porta sit amet eget justo. Proin viverra vitae nibh vel placerat. Donec sed pellentesque libero, ac ultrices felis.',
+				verified: true
+			},
+			{
+				id: '1.3',
+				replyId: null,
+				date: '2025-02-09 07:08:00',
+				user: {
+					id: '5',
+					name: 'Mateus Gonçalves',
+					avatar: 'https://randomuser.me/api/portraits/men/5.jpg'
+				},
+				description:
+					'Aenean vehicula placerat lectus, vel facilisis odio gravida non. Suspendisse nisi nisl, venenatis vitae laoreet vel, tempor sit amet velit. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae.',
+				verified: false
+			},
+			{
+				id: '1.3.1',
+				replyId: '1.3',
+				date: '2025-02-16 21:07:00',
+				user: {
+					id: '6',
+					name: 'Carlitos Dantes',
+					avatar: 'https://randomuser.me/api/portraits/men/6.jpg'
+				},
+				description: 'Morbi finibus tellus vel turpis fermentum.',
+				verified: false
+			}
+		]
+	}
+
+	// Função para formatar data
+	// Transforma por exemplo, a data '2025-02-09 07:08:00' em '9 fev. 2025, 07:08'
+	function formatDate(dateString: string) {
+		return new Date(dateString)
+			.toLocaleDateString('pt-BR', {
+				day: 'numeric', // dia sem zero à esquerda
+				month: 'short', // mês abreviado (fev)
+				year: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit',
+				timeZone: 'America/Sao_Paulo'
+			})
+			.replace(/\bde\b/g, '') // Remove todos os "de" (9 de fev. de 2025 → 9 fev. 2025)
+			.replace(/(\w{3})$/, '$1.') // Adiciona o ponto no mês (fev.)
+	}
 </script>
 
 <div class="flex min-h-[calc(100vh-64px)] w-full flex-col bg-white dark:bg-neutral-900">
@@ -409,7 +577,7 @@
 					role="tab"
 				>
 					Problemas & soluções <span
-						class="hs-tab-active:bg-neutral-800 hs-tab-active:text-white ms-1 rounded-full bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-600">99+</span
+						class="hs-tab-active:bg-neutral-800 hs-tab-active:text-white ms-1 rounded-full bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-600">17</span
 					>
 				</button>
 			</div>
@@ -506,11 +674,11 @@
 						<div>
 							<h3 class="text-xl font-medium">Contatos em caso de problemas</h3>
 							<div>
-								<span class="text-sm font-medium">3 contatos</span>
+								<span class="text-sm font-medium">3 responsáveis técnicos</span>
 							</div>
 						</div>
 						<button
-							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-3 py-2 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
 						>
 							<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
 							Adicionar contato
@@ -520,7 +688,7 @@
 						{#each contacts as { image, name, role, team, email }}
 							<!-- Item -->
 							<div class="flex gap-x-2">
-								<div class="size-12">
+								<div class="size-12 shrink-0">
 									<img src={image} alt={name} class="size-full rounded-full" />
 								</div>
 								<div class="flex flex-col">
@@ -542,7 +710,7 @@
 							</div>
 						</div>
 						<button
-							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-3 py-2 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
 						>
 							<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
 							Adicionar seção
@@ -559,9 +727,228 @@
 {/snippet}
 
 {#snippet tab2()}
-	<p class="text-neutral-500">
-		This is the <em class="font-semibold text-neutral-800">second</em> item's tab body.
-	</p>
+	<div class="flex">
+		<!-- Side left -->
+		<div class="flex w-full flex-shrink-0 flex-col border-r border-neutral-200 sm:w-[480px] dark:border-neutral-700">
+			<div
+				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+			>
+				<!-- Procurar problemas -->
+				<div class="border-b border-neutral-200 p-8">
+					<div class="relative">
+						<input
+							type="text"
+							name="problem"
+							class="block w-full rounded-lg border-neutral-200 px-4 py-2.5 pe-11 focus:z-10 focus:border-blue-500 focus:ring-blue-500 disabled:pointer-events-none disabled:opacity-50 sm:py-3 sm:text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:placeholder-neutral-500 dark:focus:ring-neutral-600"
+							placeholder="Procurar problema..."
+						/>
+						<div class="pointer-events-none absolute inset-y-0 end-0 z-20 flex items-center pe-4">
+							<span class="icon-[lucide--search] ml-1 size-4 shrink-0 text-neutral-400 dark:text-neutral-500"></span>
+						</div>
+					</div>
+				</div>
+				{#if problems.length > 0}
+					<!-- Lista de problemas -->
+					{@render listProblems(problems)}
+				{:else}
+					<!-- Nenhum resultado encontrado -->
+					<div class="border-b border-neutral-200 p-8">
+						<div
+							class="rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-800 dark:border-neutral-600 dark:bg-yellow-800/10 dark:text-neutral-500"
+							role="alert"
+						>
+							<div class="flex flex-col">
+								<div class="flex justify-center pb-1">
+									<span class="icon-[lucide--search-x] size-12 shrink-0 text-neutral-300 dark:text-neutral-500"></span>
+								</div>
+								<div class="flex flex-col">
+									<h3 class="text-center text-base font-semibold text-neutral-600">Nenhum resultado</h3>
+									<div class="text-center text-sm text-neutral-700">Não encontramos nenhum resultado com o texto informado.</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				{/if}
+				<!-- Adcionar problema -->
+				<div class="p-8">
+					<div class="flex justify-center">
+						<button
+							type="button"
+							class="inline-flex items-center justify-center gap-x-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-800 shadow-2xs hover:bg-neutral-50 focus:bg-neutral-50 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+						>
+							<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
+							Adicionar problema
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Side right -->
+		<div class="flex w-full flex-grow flex-col">
+			<div
+				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+			>
+				<!-- Descrição do problema -->
+				<div class="flex w-full flex-col border-b border-neutral-200 p-8">
+					<!-- Title -->
+					<div class="flex w-full items-center justify-between pb-6">
+						<div>
+							<h3 class="text-xl font-medium">{problem.title}</h3>
+							<div class="text-base">
+								<span class="text-sm font-medium">{problem.solutions.length} soluções</span> <span class="text-neutral-300">•</span>
+								<span class="text-sm text-neutral-400">Registrado em {formatDate(problem.date)}</span>
+							</div>
+						</div>
+						<button
+							class="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+						>
+							<span class="icon-[lucide--edit] mr-1 size-4 text-neutral-800"></span>
+							Editar problema
+						</button>
+					</div>
+					<!-- Description -->
+					<div class="flex flex-col gap-y-2 text-neutral-800">
+						{@html problem.description}
+					</div>
+					<!-- Screenshots -->
+					<div class="flex gap-6 pt-6">
+						{#each problem.screenshots as { id, src, alt }, index (id)}
+							<div>
+								<img class="h-32 w-auto rounded-lg" {src} {alt} />
+							</div>
+						{/each}
+					</div>
+				</div>
+				<!-- Soluções -->
+				<div class="flex w-full flex-col border-b border-neutral-200 p-8">
+					<div class="flex w-full items-center justify-between pb-6">
+						<div>
+							<h3 class="text-xl font-medium">Soluções</h3>
+							<div>
+								<span class="text-sm font-medium">
+									{#if problem.solutions.length > 0}
+										{problem.solutions.length} soluções para o problema
+										<span class="text-neutral-300">•</span>
+										{problem.solutions.reduce((total, solution) => (solution.verified ? total + 1 : total), 0)} foram verificadas
+									{:else}
+										Sem soluções cadastradas
+									{/if}
+								</span>
+							</div>
+						</div>
+						<button
+							class="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+						>
+							<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
+							Adicionar solução
+						</button>
+					</div>
+					<!-- Lista de soluções -->
+					{#if problem.solutions.length > 0}
+						<div class="flex flex-col">
+							<!-- Lista de soluções (soluções pai) que não são uma resposta (replyId é null) -->
+							{#each problem.solutions.filter((solution) => solution.replyId === null) as { id, replyId, date, user, description, verified }, index (id)}
+								<!-- Solução -->
+								<div class="flex gap-x-2">
+									<div class="size-12 shrink-0">
+										<img src={user.avatar} alt={user.name} class="size-full rounded-full" />
+									</div>
+									<div class="flex flex-col">
+										<div class="flex flex-col gap-y-1">
+											<div class="text-base">
+												<span class="font-bold text-neutral-700">{user.name}</span>
+												<span class="text-neutral-300">•</span>
+												<span class="text-sm text-neutral-400">{formatDate(date)}</span>
+												{#if verified}
+													<span
+														class="ml-2 inline-flex items-center gap-x-1 rounded-lg bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-500/10 dark:text-green-500"
+													>
+														<span class="icon-[lucide--check] size-3 shrink-0"></span>
+														Resposta verificada
+													</span>
+												{/if}
+											</div>
+											<div class="text-sm font-medium text-neutral-600">
+												{description}
+											</div>
+										</div>
+										<!-- Responder -->
+										<div class="py-2">
+											<button
+												type="button"
+												class="inline-flex items-center gap-x-2 rounded-lg border border-transparent px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-100 hover:text-blue-800 focus:bg-blue-100 focus:text-blue-800 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:text-blue-500 dark:hover:bg-blue-800/30 dark:hover:text-blue-400 dark:focus:bg-blue-800/30 dark:focus:text-blue-400"
+											>
+												Responder
+											</button>
+										</div>
+										<!-- Lista de soluções (solução filho, replyId é igual ao id do pai) que são uma resposta da solução pai -->
+										{#each problem.solutions.filter((solution) => solution.replyId === id) as reply (reply.id)}
+											<div>
+												<!-- Resposta -->
+												<div class="flex gap-x-2">
+													<div class="size-12 shrink-0">
+														<img src={reply.user.avatar} alt={reply.user.name} class="size-full rounded-full" />
+													</div>
+													<div class="flex flex-col">
+														<div class="flex flex-col gap-y-1">
+															<div class="text-base">
+																<span class="font-bold text-neutral-700">{reply.user.name}</span>
+																<span class="text-neutral-300">•</span>
+																<span class="text-sm text-neutral-400">{formatDate(reply.date)}</span>
+																{#if reply.verified}
+																	<span
+																		class="ml-2 inline-flex items-center gap-x-1 rounded-lg bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-500/10 dark:text-green-500"
+																	>
+																		<span class="icon-[lucide--check] size-3 shrink-0"></span>
+																		Resposta verificada
+																	</span>
+																{/if}
+															</div>
+															<div class="text-sm font-medium text-neutral-600">{reply.description}</div>
+														</div>
+														<!-- Responder -->
+														<div class="py-2">
+															<button
+																type="button"
+																class="inline-flex items-center gap-x-2 rounded-lg border border-transparent px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-100 hover:text-blue-800 focus:bg-blue-100 focus:text-blue-800 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:text-blue-500 dark:hover:bg-blue-800/30 dark:hover:text-blue-400 dark:focus:bg-blue-800/30 dark:focus:text-blue-400"
+															>
+																Responder
+															</button>
+														</div>
+													</div>
+												</div>
+											</div>
+										{/each}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<!-- Nenhum resultado encontrado -->
+						<div class="border-b border-neutral-200">
+							<div
+								class="rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-800 dark:border-neutral-600 dark:bg-yellow-800/10 dark:text-neutral-500"
+								role="alert"
+							>
+								<div class="flex items-center gap-x-4">
+									<div class="flex justify-center pb-1">
+										<span class="icon-[lucide--circle-x] size-12 shrink-0 text-neutral-300 dark:text-neutral-500"></span>
+									</div>
+									<div class="flex flex-col">
+										<h3 class="text-base font-semibold text-neutral-600">Nenhuma solução encontrada</h3>
+										<div class="text-sm text-neutral-700">
+											Nenhum usuário cadastrou uma solução para este problema. Ainda não tem soluções. Seja o primeiro a cadastrar uma solução.
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			</div>
+		</div>
+	</div>
 {/snippet}
 
 {#snippet tree({ item }: any)}
@@ -629,7 +1016,7 @@
 		{#each sections as { id, title, description, chapters }, index (id)}
 			<div class="hs-accordion {index === 0 ? 'active' : ''}">
 				<button
-					class="hs-accordion-toggle hs-accordion-active:text-blue-600 inline-flex w-full items-center gap-x-3 rounded-lg py-3 text-start font-semibold text-gray-800 hover:text-gray-500 focus:text-gray-500 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+					class="hs-accordion-toggle hs-accordion-active:text-blue-600 inline-flex w-full items-center gap-x-3 rounded-lg py-3 text-start font-semibold text-neutral-800 hover:text-neutral-500 focus:text-neutral-500 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 					aria-expanded="true"
 				>
 					<span class="icon-[lucide--chevron-up] hs-accordion-active:block hidden size-5 text-neutral-800"></span>
@@ -638,14 +1025,14 @@
 				</button>
 				<div class="hs-accordion-content {index !== 0 ? 'hidden' : ''} w-full overflow-hidden transition-[height] duration-300" role="region">
 					{#if description}
-						<p class="pt-1 pb-3 text-gray-800">{description}</p>
+						<p class="pt-1 pb-3 text-neutral-800">{description}</p>
 					{/if}
 					{#if chapters.length > 0}
 						<div class="hs-accordion-group ps-6">
 							{#each chapters as { id, title, description }, index (id)}
 								<div class="hs-accordion {index === 0 ? 'active' : ''}">
 									<button
-										class="hs-accordion-toggle hs-accordion-active:text-blue-600 inline-flex w-full items-center gap-x-3 rounded-lg py-3 text-start font-semibold text-gray-800 hover:text-gray-500 focus:text-gray-500 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+										class="hs-accordion-toggle hs-accordion-active:text-blue-600 inline-flex w-full items-center gap-x-3 rounded-lg py-3 text-start font-semibold text-neutral-800 hover:text-neutral-500 focus:text-neutral-500 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 										aria-expanded="true"
 									>
 										<span class="icon-[lucide--chevron-up] hs-accordion-active:block hidden size-5 text-neutral-800"></span>
@@ -654,10 +1041,10 @@
 										{title}
 									</button>
 									<div class="hs-accordion-content {index !== 0 ? 'hidden' : ''} w-full overflow-hidden transition-[height] duration-300" role="region">
-										<p class="text-gray-800">{description}</p>
+										<p class="text-neutral-800">{description}</p>
 										<div class="py-2">
 											<button
-												class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-3 py-2 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+												class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
 											>
 												<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
 												Adicionar capítulo
@@ -678,5 +1065,27 @@
 				</div>
 			</div>
 		{/each}
+	</div>
+{/snippet}
+
+{#snippet listProblems(problems: Problems[])}
+	<!-- Lista de problemas -->
+	<div class="flex flex-col">
+		{#if problems.length > 0}
+			{#each problems as { id, title, date, description, solutions } (id)}
+				<!-- Problema -->
+				<div class="flex flex-col border-b border-neutral-200">
+					<div class="flex w-full flex-col gap-y-1 p-8 hover:bg-neutral-100">
+						<div class="flex w-full items-center justify-between gap-x-2">
+							<span class="text-base font-semibold text-neutral-700">{title}</span>
+							<span class="ms-1 shrink-0 rounded-full bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-600">{solutions}</span>
+						</div>
+						<div class="flex text-sm text-neutral-600">
+							<p>{description}</p>
+						</div>
+					</div>
+				</div>
+			{/each}
+		{/if}
 	</div>
 {/snippet}
