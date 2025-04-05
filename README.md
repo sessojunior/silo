@@ -6,8 +6,8 @@ Este aplicativo está sendo desenvolvido utilizando:
 
 - [Svelte](https://svelte.dev/)
 - [TailwindCSS](https://tailwindcss.com/)
+- [Iconify](https://iconify.design/docs/usage/css/tailwind/tailwind4/)
 - [Preline](https://preline.co/)
-- [FlyonUI](https://flyonui.com/)
-- [Kysely](https://kysely.dev/)
+- [Drizzle](https://orm.drizzle.team/)
 - [Lucia Auth](https://lucia-auth.com/)
 - [Nodemailer](https://www.nodemailer.com/)
