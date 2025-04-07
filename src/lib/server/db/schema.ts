@@ -2,9 +2,9 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
 export const user = sqliteTable('user', {
 	id: text('id').primaryKey(),
-	age: integer('age'),
-	username: text('username').notNull().unique(),
-	passwordHash: text('password_hash').notNull()
+	name: text('name').notNull(),
+	email: text('email').notNull().unique(),
+	password: text('password').notNull()
 })
 
 export const session = sqliteTable('session', {
@@ -16,5 +16,4 @@ export const session = sqliteTable('session', {
 })
 
 export type Session = typeof session.$inferSelect
-
 export type User = typeof user.$inferSelect

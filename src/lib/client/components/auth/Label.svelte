@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { children, htmlFor } = $props()
+	let { children, htmlFor, isInvalid } = $props()
 </script>
 
-<label for={htmlFor} class="mb-2 block">{@render children()}</label>
+<label for={htmlFor} class="mb-2 block {isInvalid ? 'text-red-500' : ''}">{@render children()}</label>

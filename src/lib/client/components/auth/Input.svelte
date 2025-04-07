@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { type, id, name, placeholder, autocomplete, required, isInvalid, invalidMessage } = $props()
+	let { type, id, name, placeholder, autocomplete, minlength = 2, maxlength = 255, value = '', required, isInvalid, invalidMessage } = $props()
 </script>
 
 {#if type === 'strong-password'}
@@ -13,7 +13,10 @@
 					{type}
 					{placeholder}
 					{autocomplete}
+					{minlength}
+					{maxlength}
 					{required}
+					{value}
 					class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
 						? 'border-red-600 focus:border-red-600 focus:ring-red-500'
 						: 'focus:border-blue-500 focus:ring-blue-500'} 
@@ -36,15 +39,18 @@
 				data-hs-strong-password={JSON.stringify({
 					target: `#${id}`,
 					hints: '#hs-strong-password-hints',
-					stripClasses: 'hs-strong-password:opacity-100 hs-strong-password-accepted:bg-teal-500 h-1 flex-auto rounded-full bg-blue-400 opacity-50 mx-1'
+					stripClasses: 'hs-strong-password:opacity-100 hs-strong-password-accepted:bg-teal-500 h-1 flex-auto rounded-full bg-neutral-300 opacity-50 mx-1'
 				})}
 				class="-mx-1 mt-2 flex"
 			></div>
+			{#if isInvalid}
+				{@render message({ message: invalidMessage })}
+			{/if}
 		</div>
 	</div>
 	<div id="hs-strong-password-hints" class="mb-2">
 		<div class="mt-4 mb-2">
-			<span class="font-semibold dark:text-white">Força da senha: </span>
+			<span class="font-semibold text-neutral-500 dark:text-neutral-200">Força da senha: </span>
 			<span
 				data-hs-strong-password-hints-weakness-text={JSON.stringify(['nenhuma', 'fraca', 'média', 'forte', 'muito forte', 'super forte'])}
 				class="font-semibold text-neutral-500 dark:text-neutral-200"
@@ -97,7 +103,10 @@
 			{type}
 			{placeholder}
 			{autocomplete}
+			{minlength}
+			{maxlength}
 			{required}
+			{value}
 			class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
 				? 'border-red-600 focus:border-red-600 focus:ring-red-500'
 				: 'focus:border-blue-500 focus:ring-blue-500'} 
@@ -116,6 +125,9 @@
 			<span class="icon-[lucide--eye-off] hs-password-active:hidden size-5"></span>
 		</button>
 	</div>
+	{#if isInvalid}
+		{@render message({ message: invalidMessage })}
+	{/if}
 {:else}
 	<!-- Outros tipos de campo -->
 	<div class="relative">
@@ -125,7 +137,15 @@
 			{type}
 			{placeholder}
 			{autocomplete}
+			{minlength}
+			{maxlength}
 			{required}
+			{value}
+			oninput={(e) => {
+				// Se o tipo do campo for 'email', converte para minúsculo o que for digitado
+				const input = e.target as HTMLInputElement
+				value = type === 'email' ? input.value.toLowerCase() : input.value
+			}}
 			class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
 				? 'border-red-400 focus:border-red-400 focus:ring-red-600 dark:border-red-800 dark:focus:border-red-800 dark:focus:ring-red-800'
 				: 'focus:border-blue-500 focus:ring-blue-500'} 
@@ -133,12 +153,15 @@
 		/>
 		{#if isInvalid}
 			<div class="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-4">
-				<span class="icon-[lucide--info] size-5 text-red-200 dark:text-red-900"></span>
+				<span class="icon-[lucide--info] size-5 text-red-400 dark:text-red-900"></span>
 			</div>
 		{/if}
 	</div>
+	{#if isInvalid}
+		{@render message({ message: invalidMessage })}
+	{/if}
 {/if}
 
-{#if isInvalid}
-	<p class="dark:text-red-00 mt-2 text-xs text-red-700">{invalidMessage}</p>
-{/if}
+{#snippet message({ message }: any)}
+	<p class="dark:text-red-00 mt-2 text-xs text-red-500">{message}</p>
+{/snippet}

@@ -1,10 +1,15 @@
 <script lang="ts">
+	import { enhance } from '$app/forms'
+	import type { ActionData } from './$types'
+
 	import Header from '$lib/client/components/auth/Header.svelte'
 	import Label from '$lib/client/components/auth/Label.svelte'
 	import Input from '$lib/client/components/auth/Input.svelte'
 	import Button from '$lib/client/components/auth/Button.svelte'
 	import Link from '$lib/client/components/auth/Link.svelte'
 	import Divider from '$lib/client/components/auth/Divider.svelte'
+
+	let { form }: { form: ActionData } = $props()
 </script>
 
 <!-- Header -->
@@ -13,23 +18,36 @@
 <!-- Container -->
 <div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
 	<!-- Form -->
-	<form>
+	<form method="post" action="?/login" use:enhance>
 		<fieldset class="grid gap-5">
 			<div>
-				<Label htmlFor="email">E-mail</Label>
-				<Input type="email" id="email" name="email" autocomplete="email" placeholder="seuemail@inpe.br" required isInvalid={false} invalidMessage="Digite um e-mail válido." />
+				<Label htmlFor="email" isInvalid={form?.field === 'email'}>E-mail</Label>
+				<Input
+					type="email"
+					id="email"
+					name="email"
+					autocomplete="email"
+					placeholder="seuemail@inpe.br"
+					minlength={8}
+					maxlength={255}
+					required
+					isInvalid={form?.field === 'email'}
+					invalidMessage={form?.message ?? ''}
+				/>
 			</div>
 			<div>
-				<Label htmlFor="hs-toggle-password">Senha</Label>
+				<Label htmlFor="hs-toggle-password" isInvalid={form?.field === 'password'}>Senha</Label>
 				<Input
 					type="password"
 					id="hs-toggle-password"
 					name="password"
 					autocomplete="current-password"
-					required
-					isInvalid={false}
-					invalidMessage="Digite uma senha válida."
 					placeholder="••••••••"
+					minlength={6}
+					maxlength={160}
+					required
+					isInvalid={form?.field === 'password'}
+					invalidMessage={form?.message ?? ''}
 				/>
 			</div>
 			<p class="text-end">
