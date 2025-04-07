@@ -8,7 +8,7 @@
 </script>
 
 <!-- Header -->
-<Header icon="icon-[lucide--log-in]" title="Entrar" description="Digite seus dados para entrar." />
+<Header icon="icon-[lucide--user-round-plus]" title="Criar conta" description="Crie sua conta e comece a usar." />
 
 <!-- Container -->
 <div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
@@ -16,14 +16,18 @@
 	<form>
 		<fieldset class="grid gap-5">
 			<div>
+				<Label htmlFor="name">Nome</Label>
+				<Input type="text" id="name" name="name" autocomplete="name" placeholder="Fulano" required isInvalid={false} invalidMessage="Digite um nome válido." />
+			</div>
+			<div>
 				<Label htmlFor="email">E-mail</Label>
 				<Input type="email" id="email" name="email" autocomplete="email" placeholder="seuemail@inpe.br" required isInvalid={false} invalidMessage="Digite um e-mail válido." />
 			</div>
 			<div>
-				<Label htmlFor="hs-toggle-password">Senha</Label>
+				<Label htmlFor="hs-strong-password-with-indicator-and-hint">Senha</Label>
 				<Input
-					type="password"
-					id="hs-toggle-password"
+					type="strong-password"
+					id="hs-strong-password-with-indicator-and-hint"
 					name="password"
 					autocomplete="current-password"
 					required
@@ -32,19 +36,16 @@
 					placeholder="••••••••"
 				/>
 			</div>
-			<p class="text-end">
-				<Link href="/forget-password">Esqueceu a senha?</Link>
-			</p>
 			<div>
-				<Button type="submit">Entrar</Button>
+				<Button type="submit">Criar conta</Button>
 			</div>
 			<Divider>ou</Divider>
 			<div class="flex w-full flex-col items-center justify-center gap-3">
-				<Button type="button" icon="icon-[logos--google-icon]">Entrar com Google</Button>
-				<Button type="button" icon="icon-[logos--facebook]">Entrar com Facebook</Button>
+				<Button type="button" icon="icon-[logos--google-icon]">Criar com Google</Button>
+				<Button type="button" icon="icon-[logos--facebook]">Criar com Facebook</Button>
 			</div>
 			<p class="mt-2 text-center">
-				Não tem conta? <Link href="/sign-up">Cadastre-se</Link>
+				Tem uma conta? <Link href="/login">Entre</Link>
 			</p>
 		</fieldset>
 	</form>

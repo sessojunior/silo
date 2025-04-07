@@ -30,7 +30,7 @@
 	<div class="fixed right-5 bottom-5 z-20">
 		<button
 			type="button"
-			class="hs-dark-mode-active:hidden hs-dark-mode block rounded-full font-medium text-neutral-200 hover:bg-neutral-800/50 focus:bg-neutral-800/50 focus:outline-none"
+			class="hs-dark-mode-active:hidden hs-dark-mode block font-medium text-neutral-200 focus:outline-none"
 			data-hs-theme-click-value="dark"
 			aria-label="Trocar tema para escuro"
 		>
@@ -40,7 +40,7 @@
 		</button>
 		<button
 			type="button"
-			class="hs-dark-mode-active:block hs-dark-mode hidden rounded-full font-medium text-neutral-800 hover:bg-neutral-200/50 focus:bg-neutral-200/50 focus:outline-none dark:text-neutral-200 dark:hover:bg-neutral-800/50 dark:focus:bg-neutral-800/50"
+			class="hs-dark-mode-active:block hs-dark-mode hidden font-medium text-neutral-800 focus:outline-none dark:text-neutral-200"
 			data-hs-theme-click-value="light"
 			aria-label="Trocar tema para claro"
 		>
