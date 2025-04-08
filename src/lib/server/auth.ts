@@ -1,5 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
+import { hash } from '@node-rs/argon2'
 import { sha256 } from '@oslojs/crypto/sha2'
 import { encodeBase64url, encodeHexLowerCase, encodeBase32LowerCase } from '@oslojs/encoding'
 import { type RandomReader, generateRandomString } from '@oslojs/crypto/random'
@@ -157,8 +158,21 @@ export function generateUserId() {
 	return id
 }
 
+// Gera uma senha para o usuário
+export async function generateUserPassword(password: string) {
+	// Cria o hash da senha
+	const passwordHash = await hash(password, {
+		// Parâmetros mínimos recomendados
+		memoryCost: 19456,
+		timeCost: 2,
+		outputLen: 32,
+		parallelism: 1
+	})
+	return passwordHash
+}
+
 // Valida o e-mail
-export function validateEmail(email: unknown): email is string {
+export function validateEmail(email: string) {
 	// 1. Verifica se o valor é uma string
 	if (typeof email !== 'string') return false
 
@@ -204,7 +218,7 @@ export function validateEmail(email: unknown): email is string {
 }
 
 // Valida a senha
-export function validatePassword(password: unknown): password is string {
+export function validatePassword(password: string) {
 	// 1. Verifica se é uma string
 	if (typeof password !== 'string') return false
 
@@ -276,13 +290,16 @@ export async function generateEmailVerificationCode(email: string): Promise<stri
 		}
 	}
 
-	// Caracteres permitidos
-	const alphabet = '0123456789'
+	// Caracteres permitidos e legíveis em todas as tipografias, para evitar ambiguidades
+	const alphabet = '347AEFHJKMNPRTWY'
 
-	// Número de caracteres
-	const numberCharacters = 8
+	// Número de caracteres que serão gerados
+	const numberCharacters = 5
 
-	// Gera um código aleatório utilizando caracteres permitidos e comprimento fixo de 8 caracteres
+	// Considerando que são 16 caracteres permitidos e são 5 caracteres que poderão ser escolhidos,
+	// a probabilidade de acertar aleatoriamente é de 1 em 1.048.576 ou 0,00009537% (cerca de 1 em 1 milhão)
+
+	// Gera um código aleatório utilizando caracteres permitidos e comprimento fixo de caracteres
 	const code = generateRandomString(random, alphabet, numberCharacters)
 
 	// Remove códigos anteriores do mesmo usuário
@@ -307,7 +324,7 @@ export async function sendEmailVerificationCode({ email, type, code }: { email: 
 	error?: { code: string; message: string }
 }> {
 	// Se o e-mail for inválido retorna null
-	if (!validateEmail(email)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido' } }
+	if (!validateEmail(email)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido.' } }
 
 	// Enviar e-mail com o código OTP
 	// Retorna um objeto: { success: boolean, error?: { code, message } }
@@ -319,12 +336,12 @@ export async function sendEmailVerificationCode({ email, type, code }: { email: 
 }
 
 // Verifica se o código de verificação OTP enviado para o usuário é válido e se não expirou
-export async function verifyVerificationCode({ email, code }: { email: string; code: string }): Promise<{
+export async function validateVerificationCode({ email, code }: { email: string; code: string }): Promise<{
 	success?: boolean
 	error?: { code: string; message: string }
 }> {
 	// Verifica se o e-mail é válido
-	if (!validateEmail(email)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido' } }
+	if (!validateEmail(email)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
 	// Busca todos os códigos associados ao e-mail
 	const codes = await db
@@ -343,15 +360,79 @@ export async function verifyVerificationCode({ email, code }: { email: string; c
 	// Procura o código específico informado
 	const foundCode = codes.find((entry) => entry.code === code)
 	if (!foundCode) {
-		return { error: { code: 'CODE_NOT_FOUND', message: 'Código de verificação inválido ou incorreto.' } }
+		return { error: { code: 'WRONG_CODE', message: 'Código de verificação inválido.' } }
 	}
 
 	// Verifica se o código está expirado
 	const now = new Date()
 	if (foundCode.expiresAt && new Date(foundCode.expiresAt) < now) {
-		return { error: { code: 'CODE_EXPIRED', message: 'O código de verificação expirou.' } }
+		return { error: { code: 'EXPIRED_CODE', message: 'O código de verificação expirou.' } }
 	}
 
 	// Código válido
 	return { success: true }
+}
+
+// Verifica se o e-mail do usuário é válido e existe e obtém o ID do usuário
+export async function validateUserEmail(email: string): Promise<{
+	success?: boolean
+	user?: { id: string; name: string; email: string }
+	error?: { code: string; message: string }
+}> {
+	// Verifica se o e-mail é válido
+	if (!validateEmail(email)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
+
+	// Formata os dados para buscar o e-mail no banco de dados
+	const formatEmail = email.trim().toLowerCase()
+
+	// Busca o usuário no banco de dados pelo e-mail
+	const user = await db
+		.select()
+		.from(table.user)
+		.where(eq(table.user.email, formatEmail))
+		.then((results) => results.at(0))
+
+	// Se usuário não for encontrado
+	if (!user?.id) {
+		return { error: { code: 'NO_EMAIL_FOUND', message: 'Não existe um usuário com este e-mail.' } }
+	}
+
+	// Retorna os dados do usuário
+	return { success: true, user: { id: user.id, name: user.name, email: user.email } }
+}
+
+// Altera a senha do usuário
+export async function changeUserPassword({ userId, password }: { userId: string; password: string }): Promise<{
+	success?: boolean
+	user?: { id: string; name: string; email: string }
+	error?: { code: string; message: string }
+}> {
+	// Verifica se o usuário existe no banco de dados
+	const user = await db
+		.select()
+		.from(table.user)
+		.where(eq(table.user.id, userId))
+		.then((results) => results.at(0))
+
+	// Se usuário não for encontrado
+	if (!user?.id) {
+		return { error: { code: 'NO_USER_FOUND', message: 'O usuário não existe.' } }
+	}
+
+	// Cria o hash da senha
+	const passwordHash = await generateUserPassword(password)
+
+	// Altera a senha do usuário
+	await db.update(table.user).set({ password: passwordHash }).where(eq(table.user.id, user.id))
+
+	try {
+		// Altera a senha do usuário
+		await db.update(table.user).set({ password: passwordHash }).where(eq(table.user.id, user.id))
+	} catch {
+		console.error('Ocorreu um erro ao alterar a senha.')
+		return { error: { code: 'INTERNAL_ERROR', message: 'Ocorreu um erro ao alterar a senha.' } }
+	}
+
+	// Retorna os dados do usuário
+	return { success: true, user: { id: user.id, name: user.name, email: user.email } }
 }

@@ -7,30 +7,31 @@
 	import Input from '$lib/client/components/auth/Input.svelte'
 	import Button from '$lib/client/components/auth/Button.svelte'
 	import Link from '$lib/client/components/auth/Link.svelte'
+	import Pin from '$lib/client/components/auth/Pin.svelte'
 
 	let { form }: PageProps = $props()
 
 	let loading = $state(false)
 	let step = $state(1)
-
 	let email = $state('')
+	let token = $state('')
 </script>
 
 <!-- Header -->
 {#if step === 1}
 	<Header icon="icon-[lucide--key-round]" title="Esqueceu a senha" description="Não se preocupe, iremos te ajudar a recuperar sua senha." />
 {:else if step === 2}
-	<Header icon="icon-[lucide--key-round]" title="Verifique a conta" description="Para sua segurança, insira o código que recebeu por e-mail." />
+	<Header icon="icon-[lucide--square-asterisk]" title="Verifique a conta" description="Para sua segurança, insira o código que recebeu por e-mail." />
 {:else if step === 3}
-	<Header icon="icon-[lucide--key-round]" title="Redefinir a senha" description="Agora você precisa digitar a nova senha para sua conta." />
+	<Header icon="icon-[lucide--lock]" title="Redefinir a senha" description="Agora você precisa digitar a nova senha para sua conta." />
 {:else if step === 4}
-	<Header icon="icon-[lucide--key-round]" title="Senha alterada" description="A sua senha foi alterada com sucesso! Volte para continuar." />
+	<Header icon="icon-[lucide--lock-keyhole]" title="Senha alterada" description="A sua senha foi alterada com sucesso! Volte para continuar." />
 {/if}
 
 <!-- Container -->
 <div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
-	{#if step === 1}
-		<!-- Form -->
+	<!-- Etapa 1: Inserir e-mail para enviar o código OTP para o e-mail -->
+	<div class={step !== 1 ? 'hidden' : ''}>
 		<form
 			method="post"
 			action="?/send-email"
@@ -38,9 +39,10 @@
 				loading = true
 				return async ({ result }) => {
 					loading = false
-					// Se etapa é igual a 2
+					// Se passou de etapa
 					if (result.type === 'success' && typeof result.data?.step === 'number') {
 						step = result.data.step
+						email = result.data.email as string
 					}
 					await applyAction(result) // Não invalida os dados de resposta
 				}
@@ -78,8 +80,10 @@
 				</p>
 			</fieldset>
 		</form>
-	{:else if step === 2}
-		<!-- Form -->
+	</div>
+
+	<!-- Etapa 2: Enviar código OTP para verificar se está correto -->
+	<div class={step !== 2 ? 'hidden' : ''}>
 		<form
 			method="post"
 			action="?/send-code"
@@ -87,26 +91,20 @@
 				loading = true
 				return async ({ result }) => {
 					loading = false
+					// Se passou de etapa
+					if (result.type === 'success' && typeof result.data?.step === 'number') {
+						step = result.data.step
+						token = result.data.token as string
+					}
 					await applyAction(result) // Não invalida os dados de resposta
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
+				<input type="hidden" name="email" value={email} />
 				<div>
-					<input type="hidden" name="email" value={email} />
 					<Label htmlFor="code" isInvalid={form?.field === 'code'}>Código que recebeu por e-mail</Label>
-					<Input
-						type="text"
-						id="code"
-						name="code"
-						autocomplete="one-time-code"
-						placeholder="00000000"
-						minlength={8}
-						maxlength={8}
-						required
-						isInvalid={form?.field === 'code'}
-						invalidMessage={form?.message ?? ''}
-					/>
+					<Pin type="text" id="code" name="code" placeholder="" length="5" value="" isInvalid={form?.field === 'code'} invalidMessage={form?.message ?? ''} />
 				</div>
 				<div>
 					<Button type="submit" disabled={loading}>
@@ -123,23 +121,41 @@
 				</p>
 			</fieldset>
 		</form>
-	{:else if step === 3}
-		<!-- Form -->
+	</div>
+
+	<!-- Etapa 3: Enviar nova senha para alteração -->
+	<div class={step !== 3 ? 'hidden' : ''}>
 		<form
 			method="post"
-			action="?/reset-password"
+			action="?/send-password"
 			use:enhance={(formElement) => {
 				loading = true
 				return async ({ result }) => {
 					loading = false
+					// Se passou de etapa
+					if (result.type === 'success' && typeof result.data?.step === 'number') {
+						step = result.data.step
+					}
 					await applyAction(result) // Não invalida os dados de resposta
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
+				<input type="hidden" name="token" value={token} />
 				<div>
-					<input type="hidden" name="token" value={''} />
-					Token recebido e campos para alterar a senha
+					<Label htmlFor="hs-strong-password-with-indicator-and-hint" isInvalid={form?.field === 'password'}>Nova senha</Label>
+					<Input
+						type="strong-password"
+						id="hs-strong-password-with-indicator-and-hint"
+						name="password"
+						autocomplete="current-password"
+						placeholder="••••••••"
+						minlength={6}
+						maxlength={160}
+						required
+						isInvalid={form?.field === 'password'}
+						invalidMessage={form?.message ?? ''}
+					/>
 				</div>
 				<div>
 					<Button type="submit" disabled={loading}>
@@ -156,24 +172,17 @@
 				</p>
 			</fieldset>
 		</form>
-	{:else if step === 4}
-		<!-- Form -->
-		<form
-			method="post"
-			action="?/reset-password"
-			use:enhance={(formElement) => {
-				loading = true
-				return async ({ result }) => {
-					loading = false
-					await applyAction(result) // Não invalida os dados de resposta
-				}
-			}}
-		>
-			<fieldset class="grid gap-5">
-				<p class="mt-2 text-center">
-					<Link href="/sign-in">Voltar</Link>
-				</p>
-			</fieldset>
-		</form>
-	{/if}
+	</div>
+
+	<!-- Etapa 4: Senha alterada com sucesso -->
+	<div class={step !== 4 ? 'hidden' : ''}>
+		<div class="grid gap-5">
+			<div>
+				<Button href="/app/dashboard" type="button">Ir para o painel</Button>
+			</div>
+			<p class="mt-2 text-center">
+				<Link href="/sign-in">Voltar</Link>
+			</p>
+		</div>
+	</div>
 </div>

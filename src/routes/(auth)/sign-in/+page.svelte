@@ -77,9 +77,9 @@
 			</div>
 			<Divider>ou</Divider>
 			<div class="flex w-full flex-col items-center justify-center gap-3">
-				<Button type="button" icon="icon-[lucide--mail-open]">Entrar só com o e-mail</Button>
-				<Button type="button" icon="icon-[logos--google-icon]">Entrar com Google</Button>
-				<Button type="button" icon="icon-[logos--facebook]">Entrar com Facebook</Button>
+				<Button type="button" style="bordered" icon="icon-[lucide--mail-open]">Entrar só com o e-mail</Button>
+				<Button type="button" style="bordered" icon="icon-[logos--google-icon]">Entrar com Google</Button>
+				<Button type="button" style="bordered" icon="icon-[logos--facebook]">Entrar com Facebook</Button>
 			</div>
 			<p class="mt-2 text-center">
 				Não tem conta? <Link href="/sign-up">Cadastre-se</Link>

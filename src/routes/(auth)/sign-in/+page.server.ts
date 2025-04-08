@@ -19,8 +19,8 @@ export const actions: Actions = {
 	// Login
 	login: async (event) => {
 		const formData = await event.request.formData()
-		const email = formData.get('email')
-		const password = formData.get('password')
+		const email = formData.get('email') as string
+		const password = formData.get('password') as string
 
 		// Valida o e-mail
 		if (!auth.validateEmail(email)) {

@@ -1,4 +1,3 @@
-import { hash } from '@node-rs/argon2'
 import { fail, redirect } from '@sveltejs/kit'
 import * as auth from '$lib/server/auth'
 import { db } from '$lib/server/db'
@@ -18,9 +17,9 @@ export const actions: Actions = {
 	// Cadastro de usuário
 	register: async (event) => {
 		const formData = await event.request.formData()
-		const name = formData.get('name')
-		const email = formData.get('email')
-		const password = formData.get('password')
+		const name = formData.get('name') as string
+		const email = formData.get('email') as string
+		const password = formData.get('password') as string
 
 		// Valida o nome
 		if (!auth.validateName(name)) {
@@ -41,13 +40,7 @@ export const actions: Actions = {
 		const userId = auth.generateUserId()
 
 		// Cria o hash da senha
-		const passwordHash = await hash(password, {
-			// Parâmetros mínimos recomendados
-			memoryCost: 19456,
-			timeCost: 2,
-			outputLen: 32,
-			parallelism: 1
-		})
+		const passwordHash = await auth.generateUserPassword(password)
 
 		// Formata os dados para inserir no banco de dados
 		const format = {
@@ -64,7 +57,13 @@ export const actions: Actions = {
 
 		try {
 			// Insere o usuário no banco de dados
-			await db.insert(table.user).values({ id: format.id, name: format.name, email: format.email, email_verified: format.email_verified, password: format.password })
+			await db.insert(table.user).values({
+				id: format.id,
+				name: format.name,
+				email: format.email,
+				email_verified: format.email_verified,
+				password: format.password
+			})
 
 			// Cria a sessão e o cookie de sessão
 			const sessionToken = auth.generateSessionToken()

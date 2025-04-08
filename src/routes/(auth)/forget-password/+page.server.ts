@@ -1,8 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit'
-import { eq } from 'drizzle-orm'
 import * as auth from '$lib/server/auth'
-import { db } from '$lib/server/db'
-import * as table from '$lib/server/db/schema'
 import type { Actions, PageServerLoad } from './$types'
 
 export const load: PageServerLoad = async (event) => {
@@ -15,10 +12,10 @@ export const load: PageServerLoad = async (event) => {
 }
 
 export const actions: Actions = {
-	// Esqueceu a senha
+	// Recebe o e-mail para enviar para o usuário o código OTP
 	'send-email': async (event) => {
 		const formData = await event.request.formData()
-		const email = formData.get('email')
+		const email = formData.get('email') as string
 
 		// Valida o e-mail
 		if (!auth.validateEmail(email)) {
@@ -26,87 +23,86 @@ export const actions: Actions = {
 		}
 
 		// Formata os dados para buscar no banco de dados
-		const format = {
-			// Formata o e-mail, converte tudo para minúsculo
-			email: email.trim().toLowerCase()
-		}
+		const formatEmail = email.trim().toLowerCase()
 
-		// Busca o usuário no banco de dados pelo e-mail
-		const user = await db
-			.select({ id: table.user.id }) // Só busca o campo necessário
-			.from(table.user)
-			.where(eq(table.user.email, format.email))
-			.then((results) => results.at(0))
+		// Verifica se o e-mail existe no banco de dados
+		const verifyUserEmail = await auth.validateUserEmail(formatEmail)
+		if (!verifyUserEmail.success) return fail(400, { field: 'email', message: verifyUserEmail.error?.message ?? 'Digite um e-mail válido.' })
 
-		// Se usuário não for encontrado
-		if (!user?.id) return fail(400, { field: 'email', message: 'Não existe um usuário com este e-mail.' })
+		// Obtém um código OTP e salva-o no banco de dados
+		const verificationCode = await auth.generateEmailVerificationCode(formatEmail)
+		if (verificationCode === null) return fail(400, { field: 'email', message: 'Ocorreu um erro ao gerar o código para enviar por e-mail.' })
 
 		// Tipo de verificação
 		const type = 'forget-password'
 
-		// Obtém um código OTP e salva-o no banco de dados
-		const verificationCode = await auth.generateEmailVerificationCode(format.email)
-		if (verificationCode === null) return fail(400, { field: 'email', message: 'Ocorreu um erro ao gerar o código para enviar por e-mail.' })
-
 		// Envia o código OTP por e-mail
-		await auth.sendEmailVerificationCode({ email: format.email, type, code: verificationCode })
+		await auth.sendEmailVerificationCode({ email: formatEmail, type, code: verificationCode })
+
+		console.log('code', verificationCode)
 
 		// Retorna para a página o step 2
-		return { step: 2 }
+		return { step: 2, email: formatEmail }
 	},
-	// Resetar a senha
+	// Recebe o código OTP e o e-mail para verificação para enviar o token
 	'send-code': async (event) => {
 		const formData = await event.request.formData()
-		const email = formData.get('email')
-		const code = formData.get('code')
-
-		console.log('reset password')
+		const email = formData.get('email') as string
+		const codeParts = formData.getAll('code') // Retorna o array de 'code'
+		const code = codeParts.join('').toUpperCase() as string // Junta os valores de 'code' como string e converte para maiúscula
 
 		// Valida o e-mail
 		if (!auth.validateEmail(email)) {
-			console.log('e-mail inválido')
 			return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
 		}
 
 		// Formata os dados para buscar no banco de dados
-		const format = {
-			// Formata o e-mail, converte tudo para minúsculo
-			email: email.trim().toLowerCase()
-		}
+		const formatEmail = email.trim().toLowerCase()
 
-		// Busca o usuário no banco de dados pelo e-mail
-		const user = await db
-			.select({ id: table.user.id }) // Só busca o campo necessário
-			.from(table.user)
-			.where(eq(table.user.email, format.email))
-			.then((results) => results.at(0))
+		// Verifica se o e-mail existe no banco de dados
+		const verifyUserEmail = await auth.validateUserEmail(formatEmail)
+		if (!verifyUserEmail.success) return fail(400, { field: 'email', message: verifyUserEmail.error?.message ?? 'Digite um e-mail válido.' })
 
-		// Se usuário não for encontrado
-		if (!user?.id) {
-			console.log('usuário inexistente')
-			return fail(400, { field: 'email', message: 'Não existe um usuário com este e-mail.' })
-		}
-
-		// Retorna o ID do usuário
-		const userId = user.id
-
-		// -------- DEBUG - CODE --------
-		console.log('code', code)
-		// -------- DEBUG - CODE --------
+		// Obtém os dados do usuário
+		const user = verifyUserEmail.user
 
 		// Verifica se o código OTP enviado pelo usuário é válido e se não expirou
-		const verifyCode = await auth.verifyVerificationCode({ email: format.email, code: typeof code === 'string' ? code : '' })
+		const verifyCode = await auth.validateVerificationCode({ email: formatEmail, code: typeof code === 'string' ? code : '' })
 		if (verifyCode.error) {
-			console.log('código inválido')
 			return fail(400, { field: 'code', message: verifyCode.error ? verifyCode.error.message : 'O código é inválido ou expirou.' })
 		}
 
 		// Cria a sessão e o cookie de sessão
 		const sessionToken = auth.generateSessionToken()
-		const session = await auth.createSession(sessionToken, userId)
+		const session = await auth.createSession(sessionToken, user?.id as string)
 		auth.setSessionTokenCookie(event, sessionToken, session.expiresAt)
 
 		// Retorna sucesso
-		return { success: true }
+		return { step: 3, token: sessionToken }
+	},
+	// Recebe o token e a senha alterada
+	'send-password': async (event) => {
+		const formData = await event.request.formData()
+		const token = formData.get('token') as string
+		const password = formData.get('password') as string
+
+		// Valida o token de sessão e obtém a sessão e o usuário
+		const { session, user } = await auth.validateSessionToken(token as string)
+
+		// Se a sessão for inválida
+		if (!session) {
+			console.log('Sessão inválida!')
+			// Redireciona o usuário para a etapa 1 de esqueceu a senha
+			return redirect(302, '/forget-password')
+		}
+
+		// Altera a senha
+		const userPassword = await auth.changeUserPassword({ userId: user.id, password })
+		if (userPassword.error) {
+			return fail(400, { field: 'code', message: userPassword.error ? userPassword.error.message : 'Ocorreu um erro ao alterar a senha.' })
+		}
+
+		// Retorna sucesso
+		return { step: 4, user }
 	}
 }

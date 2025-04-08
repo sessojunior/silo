@@ -48,6 +48,7 @@
 		"@node-rs/argon2": "^2.0.2",
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
+		"apexcharts": "^4.5.0",
 		"drizzle-orm": "^0.40.0",
 		"nodemailer": "^6.10.0",
 		"preline": "^3.0.1"

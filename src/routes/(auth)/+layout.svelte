@@ -2,8 +2,10 @@
 	let { children } = $props()
 </script>
 
-<div class="flex min-h-screen justify-between bg-white dark:bg-neutral-900">
-	<div class="h-screen w-full md:w-1/2 md:max-w-[600px]">
+<div class="flex min-h-screen justify-between">
+	<div
+		class="h-screen w-full before:absolute before:start-1/2 before:top-0 before:-z-1 before:size-full before:-translate-x-1/2 before:transform before:bg-[url('/images/background-home.svg')] before:bg-cover before:bg-top before:bg-no-repeat md:w-1/2 md:max-w-[600px] dark:bg-neutral-900"
+	>
 		<div class="scrollbar size-full overflow-y-auto">
 			<div class="flex h-full w-full flex-col">
 				<div class="flex">
