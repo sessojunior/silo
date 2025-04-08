@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { type, id, name, placeholder, autocomplete, minlength = 2, maxlength = 255, value = '', required, isInvalid, invalidMessage } = $props()
+	let { type, id, name, placeholder, autocomplete, minlength = 2, maxlength = 255, value = $bindable(''), required, isInvalid, invalidMessage } = $props()
 </script>
 
 {#if type === 'strong-password'}
@@ -153,7 +153,7 @@
 		/>
 		{#if isInvalid}
 			<div class="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-4">
-				<span class="icon-[lucide--info] size-5 text-red-400 dark:text-red-900"></span>
+				<span class="icon-[lucide--triangle-alert] size-5 text-red-400 dark:text-red-900"></span>
 			</div>
 		{/if}
 	</div>

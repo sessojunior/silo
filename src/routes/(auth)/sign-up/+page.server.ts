@@ -56,13 +56,15 @@ export const actions: Actions = {
 			name: name.trim(),
 			// Formata o e-mail, converte tudo para minúsculo
 			email: email.trim().toLowerCase(),
+			// E-mail não está verificado ainda
+			email_verified: 0, // false
 			// Hash da senha
 			password: passwordHash
 		}
 
 		try {
 			// Insere o usuário no banco de dados
-			await db.insert(table.user).values({ id: format.id, name: format.name, email: format.email, password: format.password })
+			await db.insert(table.user).values({ id: format.id, name: format.name, email: format.email, email_verified: format.email_verified, password: format.password })
 
 			// Cria a sessão e o cookie de sessão
 			const sessionToken = auth.generateSessionToken()

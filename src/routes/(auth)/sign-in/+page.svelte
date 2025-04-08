@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { enhance } from '$app/forms'
-	import type { ActionData } from './$types'
+	import { enhance, applyAction } from '$app/forms'
+	import type { PageProps } from './$types'
 
 	import Header from '$lib/client/components/auth/Header.svelte'
 	import Label from '$lib/client/components/auth/Label.svelte'
@@ -9,7 +9,9 @@
 	import Link from '$lib/client/components/auth/Link.svelte'
 	import Divider from '$lib/client/components/auth/Divider.svelte'
 
-	let { form }: { form: ActionData } = $props()
+	let { form }: PageProps = $props()
+
+	let loading = $state(false)
 </script>
 
 <!-- Header -->
@@ -18,7 +20,17 @@
 <!-- Container -->
 <div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
 	<!-- Form -->
-	<form method="post" action="?/login" use:enhance>
+	<form
+		method="post"
+		action="?/login"
+		use:enhance={(formElement) => {
+			loading = true
+			return async ({ result }) => {
+				loading = false
+				await applyAction(result) // Não invalida os dados de resposta
+			}
+		}}
+	>
 		<fieldset class="grid gap-5">
 			<div>
 				<Label htmlFor="email" isInvalid={form?.field === 'email'}>E-mail</Label>
@@ -54,10 +66,18 @@
 				<Link href="/forget-password">Esqueceu a senha?</Link>
 			</p>
 			<div>
-				<Button type="submit">Entrar</Button>
+				<Button type="submit" disabled={loading}>
+					{#if loading}
+						<span class="icon-[lucide--loader-circle] animate-spin"></span>
+						Entrando...
+					{:else}
+						Entrar
+					{/if}
+				</Button>
 			</div>
 			<Divider>ou</Divider>
 			<div class="flex w-full flex-col items-center justify-center gap-3">
+				<Button type="button" icon="icon-[lucide--mail-open]">Entrar só com o e-mail</Button>
 				<Button type="button" icon="icon-[logos--google-icon]">Entrar com Google</Button>
 				<Button type="button" icon="icon-[logos--facebook]">Entrar com Facebook</Button>
 			</div>

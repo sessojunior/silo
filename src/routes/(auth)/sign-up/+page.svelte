@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { enhance } from '$app/forms'
-	import type { ActionData } from './$types'
+	import { enhance, applyAction } from '$app/forms'
+	import type { PageProps } from './$types'
 
 	import Header from '$lib/client/components/auth/Header.svelte'
 	import Label from '$lib/client/components/auth/Label.svelte'
@@ -9,7 +9,9 @@
 	import Link from '$lib/client/components/auth/Link.svelte'
 	import Divider from '$lib/client/components/auth/Divider.svelte'
 
-	let { form }: { form: ActionData } = $props()
+	let { form }: PageProps = $props()
+
+	let loading = $state(false)
 </script>
 
 <!-- Header -->
@@ -18,7 +20,17 @@
 <!-- Container -->
 <div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
 	<!-- Form -->
-	<form method="post" action="?/register" use:enhance>
+	<form
+		method="post"
+		action="?/register"
+		use:enhance={(formElement) => {
+			loading = true
+			return async ({ result }) => {
+				loading = false
+				await applyAction(result) // Não invalida os dados de resposta
+			}
+		}}
+	>
 		<fieldset class="grid gap-5">
 			<div>
 				<Label htmlFor="name" isInvalid={form?.field === 'name'}>Nome</Label>
@@ -55,7 +67,14 @@
 				/>
 			</div>
 			<div>
-				<Button type="submit">Criar conta</Button>
+				<Button type="submit" disabled={loading}>
+					{#if loading}
+						<span class="icon-[lucide--loader-circle] animate-spin"></span>
+						Criando conta...
+					{:else}
+						Criar conta
+					{/if}
+				</Button>
 			</div>
 			<Divider>ou</Divider>
 			<div class="flex w-full flex-col items-center justify-center gap-3">
@@ -63,7 +82,7 @@
 				<Button type="button" icon="icon-[logos--facebook]">Criar com Facebook</Button>
 			</div>
 			<p class="mt-2 text-center">
-				Tem uma conta? <Link href="/login">Entre</Link>
+				Tem uma conta? <Link href="/sign-in">Entre</Link>
 			</p>
 		</fieldset>
 	</form>

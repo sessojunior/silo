@@ -32,7 +32,7 @@
 		<div class="mt-8 flex justify-center gap-3">
 			<a
 				class="inline-flex items-center justify-center gap-x-3 rounded-md border border-transparent bg-linear-to-tl from-blue-600 to-violet-600 px-4 py-3 text-center text-base font-medium text-white hover:from-violet-600 hover:to-blue-600 focus:from-violet-600 focus:to-blue-600 focus:outline-hidden"
-				href="/login"
+				href="/sign-in"
 			>
 				Entrar no aplicativo
 			</a>

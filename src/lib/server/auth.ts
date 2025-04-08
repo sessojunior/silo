@@ -2,8 +2,10 @@ import type { RequestEvent } from '@sveltejs/kit'
 import { eq } from 'drizzle-orm'
 import { sha256 } from '@oslojs/crypto/sha2'
 import { encodeBase64url, encodeHexLowerCase, encodeBase32LowerCase } from '@oslojs/encoding'
+import { type RandomReader, generateRandomString } from '@oslojs/crypto/random'
 import { db } from '$lib/server/db'
 import * as table from '$lib/server/db/schema'
+import { sendEmail } from './email'
 
 // Sessões
 // Os usuários usarão um token de sessão vinculado a uma sessão em vez do ID diretamente.
@@ -14,6 +16,9 @@ import * as table from '$lib/server/db/schema'
 
 // Um dia em milissegundos
 const DAY_IN_MS = 24 * 60 * 60 * 1000 // 86400000 ms (1 dia)
+
+// Um minuto em milissegundos
+const MINUTE_IN_MS = 60 * 1000 // 60000 ms (1 minuto)
 
 // Nome do cookie de sessão
 export const sessionCookieName = 'auth-session'
@@ -241,4 +246,112 @@ export function validateName(name: unknown): name is string {
 
 	// Se passou por todas as verificações, o nome é válido
 	return true
+}
+
+// Gera o código de verificação OTP para enviar por e-mail e salva-o no banco de dados
+export async function generateEmailVerificationCode(email: string): Promise<string | null> {
+	// Se o e-mail for inválido retorna null
+	if (!validateEmail(email)) return null
+
+	// Busca o usuário no banco de dados pelo e-mail
+	const user = await db
+		.select({ id: table.user.id }) // Só busca o campo necessário
+		.from(table.user)
+		.where(eq(table.user.email, email.toLowerCase().trim()))
+		.then((results) => results.at(0))
+
+	// Se usuário não for encontrado retorna null
+	if (!user?.id) return null
+
+	// Retorna o ID do usuário
+	const userId = user.id
+
+	// ID com 120 bits, ou aproximadamente o mesmo que o UUID v4.
+	const id = encodeBase32LowerCase(crypto.getRandomValues(new Uint8Array(15)))
+
+	// Sequência aletória
+	const random: RandomReader = {
+		read(bytes) {
+			crypto.getRandomValues(bytes)
+		}
+	}
+
+	// Caracteres permitidos
+	const alphabet = '0123456789'
+
+	// Número de caracteres
+	const numberCharacters = 8
+
+	// Gera um código aleatório utilizando caracteres permitidos e comprimento fixo de 8 caracteres
+	const code = generateRandomString(random, alphabet, numberCharacters)
+
+	// Remove códigos anteriores do mesmo usuário
+	await db.delete(table.emailVerificationCode).where(eq(table.emailVerificationCode.userId, userId))
+
+	// Insere o novo código no banco de dados, que expira em 10 minutos
+	await db.insert(table.emailVerificationCode).values({
+		id,
+		code,
+		email,
+		userId,
+		expiresAt: new Date(Date.now() + MINUTE_IN_MS * 10)
+	})
+
+	// Retorna o código OTP
+	return code
+}
+
+// Envia o código de verificação OTP para o e-mail do usuário
+export async function sendEmailVerificationCode({ email, type, code }: { email: string; type: string; code: string }): Promise<{
+	success?: boolean
+	error?: { code: string; message: string }
+}> {
+	// Se o e-mail for inválido retorna null
+	if (!validateEmail(email)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido' } }
+
+	// Enviar e-mail com o código OTP
+	// Retorna um objeto: { success: boolean, error?: { code, message } }
+	return await sendEmail({
+		to: email,
+		subject: 'Código de verificação',
+		text: `Utilize o seguinte código de verificação ${type === 'sign-in' ? 'para fazer login' : type === 'email-verification' ? 'para verificar seu e-mail' : type === 'forget-password' ? 'para recuperar sua senha' : 'a seguir'}: ${code}`
+	})
+}
+
+// Verifica se o código de verificação OTP enviado para o usuário é válido e se não expirou
+export async function verifyVerificationCode({ email, code }: { email: string; code: string }): Promise<{
+	success?: boolean
+	error?: { code: string; message: string }
+}> {
+	// Verifica se o e-mail é válido
+	if (!validateEmail(email)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido' } }
+
+	// Busca todos os códigos associados ao e-mail
+	const codes = await db
+		.select({
+			code: table.emailVerificationCode.code,
+			expiresAt: table.emailVerificationCode.expiresAt
+		})
+		.from(table.emailVerificationCode)
+		.where(eq(table.emailVerificationCode.email, email))
+
+	// Se não houver nenhum código para o e-mail
+	if (!codes || codes.length === 0) {
+		return { error: { code: 'NO_CODES_FOUND', message: 'Nenhum código de verificação encontrado para este e-mail.' } }
+	}
+
+	// Procura o código específico informado
+	const foundCode = codes.find((entry) => entry.code === code)
+	if (!foundCode) {
+		return { error: { code: 'CODE_NOT_FOUND', message: 'Código de verificação inválido ou incorreto.' } }
+	}
+
+	// Verifica se o código está expirado
+	const now = new Date()
+	if (foundCode.expiresAt && new Date(foundCode.expiresAt) < now) {
+		return { error: { code: 'CODE_EXPIRED', message: 'O código de verificação expirou.' } }
+	}
+
+	// Código válido
+	return { success: true }
 }
