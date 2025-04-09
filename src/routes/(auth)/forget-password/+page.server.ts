@@ -17,31 +17,29 @@ export const actions: Actions = {
 		const formData = await event.request.formData()
 		const email = formData.get('email') as string
 
-		// Valida o e-mail
-		if (!auth.validateEmail(email)) {
-			return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
-		}
-
 		// Formata os dados para buscar no banco de dados
 		const formatEmail = email.trim().toLowerCase()
 
+		// Valida o e-mail
+		if (!auth.validateEmail(formatEmail)) return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
+
 		// Verifica se o e-mail existe no banco de dados
-		const verifyUserEmail = await auth.validateUserEmail(formatEmail)
-		if (!verifyUserEmail.success) return fail(400, { field: 'email', message: verifyUserEmail.error?.message ?? 'Digite um e-mail válido.' })
+		const resultUser = await auth.validateUserEmail(formatEmail)
+		if ('error' in resultUser) return fail(400, { field: 'email', message: resultUser.error.message ?? 'Não existe um usuário com este e-mail.' })
 
 		// Obtém um código OTP e salva-o no banco de dados
-		const verificationCode = await auth.generateEmailVerificationCode(formatEmail)
-		if (verificationCode === null) return fail(400, { field: 'email', message: 'Ocorreu um erro ao gerar o código para enviar por e-mail.' })
+		const otp = await auth.generateOtp(formatEmail)
+		if ('error' in otp) return fail(400, { field: 'email', message: otp.error.message ?? 'Erro ao gerar o código para enviar por e-mail.' })
 
-		// Tipo de verificação
-		// const type = 'forget-password'
+		// Código OTP
+		const code = otp.code
 
 		// Envia o código OTP por e-mail
-		// await auth.sendEmailVerificationCode({ email: formatEmail, type, code: verificationCode })
+		// await auth.sendEmailOtp({ email: formatEmail, type: 'forget-password', code })
 
-		console.log('code', verificationCode)
+		console.log('code', code)
 
-		// Retorna para a página o step 2
+		// Retorna para a página o próximo passo
 		return { step: 2, email: formatEmail }
 	},
 	// Recebe o código OTP e o e-mail para verificação para enviar o token
@@ -51,33 +49,32 @@ export const actions: Actions = {
 		const codeParts = formData.getAll('code') // Retorna o array de 'code'
 		const code = codeParts.join('').toUpperCase() as string // Junta os valores de 'code' como string e converte para maiúscula
 
-		// Valida o e-mail
-		if (!auth.validateEmail(email)) {
-			return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
-		}
-
 		// Formata os dados para buscar no banco de dados
 		const formatEmail = email.trim().toLowerCase()
 
+		// Valida o e-mail
+		if (!auth.validateEmail(formatEmail)) return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
+
 		// Verifica se o e-mail existe no banco de dados
-		const verifyUserEmail = await auth.validateUserEmail(formatEmail)
-		if (!verifyUserEmail.success) return fail(400, { field: 'email', message: verifyUserEmail.error?.message ?? 'Digite um e-mail válido.' })
+		const resultUser = await auth.validateUserEmail(formatEmail)
+		if ('error' in resultUser) return fail(400, { field: 'email', message: resultUser.error.message ?? 'Não existe um usuário com este e-mail.' })
 
 		// Obtém os dados do usuário
-		const user = verifyUserEmail.user
+		const user = resultUser.user
 
 		// Verifica se o código OTP enviado pelo usuário é válido e se não expirou
-		const verifyCode = await auth.validateVerificationCode({ email: formatEmail, code: typeof code === 'string' ? code : '' })
-		if (verifyCode.error) {
-			return fail(400, { field: 'code', message: verifyCode.error ? verifyCode.error.message : 'O código é inválido ou expirou.' })
-		}
+		// Se o código for válido e não estiver expirado, define o e-mail do usuário como verificado (1) na tabela 'user' do banco de dados
+		// Se for inválido, retorna um erro
+		const resultCode = await auth.validateOtp({ email: formatEmail, code: typeof code === 'string' ? code : '' })
+		if ('error' in resultCode) return fail(400, { field: 'code', message: resultCode.error ? resultCode.error.message : 'O código é inválido ou expirou.' })
 
 		// Cria a sessão e o cookie de sessão
 		const sessionToken = auth.generateSessionToken()
-		const session = await auth.createSession(sessionToken, user?.id as string)
-		auth.setSessionTokenCookie(event, sessionToken, session.expiresAt)
+		const resultSession = await auth.createSession(sessionToken, user?.id as string)
+		if ('error' in resultSession) return fail(400, { field: 'code', message: resultSession.error.message ?? 'Ocorreu um erro ao criar a sessão.' })
+		auth.setCookieSessionToken(event, sessionToken, resultSession.session.expiresAt)
 
-		// Retorna sucesso
+		// Retorna para a página o próximo passo
 		return { step: 3, token: sessionToken }
 	},
 	// Recebe o token e a senha alterada
@@ -87,22 +84,18 @@ export const actions: Actions = {
 		const password = formData.get('password') as string
 
 		// Valida o token de sessão e obtém a sessão e o usuário
-		const { session, user } = await auth.validateSessionToken(token as string)
+		// Se a sessão for inválida, redireciona o usuário para a etapa 1
+		const resultSession = await auth.validateSessionToken(token as string)
+		if ('error' in resultSession) return fail(400, { step: 1 })
 
-		// Se a sessão for inválida
-		if (!session) {
-			console.log('Sessão inválida!')
-			// Redireciona o usuário para a etapa 1 de esqueceu a senha
-			return redirect(302, '/forget-password')
-		}
+		// Obtém os dados do usuário
+		const user = resultSession.user
 
 		// Altera a senha
-		const userPassword = await auth.changeUserPassword({ userId: user.id, password })
-		if (userPassword.error) {
-			return fail(400, { field: 'code', message: userPassword.error ? userPassword.error.message : 'Ocorreu um erro ao alterar a senha.' })
-		}
+		const userPassword = await auth.changeUserPassword({ userId: resultSession.user.id, password })
+		if ('error' in userPassword) return fail(400, { field: 'code', message: userPassword.error ? userPassword.error.message : 'Ocorreu um erro ao alterar a senha.' })
 
-		// Retorna sucesso
+		// Retorna para a página o próximo passo
 		return { step: 4, user }
 	}
 }

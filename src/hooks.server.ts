@@ -6,29 +6,32 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	// Verifica se o cookie de sessão existe
 	const sessionToken = event.cookies.get(auth.sessionCookieName)
 
-	// Se o cookie de sessão não existir, limpa o usuário e a sessão no event.locals
-	// Para saber mais sobre event.locals:
-	// https://khromov.se/the-comprehensive-guide-to-locals-in-sveltekit/
+	// Se o cookie de sessão não existir
 	if (!sessionToken) {
+		// Limpa o usuário e a sessão no event.locals
+		// Para saber mais sobre event.locals:
+		// https://khromov.se/the-comprehensive-guide-to-locals-in-sveltekit/
 		event.locals.user = null
 		event.locals.session = null
 		return resolve(event)
 	}
 
 	// Valida o token de sessão e obtém a sessão e o usuário
-	const { session, user } = await auth.validateSessionToken(sessionToken)
+	const userSession = await auth.validateSessionToken(sessionToken as string)
 
-	// Se a sessão for válida, cria o cookie de sessão
-	// Caso contrário, exclui o cookie de sessão
-	if (session) {
-		auth.setSessionTokenCookie(event, sessionToken, session.expiresAt)
+	// Se a sessão for inválida
+	if ('error' in userSession) {
+		// Exclui o cookie de sessão
+		auth.deleteCookieSessionToken(event)
 	} else {
-		auth.deleteSessionTokenCookie(event)
+		// Cria o cookie de sessão
+		auth.setCookieSessionToken(event, sessionToken, userSession.session.expiresAt)
+
+		// Define o usuário e a sessão no locals
+		event.locals.user = userSession.user
+		event.locals.session = userSession.session
 	}
 
-	// Define o usuário e a sessão no locals
-	event.locals.user = user
-	event.locals.session = session
 	return resolve(event)
 }
 

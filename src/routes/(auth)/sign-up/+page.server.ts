@@ -1,14 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit'
 import * as auth from '$lib/server/auth'
-import { db } from '$lib/server/db'
-import * as table from '$lib/server/db/schema'
 import type { Actions, PageServerLoad } from './$types'
 
 export const load: PageServerLoad = async (event) => {
 	// Verifica se o usuário já está logado
 	if (event.locals.user) {
 		// Redireciona o usuário para a página privada
-		return redirect(302, '/app')
+		return redirect(302, '/app/dashboard')
 	}
 	return {}
 }
@@ -21,60 +19,58 @@ export const actions: Actions = {
 		const email = formData.get('email') as string
 		const password = formData.get('password') as string
 
-		// Valida o nome
-		if (!auth.validateName(name)) {
-			return fail(400, { field: 'name', message: 'Digite um nome válido.' })
-		}
+		// Formata os dados para buscar no banco de dados
+		const formatEmail = email.trim().toLowerCase()
 
-		// Valida o e-mail
-		if (!auth.validateEmail(email)) {
-			return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
-		}
+		// Cria a conta do usuário
+		// Caso o usuário já exista, será exibido um erro que já existe. O usuário precisará fazer login.
+		const resultUser = await auth.signUp(name, formatEmail, password)
+		if ('error' in resultUser) return fail(400, { field: resultUser.error.field, message: resultUser.error.message ?? 'Ocorreu um erro ao criar o usuário.' })
 
-		// Valida a senha
-		if (!auth.validatePassword(password)) {
-			return fail(400, { field: 'password', message: 'Digite uma senha válida.' })
-		}
+		// Obtém um código OTP e salva-o no banco de dados
+		const otp = await auth.generateOtp(formatEmail)
+		if ('error' in otp) return fail(400, { field: null, message: otp.error.message ?? 'Erro ao gerar o código para enviar por e-mail.' })
 
-		// Gera o ID do usuário
-		const userId = auth.generateUserId()
+		// Código OTP
+		const code = otp.code
 
-		// Cria o hash da senha
-		const passwordHash = await auth.generateUserPassword(password)
+		// Envia o código OTP por e-mail
+		// await auth.sendEmailOtp({ email: formatEmail, type: 'email-verification', code })
+		console.log('code', code)
 
-		// Formata os dados para inserir no banco de dados
-		const format = {
-			id: userId,
-			// Formata o nome, tira espaços em branco
-			name: name.trim(),
-			// Formata o e-mail, converte tudo para minúsculo
-			email: email.trim().toLowerCase(),
-			// E-mail não está verificado ainda
-			email_verified: 0, // false
-			// Hash da senha
-			password: passwordHash
-		}
+		// Retorna para a página o próximo passo
+		return { step: 2, email: formatEmail }
+	},
+	// Recebe o código OTP e o e-mail para verificação para enviar o token
+	'send-code': async (event) => {
+		const formData = await event.request.formData()
+		const email = formData.get('email') as string
+		const codeParts = formData.getAll('code') // Retorna o array de 'code'
+		const code = codeParts.join('').toUpperCase() as string // Junta os valores de 'code' como string e converte para maiúscula
 
-		try {
-			// Insere o usuário no banco de dados
-			await db.insert(table.user).values({
-				id: format.id,
-				name: format.name,
-				email: format.email,
-				email_verified: format.email_verified,
-				password: format.password
-			})
+		// Formata os dados para buscar no banco de dados
+		const formatEmail = email.trim().toLowerCase()
 
-			// Cria a sessão e o cookie de sessão
-			const sessionToken = auth.generateSessionToken()
-			const session = await auth.createSession(sessionToken, userId)
-			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt)
-		} catch {
-			console.error('Ocorreu um erro ao criar a sessão.')
-			return fail(500, { field: null, message: 'Ocorreu um erro ao criar a sessão.' })
-		}
+		// Verifica se o e-mail existe no banco de dados
+		const resultUser = await auth.validateUserEmail(formatEmail)
+		if ('error' in resultUser) return fail(400, { field: null, message: resultUser.error.message ?? 'Não existe um usuário com este e-mail.' })
 
-		// Redireciona o usuário para a página privada
-		return redirect(302, '/app')
+		// Obtém os dados do usuário
+		const user = resultUser.user
+
+		// Verifica se o código OTP enviado pelo usuário é válido e se não está expirado
+		// Se o código for válido e não estiver expirado, define o e-mail do usuário como verificado (1) na tabela 'user' do banco de dados
+		// Se for inválido, retorna um erro
+		const resultCode = await auth.validateOtp({ email: formatEmail, code: typeof code === 'string' ? code : '' })
+		if ('error' in resultCode) return fail(400, { field: 'code', message: resultCode.error ? resultCode.error.message : 'O código é inválido ou expirou.' })
+
+		// Cria a sessão e o cookie de sessão
+		const sessionToken = auth.generateSessionToken()
+		const resultSession = await auth.createSession(sessionToken, user?.id as string)
+		if ('error' in resultSession) return fail(400, { field: null, message: resultSession.error.message ?? 'Ocorreu um erro ao criar a sessão.' })
+		auth.setCookieSessionToken(event, sessionToken, resultSession.session.expiresAt)
+
+		// Redireciona o usuário para a página de boas vindas
+		return redirect(302, '/app/welcome')
 	}
 }

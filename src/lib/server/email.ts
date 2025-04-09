@@ -1,9 +1,8 @@
 import nodemailer from 'nodemailer'
 import { env } from '$env/dynamic/private'
 
-// Enviar e-mail
-// Retorna um objeto: { success?: boolean, error?: { code, message } }
-export const sendEmail = async ({
+// Envia um e-mail
+export async function sendEmail({
 	to,
 	subject,
 	text
@@ -11,11 +10,8 @@ export const sendEmail = async ({
 	to: string
 	subject: string
 	text: string
-}): Promise<{
-	success?: boolean
-	error?: { code: string; message: string }
-}> => {
-	// Criação do transporter SMTP
+}): Promise<{ success: boolean } | { error: { code: string; message: string } }> {
+	// Configuração do SMTP
 	const transporter = nodemailer.createTransport({
 		host: env.SMTP_HOST,
 		port: parseInt(env.SMTP_PORT || '587'),
@@ -32,7 +28,7 @@ export const sendEmail = async ({
 		console.log('Servidor SMTP pronto para enviar e-mails!')
 	} catch (error) {
 		console.error('Erro de conexão SMTP:', error)
-		return { error: { code: 'SMTP_ERROR', message: 'Erro de conexão SMTP' } }
+		return { error: { code: 'SEND_EMAIL_SMTP_ERROR', message: 'Erro de conexão SMTP' } }
 	}
 
 	// Configuração do e-mail
@@ -49,6 +45,6 @@ export const sendEmail = async ({
 		return { success: true }
 	} catch (err) {
 		console.error(`Erro ao enviar o e-mail para: ${to}!\n`, err)
-		return { error: err instanceof Error ? { code: err.name, message: err.message } : { code: 'UNKNOWN_ERROR', message: 'Erro desconhecido' } }
+		return { error: err instanceof Error ? { code: err.name, message: err.message } : { code: 'SEND_EMAIL_UNKNOWN_ERROR', message: 'Erro desconhecido' } }
 	}
 }

@@ -8,6 +8,7 @@
 	import Button from '$lib/client/components/auth/Button.svelte'
 	import Link from '$lib/client/components/auth/Link.svelte'
 	import Pin from '$lib/client/components/auth/Pin.svelte'
+	import Alert from '$lib/client/components/auth/Alert.svelte'
 
 	let { form }: PageProps = $props()
 
@@ -31,7 +32,7 @@
 <!-- Container -->
 <div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
 	<!-- Etapa 1: Inserir e-mail para enviar o código OTP para o e-mail -->
-	<div class={step !== 1 ? 'hidden' : ''}>
+	{#if step === 1}
 		<form
 			method="post"
 			action="?/send-email"
@@ -49,6 +50,9 @@
 			}}
 		>
 			<fieldset class="grid gap-5">
+				{#if form?.field}
+					<Alert message={form?.message} />
+				{/if}
 				<div>
 					<Label htmlFor="email" isInvalid={form?.field === 'email'}>E-mail</Label>
 					<Input
@@ -81,10 +85,10 @@
 				</p>
 			</fieldset>
 		</form>
-	</div>
+	{/if}
 
 	<!-- Etapa 2: Enviar código OTP para verificar se está correto -->
-	<div class={step !== 2 ? 'hidden' : ''}>
+	{#if step === 2}
 		<form
 			method="post"
 			action="?/send-code"
@@ -102,6 +106,9 @@
 			}}
 		>
 			<fieldset class="grid gap-5">
+				{#if form?.field}
+					<Alert message={form?.message} />
+				{/if}
 				<input type="hidden" name="email" value={email} />
 				<div>
 					<Label htmlFor="code" isInvalid={form?.field === 'code'}>Código que recebeu por e-mail</Label>
@@ -122,10 +129,10 @@
 				</p>
 			</fieldset>
 		</form>
-	</div>
+	{/if}
 
 	<!-- Etapa 3: Enviar nova senha para alteração -->
-	<div class={step !== 3 ? 'hidden' : ''}>
+	{#if step === 3}
 		<form
 			method="post"
 			action="?/send-password"
@@ -142,6 +149,9 @@
 			}}
 		>
 			<fieldset class="grid gap-5">
+				{#if form?.field}
+					<Alert message={form?.message} />
+				{/if}
 				<input type="hidden" name="token" value={token} />
 				<div>
 					<Label htmlFor="hs-strong-password-with-indicator-and-hint" isInvalid={form?.field === 'password'}>Nova senha</Label>
@@ -174,11 +184,14 @@
 				</p>
 			</fieldset>
 		</form>
-	</div>
+	{/if}
 
 	<!-- Etapa 4: Senha alterada com sucesso -->
-	<div class={step !== 4 ? 'hidden' : ''}>
+	{#if step === 4}
 		<div class="grid gap-5">
+			{#if form?.field}
+				<Alert message={form?.message} />
+			{/if}
 			<div>
 				<Button href="/app/dashboard" type="button">Ir para o painel</Button>
 			</div>
@@ -186,5 +199,5 @@
 				<Link href="/sign-in">Voltar</Link>
 			</p>
 		</div>
-	</div>
+	{/if}
 </div>

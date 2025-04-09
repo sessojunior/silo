@@ -4,7 +4,7 @@ export const user = sqliteTable('user', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),
 	email: text('email').notNull().unique(),
-	email_verified: integer().notNull(),
+	emailVerified: integer('email_verified').notNull(),
 	password: text('password').notNull()
 })
 export type User = typeof user.$inferSelect

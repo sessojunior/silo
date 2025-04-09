@@ -1,4 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte'
+
+	onMount(() => {
+		window.HSStaticMethods.autoInit()
+	})
+
 	let { type = 'text', id, name, placeholder = '', value = $bindable(''), length, isInvalid, invalidMessage } = $props()
 </script>
 
