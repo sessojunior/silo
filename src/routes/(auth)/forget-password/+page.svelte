@@ -60,6 +60,7 @@
 						minlength={8}
 						maxlength={255}
 						required
+						autofocus
 						bind:value={email}
 						isInvalid={form?.field === 'email'}
 						invalidMessage={form?.message ?? ''}
@@ -150,9 +151,10 @@
 						name="password"
 						autocomplete="current-password"
 						placeholder="••••••••"
-						minlength={6}
+						minlength={8}
 						maxlength={160}
 						required
+						autofocus
 						isInvalid={form?.field === 'password'}
 						invalidMessage={form?.message ?? ''}
 					/>

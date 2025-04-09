@@ -34,10 +34,10 @@ export const actions: Actions = {
 		if (verificationCode === null) return fail(400, { field: 'email', message: 'Ocorreu um erro ao gerar o código para enviar por e-mail.' })
 
 		// Tipo de verificação
-		const type = 'forget-password'
+		// const type = 'forget-password'
 
 		// Envia o código OTP por e-mail
-		await auth.sendEmailVerificationCode({ email: formatEmail, type, code: verificationCode })
+		// await auth.sendEmailVerificationCode({ email: formatEmail, type, code: verificationCode })
 
 		console.log('code', verificationCode)
 

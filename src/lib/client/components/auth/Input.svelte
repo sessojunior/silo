@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { type, id, name, placeholder, autocomplete, minlength = 2, maxlength = 255, value = $bindable(''), required, isInvalid, invalidMessage } = $props()
+	let { type, id, name, placeholder, autocomplete, autofocus = false, minlength = 2, maxlength = 255, value = $bindable(''), required, isInvalid, invalidMessage } = $props()
 </script>
 
 {#if type === 'strong-password'}
@@ -7,16 +7,17 @@
 	<div class="flex">
 		<div class="flex-1">
 			<div class="relative">
+				<!-- svelte-ignore a11y_autofocus -->
 				<input
 					{id}
 					{name}
 					{type}
 					{placeholder}
 					{autocomplete}
-					{minlength}
 					{maxlength}
 					{required}
 					{value}
+					{autofocus}
 					class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
 						? 'border-red-600 focus:border-red-600 focus:ring-red-500'
 						: 'focus:border-blue-500 focus:ring-blue-500'} 
@@ -24,9 +25,7 @@
 				/>
 				<button
 					type="button"
-					data-hs-toggle-password={JSON.stringify({
-						target: `#${id}`
-					})}
+					data-hs-toggle-password={JSON.stringify({ target: `#${id}` })}
 					class="absolute inset-y-0 end-0 z-20 flex cursor-pointer items-center rounded-e-md px-3 text-neutral-400 focus:text-blue-600 focus:outline-none dark:text-neutral-600 dark:focus:text-blue-500"
 					aria-label="Exibir ou ocultar senha"
 				>
@@ -38,6 +37,7 @@
 				id="hs-strong-password"
 				data-hs-strong-password={JSON.stringify({
 					target: `#${id}`,
+					minLength: `${minlength}`,
 					hints: '#hs-strong-password-hints',
 					stripClasses: 'hs-strong-password:opacity-100 hs-strong-password-accepted:bg-teal-500 h-1 flex-auto rounded-full bg-neutral-300 opacity-50 mx-1'
 				})}
@@ -59,7 +59,7 @@
 		<ul class="space-y-1 text-sm text-neutral-500 dark:text-neutral-500">
 			{@render passwordRule({
 				rule: 'min-length',
-				message: 'Precisa ter pelo menos 6 caracteres.'
+				message: `Precisa ter pelo menos ${minlength} caracteres.`
 			})}
 			{@render passwordRule({
 				rule: 'lowercase',
@@ -97,6 +97,7 @@
 {:else if type === 'password'}
 	<!-- Senha -->
 	<div class="relative">
+		<!-- svelte-ignore a11y_autofocus -->
 		<input
 			{id}
 			{name}
@@ -107,6 +108,7 @@
 			{maxlength}
 			{required}
 			{value}
+			{autofocus}
 			class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
 				? 'border-red-600 focus:border-red-600 focus:ring-red-500'
 				: 'focus:border-blue-500 focus:ring-blue-500'} 
@@ -114,7 +116,7 @@
 		/>
 		<button
 			type="button"
-			data-hs-toggle-password={JSON.stringify({ target: '#hs-toggle-password' })}
+			data-hs-toggle-password={JSON.stringify({ target: `#${id}` })}
 			class="absolute inset-y-0 end-0 z-20 flex cursor-pointer items-center rounded-e-md pe-4 {isInvalid
 				? 'focus:text-red-400 dark:focus:text-red-600'
 				: 'focus:text-blue-400 dark:focus:text-blue-600'} 
@@ -131,6 +133,7 @@
 {:else}
 	<!-- Outros tipos de campo -->
 	<div class="relative">
+		<!-- svelte-ignore a11y_autofocus -->
 		<input
 			{id}
 			{name}
@@ -141,6 +144,7 @@
 			{maxlength}
 			{required}
 			{value}
+			{autofocus}
 			oninput={(e) => {
 				// Se o tipo do campo for 'email', converte para minúsculo o que for digitado
 				const input = e.target as HTMLInputElement

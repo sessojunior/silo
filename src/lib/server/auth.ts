@@ -132,22 +132,12 @@ export async function invalidateAllSessions(userId: string) {
 
 // Cria o cookie de sessão com o token e a data de expiração
 export function setSessionTokenCookie(event: RequestEvent, token: string, expiresAt: Date) {
-	event.cookies.set(sessionCookieName, token, {
-		// httpOnly: true,
-		// sameSite: 'lax',
-		expires: expiresAt,
-		path: '/'
-	})
+	event.cookies.set(sessionCookieName, token, { expires: expiresAt, path: '/' })
 }
 
 // Exclui o cookie de sessão
 export function deleteSessionTokenCookie(event: RequestEvent) {
-	event.cookies.delete(sessionCookieName, {
-		// httpOnly: true,
-		// sameSite: 'lax',
-		maxAge: 0,
-		path: '/'
-	})
+	event.cookies.delete(sessionCookieName, { maxAge: 0, path: '/' })
 }
 
 // Gera um ID para o usuário
