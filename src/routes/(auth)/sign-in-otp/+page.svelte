@@ -27,7 +27,7 @@
 
 <!-- Container -->
 <div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
-	<!-- Etapa 1: Inserir o e-mail e a senha para fazer login -->
+	<!-- Etapa 1: Inserir o e-mail para fazer login -->
 	{#if step === 1}
 		<form
 			method="post"
@@ -63,24 +63,6 @@
 					/>
 				</div>
 				<div>
-					<Label htmlFor="hs-toggle-password" isInvalid={form?.field === 'password'}>Senha</Label>
-					<Input
-						type="password"
-						id="hs-toggle-password"
-						name="password"
-						autocomplete="current-password"
-						placeholder="••••••••"
-						minlength={6}
-						maxlength={160}
-						required
-						isInvalid={form?.field === 'password'}
-						invalidMessage={form?.message}
-					/>
-				</div>
-				<p class="text-end">
-					<Link href="/forget-password">Esqueceu a senha?</Link>
-				</p>
-				<div>
 					<Button type="submit" disabled={loading}>
 						{#if loading}
 							<span class="icon-[lucide--loader-circle] animate-spin"></span>
@@ -92,7 +74,7 @@
 				</div>
 				<Divider>ou</Divider>
 				<div class="flex w-full flex-col items-center justify-center gap-3">
-					<Button href="/sign-in-otp" type="button" style="bordered" icon="icon-[lucide--log-in]">Entrar só com o e-mail</Button>
+					<Button href="/sign-in" type="button" style="bordered" icon="icon-[lucide--log-in]">Entrar com e-mail e senha</Button>
 					<Button type="button" style="bordered" icon="icon-[logos--google-icon]">Entrar com Google</Button>
 					<Button type="button" style="bordered" icon="icon-[logos--facebook]">Entrar com Facebook</Button>
 				</div>
@@ -103,7 +85,7 @@
 		</form>
 	{/if}
 
-	<!-- Etapa 2: Se o e-mail do usuário não estiver verificado, envia o código OTP para verificar o e-mail -->
+	<!-- Etapa 2: Enviar o código OTP para fazer login -->
 	{#if step === 2}
 		<form
 			method="post"

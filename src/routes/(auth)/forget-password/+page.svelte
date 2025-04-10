@@ -62,7 +62,6 @@
 						maxlength={255}
 						required
 						autofocus
-						bind:value={email}
 						isInvalid={form?.field === 'email'}
 						invalidMessage={form?.message ?? ''}
 					/>
