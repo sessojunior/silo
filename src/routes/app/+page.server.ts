@@ -14,7 +14,7 @@ export const actions: Actions = {
 		if (!event.locals.session) {
 			return fail(401)
 		}
-		await auth.invalidateSessionId(event.locals.session.id)
+		await auth.invalidateSessionToken(event.locals.session.id)
 		auth.deleteCookieSessionToken(event)
 
 		return redirect(302, '/sign-in')

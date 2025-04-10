@@ -1,30 +1,31 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
-export const user = sqliteTable('user', {
+export const authUser = sqliteTable('auth_user', {
 	id: text('id').primaryKey(),
 	name: text('name').notNull(),
 	email: text('email').notNull().unique(),
 	emailVerified: integer('email_verified').notNull(),
 	password: text('password').notNull()
 })
-export type User = typeof user.$inferSelect
+export type AuthUser = typeof authUser.$inferSelect
 
-export const session = sqliteTable('session', {
+export const authSession = sqliteTable('auth_session', {
 	id: text('id').primaryKey(),
+	token: text('token').notNull(),
 	userId: text('user_id')
 		.notNull()
-		.references(() => user.id),
+		.references(() => authUser.id),
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 })
-export type Session = typeof session.$inferSelect
+export type AuthSession = typeof authSession.$inferSelect
 
-export const emailVerificationCode = sqliteTable('email_verification_code', {
+export const authCode = sqliteTable('auth_code', {
 	id: text('id').primaryKey(),
 	code: text('code'),
 	email: text('email').notNull(),
 	userId: text('user_id')
 		.notNull()
-		.references(() => user.id),
+		.references(() => authUser.id),
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 })
-export type EmailVerificationCode = typeof emailVerificationCode.$inferSelect
+export type AuthCode = typeof authCode.$inferSelect

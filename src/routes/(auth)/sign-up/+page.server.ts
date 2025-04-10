@@ -28,14 +28,14 @@ export const actions: Actions = {
 		if ('error' in resultUser) return fail(400, { field: resultUser.error.field, message: resultUser.error.message ?? 'Ocorreu um erro ao criar o usuário.' })
 
 		// Obtém um código OTP e salva-o no banco de dados
-		const otp = await auth.generateOtp(formatEmail)
+		const otp = await auth.generateCode(formatEmail)
 		if ('error' in otp) return fail(400, { field: null, message: otp.error.message ?? 'Erro ao gerar o código para enviar por e-mail.' })
 
 		// Código OTP
 		const code = otp.code
 
 		// Envia o código OTP por e-mail
-		await auth.sendEmailOtp({ email: formatEmail, type: 'email-verification', code })
+		await auth.sendEmailCode({ email: formatEmail, type: 'email-verification', code })
 
 		// console.log('code', code)
 
@@ -62,14 +62,13 @@ export const actions: Actions = {
 		// Verifica se o código OTP enviado pelo usuário é válido e se não está expirado
 		// Se o código for válido e não estiver expirado, define o e-mail do usuário como verificado (1) na tabela 'user' do banco de dados
 		// Se for inválido, retorna um erro
-		const resultCode = await auth.validateOtp({ email: formatEmail, code: typeof code === 'string' ? code : '' })
+		const resultCode = await auth.validateCode({ email: formatEmail, code: typeof code === 'string' ? code : '' })
 		if ('error' in resultCode) return fail(400, { field: 'code', message: resultCode.error ? resultCode.error.message : 'O código é inválido ou expirou.' })
 
 		// Cria a sessão e o cookie de sessão
-		const sessionToken = auth.generateSessionToken()
-		const resultSession = await auth.createSession(sessionToken, user?.id as string)
+		const resultSession = await auth.createSession(user?.id as string)
 		if ('error' in resultSession) return fail(400, { field: null, message: resultSession.error.message ?? 'Ocorreu um erro ao criar a sessão.' })
-		auth.setCookieSessionToken(event, sessionToken, resultSession.session.expiresAt)
+		auth.setCookieSessionToken(event, resultSession.token, resultSession.session.expiresAt)
 
 		// Redireciona o usuário para a página de boas vindas
 		return redirect(302, '/app/welcome')

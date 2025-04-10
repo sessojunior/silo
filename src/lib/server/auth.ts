@@ -1,7 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit'
 import { eq, and, lt } from 'drizzle-orm'
-import { verify } from '@node-rs/argon2'
-import { hash } from '@node-rs/argon2'
+import { verify, hash } from '@node-rs/argon2'
 import { sha256 } from '@oslojs/crypto/sha2'
 import { encodeBase64url, encodeHexLowerCase, encodeBase32LowerCase } from '@oslojs/encoding'
 import { type RandomReader, generateRandomString } from '@oslojs/crypto/random'
@@ -9,153 +8,16 @@ import { db } from '$lib/server/db'
 import * as table from '$lib/server/db/schema'
 import { sendEmail } from './email'
 
-// Sessões
-// Os usuários usarão um token de sessão vinculado a uma sessão em vez do ID diretamente.
-// O ID da sessão será o hash SHA-256 do token.
-// O SHA-256 é uma função de hash unidirecional.
-// Isso garante que, mesmo que o conteúdo do banco de dados tenha vazado,
-// o invasor não conseguirá recuperar tokens válidos.
-
-// Um dia em milissegundos
-const DAY_IN_MS = 24 * 60 * 60 * 1000 // 86400000 ms (1 dia)
-
-// Um minuto em milissegundos
-const MINUTE_IN_MS = 60 * 1000 // 60000 ms (1 minuto)
-
-// Nome do cookie de sessão
-export const sessionCookieName = 'auth-session'
-
-// Gera o token de sessão
-export function generateSessionToken(): string {
-	// Gera um token aleatório com pelo menos 20 bytes
-	const bytes = crypto.getRandomValues(new Uint8Array(20))
-	const token = encodeBase64url(bytes)
-
-	// Retorna o token
-	return token
-}
-
-// Cria uma sessão para o usuário
-// O ID da sessão será um hash SHA-256 do token
-// A sessão expira em 30 dias
-export async function createSession(
-	token: string,
-	userId: string
-): Promise<{ session: { id: string; userId: string; expiresAt: Date } } | { error: { code: string; message: string } }> {
-	// Gera o hash SHA-256 do token
-	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)))
-
-	// Sessão expira em 30 dias
-	const expiresAt = new Date(Date.now() + DAY_IN_MS * 30)
-
-	// Dados da sessão
-	const session: table.Session = { id: sessionId, userId, expiresAt }
-
-	// Insere a sessão no banco de dados
-	const [newSession] = await db.insert(table.session).values(session).returning()
-	if (!newSession) return { error: { code: 'SESSION_INTERNAL_ERROR', message: 'Erro ao salvar a sessão no banco de dados.' } }
-
-	// Retorna a sessão
-	return { session }
-}
-
-// Valida um token de sessão
-// As sessões são validadas em 2 etapas:
-// 1. Verifica se a sessão existe no banco de dados
-// 2. Verifica se a sessão expirou
-export async function validateSessionToken(
-	token: string
-): Promise<{ session: { id: string; userId: string; expiresAt: Date }; user: { id: string; name: string; email: string } } | { error: { code: string; message: string } }> {
-	// Gera o hash SHA-256 do token
-	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)))
-
-	// 1. Verifica se a sessão existe no banco de dados
-	const [resultSession] = await db
-		.select({
-			user: { id: table.user.id, name: table.user.name, email: table.user.email },
-			session: { id: table.session.id, userId: table.session.userId, expiresAt: table.session.expiresAt }
-		})
-		.from(table.session)
-		.innerJoin(table.user, eq(table.session.userId, table.user.id))
-		.where(eq(table.session.id, sessionId))
-
-	// Se a sessão não existe
-	if (!resultSession) return { error: { code: 'SESSION_NOT_EXISTS', message: 'A sessão não existe.' } }
-
-	// Obtém a sessão e o usuário
-	const { session, user } = resultSession
-
-	// 2. Verifica se a sessão expirou
-	const sessionExpired = Date.now() >= session.expiresAt.getTime()
-
-	// Se a sessão expirou
-	if (sessionExpired) {
-		// Exclui a sessão do banco de dados
-		await db.delete(table.session).where(eq(table.session.id, session.id))
-		return { error: { code: 'SESSION_EXPIRED', message: 'A sessão expirou.' } }
-	}
-
-	// Se a sessão não expirou, verifica se ela precisa ser estendida
-	// Isso garante que as sessões ativas sejam persistidas, enquanto as inativas eventualmente expirarão.
-	// Verifica se há menos de 15 dias (metade da expiração de 30 dias) antes da expiração.
-	const renewSession = Date.now() >= session.expiresAt.getTime() - DAY_IN_MS * 15
-
-	// Se a sessão precisa ser estendida, atualiza a data de expiração
-	if (renewSession) {
-		session.expiresAt = new Date(Date.now() + DAY_IN_MS * 30)
-		await db.update(table.session).set({ expiresAt: session.expiresAt }).where(eq(table.session.id, session.id))
-	}
-
-	// Retorna a sessão e o usuário
-	return { session, user }
-}
-
-// Tipo de retorno da função validateSessionToken
-export type SessionValidationResult = Awaited<ReturnType<typeof validateSessionToken>>
-
-// Invalida uma sessão pelo ID excluindo-a do banco de dados
-export async function invalidateSessionId(sessionId: string): Promise<void> {
-	await db.delete(table.session).where(eq(table.session.id, sessionId))
-}
-
-// Invalida todas as sessões de um usuário excluindo-as do banco de dados
-export async function invalidateAllSessions(userId: string): Promise<void> {
-	await db.delete(table.session).where(eq(table.session.userId, userId))
-}
-
-// Cookies
-// A proteção CSRF é essencial ao usar cookies.
-// O SvelteKit tem proteção CSRF básica usando o header Origin que é habilitado por padrão.
-// Os cookies de sessão devem ter os seguintes atributos:
-
-// - HttpOnly: Os cookies são acessíveis apenas no lado do servidor
-// - SameSite=Lax: Use Strict para sites críticos
-// - Secure: Os cookies só podem ser enviados por HTTPS (deve ser omitido ao testar no localhost)
-// - Max-Age ou Expires: Deve ser definido para persistir cookies
-// - Path=/: Os cookies podem ser acessados de todas as rotas
-
-// O SvelteKit define automaticamente a flag Secure quando implantado na produção.
-
-// Cria o cookie de sessão com o token e a data de expiração
-export function setCookieSessionToken(event: RequestEvent, token: string, expiresAt: Date): void {
-	event.cookies.set(sessionCookieName, token, { expires: expiresAt, path: '/' })
-}
-
-// Exclui o cookie de sessão
-export function deleteCookieSessionToken(event: RequestEvent): void {
-	event.cookies.delete(sessionCookieName, { maxAge: 0, path: '/' })
-}
-
-// Gera um ID para o usuário
-export function generateUserId(): string {
+// Gera um ID
+export function generateId(): string {
 	// ID com 120 bits, ou aproximadamente o mesmo que o UUID v4.
 	const bytes = crypto.getRandomValues(new Uint8Array(15))
 	const id = encodeBase32LowerCase(bytes)
 	return id
 }
 
-// Gera uma senha para o usuário
-export async function generateUserPassword(password: string): Promise<string> {
+// Gera um hash da senha
+export async function generateHashPassword(password: string): Promise<string> {
 	// Cria o hash da senha com os parâmetros mínimos recomendados
 	const passwordHash = await hash(password, {
 		memoryCost: 19456,
@@ -164,6 +26,51 @@ export async function generateUserPassword(password: string): Promise<string> {
 		parallelism: 1
 	})
 	return passwordHash
+}
+
+// Verifica se a senha corresponde ao hash da senha
+export async function verifyPassword({ password, hashPassword }: { password: string; hashPassword: string }): Promise<boolean> {
+	// Verifica se a senha corresponde ao hash da senha
+	const validPassword = await verify(hashPassword, password, {
+		memoryCost: 19456,
+		timeCost: 2,
+		outputLen: 32,
+		parallelism: 1
+	})
+	return validPassword
+}
+
+// Gera um token
+export function generateToken(): string {
+	// Gera o token com 20 bytes
+	const bytes = crypto.getRandomValues(new Uint8Array(20))
+	const token = encodeBase64url(bytes)
+	return token
+}
+
+// Gera um hash do token
+export function generateHashToken(token: string): string {
+	// Gera o hash SHA-256 do token
+	const hashToken = encodeHexLowerCase(sha256(new TextEncoder().encode(token)))
+	return hashToken
+}
+
+// Gera um código OTP
+// - alphabet: Caracteres permitidos e legíveis em todas as tipografias, para evitar ambiguidades (exemplo: '347AEFHJKMNPRTWY')
+// - numberCharacters: Número de caracteres que serão gerados (exemplo: 5)
+export function generateOtp({ allowedCharacters, numberCharacters }: { allowedCharacters: string; numberCharacters: number }): string {
+	// Gera um código aleatório utilizando caracteres permitidos e comprimento fixo de caracteres
+	// A probabilidade de acertar aleatoriamente este código é de 1 em 1.048.576 (cerca de 1 em 1 milhão)
+	const code = generateRandomString(
+		{
+			read(bytes) {
+				crypto.getRandomValues(bytes)
+			}
+		} as RandomReader, // Sequência aleatória de bytes
+		allowedCharacters, // Caracteres permitidos
+		numberCharacters // Número de caracteres que serão gerados
+	)
+	return code
 }
 
 // Valida o e-mail
@@ -257,67 +164,192 @@ export function validateName(name: string): boolean {
 	return true
 }
 
+// Sessões
+// Os usuários usarão um token de sessão vinculado a uma sessão em vez do ID diretamente.
+// O ID da sessão será o hash SHA-256 do token.
+// O SHA-256 é uma função de hash unidirecional.
+// Isso garante que, mesmo que o conteúdo do banco de dados tenha vazado,
+// o invasor não conseguirá recuperar tokens válidos.
+
+// Cria uma sessão para o usuário
+// O token da sessão será um hash SHA-256 do token
+// A sessão expira em 30 dias
+export async function createSession(
+	userId: string
+): Promise<{ session: { token: string; userId: string; expiresAt: Date }; token: string } | { error: { code: string; message: string } }> {
+	// Gera um token aleatório
+	const token = generateToken()
+
+	// Gera o hash do token
+	const hashToken = generateHashToken(token)
+
+	// Um dia em milissegundos
+	const DAY_IN_MS = 24 * 60 * 60 * 1000 // 86400000 ms (1 dia)
+
+	// Sessão expira em 30 dias
+	const expiresAt = new Date(Date.now() + DAY_IN_MS * 30)
+
+	// ID da sessão
+	const sessionId = generateId()
+
+	// Dados da sessão
+	const session: table.AuthSession = { id: sessionId, token: hashToken, userId, expiresAt }
+
+	// Insere a sessão no banco de dados
+	const [insertSession] = await db.insert(table.authSession).values(session).returning()
+	if (!insertSession) return { error: { code: 'INSERT_SESSION_ERROR', message: 'Erro ao salvar a sessão.' } }
+
+	// Retorna a sessão
+	return { session, token }
+}
+
+// Valida um token de sessão
+// As sessões são validadas em 2 etapas:
+// 1. Verifica se a sessão existe no banco de dados
+// 2. Verifica se a sessão expirou
+export async function validateSessionToken(
+	token: string
+): Promise<
+	{ session: { id: string; token: string; userId: string; expiresAt: Date }; user: { id: string; name: string; email: string } } | { error: { code: string; message: string } }
+> {
+	// Gera o hash do token
+	const hashToken = generateHashToken(token)
+
+	// 1. Verifica se a sessão existe no banco de dados
+	const [selectSession] = await db
+		.select({
+			user: { id: table.authUser.id, name: table.authUser.name, email: table.authUser.email },
+			session: { id: table.authSession.id, token: table.authSession.token, userId: table.authSession.userId, expiresAt: table.authSession.expiresAt }
+		})
+		.from(table.authSession)
+		.innerJoin(table.authUser, eq(table.authSession.userId, table.authUser.id))
+		.where(eq(table.authSession.token, hashToken))
+
+	// Se a sessão não existe
+	if (!selectSession) return { error: { code: 'SESSION_NOT_EXISTS', message: 'A sessão não existe.' } }
+
+	// Obtém a sessão e o usuário
+	const { session, user } = selectSession
+
+	// 2. Verifica se a sessão expirou
+	const sessionExpired = Date.now() >= session.expiresAt.getTime()
+
+	// Se a sessão expirou
+	if (sessionExpired) {
+		// Exclui a sessão do banco de dados
+		await db.delete(table.authSession).where(eq(table.authSession.id, session.id))
+		return { error: { code: 'SESSION_EXPIRED', message: 'A sessão expirou.' } }
+	}
+
+	// Um dia em milissegundos
+	const DAY_IN_MS = 24 * 60 * 60 * 1000 // 86400000 ms (1 dia)
+
+	// Se a sessão não expirou, verifica se ela precisa ser estendida
+	// Isso garante que as sessões ativas sejam persistidas, enquanto as inativas eventualmente expirarão.
+	// Verifica se há menos de 15 dias (metade da expiração de 30 dias) antes da expiração.
+	const renewSession = Date.now() >= session.expiresAt.getTime() - DAY_IN_MS * 15
+
+	// Se a sessão precisa ser estendida, atualiza a data de expiração
+	if (renewSession) {
+		session.expiresAt = new Date(Date.now() + DAY_IN_MS * 30)
+		await db.update(table.authSession).set({ expiresAt: session.expiresAt }).where(eq(table.authSession.id, session.id))
+	}
+
+	// Retorna a sessão e o usuário
+	return { session, user }
+}
+export type SessionValidationResult = Awaited<ReturnType<typeof validateSessionToken>>
+
+// Invalida uma sessão pelo token excluindo-a do banco de dados
+export async function invalidateSessionToken(sessionToken: string): Promise<void> {
+	await db.delete(table.authSession).where(eq(table.authSession.token, sessionToken))
+}
+
+// Invalida todas as sessões de um usuário excluindo-as do banco de dados
+export async function invalidateAllSessions(userId: string): Promise<void> {
+	await db.delete(table.authSession).where(eq(table.authSession.userId, userId))
+}
+
+// Cookies
+// A proteção CSRF é essencial ao usar cookies.
+// O SvelteKit tem proteção CSRF básica usando o header Origin que é habilitado por padrão.
+// Os cookies de sessão devem ter os seguintes atributos:
+
+// - HttpOnly: Os cookies são acessíveis apenas no lado do servidor
+// - SameSite=Lax: Use Strict para sites críticos
+// - Secure: Os cookies só podem ser enviados por HTTPS (deve ser omitido ao testar no localhost)
+// - Max-Age ou Expires: Deve ser definido para persistir cookies
+// - Path=/: Os cookies podem ser acessados de todas as rotas
+
+// O SvelteKit define automaticamente a flag Secure quando implantado na produção.
+
+// Nome do cookie de sessão
+export const sessionCookieName = 'auth-session'
+
+// Cria o cookie de sessão com o token e a data de expiração
+export function setCookieSessionToken(event: RequestEvent, token: string, expiresAt: Date): void {
+	event.cookies.set(sessionCookieName, token, { expires: expiresAt, path: '/' })
+}
+
+// Exclui o cookie de sessão
+export function deleteCookieSessionToken(event: RequestEvent): void {
+	event.cookies.delete(sessionCookieName, { maxAge: 0, path: '/' })
+}
+
 // Gera o código de verificação OTP para enviá-lo por e-mail e salva-o no banco de dados
-export async function generateOtp(email: string): Promise<{ success: boolean; code: string } | { error: { code: string; message: string } }> {
-	// Formata os dados para buscar o e-mail no banco de dados
+export async function generateCode(email: string): Promise<{ success: boolean; code: string } | { error: { code: string; message: string } }> {
+	// Formata os dados recebidos
 	const formatEmail = email.trim().toLowerCase()
 
 	// Se o e-mail for inválido retorna null
 	if (!validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido.' } }
 
 	// Verifica se o usuário existe no banco de dados pelo e-mail
-	const resultUser = await db
+	const selectUser = await db
 		.select()
-		.from(table.user)
-		.where(eq(table.user.email, formatEmail))
+		.from(table.authUser)
+		.where(eq(table.authUser.email, formatEmail))
 		.limit(1)
 		.then((results) => results.at(0))
 
-	// Se usuário não for encontrado
-	if (!resultUser?.id) return { error: { code: 'NO_EMAIL_FOUND', message: 'Não existe um usuário com este e-mail.' } }
+	// Se o usuário não for encontrado
+	if (!selectUser?.id) return { error: { code: 'NO_EMAIL_FOUND', message: 'Não existe um usuário com este e-mail.' } }
 
-	// ID com 120 bits, ou aproximadamente o mesmo que o UUID v4.
-	const id = encodeBase32LowerCase(crypto.getRandomValues(new Uint8Array(15)))
+	// ID do código
+	const codeId = generateId()
 
-	// Sequência aletória
-	const random: RandomReader = {
-		read(bytes) {
-			crypto.getRandomValues(bytes)
-		}
-	}
-
-	// Caracteres permitidos e legíveis em todas as tipografias, para evitar ambiguidades
-	const alphabet = '347AEFHJKMNPRTWY'
-
-	// Número de caracteres que serão gerados
-	const numberCharacters = 5
-
-	// Gera um código aleatório utilizando caracteres permitidos e comprimento fixo de caracteres
+	// Gera um código aleatório utilizando caracteres legíveis em todas as tipografias, para evitar ambiguidades e número de caracteres que serão gerados
 	// A probabilidade de acertar aleatoriamente este código é de 1 em 1.048.576 (cerca de 1 em 1 milhão)
-	const code = generateRandomString(random, alphabet, numberCharacters)
+	const code = generateOtp({ allowedCharacters: '347AEFHJKMNPRTWY', numberCharacters: 5 })
 
 	// Remove códigos anteriores do mesmo usuário
-	await db.delete(table.emailVerificationCode).where(eq(table.emailVerificationCode.userId, resultUser.id))
+	await db.delete(table.authCode).where(eq(table.authCode.userId, selectUser.id))
 
-	// Insere o novo código no banco de dados, que expira em 10 minutos
-	const [newCode] = await db
-		.insert(table.emailVerificationCode)
+	// Um minuto em milissegundos
+	const MINUTE_IN_MS = 60 * 1000 // 60000 ms (1 minuto)
+
+	// Tempo de expiração do código, expira em 10 minutos
+	const expiresAt = new Date(Date.now() + MINUTE_IN_MS * 10)
+
+	// Insere o novo código no banco de dados
+	const [insertCode] = await db
+		.insert(table.authCode)
 		.values({
-			id,
+			id: codeId,
 			code,
 			email,
-			userId: resultUser.id,
-			expiresAt: new Date(Date.now() + MINUTE_IN_MS * 10)
+			userId: selectUser.id,
+			expiresAt
 		})
 		.returning()
-	if (!newCode) return { error: { code: 'OTP_INTERNAL_ERROR', message: 'Erro ao salvar a código no banco de dados.' } }
+	if (!insertCode) return { error: { code: 'INSERT_CODE_ERROR', message: 'Erro ao salvar a código no banco de dados.' } }
 
 	// Retorna o código OTP
 	return { success: true, code }
 }
 
 // Envia o código de verificação OTP para o e-mail do usuário
-export async function sendEmailOtp({
+export async function sendEmailCode({
 	email,
 	type,
 	code
@@ -326,7 +358,7 @@ export async function sendEmailOtp({
 	type: string
 	code: string
 }): Promise<{ success: boolean } | { error: { code: string; message: string } }> {
-	// Formata os dados para buscar o e-mail no banco de dados
+	// Formata os dados recebidos
 	const formatEmail = email.trim().toLowerCase()
 
 	// Se o e-mail for inválido retorna null
@@ -343,60 +375,60 @@ export async function sendEmailOtp({
 
 // Verifica se o código de verificação OTP enviado para o usuário é válido e se não expirou
 // Se o código for válido, define o e-mail do usuário como verificado (1) na tabela 'user' do banco de dados
-export async function validateOtp({ email, code }: { email: string; code: string }): Promise<{ success: boolean } | { error: { code: string; message: string } }> {
-	// Formata os dados para buscar o e-mail no banco de dados
+export async function validateCode({ email, code }: { email: string; code: string }): Promise<{ success: boolean } | { error: { code: string; message: string } }> {
+	// Formata os dados recebidos
 	const formatEmail = email.trim().toLowerCase()
 
 	// Verifica se o e-mail é válido
 	if (!validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
 	// Apaga do banco de dados todos os códigos expirados
-	await db.delete(table.emailVerificationCode).where(lt(table.emailVerificationCode.expiresAt, new Date()))
+	await db.delete(table.authCode).where(lt(table.authCode.expiresAt, new Date()))
 
 	// Busca o código informado, que ainda esteja ativo, para o e-mail fornecido
-	const resultCode = await db
+	const selectCode = await db
 		.select({
-			code: table.emailVerificationCode.code,
-			expiresAt: table.emailVerificationCode.expiresAt
+			code: table.authCode.code,
+			expiresAt: table.authCode.expiresAt
 		})
-		.from(table.emailVerificationCode)
-		.where(and(eq(table.emailVerificationCode.email, formatEmail), eq(table.emailVerificationCode.code, code)))
+		.from(table.authCode)
+		.where(and(eq(table.authCode.email, formatEmail), eq(table.authCode.code, code)))
 		.limit(1)
 		.then((res) => res[0])
 
 	// Se não encontrou o código (porque não existe ou expirou e foi deletado)
-	if (!resultCode) return { error: { code: 'WRONG_OR_EXPIRED_CODE', message: 'O código é inválido ou expirou.' } }
+	if (!selectCode) return { error: { code: 'WRONG_OR_EXPIRED_CODE', message: 'O código é inválido ou expirou.' } }
 
 	// Define o e-mail do usuário como verificado (1) na tabela 'user' do banco de dados
-	await db.update(table.user).set({ emailVerified: 1 }).where(eq(table.user.email, formatEmail))
+	await db.update(table.authUser).set({ emailVerified: 1 }).where(eq(table.authUser.email, formatEmail))
 
 	// Código válido
 	return { success: true }
 }
 
-// Verifica se o e-mail do usuário é válido e existe e obtém o ID do usuário
+// Verifica se o e-mail do usuário é válido e existe e obtém os dados do usuário
 export async function validateUserEmail(
 	email: string
 ): Promise<{ success: boolean; user: { id: string; name: string; email: string } } | { error: { code: string; message: string } }> {
-	// Formata os dados para buscar o e-mail no banco de dados
+	// Formata os dados recebidos
 	const formatEmail = email.trim().toLowerCase()
 
 	// Verifica se o e-mail é válido
 	if (!validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
 	// Verifica se o usuário existe no banco de dados pelo e-mail
-	const resultUser = await db
+	const selectUser = await db
 		.select()
-		.from(table.user)
-		.where(eq(table.user.email, formatEmail))
+		.from(table.authUser)
+		.where(eq(table.authUser.email, formatEmail))
 		.limit(1)
 		.then((results) => results.at(0))
 
 	// Se usuário não for encontrado
-	if (!resultUser?.id) return { error: { code: 'NO_EMAIL_FOUND', message: 'Não existe um usuário com este e-mail.' } }
+	if (!selectUser?.id) return { error: { code: 'NO_EMAIL_FOUND', message: 'Não existe um usuário com este e-mail.' } }
 
 	// Retorna os dados do usuário
-	return { success: true, user: { id: resultUser.id, name: resultUser.name, email: resultUser.email } }
+	return { success: true, user: { id: selectUser.id, name: selectUser.name, email: selectUser.email } }
 }
 
 // Altera a senha do usuário
@@ -408,28 +440,28 @@ export async function changeUserPassword({
 	password: string
 }): Promise<{ success: boolean; user: { id: string; name: string; email: string } } | { error: { code: string; message: string } }> {
 	// Verifica se o usuário existe no banco de dados pelo ID do usuário (userId)
-	const resultUser = await db
+	const selectUser = await db
 		.select()
-		.from(table.user)
-		.where(eq(table.user.id, userId))
+		.from(table.authUser)
+		.where(eq(table.authUser.id, userId))
 		.limit(1)
 		.then((results) => results.at(0))
 
 	// Se usuário não for encontrado
-	if (!resultUser?.id) return { error: { code: 'NO_USER_FOUND', message: 'O usuário não existe.' } }
+	if (!selectUser?.id) return { error: { code: 'NO_USER_FOUND', message: 'O usuário não existe.' } }
 
 	// Verifica se a senha é válida
 	if (!validatePassword(password)) return { error: { code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
 
 	// Cria o hash da senha
-	const passwordHash = await generateUserPassword(password)
+	const passwordHash = await generateHashPassword(password)
 
 	// Altera a senha do usuário
-	const updatePassword = await db.update(table.user).set({ password: passwordHash }).where(eq(table.user.id, resultUser.id)).returning({ id: table.user.id })
-	if (!updatePassword) return { error: { code: 'INTERNAL_ERROR', message: 'Ocorreu um erro ao alterar a senha.' } }
+	const updateUser = await db.update(table.authUser).set({ password: passwordHash }).where(eq(table.authUser.id, selectUser.id)).returning({ id: table.authUser.id })
+	if (!updateUser) return { error: { code: 'UPDATE_PASSWORD_ERROR', message: 'Ocorreu um erro ao alterar a senha.' } }
 
 	// Retorna os dados do usuário
-	return { success: true, user: { id: resultUser.id, name: resultUser.name, email: resultUser.email } }
+	return { success: true, user: { id: selectUser.id, name: selectUser.name, email: selectUser.email } }
 }
 
 // Cria um usuário
@@ -438,54 +470,54 @@ export async function signUp(
 	email: string,
 	password: string
 ): Promise<{ success: boolean; user: { id: string; name: string; email: string; emailVerified: number } } | { error: { field: string | null; code: string; message: string } }> {
-	// Formata os dados para buscar o e-mail no banco de dados
+	// Formata os dados recebidos
+	const formatName = name.trim()
 	const formatEmail = email.trim().toLowerCase()
 
 	// Verifica se o nome é válido
-	if (!validateName(name)) return { error: { field: 'name', code: 'INVALID_NAME', message: 'O nome é inválido.' } }
+	if (!validateName(formatName)) return { error: { field: 'name', code: 'INVALID_NAME', message: 'O nome é inválido.' } }
 
 	// Verifica se o e-mail é válido
 	if (!validateEmail(formatEmail)) return { error: { field: 'email', code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
 	// Verifica se o usuário já existe no banco de dados pelo e-mail
-	const resultUser = await db
+	const selectUser = await db
 		.select()
-		.from(table.user)
-		.where(eq(table.user.email, formatEmail))
+		.from(table.authUser)
+		.where(eq(table.authUser.email, formatEmail))
 		.limit(1)
 		.then((results) => results.at(0))
 
 	// Se usuário for encontrado
-	if (resultUser?.id) return { error: { field: 'email', code: 'USER_ALREADY_EXISTS', message: 'Já existe um usuário com este e-mail.' } }
+	if (selectUser?.id) return { error: { field: 'email', code: 'USER_ALREADY_EXISTS', message: 'Já existe um usuário com este e-mail.' } }
 
 	// Verifica se a senha é válida
 	if (!validatePassword(password)) return { error: { field: 'password', code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
 
-	// Gera o ID do usuário
-	const userId = generateUserId()
+	// ID do usuário
+	const userId = generateId()
+
+	// E-mail não está verificado ainda
+	const emailVerified = 0 // Deixar como o (não verificado). 0 é false (não verificado) e 1 é true (verificado)
 
 	// Cria o hash da senha
-	const passwordHash = await generateUserPassword(password)
+	const passwordHash = await generateHashPassword(password)
 
 	// Insere o usuário no banco de dados
-	const [newUser] = await db
-		.insert(table.user)
+	const [insertUser] = await db
+		.insert(table.authUser)
 		.values({
 			id: userId,
-			// Formata o nome, tira espaços em branco
-			name: name.trim(),
-			// Formata o e-mail, converte tudo para minúsculo
-			email: email.trim().toLowerCase(),
-			// E-mail não está verificado ainda
-			emailVerified: 0, // 0 é false
-			// Hash da senha
+			name: formatName,
+			email: formatEmail,
+			emailVerified,
 			password: passwordHash
 		})
 		.returning()
-	if (!newUser) return { error: { field: null, code: 'USER_INTERNAL_ERROR', message: 'Erro ao salvar o usuário no banco de dados.' } }
+	if (!insertUser) return { error: { field: null, code: 'INSERT_USER_ERROR', message: 'Erro ao salvar o usuário no banco de dados.' } }
 
 	// Retorna os dados do usuário criado
-	return { success: true, user: { id: newUser.id, name: newUser.name, email: newUser.email, emailVerified: newUser.emailVerified } }
+	return { success: true, user: { id: insertUser.id, name: insertUser.name, email: insertUser.email, emailVerified: insertUser.emailVerified } }
 }
 
 // Login do usuário
@@ -493,36 +525,30 @@ export async function signIn(
 	email: string,
 	password: string
 ): Promise<{ success: boolean; user: { id: string; name: string; email: string; emailVerified: number } } | { error: { field: string | null; code: string; message: string } }> {
-	// Formata os dados para buscar o e-mail no banco de dados
+	// Formata os dados recebidos
 	const formatEmail = email.trim().toLowerCase()
 
 	// Verifica se o e-mail é válido
 	if (!validateEmail(formatEmail)) return { error: { field: 'email', code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
-	// Verifica se o usuário já existe no banco de dados pelo e-mail
-	const resultUser = await db
+	// Verifica se o usuário não existe no banco de dados pelo e-mail
+	const selectUser = await db
 		.select()
-		.from(table.user)
-		.where(eq(table.user.email, formatEmail))
+		.from(table.authUser)
+		.where(eq(table.authUser.email, formatEmail))
 		.limit(1)
 		.then((results) => results.at(0))
 
 	// Se usuário for encontrado
-	if (!resultUser?.id) return { error: { field: 'email', code: 'USER_NOT_FOUND', message: 'Não existe um usuário com este e-mail.' } }
+	if (!selectUser?.id) return { error: { field: 'email', code: 'USER_NOT_FOUND', message: 'Não existe um usuário com este e-mail.' } }
 
 	// Verifica se a senha é válida
 	if (!validatePassword(password)) return { error: { field: 'password', code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
 
 	// Verifica se a senha corresponde ao hash armazenado no banco de dados
-	// Se a senha for inválida, retorna um erro
-	const validPassword = await verify(resultUser.password, password, {
-		memoryCost: 19456,
-		timeCost: 2,
-		outputLen: 32,
-		parallelism: 1
-	})
+	const validPassword = verifyPassword({ hashPassword: selectUser.password, password })
 	if (!validPassword) return { error: { field: 'password', code: 'INCORRECT_PASSWORD', message: 'A senha está incorreta.' } }
 
 	// Retorna os dados do usuário
-	return { success: true, user: { id: resultUser.id, name: resultUser.name, email: resultUser.email, emailVerified: resultUser.emailVerified } }
+	return { success: true, user: { id: selectUser.id, name: selectUser.name, email: selectUser.email, emailVerified: selectUser.emailVerified } }
 }
