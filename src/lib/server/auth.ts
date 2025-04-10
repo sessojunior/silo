@@ -204,9 +204,10 @@ export async function createSession(
 }
 
 // Valida um token de sessão
-// As sessões são validadas em 2 etapas:
 // 1. Verifica se a sessão existe no banco de dados
 // 2. Verifica se a sessão expirou
+// 3. Se a sessão não expirou, verifica se ela precisa ser estendida
+// 4. Apaga do banco de dados todos os tokens expirados
 export async function validateSessionToken(
 	token: string
 ): Promise<
@@ -244,7 +245,7 @@ export async function validateSessionToken(
 	// Um dia em milissegundos
 	const DAY_IN_MS = 24 * 60 * 60 * 1000 // 86400000 ms (1 dia)
 
-	// Se a sessão não expirou, verifica se ela precisa ser estendida
+	// 3. Se a sessão não expirou, verifica se ela precisa ser estendida
 	// Isso garante que as sessões ativas sejam persistidas, enquanto as inativas eventualmente expirarão.
 	// Verifica se há menos de 15 dias (metade da expiração de 30 dias) antes da expiração.
 	const renewSession = Date.now() >= session.expiresAt.getTime() - DAY_IN_MS * 15
@@ -254,6 +255,9 @@ export async function validateSessionToken(
 		session.expiresAt = new Date(Date.now() + DAY_IN_MS * 30)
 		await db.update(table.authSession).set({ expiresAt: session.expiresAt }).where(eq(table.authSession.id, session.id))
 	}
+
+	// 4. Apaga do banco de dados todos os tokens expirados
+	await db.delete(table.authSession).where(lt(table.authSession.expiresAt, new Date()))
 
 	// Retorna a sessão e o usuário
 	return { session, user }
@@ -374,7 +378,8 @@ export async function sendEmailCode({
 }
 
 // Verifica se o código de verificação OTP enviado para o usuário é válido e se não expirou
-// Se o código for válido, define o e-mail do usuário como verificado (1) na tabela 'user' do banco de dados
+// 1. Se o código for válido, define o e-mail do usuário como verificado (1) na tabela 'user' do banco de dados
+// 2. Apaga do banco de dados todos os códigos expirados
 export async function validateCode({ email, code }: { email: string; code: string }): Promise<{ success: boolean } | { error: { code: string; message: string } }> {
 	// Formata os dados recebidos
 	const formatEmail = email.trim().toLowerCase()
