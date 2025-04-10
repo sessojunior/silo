@@ -174,7 +174,7 @@ export function validateName(name: string): boolean {
 // Cria uma sessão para o usuário
 // O token da sessão será um hash SHA-256 do token
 // A sessão expira em 30 dias
-export async function createSession(
+export async function createSessionToken(
 	userId: string
 ): Promise<{ session: { token: string; userId: string; expiresAt: Date }; token: string } | { error: { code: string; message: string } }> {
 	// Gera um token aleatório
@@ -270,7 +270,7 @@ export async function invalidateSessionToken(sessionToken: string): Promise<void
 }
 
 // Invalida todas as sessões de um usuário excluindo-as do banco de dados
-export async function invalidateAllSessions(userId: string): Promise<void> {
+export async function invalidateAllUserSessionTokens(userId: string): Promise<void> {
 	await db.delete(table.authSession).where(eq(table.authSession.userId, userId))
 }
 

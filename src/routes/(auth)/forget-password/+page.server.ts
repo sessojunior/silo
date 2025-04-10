@@ -60,7 +60,7 @@ export const actions: Actions = {
 		if ('error' in resultCode) return fail(400, { field: 'code', message: resultCode.error ? resultCode.error.message : 'O código é inválido ou expirou.' })
 
 		// Cria a sessão e o cookie de sessão
-		const resultSession = await auth.createSession(user?.id as string)
+		const resultSession = await auth.createSessionToken(user?.id as string)
 		if ('error' in resultSession) return fail(400, { field: 'code', message: resultSession.error.message ?? 'Ocorreu um erro ao criar a sessão.' })
 		auth.setCookieSessionToken(event, resultSession.token, resultSession.session.expiresAt)
 
