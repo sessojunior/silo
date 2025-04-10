@@ -418,6 +418,9 @@ export async function changeUserPassword({
 	// Se usuário não for encontrado
 	if (!resultUser?.id) return { error: { code: 'NO_USER_FOUND', message: 'O usuário não existe.' } }
 
+	// Verifica se a senha é válida
+	if (!validatePassword(password)) return { error: { code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
+
 	// Cria o hash da senha
 	const passwordHash = await generateUserPassword(password)
 

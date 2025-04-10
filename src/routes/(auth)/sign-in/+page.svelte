@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { enhance, applyAction } from '$app/forms'
+	import { enhance } from '$app/forms'
 	import type { PageProps } from './$types'
 
 	import Header from '$lib/client/components/auth/Header.svelte'
@@ -16,11 +16,14 @@
 	let loading = $state(false)
 	let step = $state(1)
 	let email = $state('')
-	let token = $state('')
 </script>
 
 <!-- Header -->
-<Header icon="icon-[lucide--log-in]" title="Entrar" description="Digite seus dados para entrar." />
+{#if step === 1}
+	<Header icon="icon-[lucide--user-round-plus]" title="Entrar" description="Entre para começar a usar." />
+{:else if step === 2}
+	<Header icon="icon-[lucide--square-asterisk]" title="Verifique a conta" description="Precisamos verificar seu e-mail, insira o código que recebeu por e-mail." />
+{/if}
 
 <!-- Container -->
 <div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
@@ -29,23 +32,19 @@
 		<form
 			method="post"
 			action="?/login"
-			use:enhance={(formElement) => {
+			use:enhance={() => {
 				loading = true
-				return async ({ result }) => {
+				return async ({ update }) => {
+					await update()
 					loading = false
-					// Se passou de etapa
-					if (result.type === 'success' && typeof result.data?.step === 'number') {
-						step = result.data.step
-						token = result.data.token as string
-					}
-					// Não invalida os dados de resposta
-					await applyAction(result)
+					step = form?.step ?? 1
+					email = form?.email ?? ''
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
-				{#if form?.field}
-					<Alert message={form?.message} />
+				{#if form?.message && !form?.field}
+					<Alert message={form.message} />
 				{/if}
 				<div>
 					<Label htmlFor="email" isInvalid={form?.field === 'email'}>E-mail</Label>
@@ -58,8 +57,9 @@
 						minlength={8}
 						maxlength={255}
 						required
+						autofocus={true}
 						isInvalid={form?.field === 'email'}
-						invalidMessage={form?.message ?? ''}
+						invalidMessage={form?.message}
 					/>
 				</div>
 				<div>
@@ -74,7 +74,7 @@
 						maxlength={160}
 						required
 						isInvalid={form?.field === 'password'}
-						invalidMessage={form?.message ?? ''}
+						invalidMessage={form?.message}
 					/>
 				</div>
 				<p class="text-end">
@@ -107,29 +107,23 @@
 	{#if step === 2}
 		<form
 			method="post"
-			action="?/register"
-			use:enhance={(formElement) => {
+			action="?/send-code"
+			use:enhance={() => {
 				loading = true
-				return async ({ result }) => {
+				return async ({ update }) => {
+					await update()
 					loading = false
-					// Se passou de etapa
-					if (result.type === 'success' && typeof result.data?.step === 'number') {
-						step = result.data.step
-						token = result.data.token as string
-					}
-					// Não invalida os dados de resposta
-					await applyAction(result)
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
-				{#if form?.field}
+				{#if form?.message && !form?.field}
 					<Alert message={form?.message} />
 				{/if}
 				<input type="hidden" name="email" value={email} />
 				<div>
 					<Label htmlFor="code" isInvalid={form?.field === 'code'}>Código que recebeu por e-mail</Label>
-					<Pin type="text" id="code" name="code" placeholder="" length="5" value="" isInvalid={form?.field === 'code'} invalidMessage={form?.message ?? ''} />
+					<Pin type="text" id="code" name="code" placeholder="" length="5" value="" isInvalid={form?.field === 'code'} invalidMessage={form?.message} />
 				</div>
 				<div>
 					<Button type="submit" disabled={loading}>

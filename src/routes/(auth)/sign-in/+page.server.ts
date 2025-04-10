@@ -24,7 +24,7 @@ export const actions: Actions = {
 		// Verifica se o usuário existe e se a senha está correta
 		// Caso o usuário não exista, será exibido um erro.
 		const resultUser = await auth.signIn(formatEmail, password)
-		if ('error' in resultUser) return fail(400, { field: null, message: resultUser.error.message ?? 'Ocorreu um erro ao fazer o login.' })
+		if ('error' in resultUser) return fail(400, { field: resultUser.error.field, message: resultUser.error.message ?? 'Ocorreu um erro ao fazer o login.' })
 
 		// Se o e-mail do usuário ainda não tiver sido verificado
 		if (!resultUser.user.emailVerified) {
@@ -36,12 +36,19 @@ export const actions: Actions = {
 			const code = otp.code
 
 			// Envia o código OTP por e-mail
-			// await auth.sendEmailOtp({ email: formatEmail, type: 'sign-in', code })
-			console.log('code', code)
+			await auth.sendEmailOtp({ email: formatEmail, type: 'sign-in', code })
+
+			// console.log('code', code)
 
 			// Retorna para a página o próximo passo
 			return { step: 2, email: formatEmail }
 		}
+
+		// Cria a sessão e o cookie de sessão
+		const sessionToken = auth.generateSessionToken()
+		const resultSession = await auth.createSession(sessionToken, resultUser.user?.id as string)
+		if ('error' in resultSession) return fail(400, { field: 'code', message: resultSession.error.message ?? 'Ocorreu um erro ao criar a sessão.' })
+		auth.setCookieSessionToken(event, sessionToken, resultSession.session.expiresAt)
 
 		// Redireciona o usuário para a página privada
 		return redirect(302, '/app')
@@ -58,7 +65,7 @@ export const actions: Actions = {
 
 		// Verifica se o e-mail existe no banco de dados
 		const resultUser = await auth.validateUserEmail(formatEmail)
-		if ('error' in resultUser) return fail(400, { field: 'email', message: resultUser.error.message ?? 'Não existe um usuário com este e-mail.' })
+		if ('error' in resultUser) return fail(400, { field: null, message: resultUser.error.message ?? 'Não existe um usuário com este e-mail.' })
 
 		// Obtém os dados do usuário
 		const user = resultUser.user

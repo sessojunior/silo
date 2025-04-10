@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { enhance, applyAction } from '$app/forms'
+	import { enhance } from '$app/forms'
 	import type { PageProps } from './$types'
 
 	import Header from '$lib/client/components/auth/Header.svelte'
@@ -36,21 +36,18 @@
 		<form
 			method="post"
 			action="?/send-email"
-			use:enhance={(formElement) => {
+			use:enhance={() => {
 				loading = true
-				return async ({ result }) => {
+				return async ({ update }) => {
+					await update()
 					loading = false
-					// Se passou de etapa
-					if (result.type === 'success' && typeof result.data?.step === 'number') {
-						step = result.data.step
-						email = result.data.email as string
-					}
-					await applyAction(result) // Não invalida os dados de resposta
+					step = form?.step ?? 1
+					email = form?.email ?? ''
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
-				{#if form?.field}
+				{#if form?.message && !form?.field}
 					<Alert message={form?.message} />
 				{/if}
 				<div>
@@ -92,21 +89,18 @@
 		<form
 			method="post"
 			action="?/send-code"
-			use:enhance={(formElement) => {
+			use:enhance={() => {
 				loading = true
-				return async ({ result }) => {
+				return async ({ update }) => {
+					await update()
 					loading = false
-					// Se passou de etapa
-					if (result.type === 'success' && typeof result.data?.step === 'number') {
-						step = result.data.step
-						token = result.data.token as string
-					}
-					await applyAction(result) // Não invalida os dados de resposta
+					step = form?.step ?? 2
+					token = form?.token ?? ''
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
-				{#if form?.field}
+				{#if form?.message && !form?.field}
 					<Alert message={form?.message} />
 				{/if}
 				<input type="hidden" name="email" value={email} />
@@ -136,20 +130,17 @@
 		<form
 			method="post"
 			action="?/send-password"
-			use:enhance={(formElement) => {
+			use:enhance={() => {
 				loading = true
-				return async ({ result }) => {
+				return async ({ update }) => {
+					await update()
 					loading = false
-					// Se passou de etapa
-					if (result.type === 'success' && typeof result.data?.step === 'number') {
-						step = result.data.step
-					}
-					await applyAction(result) // Não invalida os dados de resposta
+					step = form?.step ?? 3
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
-				{#if form?.field}
+				{#if form?.message && !form?.field}
 					<Alert message={form?.message} />
 				{/if}
 				<input type="hidden" name="token" value={token} />
@@ -189,7 +180,7 @@
 	<!-- Etapa 4: Senha alterada com sucesso -->
 	{#if step === 4}
 		<div class="grid gap-5">
-			{#if form?.field}
+			{#if form?.message && !form?.field}
 				<Alert message={form?.message} />
 			{/if}
 			<div>

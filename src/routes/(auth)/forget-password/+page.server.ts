@@ -1,15 +1,6 @@
-import { fail, redirect } from '@sveltejs/kit'
+import { fail } from '@sveltejs/kit'
 import * as auth from '$lib/server/auth'
-import type { Actions, PageServerLoad } from './$types'
-
-export const load: PageServerLoad = async (event) => {
-	// Verifica se o usuário já está logado
-	if (event.locals.user) {
-		// Redireciona o usuário para a página privada
-		return redirect(302, '/app')
-	}
-	return {}
-}
+import type { Actions } from './$types'
 
 export const actions: Actions = {
 	// Recebe o e-mail para enviar para o usuário o código OTP
@@ -93,7 +84,7 @@ export const actions: Actions = {
 
 		// Altera a senha
 		const userPassword = await auth.changeUserPassword({ userId: resultSession.user.id, password })
-		if ('error' in userPassword) return fail(400, { field: 'code', message: userPassword.error ? userPassword.error.message : 'Ocorreu um erro ao alterar a senha.' })
+		if ('error' in userPassword) return fail(400, { field: 'password', message: userPassword.error ? userPassword.error.message : 'Ocorreu um erro ao alterar a senha.' })
 
 		// Retorna para a página o próximo passo
 		return { step: 4, user }

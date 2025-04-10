@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { enhance, applyAction } from '$app/forms'
+	import { enhance } from '$app/forms'
 	import type { PageProps } from './$types'
 
 	import Header from '$lib/client/components/auth/Header.svelte'
@@ -16,11 +16,14 @@
 	let loading = $state(false)
 	let step = $state(1)
 	let email = $state('')
-	let token = $state('')
 </script>
 
 <!-- Header -->
-<Header icon="icon-[lucide--user-round-plus]" title="Criar conta" description="Crie sua conta e comece a usar." />
+{#if step === 1}
+	<Header icon="icon-[lucide--user-round-plus]" title="Criar conta" description="Preencha os dados abaixo para criar sua conta e começar a usar." />
+{:else if step === 2}
+	<Header icon="icon-[lucide--square-asterisk]" title="Verifique a conta" description="Precisamos verificar seu e-mail, insira o código que recebeu por e-mail." />
+{/if}
 
 <!-- Container -->
 <div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
@@ -29,27 +32,23 @@
 		<form
 			method="post"
 			action="?/register"
-			use:enhance={(formElement) => {
+			use:enhance={() => {
 				loading = true
-				return async ({ result }) => {
+				return async ({ update }) => {
+					await update()
 					loading = false
-					// Se passou de etapa
-					if (result.type === 'success' && typeof result.data?.step === 'number') {
-						step = result.data.step
-						token = result.data.token as string
-					}
-					// Não invalida os dados de resposta
-					await applyAction(result)
+					step = form?.step ?? 1
+					email = form?.email ?? ''
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
-				{#if form?.field}
-					<Alert message={form?.message} />
+				{#if form?.message && !form?.field}
+					<Alert message={form.message} />
 				{/if}
 				<div>
 					<Label htmlFor="name" isInvalid={form?.field === 'name'}>Nome</Label>
-					<Input type="text" id="name" name="name" autocomplete="name" placeholder="Fulano" required isInvalid={form?.field === 'name'} invalidMessage={form?.message ?? ''} />
+					<Input type="text" id="name" name="name" autocomplete="name" placeholder="Fulano" required isInvalid={form?.field === 'name'} invalidMessage={form?.message} />
 				</div>
 				<div>
 					<Label htmlFor="email" isInvalid={form?.field === 'email'}>E-mail</Label>
@@ -63,7 +62,7 @@
 						maxlength={255}
 						required
 						isInvalid={form?.field === 'email'}
-						invalidMessage={form?.message ?? ''}
+						invalidMessage={form?.message}
 					/>
 				</div>
 				<div>
@@ -78,7 +77,7 @@
 						maxlength={160}
 						required
 						isInvalid={form?.field === 'password'}
-						invalidMessage={form?.message ?? ''}
+						invalidMessage={form?.message}
 					/>
 				</div>
 				<div>
@@ -108,22 +107,16 @@
 		<form
 			method="post"
 			action="?/send-code"
-			use:enhance={(formElement) => {
+			use:enhance={() => {
 				loading = true
-				return async ({ result }) => {
+				return async ({ update }) => {
+					await update()
 					loading = false
-					// Se passou de etapa
-					if (result.type === 'success' && typeof result.data?.step === 'number') {
-						step = result.data.step
-						token = result.data.token as string
-					}
-					// Não invalida os dados de resposta
-					await applyAction(result)
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
-				{#if form?.field}
+				{#if form?.message && !form?.field}
 					<Alert message={form?.message} />
 				{/if}
 				<input type="hidden" name="email" value={email} />
