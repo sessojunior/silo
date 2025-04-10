@@ -42,8 +42,8 @@ export async function verifyPassword({ password, hashPassword }: { password: str
 
 // Gera um token
 export function generateToken(): string {
-	// Gera o token com 20 bytes
-	const bytes = crypto.getRandomValues(new Uint8Array(20))
+	// Gera o token com 30 bytes
+	const bytes = crypto.getRandomValues(new Uint8Array(30))
 	const token = encodeBase64url(bytes)
 	return token
 }
