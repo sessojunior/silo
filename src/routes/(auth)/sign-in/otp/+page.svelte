@@ -79,7 +79,7 @@
 					<Button type="button" style="bordered" icon="icon-[logos--facebook]">Entrar com Facebook</Button>
 				</div>
 				<p class="mt-2 text-center">
-					Não tem conta? <Link href="/sign-up">Cadastre-se</Link>
+					Não tem conta? <Link href="/sign-up">Cadastre-se</Link>.
 				</p>
 			</fieldset>
 		</form>

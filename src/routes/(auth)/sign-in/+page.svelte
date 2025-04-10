@@ -92,12 +92,12 @@
 				</div>
 				<Divider>ou</Divider>
 				<div class="flex w-full flex-col items-center justify-center gap-3">
-					<Button href="/sign-in-otp" type="button" style="bordered" icon="icon-[lucide--log-in]">Entrar só com o e-mail</Button>
+					<Button href="/sign-in/otp" type="button" style="bordered" icon="icon-[lucide--log-in]">Entrar só com o e-mail</Button>
 					<Button type="button" style="bordered" icon="icon-[logos--google-icon]">Entrar com Google</Button>
 					<Button type="button" style="bordered" icon="icon-[logos--facebook]">Entrar com Facebook</Button>
 				</div>
 				<p class="mt-2 text-center">
-					Não tem conta? <Link href="/sign-up">Cadastre-se</Link>
+					Não tem conta? <Link href="/sign-up">Cadastre-se</Link>.
 				</p>
 			</fieldset>
 		</form>

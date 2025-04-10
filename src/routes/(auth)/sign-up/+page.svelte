@@ -96,7 +96,7 @@
 					<Button type="button" style="bordered" icon="icon-[logos--facebook]">Criar com Facebook</Button>
 				</div>
 				<p class="mt-2 text-center">
-					Tem uma conta? <Link href="/sign-in">Entre</Link>
+					Tem uma conta? <Link href="/sign-in">Entre</Link>.
 				</p>
 			</fieldset>
 		</form>
