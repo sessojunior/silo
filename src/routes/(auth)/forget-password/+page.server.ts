@@ -26,9 +26,9 @@ export const actions: Actions = {
 		const code = otp.code
 
 		// Envia o código OTP por e-mail
-		// await auth.sendEmailOtp({ email: formatEmail, type: 'forget-password', code })
+		await auth.sendEmailCode({ email: formatEmail, type: 'forget-password', code })
 
-		console.log('code', code)
+		// console.log('code', code)
 
 		// Retorna para a página o próximo passo
 		return { step: 2, email: formatEmail }

@@ -6,7 +6,7 @@ export const load: PageServerLoad = async (event) => {
 	// Verifica se o usuário já está logado
 	if (event.locals.user) {
 		// Redireciona o usuário para a página privada
-		return redirect(302, '/app/dashboard')
+		throw redirect(302, '/app/welcome')
 	}
 	return {}
 }
@@ -71,6 +71,6 @@ export const actions: Actions = {
 		auth.setCookieSessionToken(event, resultSession.token, resultSession.session.expiresAt)
 
 		// Redireciona o usuário para a página de boas vindas
-		return redirect(302, '/app/welcome')
+		throw redirect(302, '/app/welcome')
 	}
 }

@@ -92,8 +92,7 @@
 				</div>
 				<Divider>ou</Divider>
 				<div class="flex w-full flex-col items-center justify-center gap-3">
-					<Button type="button" style="bordered" icon="icon-[logos--google-icon]">Criar com Google</Button>
-					<Button type="button" style="bordered" icon="icon-[logos--facebook]">Criar com Facebook</Button>
+					<Button href="/sign-in/google" type="button" style="bordered" icon="icon-[logos--google-icon]">Criar com Google</Button>
 				</div>
 				<p class="mt-2 text-center">
 					Tem uma conta? <Link href="/sign-in">Entre</Link>.

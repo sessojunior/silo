@@ -75,8 +75,7 @@
 				<Divider>ou</Divider>
 				<div class="flex w-full flex-col items-center justify-center gap-3">
 					<Button href="/sign-in" type="button" style="bordered" icon="icon-[lucide--log-in]">Entrar com e-mail e senha</Button>
-					<Button type="button" style="bordered" icon="icon-[logos--google-icon]">Entrar com Google</Button>
-					<Button type="button" style="bordered" icon="icon-[logos--facebook]">Entrar com Facebook</Button>
+					<Button href="/sign-in/google" type="button" style="bordered" icon="icon-[logos--google-icon]">Entrar com Google</Button>
 				</div>
 				<p class="mt-2 text-center">
 					Não tem conta? <Link href="/sign-up">Cadastre-se</Link>.

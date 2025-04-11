@@ -6,7 +6,7 @@ export const load: PageServerLoad = async (event) => {
 	// Verifica se o usuário já está logado
 	if (event.locals.user) {
 		// Redireciona o usuário para a página privada
-		return redirect(302, '/app')
+		throw redirect(302, '/app/welcome')
 	}
 	return {}
 }
@@ -50,7 +50,7 @@ export const actions: Actions = {
 		auth.setCookieSessionToken(event, resultSession.token, resultSession.session.expiresAt)
 
 		// Redireciona o usuário para a página privada
-		return redirect(302, '/app')
+		throw redirect(302, '/app/welcome')
 	},
 	// Recebe o código OTP e o e-mail para verificação para enviar o token
 	'send-code': async (event) => {
@@ -81,6 +81,6 @@ export const actions: Actions = {
 		auth.setCookieSessionToken(event, resultSession.token, resultSession.session.expiresAt)
 
 		// Redireciona o usuário para a página de boas vindas
-		return redirect(302, '/app/welcome')
+		throw redirect(302, '/app/welcome')
 	}
 }

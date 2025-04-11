@@ -29,3 +29,12 @@ export const authCode = sqliteTable('auth_code', {
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 })
 export type AuthCode = typeof authCode.$inferSelect
+
+export const authProvider = sqliteTable('auth_provider', {
+	id: text('id').primaryKey(),
+	googleId: text('google_id').notNull(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => authUser.id)
+})
+export type AuthProvider = typeof authProvider.$inferSelect

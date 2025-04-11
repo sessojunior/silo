@@ -183,7 +183,7 @@
 				<Alert message={form?.message} />
 			{/if}
 			<div>
-				<Button href="/app/dashboard" type="button">Ir para o painel</Button>
+				<Button href="/app/welcome" type="button">Ir para o painel</Button>
 			</div>
 			<p class="mt-2 text-center">
 				<Link href="/sign-in">Voltar</Link>

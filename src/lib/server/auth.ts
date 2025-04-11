@@ -1,12 +1,12 @@
 import type { RequestEvent } from '@sveltejs/kit'
 import { eq, and, lt } from 'drizzle-orm'
+import { db } from '$lib/server/db'
+import * as table from '$lib/server/db/schema'
 import { verify, hash } from '@node-rs/argon2'
 import { sha256 } from '@oslojs/crypto/sha2'
 import { encodeBase64url, encodeHexLowerCase, encodeBase32LowerCase } from '@oslojs/encoding'
 import { type RandomReader, generateRandomString } from '@oslojs/crypto/random'
-import { db } from '$lib/server/db'
-import * as table from '$lib/server/db/schema'
-import { sendEmail } from './email'
+import { sendEmail } from './send-email'
 
 // Gera um ID
 export function generateId(): string {
@@ -544,8 +544,14 @@ export async function signIn(
 		.limit(1)
 		.then((results) => results.at(0))
 
-	// Se usuário for encontrado
+	// Se usuário não for encontrado
 	if (!selectUser?.id) return { error: { field: 'email', code: 'USER_NOT_FOUND', message: 'Não existe um usuário com este e-mail.' } }
+
+	// Verifica se o usuário foi criado com login social (sem senha definida)
+	// Se não foi definido senha, significa que o usuário foi criado com login social
+	if (!selectUser.password?.trim()) {
+		return { error: { field: null, code: 'SOCIAL_ACCOUNT', message: 'Conta criada com login social, redefina a senha.' } }
+	}
 
 	// Verifica se a senha é válida
 	if (!validatePassword(password)) return { error: { field: 'password', code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
