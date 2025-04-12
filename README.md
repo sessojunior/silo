@@ -14,11 +14,13 @@ Este aplicativo está sendo desenvolvido utilizando:
 - [Lucia Auth](https://lucia-auth.com/)
 - [Nodemailer](https://www.nodemailer.com/)
 
-## Login com Google
+## Login com o Google
 
 Para usar o Google como um provedor social, você precisa obter suas credenciais do Google.
 
 Você pode obtê-las criando um novo projeto no [Google Cloud Console](https://console.cloud.google.com/apis/dashboard).
+
+Estamos utilizando a biblioteca [Arctic](https://arcticjs.dev/providers/google) para simplificar o processo.
 
 Para isso siga as seguintes etapas:
 

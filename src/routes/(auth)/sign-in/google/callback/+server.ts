@@ -1,15 +1,14 @@
 import { redirect, error, type RequestEvent } from '@sveltejs/kit'
 import { createUserFromGoogleId, getUserFromGoogleId, google } from '$lib/server/oauth'
 import * as auth from '$lib/server/auth'
+import * as arctic from 'arctic'
 
-import { decodeIdToken, OAuth2Tokens } from 'arctic'
-
-// URL para validar o retorno de chamada do Google
-// Verifica se o estado na URL corresponde ao estado armazenado
-// Valida o código de autorização e o código verificador armazenado
-// Se passou no escopo de autorização, decodifica o ID token e extrai os dados do usuário
-// Verifica se o usuário já existe, caso contrário, cria um novo usuário com os dados do Google
-// Por fim, cria uma nova sessão para o usuário e armazena o token de sessão no cookie
+// Valida o retorno de chamada do Google pelo código de autorização
+// - Verifica se o estado na URL corresponde ao estado armazenado
+// - 2Valida o código de autorização e o código verificador armazenado
+// - Se passou no escopo de autorização, decodifica o ID token e extrai os dados do usuário
+// - Verifica se o usuário já existe, caso contrário, cria um novo usuário com os dados do Google
+// - Por fim, cria uma nova sessão para o usuário e armazena o token de sessão no cookie
 export async function GET(event: RequestEvent) {
 	// 1. Recupera os cookies de segurança salvos no início do fluxo OAuth
 	const cookieState = event.cookies.get('google_oauth_state')
@@ -26,7 +25,7 @@ export async function GET(event: RequestEvent) {
 	if (cookieState !== urlState) throw error(400, 'State inválido. Reinicie o login.')
 
 	// 5. Troca o código de autorização por tokens reais com o code_verifier
-	let tokens: OAuth2Tokens
+	let tokens: arctic.OAuth2Tokens
 	try {
 		// Obtém os tokens reais
 		tokens = await google.validateAuthorizationCode(urlCode, cookieCodeVerifier)
@@ -36,7 +35,7 @@ export async function GET(event: RequestEvent) {
 	}
 
 	// 6. Decodifica o ID do token (JWT) e extrai os dados do usuário
-	const claims = decodeIdToken(tokens.idToken()) as { sub: string; name: string; email: string; picture: string }
+	const claims = arctic.decodeIdToken(tokens.idToken()) as { sub: string; name: string; email: string; picture: string }
 	const googleId = claims.sub
 	const name = claims.name
 	const email = claims.email
