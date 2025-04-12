@@ -310,10 +310,10 @@
 				<!-- Logo -->
 				<div class="flex gap-2">
 					{#if sidebar.logo.image}
-						<img src={sidebar.logo.image} alt="Logo" width="32" height="32" class="block" />
+						<img src={sidebar.logo.image} alt="Logo" class="block h-8 w-8" />
 					{/if}
 					{#if sidebar.logo.title}
-						<div class="block text-2xl font-bold dark:text-white">{sidebar.logo.title}</div>
+						<div class="inline-block text-2xl font-bold text-neutral-600 dark:text-neutral-200">{sidebar.logo.title}</div>
 					{/if}
 				</div>
 				<div class="flex gap-2">

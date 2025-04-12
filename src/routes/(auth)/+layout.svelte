@@ -1,5 +1,7 @@
 <script lang="ts">
 	let { children } = $props()
+
+	const logo = { image: '/images/logo.png', title: 'Silo' }
 </script>
 
 <div class="flex min-h-screen justify-between">
@@ -10,8 +12,12 @@
 			<div class="flex h-full w-full flex-col">
 				<div class="flex">
 					<div class="flex items-center justify-center gap-2 px-10 pt-10">
-						<img src="/images/logo.png" alt="Logo" class="block h-8 w-8" />
-						<div class="inline-block pt-0.5 text-2xl font-bold dark:text-white">Silo</div>
+						{#if logo.image}
+							<img src={logo.image} alt="Logo" class="block h-12 w-12" />
+						{/if}
+						{#if logo.title}
+							<div class="inline-block text-3xl font-bold text-neutral-600 dark:text-neutral-200">{logo.title}</div>
+						{/if}
 					</div>
 				</div>
 				<div class="flex flex-grow items-center justify-center">
