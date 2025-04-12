@@ -5,7 +5,8 @@ export const authUser = sqliteTable('auth_user', {
 	name: text('name').notNull(),
 	email: text('email').notNull().unique(),
 	emailVerified: integer('email_verified').notNull(),
-	password: text('password').notNull()
+	password: text('password').notNull(),
+	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 })
 export type AuthUser = typeof authUser.$inferSelect
 
@@ -38,3 +39,18 @@ export const authProvider = sqliteTable('auth_provider', {
 		.references(() => authUser.id)
 })
 export type AuthProvider = typeof authProvider.$inferSelect
+
+// export const userProfile = sqliteTable('user_profile', {
+// 	id: text('id').primaryKey(),
+// 	theme: text('theme').notNull(),
+// 	genre: text('genre').notNull(),
+// 	phone: text('phone').notNull(),
+// 	role: text('role').notNull(),
+// 	team: text('team').notNull(),
+// 	company: text('company').notNull(),
+// 	location: text('location').notNull(),
+// 	userId: text('user_id')
+// 		.notNull()
+// 		.references(() => authUser.id)
+// })
+// export type UserProfile = typeof userProfile.$inferSelect

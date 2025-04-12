@@ -394,6 +394,7 @@ export async function validateCode({ email, code }: { email: string; code: strin
 	const selectCode = await db
 		.select({
 			code: table.authCode.code,
+			userId: table.authCode.userId,
 			expiresAt: table.authCode.expiresAt
 		})
 		.from(table.authCode)
@@ -404,8 +405,15 @@ export async function validateCode({ email, code }: { email: string; code: strin
 	// Se não encontrou o código (porque não existe ou expirou e foi deletado)
 	if (!selectCode) return { error: { code: 'WRONG_OR_EXPIRED_CODE', message: 'O código é inválido ou expirou.' } }
 
+	// Se encontrou o código, e ele não está expirado, apaga ele para evitar que ele seja utilizado novamente
+	await db.delete(table.authCode).where(eq(table.authCode.code, code))
+
 	// Define o e-mail do usuário como verificado (1) na tabela 'user' do banco de dados
 	await db.update(table.authUser).set({ emailVerified: 1 }).where(eq(table.authUser.email, formatEmail))
+
+	// Por seguranca, todas as sessões devem ser invalidadas após o e-mail ser verificado
+	// Será criado depois uma nova sessão para o usuário
+	await invalidateAllUserSessionTokens(selectCode.userId)
 
 	// Código válido
 	return { success: true }
@@ -516,7 +524,8 @@ export async function signUp(
 			name: formatName,
 			email: formatEmail,
 			emailVerified,
-			password: passwordHash
+			password: passwordHash,
+			createdAt: new Date()
 		})
 		.returning()
 	if (!insertUser) return { error: { field: null, code: 'INSERT_USER_ERROR', message: 'Erro ao salvar o usuário no banco de dados.' } }
