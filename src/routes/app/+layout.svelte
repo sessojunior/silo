@@ -1,17 +1,11 @@
 <script lang="ts">
-	let { children } = $props()
+	let { children, data } = $props()
 
-	const user = {
-		avatar: 'https://avatars.githubusercontent.com/u/141470722?v=4',
-		name: 'Mario Junior',
-		email: 'mario.sesso@inpe.br'
-	}
+	// Dados do usuário
+	const user = data.user
 
-	const logo = {
-		image: '/images/logo.png',
-		title: 'Silo'
-	}
-
+	// Dados para o enu lateral
+	const logo = { image: '/images/logo.png', title: 'Silo' }
 	const sidebar = {
 		logo: logo,
 		menu: [
@@ -188,9 +182,8 @@
 		],
 		user: user
 	}
-
 	const profile = {
-		avatar: user.avatar,
+		avatar: user.avatar ? `/uploads/avatar/${user.avatar}` : '/uploads/avatar.png',
 		name: user.name,
 		email: user.email,
 		links: [
@@ -216,7 +209,7 @@
 				id: '4',
 				icon: 'icon-[lucide--log-out]',
 				title: 'Sair',
-				url: '#'
+				url: '/sign-out'
 			}
 		]
 	}
@@ -247,6 +240,9 @@
 				<!-- Title -->
 				<div class="hidden items-center gap-x-2 sm:flex">
 					<h2 class="px-4 text-2xl font-medium text-neutral-800 dark:text-neutral-100">Visão geral</h2>
+					<h1>Olá, {data.user.email}!</h1>
+					<p>O ID do usuário é {data.user.id}.</p>
+					<a href="/sign-out">Sair</a>
 				</div>
 				<!-- Buttons & dropdown -->
 				<div class="flex flex-row items-center justify-end gap-1">
@@ -374,7 +370,7 @@
 			<footer class="flex h-16 justify-between border-t border-t-transparent">
 				<div class="flex w-full items-center justify-between gap-2 px-4">
 					<div class="flex items-center gap-2">
-						<img class="inline-block size-[40px] rounded-full" src={user.avatar} alt="Avatar" />
+						<img class="inline-block size-[40px] rounded-full" src={user.avatar ? `/uploads/avatar/${user.avatar}` : '/uploads/avatar.png'} alt="Avatar" />
 						<div class="w-[140px]">
 							<p class="truncate text-base leading-none font-medium text-neutral-700 dark:text-white">
 								{user.name}
@@ -382,13 +378,14 @@
 							<p class="truncate text-sm text-neutral-500 dark:text-neutral-300">{user.email}</p>
 						</div>
 					</div>
-					<button
+					<a
+						href="/sign-out"
 						type="button"
 						class="relative inline-flex size-8 items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-neutral-800 hover:bg-neutral-200 focus:bg-neutral-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
 						aria-label="Sair"
 					>
 						<span class="icon-[lucide--log-out] size-4 shrink-0 text-neutral-400"></span>
-					</button>
+					</a>
 				</div>
 			</footer>
 		</div>

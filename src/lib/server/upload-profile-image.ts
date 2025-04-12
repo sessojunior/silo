@@ -9,7 +9,7 @@ import sharp from 'sharp'
 // - O processo de redimensionamento e conversão for bem-sucedido.
 export async function uploadProfileImage(url: string, userId: string): Promise<boolean> {
 	// Configurações da imagem
-	const imageDirectory = 'static/uploads/profile'
+	const imageDirectory = 'static/uploads/avatar'
 	const outputPath = `${imageDirectory}/${userId}.webp`
 	const imageWidth = 64
 	const imageHeight = 64
