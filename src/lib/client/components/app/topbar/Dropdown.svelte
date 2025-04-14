@@ -17,14 +17,14 @@
       </div> -->
 		<div class="relative inline-block">
 			<img
-				class="inline-block size-[46px] rounded-full border-2 border-neutral-200 transition-all duration-200 group-hover:border-4 group-focus:border-4 group-focus:border-neutral-200 dark:border-neutral-700 dark:group-focus:border-neutral-700"
+				class="inline-block size-[46px] rounded-full border-2 border-neutral-200 transition-all duration-100 group-hover:border-4 group-focus:border-4 group-focus:border-neutral-200 dark:border-neutral-700 dark:group-focus:border-neutral-700"
 				src={account.avatar}
 				alt="Avatar"
 			/>
 			<span class="absolute end-0 bottom-0 block size-3 rounded-full bg-teal-400 ring-2 ring-white dark:ring-neutral-800"></span>
 		</div>
 		<div
-			class="flex size-6 shrink-0 items-center justify-center rounded-full transition-all duration-200 group-hover:bg-neutral-200 group-focus:bg-neutral-100 dark:group-hover:bg-neutral-700 dark:group-focus:bg-neutral-700"
+			class="flex size-6 shrink-0 items-center justify-center rounded-full transition-all duration-500 group-hover:bg-neutral-200 group-focus:bg-neutral-100 dark:group-hover:bg-neutral-700 dark:group-focus:bg-neutral-700"
 		>
 			<span class="icon-[lucide--chevron-down] size-4 shrink-0 text-neutral-400"></span>
 		</div>
