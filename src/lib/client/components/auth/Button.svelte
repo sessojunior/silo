@@ -12,14 +12,14 @@
 {#if href}
 	<a {href} role="button" aria-disabled={disabled} class={style === 'filled' ? classButton.filled : classButton.bordered}>
 		{#if icon}
-			<span class="{icon} size-4" aria-hidden="true"></span>
+			<span class="{icon} size-4 shrink-0" aria-hidden="true"></span>
 		{/if}
 		{@render children()}
 	</a>
 {:else}
 	<button {type} {disabled} class={style === 'filled' ? classButton.filled : classButton.bordered}>
 		{#if icon}
-			<span class="{icon} size-4" aria-hidden="true"></span>
+			<span class="{icon} size-4 shrink-0" aria-hidden="true"></span>
 		{/if}
 		{@render children()}
 	</button>
