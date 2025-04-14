@@ -1,8 +1,18 @@
 <script lang="ts">
+	import { setContext } from 'svelte'
+
 	import Sidebar from '$lib/client/components/app/sidebar/Sidebar.svelte'
 	import Topbar from '$lib/client/components/app/topbar/Topbar.svelte'
 
-	let { children, data } = $props()
+	let { children, data }: { children: any; data: { user: any } } = $props()
+
+	// Dados da página
+	const page = $state({
+		title: 'Título padrão'
+	})
+
+	// Disponibiliza os dados da página para serem alterados ou acessados pelos filhos
+	setContext('page', page)
 
 	// Dados do usuário
 	const user = data.user
@@ -187,7 +197,7 @@
 
 <div>
 	<!-- Barra do topo -->
-	<Topbar title="Visão geral" {user} />
+	<Topbar title={page.title} {user} />
 
 	<!-- Barra lateral -->
 	<Sidebar {user} {logo} {sidebar} />
