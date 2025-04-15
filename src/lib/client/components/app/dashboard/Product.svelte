@@ -611,17 +611,17 @@
 
 <!-- Produto item -->
 <div
-	class="flex flex-col rounded-lg border border-dashed border-neutral-200 bg-white p-4 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800"
+	class="flex flex-col rounded-lg border border-dashed border-zinc-200 bg-white p-4 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800"
 >
 	<div class="flex items-center justify-between">
 		<!-- Produto -->
 		<div class="flex flex-col">
 			<div class="flex items-center gap-2">
-				<span class="icon-[lucide--folder-git-2] size-5 shrink-0 text-neutral-400"></span>
+				<span class="icon-[lucide--folder-git-2] size-5 shrink-0 text-zinc-400"></span>
 				<span class="text-lg font-medium">{name}</span>
 			</div>
 			<div class="text-sm">
-				{progress}% <span class="text-neutral-300">•</span>
+				{progress}% <span class="text-zinc-300">•</span>
 				{date}
 			</div>
 		</div>
@@ -637,20 +637,20 @@
 			<!-- Popover Trigger -->
 			<button
 				type="button"
-				class="hs-tooltip-toggle rounded-lg bg-neutral-100 hover:bg-neutral-200 focus:bg-neutral-200 focus:outline-hidden dark:bg-neutral-900 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+				class="hs-tooltip-toggle rounded-lg bg-zinc-100 hover:bg-zinc-200 focus:bg-zinc-200 focus:outline-hidden dark:bg-zinc-900 dark:hover:bg-zinc-700 dark:focus:bg-zinc-700"
 			>
 				<!-- Linha do tempo -->
 				<ProductTimeline />
 				<!-- Popover Content -->
 				<div
-					class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible invisible absolute z-[80] hidden rounded-xl border border-neutral-200 bg-white text-start opacity-0 shadow-md transition-opacity after:absolute after:-start-4 after:top-0 after:h-full after:w-4 dark:border-neutral-700 dark:bg-neutral-800"
+					class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible invisible absolute z-[80] hidden rounded-xl border border-zinc-200 bg-white text-start opacity-0 shadow-md transition-opacity after:absolute after:-start-4 after:top-0 after:h-full after:w-4 dark:border-zinc-700 dark:bg-zinc-800"
 					role="tooltip"
 				>
-					<div class="flex items-center justify-between rounded-t-xl border-b border-neutral-200 bg-neutral-100 px-4 py-3">
+					<div class="flex items-center justify-between rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-4 py-3">
 						<!-- Produto -->
 						<div class="flex flex-col">
 							<div class="flex items-center gap-2">
-								<span class="icon-[lucide--folder-git-2] size-5 shrink-0 text-neutral-400"></span>
+								<span class="icon-[lucide--folder-git-2] size-5 shrink-0 text-zinc-400"></span>
 								<span class="text-lg font-medium">{name}</span>
 							</div>
 						</div>
@@ -671,7 +671,7 @@
 							{/if}
 						</div>
 					</div>
-					<div class="flex flex-col divide-y divide-neutral-200">
+					<div class="flex flex-col divide-y divide-zinc-200">
 						<ProductCalendar calendar={month1} />
 						<ProductCalendar calendar={month2} />
 					</div>

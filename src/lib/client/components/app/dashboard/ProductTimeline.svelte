@@ -4,7 +4,7 @@
 	let green = 'h-5 w-1.5 rounded-full bg-green-400 dark:bg-green-900'
 	let orange = 'h-5 w-1.5 rounded-full bg-orange-300 dark:bg-orange-500'
 	let red = 'h-5 w-1.5 rounded-full bg-red-600'
-	let neutral = 'h-5 w-1.5 rounded-full bg-neutral-400 dark:bg-neutral-600'
+	let neutral = 'h-5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-600'
 </script>
 
 <!-- Time timeline -->

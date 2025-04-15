@@ -8,7 +8,7 @@
 			{href}
 			role="button"
 			aria-disabled={disabled}
-			class="relative inline-flex size-[38px] items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-neutral-800 transition-all duration-500 hover:bg-neutral-200 focus:bg-neutral-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+			class="relative inline-flex size-[38px] items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-zinc-800 transition-all duration-500 hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-zinc-700 dark:focus:bg-zinc-700"
 		>
 			<span class="{icon} size-4 shrink-0"></span>
 			<span class="absolute end-0 top-0 flex size-2.5">
@@ -21,7 +21,7 @@
 {:else if style === 'menu'}
 	<button
 		type="button"
-		class="relative inline-flex size-[38px] items-center justify-center gap-x-2 rounded-full border border-transparent text-neutral-800 transition-all duration-500 hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+		class="relative inline-flex size-[38px] items-center justify-center gap-x-2 rounded-full border border-transparent text-zinc-800 transition-all duration-500 hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-zinc-700 dark:focus:bg-zinc-700"
 		aria-haspopup="dialog"
 		aria-expanded="false"
 		aria-controls="hs-application-sidebar"
@@ -36,7 +36,7 @@
 		{href}
 		role="button"
 		aria-disabled={disabled}
-		class="relative inline-flex size-[38px] items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-neutral-800 transition-all duration-500 hover:bg-neutral-200 focus:bg-neutral-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+		class="relative inline-flex size-[38px] items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-zinc-800 transition-all duration-500 hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-zinc-700 dark:focus:bg-zinc-700"
 	>
 		<span class="{icon} size-4 shrink-0" aria-hidden="true"></span>
 		<span class="sr-only">{@render children()}</span>

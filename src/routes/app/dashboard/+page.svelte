@@ -5,14 +5,14 @@
 	import ChartLine from '$lib/client/components/app/dashboard/ChartLine.svelte'
 </script>
 
-<div class="flex w-full bg-white dark:bg-neutral-900">
+<div class="flex w-full bg-white dark:bg-zinc-900">
 	<!-- Side left -->
 	<div class="flex flex-grow flex-col">
 		<div
-			class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+			class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-zinc-700"
 		>
 			<!-- Stats -->
-			<div class="flex flex-col border-b border-b-neutral-200 p-8 pb-10 dark:border-b-neutral-700">
+			<div class="flex flex-col border-b border-b-zinc-200 p-8 pb-10 dark:border-b-zinc-700">
 				{@render stats({
 					items: [
 						{
@@ -40,21 +40,21 @@
 							name: 'Falta rodar',
 							incidents: 0,
 							progress: 9,
-							color: 'bg-neutral-200',
-							colorDark: 'bg-neutral-700'
+							color: 'bg-zinc-200',
+							colorDark: 'bg-zinc-700'
 						}
 					]
 				})}
 			</div>
 
 			<!-- Columns -->
-			<div class="flex flex-col divide-neutral-200 border-neutral-200 md:grid md:grid-cols-2 md:divide-x dark:divide-neutral-700 dark:border-neutral-700 dark:border-b-neutral-700">
+			<div class="flex flex-col divide-zinc-200 border-zinc-200 md:grid md:grid-cols-2 md:divide-x dark:divide-zinc-700 dark:border-zinc-700 dark:border-b-zinc-700">
 				<!-- Column left -->
-				<div class="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-700">
+				<div class="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700">
 					<!-- Products & tasks -->
 					<!-- Item 1 -->
 					<div class="p-8">
-						<h3 class="pb-4 text-xl font-medium text-neutral-500 dark:text-neutral-400">Produtos não iniciados</h3>
+						<h3 class="pb-4 text-xl font-medium text-zinc-500 dark:text-zinc-400">Produtos não iniciados</h3>
 						<div class="flex flex-col gap-3">
 							<!-- Product item -->
 							<Product id="bam" name="BAM" progress={84} priority="low" date="21 mar. 16:35" />
@@ -77,7 +77,7 @@
 					</div>
 				</div>
 				<!-- Column right -->
-				<div class="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-700">
+				<div class="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700">
 					<!-- Charts -->
 					<!-- Item 1 -->
 					<div class="flex flex-col p-8">
@@ -110,13 +110,13 @@
 	</div>
 
 	<!-- Side right -->
-	<div class="hidden w-[400px] flex-shrink-0 flex-col border-l border-l-neutral-200 2xl:flex dark:border-l-neutral-700">
+	<div class="hidden w-[400px] flex-shrink-0 flex-col border-l border-l-zinc-200 2xl:flex dark:border-l-zinc-700">
 		<div
-			class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+			class="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-zinc-700"
 		>
 			<div class="p-8">
 				<!-- Resume text -->
-				<div class="flex flex-col border-b border-b-neutral-200 pb-6 dark:border-b-neutral-700">
+				<div class="flex flex-col border-b border-b-zinc-200 pb-6 dark:border-b-zinc-700">
 					<h3 class="pb-4 text-2xl font-medium">Resumo do dia</h3>
 					<p class="text-base">
 						Hoje você tem
@@ -129,7 +129,7 @@
 				</div>
 
 				<!-- Activity resume -->
-				<div class="grid grid-cols-2 border-b border-b-neutral-200 py-6 dark:border-b-neutral-700">
+				<div class="grid grid-cols-2 border-b border-b-zinc-200 py-6 dark:border-b-zinc-700">
 					<div>
 						<h4 class="pb-2 text-base font-medium">Tempo parado</h4>
 						<div>
@@ -146,22 +146,22 @@
 									showText: false,
 									size: 'size-6',
 									fontSize: 'text-sm',
-									fontColor: 'text-neutral-600',
-									fontColorDark: 'text-neutral-200',
-									colorFilled: 'text-neutral-200',
-									colorDarkFilled: 'text-neutral-600',
+									fontColor: 'text-zinc-600',
+									fontColorDark: 'text-zinc-200',
+									colorFilled: 'text-zinc-200',
+									colorDarkFilled: 'text-zinc-600',
 									colorUnfilled: 'text-blue-500',
 									colorDarkUnfilled: 'text-blue-600'
 								})}
 								<span class="px-2 text-xl font-medium"> 79% </span>
-								<span class="pt-0.5 text-sm text-neutral-400">17 de 23</span>
+								<span class="pt-0.5 text-sm text-zinc-400">17 de 23</span>
 							</span>
 						</div>
 					</div>
 				</div>
 
 				<!-- Radial Progress -->
-				<div class="grid w-full grid-cols-3 divide-x divide-neutral-200 border-b border-b-neutral-200 dark:divide-neutral-700 dark:border-b-neutral-700">
+				<div class="grid w-full grid-cols-3 divide-x divide-zinc-200 border-b border-b-zinc-200 dark:divide-zinc-700 dark:border-b-zinc-700">
 					{@render radial({
 						name: 'Produtos',
 						progress: 16,
@@ -184,7 +184,7 @@
 
 				<!-- Ongoing projects -->
 				<div class="flex flex-col py-6">
-					<h3 class="pb-4 text-xl font-medium text-neutral-800">Projetos em andamento</h3>
+					<h3 class="pb-4 text-xl font-medium text-zinc-800">Projetos em andamento</h3>
 					<div class="flex flex-col gap-3">
 						<!-- Project item -->
 						{@render project({
@@ -215,12 +215,12 @@
 	<div class="flex flex-col">
 		<div class="flex gap-4">
 			<div>
-				<span class="text-2xl font-medium text-neutral-800 dark:text-neutral-200">{items.reduce((total: number, item: any) => total + item.progress, 0)}</span>
-				<span class="text-xl font-medium text-neutral-800 dark:text-neutral-200">produtos</span>
+				<span class="text-2xl font-medium text-zinc-800 dark:text-zinc-200">{items.reduce((total: number, item: any) => total + item.progress, 0)}</span>
+				<span class="text-xl font-medium text-zinc-800 dark:text-zinc-200">produtos</span>
 			</div>
 			<div>
-				<span class="text-2xl font-medium text-neutral-800 dark:text-neutral-200">{items.reduce((total: number, item: any) => total + item.incidents, 0)}</span>
-				<span class="text-xl font-medium text-neutral-800 dark:text-neutral-200">incidentes hoje</span>
+				<span class="text-2xl font-medium text-zinc-800 dark:text-zinc-200">{items.reduce((total: number, item: any) => total + item.incidents, 0)}</span>
+				<span class="text-xl font-medium text-zinc-800 dark:text-zinc-200">incidentes hoje</span>
 			</div>
 		</div>
 		<div class="relative">
@@ -235,7 +235,7 @@
 				})}
 			</div>
 			<div class="text-muted-foreground flex items-center text-sm">
-				<div class="flex flex-wrap gap-x-6 gap-y-1 text-neutral-600 dark:text-neutral-200">
+				<div class="flex flex-wrap gap-x-6 gap-y-1 text-zinc-600 dark:text-zinc-200">
 					{#each items as { name, progress, color, colorDark }: any}
 						<div class="flex items-center">
 							<div class="mr-1.5 h-2 w-2 shrink-0 rounded-full {color} dark:{colorDark}"></div>
@@ -258,10 +258,10 @@
 			showText: true,
 			size: 'size-20',
 			fontSize: 'text-base',
-			fontColor: 'text-neutral-600',
-			fontColorDark: 'text-neutral-200',
-			colorFilled: 'text-neutral-200',
-			colorDarkFilled: 'text-neutral-600',
+			fontColor: 'text-zinc-600',
+			fontColorDark: 'text-zinc-200',
+			colorFilled: 'text-zinc-200',
+			colorDarkFilled: 'text-zinc-600',
 			colorUnfilled: color,
 			colorDarkUnfilled: colorDark
 		})}
@@ -270,16 +270,16 @@
 {/snippet}
 
 {#snippet project({ name, progress, time }: any)}
-	<div class="flex flex-col rounded-lg border border-dashed border-neutral-200 bg-white p-4 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+	<div class="flex flex-col rounded-lg border border-dashed border-zinc-200 bg-white p-4 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
 		<div class="flex w-full flex-row items-center">
 			<div class="flex w-full flex-col">
 				<div class="flex items-center gap-2">
-					<span class="icon-[lucide--square-chart-gantt] size-5 shrink-0 text-neutral-400"></span>
+					<span class="icon-[lucide--square-chart-gantt] size-5 shrink-0 text-zinc-400"></span>
 					<span class="text-lg font-medium">{name}</span>
 				</div>
 				<div class="flex items-center">
 					<div class="w-40 text-sm">
-						{progress}% <span class="text-neutral-300">•</span>
+						{progress}% <span class="text-zinc-300">•</span>
 						{time}
 					</div>
 					<!-- Progress -->
@@ -287,8 +287,8 @@
 						value: progress,
 						min: 0,
 						max: 100,
-						bgColorFilled: 'bg-neutral-200',
-						bgColorDarkFilled: 'bg-neutral-700',
+						bgColorFilled: 'bg-zinc-200',
+						bgColorDarkFilled: 'bg-zinc-700',
 						bgColorUnfilled: 'bg-blue-400',
 						bgColorDarkUnfilled: 'bg-blue-500',
 						height: 'h-2'
@@ -312,7 +312,7 @@
 {/snippet}
 
 {#snippet progressBarMultiple({ items, total }: { items: any; total: number })}
-	<div class="flex h-2 w-full gap-1 overflow-hidden rounded bg-neutral-200 text-xs dark:bg-neutral-700">
+	<div class="flex h-2 w-full gap-1 overflow-hidden rounded bg-zinc-200 text-xs dark:bg-zinc-700">
 		{#each items as { progress, color, colorDark }}
 			<div
 				class="flex flex-col justify-center overflow-hidden rounded-full {color} dark:{colorDark} text-center text-xs whitespace-nowrap text-white"

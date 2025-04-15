@@ -41,7 +41,7 @@
 </script>
 
 <header
-	class="sticky inset-x-0 top-0 z-[48] flex h-16 w-full flex-shrink-0 flex-wrap border-b border-b-neutral-200 bg-neutral-50 py-2.5 md:flex-nowrap md:justify-start lg:ps-[260px] dark:border-neutral-700 dark:bg-neutral-800"
+	class="sticky inset-x-0 top-0 z-[48] flex h-16 w-full flex-shrink-0 flex-wrap border-b border-b-zinc-200 bg-white py-2.5 md:flex-nowrap md:justify-start lg:ps-[260px] dark:border-zinc-700 dark:bg-zinc-900"
 >
 	<nav class="flex w-full items-center px-4">
 		<div class="flex w-full items-center justify-between gap-x-2">

@@ -26,7 +26,7 @@
 {/if}
 
 <!-- Container -->
-<div class="mt-10 text-base text-neutral-600 dark:text-neutral-200">
+<div class="mt-10 text-base text-zinc-600 dark:text-zinc-200">
 	<!-- Etapa 1: Inserir os dados para criar a conta -->
 	{#if step === 1}
 		<form

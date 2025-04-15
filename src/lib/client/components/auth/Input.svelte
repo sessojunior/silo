@@ -27,12 +27,12 @@
 					class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
 						? 'border-red-600 focus:border-red-600 focus:ring-red-500'
 						: 'focus:border-blue-500 focus:ring-blue-500'} 
-        border-neutral-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:placeholder-neutral-500 dark:focus:ring-neutral-600"
+        border-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:placeholder-zinc-500 dark:focus:ring-zinc-600"
 				/>
 				<button
 					type="button"
 					data-hs-toggle-password={JSON.stringify({ target: `#${id}` })}
-					class="absolute inset-y-0 end-0 z-20 flex cursor-pointer items-center rounded-e-md px-3 text-neutral-400 focus:text-blue-600 focus:outline-none dark:text-neutral-600 dark:focus:text-blue-500"
+					class="absolute inset-y-0 end-0 z-20 flex cursor-pointer items-center rounded-e-md px-3 text-zinc-400 focus:text-blue-600 focus:outline-none dark:text-zinc-600 dark:focus:text-blue-500"
 					aria-label="Exibir ou ocultar senha"
 				>
 					<span class="icon-[lucide--eye] hs-password-active:block hidden size-4"></span>
@@ -45,7 +45,7 @@
 					target: `#${id}`,
 					minLength: `${minlength}`,
 					hints: '#hs-strong-password-hints',
-					stripClasses: 'hs-strong-password:opacity-100 hs-strong-password-accepted:bg-teal-500 h-1 flex-auto rounded-full bg-neutral-300 opacity-50 mx-1'
+					stripClasses: 'hs-strong-password:opacity-100 hs-strong-password-accepted:bg-teal-500 h-1 flex-auto rounded-full bg-zinc-300 opacity-50 mx-1'
 				})}
 				class="-mx-1 mt-2 flex"
 			></div>
@@ -56,13 +56,13 @@
 	</div>
 	<div id="hs-strong-password-hints" class="mb-2">
 		<div class="mt-4 mb-2">
-			<span class="font-semibold text-neutral-500 dark:text-neutral-200">Força da senha: </span>
+			<span class="font-semibold text-zinc-500 dark:text-zinc-200">Força da senha: </span>
 			<span
 				data-hs-strong-password-hints-weakness-text={JSON.stringify(['nenhuma', 'fraca', 'média', 'forte', 'muito forte', 'super forte'])}
-				class="font-semibold text-neutral-500 dark:text-neutral-200"
+				class="font-semibold text-zinc-500 dark:text-zinc-200"
 			></span>
 		</div>
-		<ul class="space-y-1 text-sm text-neutral-500 dark:text-neutral-500">
+		<ul class="space-y-1 text-sm text-zinc-500 dark:text-zinc-500">
 			{@render passwordRule({
 				rule: 'min-length',
 				message: `Precisa ter pelo menos ${minlength} caracteres.`
@@ -94,7 +94,7 @@
 			</span>
 			<span data-uncheck="">
 				<span class="flex items-center justify-center">
-					<span class="icon-[lucide--x] size-5 text-neutral-400"></span>
+					<span class="icon-[lucide--x] size-5 text-zinc-400"></span>
 				</span>
 			</span>
 			{message}
@@ -118,7 +118,7 @@
 			class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
 				? 'border-red-600 focus:border-red-600 focus:ring-red-500'
 				: 'focus:border-blue-500 focus:ring-blue-500'} 
-        border-neutral-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:placeholder-neutral-500 dark:focus:ring-neutral-600"
+        border-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:placeholder-zinc-500 dark:focus:ring-zinc-600"
 		/>
 		<button
 			type="button"
@@ -126,7 +126,7 @@
 			class="absolute inset-y-0 end-0 z-20 flex cursor-pointer items-center rounded-e-md pe-4 {isInvalid
 				? 'focus:text-red-400 dark:focus:text-red-600'
 				: 'focus:text-blue-400 dark:focus:text-blue-600'} 
-        text-neutral-400 focus:outline-none dark:text-neutral-400"
+        text-zinc-400 focus:outline-none dark:text-zinc-400"
 			aria-label="Exibir ou ocultar senha"
 		>
 			<span class="icon-[lucide--eye] hs-password-active:block hidden size-5"></span>
@@ -159,7 +159,7 @@
 			class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
 				? 'border-red-400 focus:border-red-400 focus:ring-red-600 dark:border-red-800 dark:focus:border-red-800 dark:focus:ring-red-800'
 				: 'focus:border-blue-500 focus:ring-blue-500'} 
-        border-neutral-200 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:placeholder-neutral-500 dark:focus:ring-neutral-600"
+        border-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:placeholder-zinc-500 dark:focus:ring-zinc-600"
 		/>
 		{#if isInvalid}
 			<div class="pointer-events-none absolute inset-y-0 end-0 flex items-center pe-4">

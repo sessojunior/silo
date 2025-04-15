@@ -204,7 +204,7 @@
 
 	<!-- Conteúdo -->
 	<div class="w-full lg:pl-[260px]">
-		<div class="h-[calc(100svh-64px)] dark:text-white">
+		<div class="h-[calc(100svh-64px)] bg-zinc-50 dark:bg-zinc-800 dark:text-white">
 			<!-- Contéudo da página -->
 			{@render children()}
 		</div>

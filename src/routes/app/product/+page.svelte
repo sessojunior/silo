@@ -549,15 +549,15 @@
 	}
 </script>
 
-<div class="flex min-h-[calc(100vh-64px)] w-full flex-col bg-white dark:bg-neutral-900">
+<div class="flex min-h-[calc(100vh-64px)] w-full flex-col bg-white dark:bg-zinc-900">
 	<div class="flex flex-col">
 		<!-- Tabs buttons -->
-		<div class="h-14 border-b border-neutral-200">
+		<div class="h-14 border-b border-zinc-200">
 			<div class="flex h-full gap-x-4 px-8" aria-label="Tabs" role="tablist" aria-orientation="horizontal">
 				<!-- Tab 1 button -->
 				<button
 					type="button"
-					class="hs-tab-active:border-neutral-600 hs-tab-active:text-neutral-800 active inline-flex items-center gap-x-2 border-b-2 border-transparent px-2 text-base font-medium whitespace-nowrap text-neutral-400 hover:text-neutral-600 focus:text-neutral-600 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+					class="hs-tab-active:border-zinc-600 hs-tab-active:text-zinc-800 active inline-flex items-center gap-x-2 border-b-2 border-transparent px-2 text-base font-medium whitespace-nowrap text-zinc-400 hover:text-zinc-600 focus:text-zinc-600 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 					id="tab-1"
 					aria-selected="true"
 					data-hs-tab="#tab-content-1"
@@ -569,15 +569,15 @@
 				<!-- Tab 2 button -->
 				<button
 					type="button"
-					class="hs-tab-active:border-neutral-600 hs-tab-active:text-neutral-800 inline-flex items-center gap-x-2 border-b-2 border-transparent px-2 text-base font-semibold whitespace-nowrap text-neutral-400 hover:text-neutral-600 focus:text-neutral-600 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+					class="hs-tab-active:border-zinc-600 hs-tab-active:text-zinc-800 inline-flex items-center gap-x-2 border-b-2 border-transparent px-2 text-base font-semibold whitespace-nowrap text-zinc-400 hover:text-zinc-600 focus:text-zinc-600 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 					id="tab-2"
 					aria-selected="false"
 					data-hs-tab="#tab-content-2"
 					aria-controls="tab-content-2"
 					role="tab"
 				>
-					Problemas & soluções <span
-						class="hs-tab-active:bg-neutral-800 hs-tab-active:text-white ms-1 rounded-full bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-600">17</span
+					Problemas & soluções <span class="hs-tab-active:bg-zinc-800 hs-tab-active:text-white ms-1 rounded-full bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
+						>17</span
 					>
 				</button>
 			</div>
@@ -599,9 +599,9 @@
 {#snippet tab1()}
 	<div class="flex">
 		<!-- Side left -->
-		<div class="flex w-[320px] flex-shrink-0 flex-col border-r border-neutral-200 dark:border-neutral-700">
+		<div class="flex w-[320px] flex-shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-700">
 			<div
-				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-zinc-700"
 			>
 				<!-- Tree -->
 				<div class="hs-accordion-treeview-root px-8 pt-8" role="tree" aria-orientation="vertical">
@@ -623,10 +623,10 @@
 		<!-- Side right -->
 		<div class="flex w-full flex-grow flex-col">
 			<div
-				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-zinc-700"
 			>
 				<!-- Cabeçalho -->
-				<div class="flex flex-col gap-2 border-b border-neutral-200 p-8 md:grid md:grid-cols-2">
+				<div class="flex flex-col gap-2 border-b border-zinc-200 p-8 md:grid md:grid-cols-2">
 					<div class="flex">
 						<div class="flex w-8 items-center justify-center">
 							<span class="icon-[lucide--book-text] size-4"></span>
@@ -669,7 +669,7 @@
 					</div>
 				</div>
 				<!-- Responsáveis técnicos -->
-				<div class="border-b border-neutral-200 p-8">
+				<div class="border-b border-zinc-200 p-8">
 					<div class="flex w-full items-center justify-between pb-6">
 						<div>
 							<h3 class="text-xl font-medium">Contatos em caso de problemas</h3>
@@ -678,9 +678,9 @@
 							</div>
 						</div>
 						<button
-							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-zinc-200 hover:bg-zinc-100"
 						>
-							<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
+							<span class="icon-[lucide--plus] mr-1 size-4 text-zinc-800"></span>
 							Adicionar contato
 						</button>
 					</div>
@@ -693,8 +693,8 @@
 								</div>
 								<div class="flex flex-col">
 									<div class="text-base font-bold">{name}</div>
-									<div class="text-sm font-medium">{role} <span class="text-neutral-300">•</span> {team}</div>
-									<div class="text-sm font-medium"><a href={`mailto:${email}`} class="text-neutral-400 hover:text-neutral-500">{email}</a></div>
+									<div class="text-sm font-medium">{role} <span class="text-zinc-300">•</span> {team}</div>
+									<div class="text-sm font-medium"><a href={`mailto:${email}`} class="text-zinc-400 hover:text-zinc-500">{email}</a></div>
 								</div>
 							</div>
 						{/each}
@@ -706,13 +706,13 @@
 						<div>
 							<h3 class="text-xl font-medium">Manual do produto</h3>
 							<div>
-								<span class="text-sm font-medium">3 seções <span class="text-neutral-300">•</span> 9 capítulos</span>
+								<span class="text-sm font-medium">3 seções <span class="text-zinc-300">•</span> 9 capítulos</span>
 							</div>
 						</div>
 						<button
-							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-zinc-200 hover:bg-zinc-100"
 						>
-							<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
+							<span class="icon-[lucide--plus] mr-1 size-4 text-zinc-800"></span>
 							Adicionar seção
 						</button>
 					</div>
@@ -729,21 +729,21 @@
 {#snippet tab2()}
 	<div class="flex">
 		<!-- Side left -->
-		<div class="flex w-full flex-shrink-0 flex-col border-r border-neutral-200 sm:w-[480px] dark:border-neutral-700">
+		<div class="flex w-full flex-shrink-0 flex-col border-r border-zinc-200 sm:w-[480px] dark:border-zinc-700">
 			<div
-				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-zinc-700"
 			>
 				<!-- Procurar problemas -->
-				<div class="border-b border-neutral-200 p-8">
+				<div class="border-b border-zinc-200 p-8">
 					<div class="relative">
 						<input
 							type="text"
 							name="problem"
-							class="block w-full rounded-lg border-neutral-200 px-4 py-2.5 pe-11 focus:z-10 focus:border-blue-500 focus:ring-blue-500 disabled:pointer-events-none disabled:opacity-50 sm:py-3 sm:text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:placeholder-neutral-500 dark:focus:ring-neutral-600"
+							class="block w-full rounded-lg border-zinc-200 px-4 py-2.5 pe-11 focus:z-10 focus:border-blue-500 focus:ring-blue-500 disabled:pointer-events-none disabled:opacity-50 sm:py-3 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:placeholder-zinc-500 dark:focus:ring-zinc-600"
 							placeholder="Procurar problema..."
 						/>
 						<div class="pointer-events-none absolute inset-y-0 end-0 z-20 flex items-center pe-4">
-							<span class="icon-[lucide--search] ml-1 size-4 shrink-0 text-neutral-400 dark:text-neutral-500"></span>
+							<span class="icon-[lucide--search] ml-1 size-4 shrink-0 text-zinc-400 dark:text-zinc-500"></span>
 						</div>
 					</div>
 				</div>
@@ -752,18 +752,15 @@
 					{@render listProblems(problems)}
 				{:else}
 					<!-- Nenhum resultado encontrado -->
-					<div class="border-b border-neutral-200 p-8">
-						<div
-							class="rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-800 dark:border-neutral-600 dark:bg-yellow-800/10 dark:text-neutral-500"
-							role="alert"
-						>
+					<div class="border-b border-zinc-200 p-8">
+						<div class="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800 dark:border-zinc-600 dark:bg-yellow-800/10 dark:text-zinc-500" role="alert">
 							<div class="flex flex-col">
 								<div class="flex justify-center pb-1">
-									<span class="icon-[lucide--search-x] size-12 shrink-0 text-neutral-300 dark:text-neutral-500"></span>
+									<span class="icon-[lucide--search-x] size-12 shrink-0 text-zinc-300 dark:text-zinc-500"></span>
 								</div>
 								<div class="flex flex-col">
-									<h3 class="text-center text-base font-semibold text-neutral-600">Nenhum resultado</h3>
-									<div class="text-center text-sm text-neutral-700">Não encontramos nenhum resultado com o texto informado.</div>
+									<h3 class="text-center text-base font-semibold text-zinc-600">Nenhum resultado</h3>
+									<div class="text-center text-sm text-zinc-700">Não encontramos nenhum resultado com o texto informado.</div>
 								</div>
 							</div>
 						</div>
@@ -774,9 +771,9 @@
 					<div class="flex justify-center">
 						<button
 							type="button"
-							class="inline-flex items-center justify-center gap-x-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-800 shadow-2xs hover:bg-neutral-50 focus:bg-neutral-50 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+							class="inline-flex items-center justify-center gap-x-2 rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-800 shadow-2xs hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700 dark:focus:bg-zinc-700"
 						>
-							<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
+							<span class="icon-[lucide--plus] mr-1 size-4 text-zinc-800"></span>
 							Adicionar problema
 						</button>
 					</div>
@@ -787,28 +784,28 @@
 		<!-- Side right -->
 		<div class="flex w-full flex-grow flex-col">
 			<div
-				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 [&::-webkit-scrollbar-track]:bg-neutral-50 dark:[&::-webkit-scrollbar-track]:bg-neutral-700"
+				class="size-full h-[calc(100vh-120px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-zinc-700"
 			>
 				<!-- Descrição do problema -->
-				<div class="flex w-full flex-col border-b border-neutral-200 p-8">
+				<div class="flex w-full flex-col border-b border-zinc-200 p-8">
 					<!-- Title -->
 					<div class="flex w-full items-center justify-between pb-6">
 						<div>
 							<h3 class="text-xl font-medium">{problem.title}</h3>
 							<div class="text-base">
-								<span class="text-sm font-medium">{problem.solutions.length} soluções</span> <span class="text-neutral-300">•</span>
-								<span class="text-sm text-neutral-400">Registrado em {formatDate(problem.date)}</span>
+								<span class="text-sm font-medium">{problem.solutions.length} soluções</span> <span class="text-zinc-300">•</span>
+								<span class="text-sm text-zinc-400">Registrado em {formatDate(problem.date)}</span>
 							</div>
 						</div>
 						<button
-							class="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+							class="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-zinc-200 hover:bg-zinc-100"
 						>
-							<span class="icon-[lucide--edit] mr-1 size-4 text-neutral-800"></span>
+							<span class="icon-[lucide--edit] mr-1 size-4 text-zinc-800"></span>
 							Editar problema
 						</button>
 					</div>
 					<!-- Description -->
-					<div class="flex flex-col gap-y-2 text-neutral-800">
+					<div class="flex flex-col gap-y-2 text-zinc-800">
 						{@html problem.description}
 					</div>
 					<!-- Screenshots -->
@@ -821,7 +818,7 @@
 					</div>
 				</div>
 				<!-- Soluções -->
-				<div class="flex w-full flex-col border-b border-neutral-200 p-8">
+				<div class="flex w-full flex-col border-b border-zinc-200 p-8">
 					<div class="flex w-full items-center justify-between pb-6">
 						<div>
 							<h3 class="text-xl font-medium">Soluções</h3>
@@ -829,7 +826,7 @@
 								<span class="text-sm font-medium">
 									{#if problem.solutions.length > 0}
 										{problem.solutions.length} soluções para o problema
-										<span class="text-neutral-300">•</span>
+										<span class="text-zinc-300">•</span>
 										{problem.solutions.reduce((total, solution) => (solution.verified ? total + 1 : total), 0)} foram verificadas
 									{:else}
 										Sem soluções cadastradas
@@ -838,9 +835,9 @@
 							</div>
 						</div>
 						<button
-							class="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+							class="inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-zinc-200 hover:bg-zinc-100"
 						>
-							<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
+							<span class="icon-[lucide--plus] mr-1 size-4 text-zinc-800"></span>
 							Adicionar solução
 						</button>
 					</div>
@@ -857,9 +854,9 @@
 									<div class="flex flex-col">
 										<div class="flex flex-col gap-y-1">
 											<div class="text-base">
-												<span class="font-bold text-neutral-700">{user.name}</span>
-												<span class="text-neutral-300">•</span>
-												<span class="text-sm text-neutral-400">{formatDate(date)}</span>
+												<span class="font-bold text-zinc-700">{user.name}</span>
+												<span class="text-zinc-300">•</span>
+												<span class="text-sm text-zinc-400">{formatDate(date)}</span>
 												{#if verified}
 													<span
 														class="ml-2 inline-flex items-center gap-x-1 rounded-lg bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-500/10 dark:text-green-500"
@@ -869,7 +866,7 @@
 													</span>
 												{/if}
 											</div>
-											<div class="text-sm font-medium text-neutral-600">
+											<div class="text-sm font-medium text-zinc-600">
 												{description}
 											</div>
 										</div>
@@ -893,9 +890,9 @@
 													<div class="flex flex-col">
 														<div class="flex flex-col gap-y-1">
 															<div class="text-base">
-																<span class="font-bold text-neutral-700">{reply.user.name}</span>
-																<span class="text-neutral-300">•</span>
-																<span class="text-sm text-neutral-400">{formatDate(reply.date)}</span>
+																<span class="font-bold text-zinc-700">{reply.user.name}</span>
+																<span class="text-zinc-300">•</span>
+																<span class="text-sm text-zinc-400">{formatDate(reply.date)}</span>
 																{#if reply.verified}
 																	<span
 																		class="ml-2 inline-flex items-center gap-x-1 rounded-lg bg-green-100 px-2 py-1 text-xs font-medium text-green-800 dark:bg-green-500/10 dark:text-green-500"
@@ -905,7 +902,7 @@
 																	</span>
 																{/if}
 															</div>
-															<div class="text-sm font-medium text-neutral-600">{reply.description}</div>
+															<div class="text-sm font-medium text-zinc-600">{reply.description}</div>
 														</div>
 														<!-- Responder -->
 														<div class="py-2">
@@ -926,18 +923,15 @@
 						</div>
 					{:else}
 						<!-- Nenhum resultado encontrado -->
-						<div class="border-b border-neutral-200">
-							<div
-								class="rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-800 dark:border-neutral-600 dark:bg-yellow-800/10 dark:text-neutral-500"
-								role="alert"
-							>
+						<div class="border-b border-zinc-200">
+							<div class="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800 dark:border-zinc-600 dark:bg-yellow-800/10 dark:text-zinc-500" role="alert">
 								<div class="flex items-center gap-x-4">
 									<div class="flex justify-center pb-1">
-										<span class="icon-[lucide--circle-x] size-12 shrink-0 text-neutral-300 dark:text-neutral-500"></span>
+										<span class="icon-[lucide--circle-x] size-12 shrink-0 text-zinc-300 dark:text-zinc-500"></span>
 									</div>
 									<div class="flex flex-col">
-										<h3 class="text-base font-semibold text-neutral-600">Nenhuma solução encontrada</h3>
-										<div class="text-sm text-neutral-700">
+										<h3 class="text-base font-semibold text-zinc-600">Nenhuma solução encontrada</h3>
+										<div class="text-sm text-zinc-700">
 											Nenhum usuário cadastrou uma solução para este problema. Ainda não tem soluções. Seja o primeiro a cadastrar uma solução.
 										</div>
 									</div>
@@ -963,22 +957,22 @@
 				<div class="hs-accordion-heading flex w-full items-center gap-x-1 py-1">
 					<button class="hs-accordion-toggle group w-full" aria-expanded="false">
 						<div class="flex w-full">
-							<div class="flex size-6 items-center justify-center rounded-md group-hover:bg-neutral-100">
-								<span class="icon-[lucide--minus] hs-accordion-active:block hidden size-4 text-neutral-800"></span>
-								<span class="icon-[lucide--plus] hs-accordion-active:hidden block size-4 text-neutral-800"></span>
+							<div class="flex size-6 items-center justify-center rounded-md group-hover:bg-zinc-100">
+								<span class="icon-[lucide--minus] hs-accordion-active:block hidden size-4 text-zinc-800"></span>
+								<span class="icon-[lucide--plus] hs-accordion-active:hidden block size-4 text-zinc-800"></span>
 							</div>
 							<div class="flex w-full justify-between">
 								<div class="flex grow items-center gap-x-2 overflow-hidden rounded-md px-2">
 									{#if item.icon}
-										<span class="{item.icon} block size-4 text-neutral-500"></span>
+										<span class="{item.icon} block size-4 text-zinc-500"></span>
 									{/if}
-									<span class="{item.children && item.children.some((child: any) => !child.children) ? 'max-w-40' : ''} truncate text-start text-base font-medium text-neutral-800"
+									<span class="{item.children && item.children.some((child: any) => !child.children) ? 'max-w-40' : ''} truncate text-start text-base font-medium text-zinc-800"
 										>{item.label}</span
 									>
 								</div>
 								{#if item.children && item.children.some((child: any) => !child.children)}
 									<div>
-										<span class="inline-flex items-center gap-x-1 rounded-full bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-400 dark:bg-white/10 dark:text-white"
+										<span class="inline-flex items-center gap-x-1 rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-400 dark:bg-white/10 dark:text-white"
 											>{item.children.length}</span
 										>
 									</div>
@@ -990,7 +984,7 @@
 				<div
 					class="hs-accordion-content {item.children && item.children.some((child: any) => child.children) ? '' : 'hidden'} w-full overflow-hidden transition-[height] duration-300"
 				>
-					<div class="relative ms-3 ps-3 before:absolute before:start-0 before:top-0 before:-ms-px before:h-full before:w-0.5 before:bg-neutral-100">
+					<div class="relative ms-3 ps-3 before:absolute before:start-0 before:top-0 before:-ms-px before:h-full before:w-0.5 before:bg-zinc-100">
 						{#each item.children as subitem}
 							{@render tree({ item: subitem })}
 						{/each}
@@ -998,14 +992,11 @@
 				</div>
 			</div>
 		{:else}
-			<a
-				href={item.url}
-				class="hs-accordion-selectable hs-accordion-selected:bg-neutral-200 my-0.5 flex cursor-pointer items-center gap-x-2 rounded-md px-2 py-1 hover:bg-neutral-100"
-			>
+			<a href={item.url} class="hs-accordion-selectable hs-accordion-selected:bg-zinc-200 my-0.5 flex cursor-pointer items-center gap-x-2 rounded-md px-2 py-1 hover:bg-zinc-100">
 				{#if item.icon}
-					<span class="{item.icon} block size-4 text-neutral-500"></span>
+					<span class="{item.icon} block size-4 text-zinc-500"></span>
 				{/if}
-				<span class="text-sm text-neutral-800">{item.label}</span>
+				<span class="text-sm text-zinc-800">{item.label}</span>
 			</a>
 		{/if}
 	</div>
@@ -1016,37 +1007,37 @@
 		{#each sections as { id, title, description, chapters }, index (id)}
 			<div class="hs-accordion {index === 0 ? 'active' : ''}">
 				<button
-					class="hs-accordion-toggle hs-accordion-active:text-blue-600 inline-flex w-full items-center gap-x-3 rounded-lg py-3 text-start font-semibold text-neutral-800 hover:text-neutral-500 focus:text-neutral-500 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+					class="hs-accordion-toggle hs-accordion-active:text-blue-600 inline-flex w-full items-center gap-x-3 rounded-lg py-3 text-start font-semibold text-zinc-800 hover:text-zinc-500 focus:text-zinc-500 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 					aria-expanded="true"
 				>
-					<span class="icon-[lucide--chevron-up] hs-accordion-active:block hidden size-5 text-neutral-800"></span>
-					<span class="icon-[lucide--chevron-down] hs-accordion-active:hidden block size-5 text-neutral-800"></span>
+					<span class="icon-[lucide--chevron-up] hs-accordion-active:block hidden size-5 text-zinc-800"></span>
+					<span class="icon-[lucide--chevron-down] hs-accordion-active:hidden block size-5 text-zinc-800"></span>
 					{title}
 				</button>
 				<div class="hs-accordion-content {index !== 0 ? 'hidden' : ''} w-full overflow-hidden transition-[height] duration-300" role="region">
 					{#if description}
-						<p class="pt-1 pb-3 text-neutral-800">{description}</p>
+						<p class="pt-1 pb-3 text-zinc-800">{description}</p>
 					{/if}
 					{#if chapters.length > 0}
 						<div class="hs-accordion-group ps-6">
 							{#each chapters as { id, title, description }, index (id)}
 								<div class="hs-accordion {index === 0 ? 'active' : ''}">
 									<button
-										class="hs-accordion-toggle hs-accordion-active:text-blue-600 inline-flex w-full items-center gap-x-3 rounded-lg py-3 text-start font-semibold text-neutral-800 hover:text-neutral-500 focus:text-neutral-500 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+										class="hs-accordion-toggle hs-accordion-active:text-blue-600 inline-flex w-full items-center gap-x-3 rounded-lg py-3 text-start font-semibold text-zinc-800 hover:text-zinc-500 focus:text-zinc-500 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50"
 										aria-expanded="true"
 									>
-										<span class="icon-[lucide--chevron-up] hs-accordion-active:block hidden size-5 text-neutral-800"></span>
-										<span class="icon-[lucide--chevron-down] hs-accordion-active:hidden block size-5 text-neutral-800"></span>
-										<span class="icon-[lucide--book-text] size-4 text-neutral-800"></span>
+										<span class="icon-[lucide--chevron-up] hs-accordion-active:block hidden size-5 text-zinc-800"></span>
+										<span class="icon-[lucide--chevron-down] hs-accordion-active:hidden block size-5 text-zinc-800"></span>
+										<span class="icon-[lucide--book-text] size-4 text-zinc-800"></span>
 										{title}
 									</button>
 									<div class="hs-accordion-content {index !== 0 ? 'hidden' : ''} w-full overflow-hidden transition-[height] duration-300" role="region">
-										<p class="text-neutral-800">{description}</p>
+										<p class="text-zinc-800">{description}</p>
 										<div class="py-2">
 											<button
-												class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+												class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-4 py-3 text-sm transition-all duration-300 hover:border-zinc-200 hover:bg-zinc-100"
 											>
-												<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
+												<span class="icon-[lucide--plus] mr-1 size-4 text-zinc-800"></span>
 												Adicionar capítulo
 											</button>
 										</div>
@@ -1056,9 +1047,9 @@
 						</div>
 					{:else}
 						<button
-							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-3 py-2 text-sm transition-all duration-300 hover:border-neutral-200 hover:bg-neutral-100"
+							class="inline-flex items-center justify-center rounded-lg border border-transparent bg-white px-3 py-2 text-sm transition-all duration-300 hover:border-zinc-200 hover:bg-zinc-100"
 						>
-							<span class="icon-[lucide--plus] mr-1 size-4 text-neutral-800"></span>
+							<span class="icon-[lucide--plus] mr-1 size-4 text-zinc-800"></span>
 							Adicionar capítulo
 						</button>
 					{/if}
@@ -1074,13 +1065,13 @@
 		{#if problems.length > 0}
 			{#each problems as { id, title, date, description, solutions } (id)}
 				<!-- Problema -->
-				<div class="flex flex-col border-b border-neutral-200">
-					<div class="flex w-full flex-col gap-y-1 p-8 hover:bg-neutral-100">
+				<div class="flex flex-col border-b border-zinc-200">
+					<div class="flex w-full flex-col gap-y-1 p-8 hover:bg-zinc-100">
 						<div class="flex w-full items-center justify-between gap-x-2">
-							<span class="text-base font-semibold text-neutral-700">{title}</span>
-							<span class="ms-1 shrink-0 rounded-full bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-600">{solutions}</span>
+							<span class="text-base font-semibold text-zinc-700">{title}</span>
+							<span class="ms-1 shrink-0 rounded-full bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600">{solutions}</span>
 						</div>
-						<div class="flex text-sm text-neutral-600">
+						<div class="flex text-sm text-zinc-600">
 							<p>{description}</p>
 						</div>
 					</div>

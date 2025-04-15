@@ -5,11 +5,11 @@
 		<!-- Banner -->
 		<div class="flex justify-center">
 			<a
-				class="group inline-flex items-center gap-x-2 rounded-full border border-neutral-200 bg-white p-1 ps-3 text-sm text-neutral-800 transition hover:border-neutral-400 focus:border-neutral-300 focus:outline-hidden"
+				class="group inline-flex items-center gap-x-2 rounded-full border border-zinc-200 bg-white p-1 ps-3 text-sm text-zinc-800 transition hover:border-zinc-400 focus:border-zinc-300 focus:outline-hidden"
 				href="/sign-up"
 			>
 				Crie sua conta agora mesmo!
-				<span class="inline-flex items-center justify-center gap-x-2 rounded-full bg-neutral-100 px-2.5 py-1.5 text-sm font-semibold text-neutral-600 group-hover:bg-neutral-200">
+				<span class="inline-flex items-center justify-center gap-x-2 rounded-full bg-zinc-100 px-2.5 py-1.5 text-sm font-semibold text-zinc-600 group-hover:bg-zinc-200">
 					<span class="icon-[lucide--chevron-right]"></span>
 				</span>
 			</a>
@@ -17,7 +17,7 @@
 
 		<!-- Titulo -->
 		<div class="mx-auto mt-5 max-w-2xl text-center">
-			<h1 class="block text-4xl font-bold text-neutral-800 md:text-5xl lg:text-6xl">
+			<h1 class="block text-4xl font-bold text-zinc-800 md:text-5xl lg:text-6xl">
 				Bem-vindo ao
 				<span class="bg-linear-to-tl from-blue-600 to-violet-600 bg-clip-text text-transparent">Silo</span>
 			</h1>
@@ -25,7 +25,7 @@
 
 		<!-- Subtitulo -->
 		<div class="mx-auto mt-5 max-w-3xl text-center">
-			<p class="text-lg text-neutral-600">Silo é um aplicativo de gerenciamento de produtos e tarefas para o CPTEC, INPE.</p>
+			<p class="text-lg text-zinc-600">Silo é um aplicativo de gerenciamento de produtos e tarefas para o CPTEC, INPE.</p>
 		</div>
 
 		<!-- Botão -->
