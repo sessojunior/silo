@@ -26,7 +26,7 @@
 
 <!-- Cartão de informações pessoais -->
 <div class="flex w-full gap-8">
-	<div class="flex flex-grow flex-col rounded-xl border border-zinc-200 bg-white shadow-2xs">
+	<div class="mb-8 flex flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 		<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
 			<h3 class="text-xl font-bold">Informações pessoais</h3>
 		</div>
@@ -159,7 +159,7 @@
 		</div>
 	</div>
 
-	<div class="flex flex-col gap-8">
+	<div class="mb-8 flex flex-col gap-8">
 		<div class="flex w-96 flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 			<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
 				<h3 class="text-xl font-bold">Sua foto</h3>
@@ -172,7 +172,7 @@
 		</div>
 
 		<div class="flex w-96 flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
-			<div class="flex flex-col gap-4 p-6">
+			<div class="flex flex-col p-6">
 				<div class="flex w-full items-center justify-between">
 					<div>
 						<img src="/images/google-logo.png" alt="Google" class="h-auto w-24" />

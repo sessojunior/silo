@@ -8,7 +8,7 @@
 
 	// Dados da página
 	const contextPage = $state({
-		title: 'Título padrão'
+		title: 'Carregando...'
 	})
 
 	// Disponibiliza os dados da página para serem alterados ou acessados pelos filhos
