@@ -7,12 +7,12 @@
 	let { children, data }: { children: any; data: { user: any } } = $props()
 
 	// Dados da página
-	const page = $state({
+	const contextPage = $state({
 		title: 'Título padrão'
 	})
 
 	// Disponibiliza os dados da página para serem alterados ou acessados pelos filhos
-	setContext('page', page)
+	setContext('contextPage', contextPage)
 
 	// Dados do usuário
 	const user = data.user
@@ -197,7 +197,7 @@
 
 <div>
 	<!-- Barra do topo -->
-	<Topbar title={page.title} {user} />
+	<Topbar title={contextPage.title} {user} />
 
 	<!-- Barra lateral -->
 	<Sidebar {user} {logo} {sidebar} />

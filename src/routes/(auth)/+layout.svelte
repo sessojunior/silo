@@ -11,12 +11,12 @@
 		<div class="scrollbar size-full overflow-y-auto">
 			<div class="flex h-full w-full flex-col">
 				<div class="flex">
-					<div class="flex items-center justify-center gap-2 px-10 pt-10">
+					<div class="flex items-center justify-center px-10 pt-10">
 						{#if logo.image}
 							<img src={logo.image} alt="Logo" class="block h-12 w-12" />
 						{/if}
 						{#if logo.title}
-							<div class="inline-block text-3xl font-bold text-zinc-600 dark:text-zinc-200">{logo.title}</div>
+							<div class="inline-block px-1 pt-0.5 text-3xl font-bold text-zinc-600 dark:text-zinc-200">{logo.title}</div>
 						{/if}
 					</div>
 				</div>

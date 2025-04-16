@@ -1,8 +1,8 @@
 <script lang="ts">
-	let { children, id, labelledby }: { children: any; id: string; labelledby: string } = $props()
+	let { children }: { children: any } = $props()
 </script>
 
-<div {id} class="bg-zinc-50 dark:bg-zinc-800" role="tabpanel" aria-labelledby={labelledby}>
+<div class="bg-zinc-50 dark:bg-zinc-800">
 	<div class="container flex">
 		<div class="flex w-full flex-shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-700">
 			<div
