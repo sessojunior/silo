@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state'
+
 	const { menu } = $props()
 </script>
 
@@ -47,7 +49,8 @@
 		{:else}
 			<a
 				href={item.url}
-				class="flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 text-base font-medium text-zinc-600 transition-all duration-500 hover:bg-zinc-200 dark:text-zinc-200 dark:hover:bg-zinc-500 dark:hover:text-zinc-300"
+				class="flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 text-base font-medium text-zinc-600 transition-all duration-500 hover:bg-zinc-200 dark:text-zinc-200 dark:hover:bg-zinc-500 dark:hover:text-zinc-300
+				{page.url.pathname === item.url ? 'bg-zinc-100' : ''}"
 			>
 				<span class="{item.icon} size-4 shrink-0 text-zinc-400"></span>
 				{item.title}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte'
-	import { page } from '$app/stores'
+	import { page } from '$app/state'
 
 	let { children } = $props()
 
@@ -15,9 +15,9 @@
 
 	// Lista de botões
 	const tabs = [
-		{ label: 'Alterar perfil', href: '/app/settings/profile' },
-		{ label: 'Preferências', href: '/app/settings/preferences' },
-		{ label: 'Segurança', href: '/app/settings/security' }
+		{ label: 'Alterar perfil', url: '/app/settings/profile' },
+		{ label: 'Preferências', url: '/app/settings/preferences' },
+		{ label: 'Segurança', url: '/app/settings/security' }
 	]
 </script>
 
@@ -29,7 +29,7 @@
 				<div class="flex gap-x-2">
 					<!-- Botões -->
 					{#each tabs as tab}
-						<Button href={tab.href} active={$page.url.pathname === tab.href}>
+						<Button href={tab.url} active={page.url.pathname === tab.url}>
 							{tab.label}
 						</Button>
 					{/each}

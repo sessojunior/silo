@@ -23,11 +23,8 @@
 <!-- Cartão de informações pessoais -->
 <div class="flex w-full gap-8">
 	<div class="flex flex-grow flex-col rounded-xl border border-zinc-200 bg-white shadow-2xs">
-		<div class="flex items-center justify-between rounded-t-xl border-b border-zinc-200 bg-zinc-50 px-6 py-4">
-			<h3 class="text-xl font-bold">
-				Permissões gerais/h3>
-				<div class="flex items-center gap-x-1 text-zinc-400">yes</div>
-			</h3>
+		<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-50 px-6 py-4">
+			<h3 class="text-xl font-bold">Permissões gerais</h3>
 		</div>
 		<div class="flex flex-col gap-4 p-6">
 			<div class="flex">
@@ -35,5 +32,5 @@
 			</div>
 		</div>
 	</div>
-	<div class="w-80">side right</div>
+	<div class="w-80">Recomendações</div>
 </div>

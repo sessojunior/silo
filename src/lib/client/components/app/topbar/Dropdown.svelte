@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state'
+
 	let { account } = $props()
 </script>
 
@@ -47,7 +49,8 @@
 		<div class="space-y-0.5 p-1.5">
 			{#each account.links as link (link.id)}
 				<a
-					class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-base font-medium text-zinc-800 transition-all duration-500 hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-none dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-300 dark:focus:bg-zinc-700 dark:focus:text-zinc-300"
+					class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-base font-medium text-zinc-800 transition-all duration-500 hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-none dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-300 dark:focus:bg-zinc-700 dark:focus:text-zinc-300
+					{page.url.pathname === link.url ? 'bg-zinc-100' : ''}"
 					href={link.url}
 				>
 					<span class="{link.icon} size-4 shrink-0 text-zinc-400"></span>

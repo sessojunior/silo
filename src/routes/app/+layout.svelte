@@ -150,27 +150,27 @@
 						id: '2.3',
 						title: 'Configurações',
 						icon: 'icon-[lucide--settings-2]',
-						url: '#',
+						url: '/app/settings',
 						items: [
 							{
 								id: '2.3.1',
 								title: 'Alterar perfil',
 								icon: null,
-								url: '#',
+								url: '/app/settings/profile',
 								items: null
 							},
 							{
 								id: '2.3.2',
 								title: 'Preferências',
 								icon: null,
-								url: '#',
+								url: '/app/settings/preferences',
 								items: null
 							},
 							{
 								id: '2.3.3',
 								title: 'Segurança',
 								icon: null,
-								url: '#',
+								url: '/app/settings/security',
 								items: null
 							}
 						]
@@ -193,11 +193,44 @@
 			}
 		]
 	}
+
+	// Dados para o dropdown da barra do topo
+	const account = {
+		avatar: user.avatar ? `/uploads/avatar/${user.avatar}` : '/uploads/avatar.png',
+		name: user.name,
+		email: user.email,
+		links: [
+			{
+				id: '1',
+				icon: 'icon-[lucide--user-round-pen]',
+				title: 'Alterar perfil',
+				url: '/app/settings/profile'
+			},
+			{
+				id: '2',
+				icon: 'icon-[lucide--settings-2]',
+				title: 'Preferências',
+				url: '/app/settings/preferences'
+			},
+			{
+				id: '3',
+				icon: 'icon-[lucide--shield-check]',
+				title: 'Segurança',
+				url: '/app/settings/security'
+			},
+			{
+				id: '4',
+				icon: 'icon-[lucide--log-out]',
+				title: 'Sair',
+				url: '/sign-out'
+			}
+		]
+	}
 </script>
 
 <div>
 	<!-- Barra do topo -->
-	<Topbar title={contextPage.title} {user} />
+	<Topbar title={contextPage.title} {account} {user} />
 
 	<!-- Barra lateral -->
 	<Sidebar {user} {logo} {sidebar} />

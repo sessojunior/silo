@@ -2,13 +2,13 @@
 	import { enhance } from '$app/forms'
 	import type { PageProps } from './$types'
 
+	import Label from '$lib/client/components/ui/Label.svelte'
+	import Input from '$lib/client/components/ui/Input.svelte'
+	import Alert from '$lib/client/components/ui/Alert.svelte'
+	import Button from '$lib/client/components/ui/Button.svelte'
 	import Header from '$lib/client/components/auth/Header.svelte'
-	import Label from '$lib/client/components/auth/Label.svelte'
-	import Input from '$lib/client/components/auth/Input.svelte'
-	import Button from '$lib/client/components/auth/Button.svelte'
 	import Link from '$lib/client/components/auth/Link.svelte'
 	import Pin from '$lib/client/components/auth/Pin.svelte'
-	import Alert from '$lib/client/components/auth/Alert.svelte'
 
 	let { form }: PageProps = $props()
 

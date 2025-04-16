@@ -5,7 +5,62 @@
 		window.HSStaticMethods.autoInit()
 	})
 
-	let { type, id, name, placeholder, autocomplete, autofocus = false, minlength = 2, maxlength = 255, value = $bindable(''), required, isInvalid, invalidMessage } = $props()
+	let {
+		type,
+		mask = null,
+		id,
+		name,
+		placeholder,
+		autocomplete,
+		autofocus = false,
+		minlength = 2,
+		maxlength = 255,
+		value = $bindable(''),
+		className = null,
+		required,
+		isInvalid,
+		invalidMessage
+	} = $props()
+
+	// Deixa o telefone no formato (00) 00000-0000 ou (00) 0000-0000
+	function phoneMask(value: string) {
+		value = value.replace(/\D/g, '')
+
+		if (value.length > 10) {
+			return value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3')
+		} else if (value.length > 6) {
+			return value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3')
+		} else if (value.length > 2) {
+			return value.replace(/^(\d{2})(\d{0,5})/, '($1) $2')
+		} else {
+			return value.replace(/^(\d*)/, '($1')
+		}
+	}
+
+	// Se o tipo do campo for 'email', converte para minúsculo o que for digitado
+	// mas se tiver mask 'phone', aplica a máscara de telefone
+	function handleInput(event: Event) {
+		const input = event.target as HTMLInputElement
+
+		// Se o tipo do campo for 'phone', aplica a máscara de telefone
+		if (mask === 'phone') {
+			const cursor = input.selectionStart ?? 0
+			const originalLength = input.value.length
+
+			const masked = phoneMask(input.value)
+			input.value = masked
+			value = masked
+
+			const diff = masked.length - originalLength
+			const newCursor = Math.max(0, cursor + diff)
+			requestAnimationFrame(() => {
+				input.setSelectionRange(newCursor, newCursor)
+			})
+		} else {
+			// Se o tipo do campo for 'email', converte para minúsculo o que for digitado
+			value = type === 'email' ? input.value.toLowerCase() : input.value
+		}
+	}
 </script>
 
 {#if type === 'strong-password'}
@@ -24,9 +79,9 @@
 					{required}
 					{value}
 					{autofocus}
-					class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
-						? 'border-red-600 focus:border-red-600 focus:ring-red-500'
-						: 'focus:border-blue-500 focus:ring-blue-500'} 
+					class="block rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50
+					{isInvalid ? 'border-red-600 focus:border-red-600 focus:ring-red-500' : 'focus:border-blue-500 focus:ring-blue-500'} 
+					{className ?? 'w-full'}
         border-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:placeholder-zinc-500 dark:focus:ring-zinc-600"
 				/>
 				<button
@@ -115,9 +170,9 @@
 			{required}
 			{value}
 			{autofocus}
-			class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
-				? 'border-red-600 focus:border-red-600 focus:ring-red-500'
-				: 'focus:border-blue-500 focus:ring-blue-500'} 
+			class="block rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50
+				{isInvalid ? 'border-red-600 focus:border-red-600 focus:ring-red-500' : 'focus:border-blue-500 focus:ring-blue-500'} 
+				{className ?? 'w-full'}
         border-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:placeholder-zinc-500 dark:focus:ring-zinc-600"
 		/>
 		<button
@@ -151,14 +206,12 @@
 			{required}
 			{value}
 			{autofocus}
-			oninput={(e) => {
-				// Se o tipo do campo for 'email', converte para minúsculo o que for digitado
-				const input = e.target as HTMLInputElement
-				value = type === 'email' ? input.value.toLowerCase() : input.value
-			}}
-			class="block w-full rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50 {isInvalid
+			oninput={handleInput}
+			class="block rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50
+				{isInvalid
 				? 'border-red-400 focus:border-red-400 focus:ring-red-600 dark:border-red-800 dark:focus:border-red-800 dark:focus:ring-red-800'
 				: 'focus:border-blue-500 focus:ring-blue-500'} 
+				{className ?? 'w-full'}
         border-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:placeholder-zinc-500 dark:focus:ring-zinc-600"
 		/>
 		{#if isInvalid}

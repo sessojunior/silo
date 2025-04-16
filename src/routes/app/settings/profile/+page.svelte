@@ -1,37 +1,197 @@
 <script lang="ts">
+	import { enhance } from '$app/forms'
+	import type { PageProps } from './$types'
+
+	import Label from '$lib/client/components/ui/Label.svelte'
+	import Input from '$lib/client/components/ui/Input.svelte'
+	import Alert from '$lib/client/components/ui/Alert.svelte'
+	import Button from '$lib/client/components/ui/Button.svelte'
+	import Select from '$lib/client/components/ui/Select.svelte'
+	import PhotoUpload from '$lib/client/components/ui/PhotoUpload.svelte'
+
+	let { form }: PageProps = $props()
+
+	let loading = $state(false)
+
+	let connected = true
 </script>
 
 <!-- Cabeçalho -->
-<div class="flex w-full justify-between">
+<div class="flex w-full">
 	<div class="w-full flex-grow">
 		<h1 class="text-3xl font-bold tracking-tight">Alterar perfil</h1>
-		<p class="mt-1 text-base">Altere suas informações pessoais, como nome, imagem de perfil e outras informações.</p>
-	</div>
-	<div class="flex w-80 items-center justify-end gap-4">
-		<button
-			type="button"
-			class="inline-flex items-center justify-center gap-x-2 rounded-lg border border-zinc-200 bg-white px-6 py-3 font-medium shadow-xs hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:focus:bg-zinc-800"
-			>Cancelar</button
-		>
-		<button
-			type="button"
-			class="inline-flex items-center justify-center gap-x-2 rounded-lg border border-transparent bg-blue-600 px-6 py-3 font-medium text-white shadow-xs hover:bg-blue-700 focus:bg-blue-700 focus:outline-none disabled:pointer-events-none disabled:opacity-50"
-			>Salvar</button
-		>
+		<p class="mt-1 text-base">Altere suas informações pessoais, como nome, função, celular, equipe, imagem de perfil e outras informações.</p>
 	</div>
 </div>
+
 <!-- Cartão de informações pessoais -->
 <div class="flex w-full gap-8">
 	<div class="flex flex-grow flex-col rounded-xl border border-zinc-200 bg-white shadow-2xs">
-		<div class="flex items-center justify-between rounded-t-xl border-b border-zinc-200 bg-zinc-50 px-6 py-4">
+		<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
 			<h3 class="text-xl font-bold">Informações pessoais</h3>
-			<div class="flex items-center gap-x-1 text-zinc-400">yes</div>
 		</div>
 		<div class="flex flex-col gap-4 p-6">
-			<div class="flex">
-				<p>teste</p>
+			<form
+				class="flex w-full"
+				method="post"
+				action="?/update-profile"
+				use:enhance={() => {
+					loading = true
+					return async ({ update }) => {
+						await update()
+						loading = false
+					}
+				}}
+			>
+				<fieldset class="grid w-full gap-5">
+					{#if form?.message && !form?.field}
+						<Alert message={form.message} />
+					{/if}
+					<div class="flex gap-4">
+						<div class="w-1/2">
+							<Label htmlFor="name" isInvalid={form?.field === 'name'}>Nome</Label>
+							<Input type="text" id="name" name="name" autocomplete="name" placeholder="Fulano" required isInvalid={form?.field === 'name'} invalidMessage={form?.message} />
+						</div>
+						<div class="w-1/2">
+							<Label htmlFor="genre" isInvalid={form?.field === 'genre'}>Sexo</Label>
+							<Select
+								name="genre"
+								selected="female"
+								placeholder="Selecione o sexo..."
+								options={[
+									{ label: 'Masculino', value: 'male' },
+									{ label: 'Feminino', value: 'female' }
+								]}
+								isInvalid={form?.field === 'genre'}
+								invalidMessage={form?.message}
+							/>
+						</div>
+					</div>
+					<div>
+						<Label htmlFor="email" isInvalid={form?.field === 'email'}>E-mail</Label>
+						<Input
+							type="email"
+							id="email"
+							name="email"
+							autocomplete="email"
+							placeholder="seuemail@inpe.br"
+							minlength={8}
+							maxlength={255}
+							required
+							isInvalid={form?.field === 'email'}
+							invalidMessage={form?.message}
+						/>
+					</div>
+					<div class="flex gap-4">
+						<div class="w-1/2">
+							<Label htmlFor="phone" isInvalid={form?.field === 'phone'}>Celular</Label>
+							<Input
+								type="text"
+								id="phone"
+								name="phone"
+								autocomplete="phone"
+								mask="phone"
+								placeholder="(00) 00000-0000"
+								required
+								isInvalid={form?.field === 'phone'}
+								invalidMessage={form?.message}
+							/>
+						</div>
+						<div class="w-1/2">
+							<Label htmlFor="role" isInvalid={form?.field === 'role'}>Função</Label>
+							<Select
+								name="role"
+								selected=""
+								placeholder="Selecione sua função..."
+								options={[
+									{ label: 'Suporte técnico', value: 'support' },
+									{ label: 'Desenvolvedor', value: 'developer' },
+									{ label: 'Gerente', value: 'manager' }
+								]}
+								isInvalid={form?.field === 'role'}
+								invalidMessage={form?.message}
+							/>
+						</div>
+					</div>
+					<div class="flex gap-4">
+						<div class="w-1/2">
+							<Label htmlFor="team" isInvalid={form?.field === 'team'}>Equipe</Label>
+							<Select
+								name="team"
+								selected=""
+								placeholder="Selecione sua equipe..."
+								options={[
+									{ label: 'DIPTC', value: 'DIPTC' },
+									{ label: 'Outros', value: 'Outros' }
+								]}
+								isInvalid={form?.field === 'team'}
+								invalidMessage={form?.message}
+							/>
+						</div>
+						<div class="w-1/2">
+							<Label htmlFor="location" isInvalid={form?.field === 'location'}>Localização</Label>
+							<Select
+								name="location"
+								selected=""
+								placeholder="Selecione sua localização..."
+								options={[
+									{ label: 'Cachoeira Paulista', value: 'Cachoeira Paulista' },
+									{ label: 'São José dos Campos', value: 'São José dos Campos' },
+									{ label: 'Outros', value: 'Outros' }
+								]}
+								isInvalid={form?.field === 'location'}
+								invalidMessage={form?.message}
+							/>
+						</div>
+					</div>
+					<div>
+						<Button type="submit" disabled={loading} className="w-auto">
+							{#if loading}
+								<span class="icon-[lucide--loader-circle] animate-spin"></span>
+								Salvando...
+							{:else}
+								Salvar
+							{/if}
+						</Button>
+					</div>
+				</fieldset>
+			</form>
+		</div>
+	</div>
+
+	<div class="flex flex-col gap-8">
+		<div class="flex w-96 flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
+			<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
+				<h3 class="text-xl font-bold">Sua foto</h3>
+			</div>
+			<div class="flex flex-col gap-4 p-6">
+				<div class="flex w-full">
+					<PhotoUpload url="/upload" isInvalid={form?.field === 'photo-upload'} invalidMessage={form?.message} />
+				</div>
+			</div>
+		</div>
+
+		<div class="flex w-96 flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
+			<div class="flex flex-col gap-4 p-6">
+				<div class="flex w-full items-center justify-between">
+					<div>
+						<img src="/images/google-logo.png" alt="Google" class="h-auto w-24" />
+					</div>
+					<div>
+						<button
+							type="button"
+							class="border-zinx-200 inline-flex items-center gap-x-2 rounded-lg border border-green-200 bg-green-100 px-3 py-2 text-xs font-semibold text-green-600 transition-all duration-500 hover:border-green-200 hover:bg-green-200 focus:bg-green-100 focus:outline-hidden disabled:pointer-events-none disabled:opacity-75"
+							disabled={!connected}>{connected ? 'Conectado' : 'Conectar'}</button
+						>
+					</div>
+				</div>
+			</div>
+			<div class="px-6 pb-6">
+				<h3 class="text-lg font-bold tracking-tight text-zinc-600 dark:text-zinc-200">Entrar com o Google</h3>
+				<p class="mt-1 text-base text-zinc-600 dark:text-zinc-200">
+					Use o Google para fazer entrar em sua conta. <a href="/sign-in" class="hover-b-blue-600 text-blue-600 hover:border-b">Clique aqui para saber mais.</a>
+				</p>
 			</div>
 		</div>
 	</div>
-	<div class="w-80">side right</div>
 </div>

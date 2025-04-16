@@ -6,10 +6,10 @@
 	let { data }: PageProps = $props()
 
 	// Pega os dados da página por meio do context
-	const page = getContext<{ title: string }>('page')
+	const contextPage = getContext<{ title: string }>('contextPage')
 
 	// Atualiza o título da página dinamicamente
-	page.title = 'Bem-vindo ao Silo'
+	contextPage.title = 'Bem-vindo ao Silo'
 
 	// Dados do usuário
 	const user = data.user

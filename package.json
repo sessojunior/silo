@@ -27,6 +27,7 @@
 		"@tailwindcss/forms": "^0.5.9",
 		"@tailwindcss/typography": "^0.5.15",
 		"@tailwindcss/vite": "^4.0.0",
+		"@types/lodash": "^4.17.16",
 		"@types/nodemailer": "^6.4.17",
 		"drizzle-kit": "^0.30.2",
 		"eslint": "^9.18.0",
@@ -51,6 +52,8 @@
 		"apexcharts": "^4.5.0",
 		"arctic": "^3.6.0",
 		"drizzle-orm": "^0.40.0",
+		"dropzone": "^6.0.0-beta.2",
+		"lodash": "^4.17.21",
 		"nodemailer": "^6.10.0",
 		"preline": "^3.0.1",
 		"sharp": "^0.34.1"

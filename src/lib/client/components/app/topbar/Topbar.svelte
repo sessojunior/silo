@@ -4,40 +4,7 @@
 	import Divider from '$lib/client/components/app/topbar/Divider.svelte'
 	import Title from '$lib/client/components/app/topbar/Title.svelte'
 
-	let { title, user } = $props()
-
-	// Dados para o dropdown
-	const account = {
-		avatar: user.avatar ? `/uploads/avatar/${user.avatar}` : '/uploads/avatar.png',
-		name: user.name,
-		email: user.email,
-		links: [
-			{
-				id: '1',
-				icon: 'icon-[lucide--user-round-pen]',
-				title: 'Alterar perfil',
-				url: '#'
-			},
-			{
-				id: '2',
-				icon: 'icon-[lucide--settings-2]',
-				title: 'Preferências',
-				url: '#'
-			},
-			{
-				id: '3',
-				icon: 'icon-[lucide--shield-check]',
-				title: 'Segurança',
-				url: '#'
-			},
-			{
-				id: '4',
-				icon: 'icon-[lucide--log-out]',
-				title: 'Sair',
-				url: '/sign-out'
-			}
-		]
-	}
+	let { title, account, user } = $props()
 </script>
 
 <header
