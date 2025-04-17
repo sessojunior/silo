@@ -19,8 +19,8 @@
 	</div>
 </div>
 
-<!-- Cartão de informações pessoais -->
-<div class="flex w-full gap-8">
+<!-- Cartões -->
+<div class="flex w-full max-w-7xl gap-8">
 	<div class="mb-8 flex flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 		<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-50 px-6 py-4">
 			<h3 class="text-xl font-bold">Permissões gerais</h3>

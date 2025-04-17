@@ -24,8 +24,8 @@
 	</div>
 </div>
 
-<!-- Cartão de informações pessoais -->
-<div class="flex w-full gap-8">
+<!-- Cartões -->
+<div class="flex w-full max-w-7xl gap-8">
 	<div class="mb-8 flex flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 		<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
 			<h3 class="text-xl font-bold">Informações pessoais</h3>
@@ -47,11 +47,11 @@
 					{#if form?.message && !form?.field}
 						<Alert message={form.message} />
 					{/if}
+					<div>
+						<Label htmlFor="name" isInvalid={form?.field === 'name'}>Nome</Label>
+						<Input type="text" id="name" name="name" autocomplete="name" placeholder="Fulano" required isInvalid={form?.field === 'name'} invalidMessage={form?.message} />
+					</div>
 					<div class="flex gap-4">
-						<div class="w-1/2">
-							<Label htmlFor="name" isInvalid={form?.field === 'name'}>Nome</Label>
-							<Input type="text" id="name" name="name" autocomplete="name" placeholder="Fulano" required isInvalid={form?.field === 'name'} invalidMessage={form?.message} />
-						</div>
 						<div class="w-1/2">
 							<Label htmlFor="genre" isInvalid={form?.field === 'genre'}>Sexo</Label>
 							<Select
@@ -66,23 +66,6 @@
 								invalidMessage={form?.message}
 							/>
 						</div>
-					</div>
-					<div>
-						<Label htmlFor="email" isInvalid={form?.field === 'email'}>E-mail</Label>
-						<Input
-							type="email"
-							id="email"
-							name="email"
-							autocomplete="email"
-							placeholder="seuemail@inpe.br"
-							minlength={8}
-							maxlength={255}
-							required
-							isInvalid={form?.field === 'email'}
-							invalidMessage={form?.message}
-						/>
-					</div>
-					<div class="flex gap-4">
 						<div class="w-1/2">
 							<Label htmlFor="phone" isInvalid={form?.field === 'phone'}>Celular</Label>
 							<Input
@@ -97,6 +80,8 @@
 								invalidMessage={form?.message}
 							/>
 						</div>
+					</div>
+					<div class="flex gap-4">
 						<div class="w-1/2">
 							<Label htmlFor="role" isInvalid={form?.field === 'role'}>Função</Label>
 							<Select
@@ -112,8 +97,6 @@
 								invalidMessage={form?.message}
 							/>
 						</div>
-					</div>
-					<div class="flex gap-4">
 						<div class="w-1/2">
 							<Label htmlFor="team" isInvalid={form?.field === 'team'}>Equipe</Label>
 							<Select
@@ -125,6 +108,21 @@
 									{ label: 'Outros', value: 'Outros' }
 								]}
 								isInvalid={form?.field === 'team'}
+								invalidMessage={form?.message}
+							/>
+						</div>
+					</div>
+					<div class="flex gap-4">
+						<div class="w-1/2">
+							<Label htmlFor="company" isInvalid={form?.field === 'company'}>Prédio</Label>
+							<Input
+								type="text"
+								id="company"
+								name="company"
+								autocomplete="company"
+								placeholder="Nome do prédio"
+								required
+								isInvalid={form?.field === 'company'}
 								invalidMessage={form?.message}
 							/>
 						</div>
