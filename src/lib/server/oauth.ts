@@ -3,8 +3,8 @@ import { Google } from 'arctic'
 import { eq } from 'drizzle-orm'
 import { db } from '$lib/server/db'
 import * as table from '$lib/server/db/schema'
-import { generateId } from './auth'
-import { uploadProfileImage } from './upload-profile-image'
+import { generateId } from './utils'
+import { uploadProfileImageFromUrl } from './upload-profile-image'
 
 // Login com o Google
 // Para usar o Google como um provedor social, você precisa obter suas credenciais do Google.
@@ -89,7 +89,7 @@ export async function createUserFromGoogleId(googleId: string, email: string, na
 		await db.insert(table.authProvider).values({ id: crypto.randomUUID(), googleId, userId: selectUserByEmail.id })
 
 		// Salva a imagem de perfil no Google
-		await uploadProfileImage(picture, selectUserByEmail.id)
+		await uploadProfileImageFromUrl(picture, selectUserByEmail.id)
 
 		// Retorna os dados do usuário
 		return { id: selectUserByEmail.id, name: selectUserByEmail.name, email: selectUserByEmail.email, emailVerified: selectUserByEmail.emailVerified, googleId }
@@ -97,16 +97,16 @@ export async function createUserFromGoogleId(googleId: string, email: string, na
 
 	// 3. Se chegou até aqui, o usuário não existe ainda, então cria o usuário e vincula-o ao provedor com o googleId
 
-	// Cria um novo usuário e
+	// Cria um novo usuário
 	const userId = generateId()
-	await db.insert(table.authUser).values({ id: userId, name: formatName, email: formatEmail, emailVerified: 1, password: '' })
+	await db.insert(table.authUser).values({ id: userId, name: formatName, email: formatEmail, emailVerified: 1, password: '', createdAt: new Date() })
 
 	// Vincula o usuário ao provedor com o googleId
 	const providerId = generateId()
 	await db.insert(table.authProvider).values({ id: providerId, googleId, userId })
 
 	// Salva a imagem de perfil no Google
-	await uploadProfileImage(picture, userId)
+	await uploadProfileImageFromUrl(picture, userId)
 
 	// Retorna os dados do usuário
 	return { id: userId, name: formatName, email: formatEmail, emailVerified: 1, googleId }

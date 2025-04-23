@@ -6,13 +6,11 @@
 
 	import Label from '$lib/client/components/ui/Label.svelte'
 	import Input from '$lib/client/components/ui/Input.svelte'
-	import Alert from '$lib/client/components/ui/Alert.svelte'
 	import Button from '$lib/client/components/ui/Button.svelte'
 	import Select from '$lib/client/components/ui/Select.svelte'
 	import PhotoUpload from '$lib/client/components/ui/PhotoUpload.svelte'
 
 	let { data, form }: PageProps = $props()
-
 	let loading = $state(false)
 
 	let connected = true
@@ -64,9 +62,6 @@
 				}}
 			>
 				<fieldset class="grid w-full gap-5">
-					{#if form?.message && !form?.field}
-						<Alert message={form.message} />
-					{/if}
 					<div>
 						<Label htmlFor="name" isInvalid={form?.field === 'name'}>Nome</Label>
 						<Input
@@ -195,9 +190,8 @@
 				<h3 class="text-xl font-bold">Sua foto</h3>
 			</div>
 			<div class="flex flex-col gap-4 p-6">
-				<div class="flex w-full">
-					<PhotoUpload url="/upload" isInvalid={form?.field === 'photo-upload'} invalidMessage={form?.message} />
-				</div>
+				<!-- Upload da imagem -->
+				<PhotoUpload image={data.image} />
 			</div>
 		</div>
 

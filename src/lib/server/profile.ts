@@ -2,6 +2,9 @@ import { eq } from 'drizzle-orm'
 import { db } from '$lib/server/db'
 import * as table from '$lib/server/db/schema'
 import * as utils from '$lib/server/utils'
+import { uploadProfileImageFromInput } from '$lib/server/upload-profile-image'
+import { existsSync, unlinkSync } from 'fs'
+import path from 'path'
 
 // Obtém os dados do perfil do usuário
 export async function getUserProfile(
@@ -140,4 +143,34 @@ export async function updateUserProfile(
 			location: updateUserProfile.location
 		}
 	}
+}
+
+// Upload de foto de perfil
+export async function uploadUserProfileImage(userId: string, file: File): Promise<{ success: boolean } | { error: { code: string; message: string } }> {
+	if (!file) return { error: { code: 'NO_FILE', message: 'O arquivo é obrigatório.' } }
+
+	// Faz o upload da imagem de perfil
+	const uploadResult = await uploadProfileImageFromInput(file, userId)
+	if (!uploadResult) return { error: { code: 'UPLOAD_ERROR', message: 'Erro ao fazer o upload da imagem de perfil.' } }
+
+	// Retorna se fez ou não o upload
+	return uploadResult
+}
+
+// Apaga a imagem de perfil
+export function deleteUserProfileImage(userId: string): { success: boolean } | { error: { code: string; message: string } } {
+	const imagePath = path.resolve('static/uploads/avatar', `${userId}.webp`)
+
+	if (!existsSync(imagePath)) {
+		return { error: { code: 'IMAGE_NOT_FOUND', message: 'Imagem de perfil não encontrada.' } }
+	}
+
+	try {
+		unlinkSync(imagePath)
+	} catch (error) {
+		console.error(error)
+		return { error: { code: 'DELETE_ERROR', message: 'Erro ao deletar a imagem de perfil.' } }
+	}
+
+	return { success: true }
 }
