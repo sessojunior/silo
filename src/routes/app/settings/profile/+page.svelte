@@ -2,6 +2,8 @@
 	import { enhance } from '$app/forms'
 	import type { PageProps } from './$types'
 
+	import { toast } from '$lib/client/utils/toast'
+
 	import Label from '$lib/client/components/ui/Label.svelte'
 	import Input from '$lib/client/components/ui/Input.svelte'
 	import Alert from '$lib/client/components/ui/Alert.svelte'
@@ -9,7 +11,7 @@
 	import Select from '$lib/client/components/ui/Select.svelte'
 	import PhotoUpload from '$lib/client/components/ui/PhotoUpload.svelte'
 
-	let { form }: PageProps = $props()
+	let { data, form }: PageProps = $props()
 
 	let loading = $state(false)
 
@@ -26,7 +28,7 @@
 
 <!-- Cartões -->
 <div class="flex w-full max-w-7xl gap-8">
-	<div class="flex flex-grow flex-col gap-8 self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
+	<div class="flex flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 		<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
 			<h3 class="text-xl font-bold">Informações pessoais</h3>
 		</div>
@@ -37,9 +39,27 @@
 				action="?/update-profile"
 				use:enhance={() => {
 					loading = true
-					return async ({ update }) => {
+					return async ({ update, result }) => {
 						await update()
 						loading = false
+
+						if (result.type === 'success') {
+							toast({
+								title: 'Seus dados de perfil foram alterados com sucesso!',
+								icon: 'icon-[lucide--circle-check]',
+								type: 'success',
+								duration: 10000,
+								position: 'bottom-right'
+							})
+						} else if (result.type === 'failure') {
+							toast({
+								title: (result.data as any).message ?? 'Erro desconhecido ao tentar alterar seus dados de perfil.',
+								icon: 'icon-[lucide--triangle-alert]',
+								type: 'error',
+								duration: 10000,
+								position: 'bottom-right'
+							})
+						}
 					}
 				}}
 			>
@@ -49,14 +69,24 @@
 					{/if}
 					<div>
 						<Label htmlFor="name" isInvalid={form?.field === 'name'}>Nome</Label>
-						<Input type="text" id="name" name="name" autocomplete="name" placeholder="Fulano" required isInvalid={form?.field === 'name'} invalidMessage={form?.message} />
+						<Input
+							type="text"
+							id="name"
+							name="name"
+							autocomplete="name"
+							placeholder="Fulano"
+							value={data.name}
+							required
+							isInvalid={form?.field === 'name'}
+							invalidMessage={form?.message}
+						/>
 					</div>
 					<div class="flex gap-4">
 						<div class="w-1/2">
 							<Label htmlFor="genre" isInvalid={form?.field === 'genre'}>Sexo</Label>
 							<Select
 								name="genre"
-								selected="female"
+								selected={data.genre}
 								placeholder="Selecione o sexo..."
 								options={[
 									{ label: 'Masculino', value: 'male' },
@@ -75,6 +105,7 @@
 								autocomplete="phone"
 								mask="phone"
 								placeholder="(00) 00000-0000"
+								value={data.phone}
 								required
 								isInvalid={form?.field === 'phone'}
 								invalidMessage={form?.message}
@@ -86,7 +117,7 @@
 							<Label htmlFor="role" isInvalid={form?.field === 'role'}>Função</Label>
 							<Select
 								name="role"
-								selected=""
+								selected={data.role}
 								placeholder="Selecione sua função..."
 								options={[
 									{ label: 'Suporte técnico', value: 'support' },
@@ -101,7 +132,7 @@
 							<Label htmlFor="team" isInvalid={form?.field === 'team'}>Equipe</Label>
 							<Select
 								name="team"
-								selected=""
+								selected={data.team}
 								placeholder="Selecione sua equipe..."
 								options={[
 									{ label: 'DIPTC', value: 'DIPTC' },
@@ -122,6 +153,7 @@
 								autocomplete="company"
 								placeholder="Nome do prédio"
 								required
+								value={data.company}
 								isInvalid={form?.field === 'company'}
 								invalidMessage={form?.message}
 							/>
@@ -130,7 +162,7 @@
 							<Label htmlFor="location" isInvalid={form?.field === 'location'}>Localização</Label>
 							<Select
 								name="location"
-								selected=""
+								selected={data.location}
 								placeholder="Selecione sua localização..."
 								options={[
 									{ label: 'Cachoeira Paulista', value: 'Cachoeira Paulista' },
@@ -146,7 +178,7 @@
 						<Button type="submit" disabled={loading} className="w-auto">
 							{#if loading}
 								<span class="icon-[lucide--loader-circle] animate-spin"></span>
-								Salvando...
+								Aguarde...
 							{:else}
 								Salvar
 							{/if}

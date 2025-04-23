@@ -12,45 +12,55 @@ export type AuthUser = typeof authUser.$inferSelect
 
 export const authSession = sqliteTable('auth_session', {
 	id: text('id').primaryKey(),
-	token: text('token').notNull(),
 	userId: text('user_id')
 		.notNull()
 		.references(() => authUser.id),
+	token: text('token').notNull(),
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 })
 export type AuthSession = typeof authSession.$inferSelect
 
 export const authCode = sqliteTable('auth_code', {
 	id: text('id').primaryKey(),
-	code: text('code'),
-	email: text('email').notNull(),
 	userId: text('user_id')
 		.notNull()
 		.references(() => authUser.id),
+	code: text('code'),
+	email: text('email').notNull(),
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 })
 export type AuthCode = typeof authCode.$inferSelect
 
 export const authProvider = sqliteTable('auth_provider', {
 	id: text('id').primaryKey(),
-	googleId: text('google_id').notNull(),
 	userId: text('user_id')
 		.notNull()
-		.references(() => authUser.id)
+		.references(() => authUser.id),
+	googleId: text('google_id').notNull()
 })
 export type AuthProvider = typeof authProvider.$inferSelect
 
-// export const userProfile = sqliteTable('user_profile', {
-// 	id: text('id').primaryKey(),
-// 	theme: text('theme').notNull(),
-// 	genre: text('genre').notNull(),
-// 	phone: text('phone').notNull(),
-// 	role: text('role').notNull(),
-// 	team: text('team').notNull(),
-// 	company: text('company').notNull(),
-// 	location: text('location').notNull(),
-// 	userId: text('user_id')
-// 		.notNull()
-// 		.references(() => authUser.id)
-// })
-// export type UserProfile = typeof userProfile.$inferSelect
+export const userProfile = sqliteTable('user_profile', {
+	id: text('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => authUser.id),
+	genre: text('genre').notNull(),
+	phone: text('phone').notNull(),
+	role: text('role').notNull(),
+	team: text('team').notNull(),
+	company: text('company').notNull(),
+	location: text('location').notNull()
+})
+export type UserProfile = typeof userProfile.$inferSelect
+
+export const userPreferences = sqliteTable('user_preferences', {
+	id: text('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => authUser.id),
+	theme: text('theme').notNull(),
+	notifyUpdates: text('notify_updates').notNull(),
+	sendNewsletters: text('send_newsletters').notNull()
+})
+export type UserPreferences = typeof userPreferences.$inferSelect

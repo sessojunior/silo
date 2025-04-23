@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state'
-	import { fade } from 'svelte/transition'
+	import { fly } from 'svelte/transition'
 
 	let { children }: { children: any } = $props()
 </script>
@@ -12,8 +12,8 @@
 		>
 			<!-- O bloco {#key} força a recriação e ativa a transição -->
 			{#key page.url.pathname}
-				<!-- Efeito de transição (fade) ao mudar de página-->
-				<div transition:fade={{ duration: 500 }}>
+				<!-- Efeito de transição ao mudar de página-->
+				<div in:fly={{ x: -500, duration: 1000 }}>
 					<div class="flex h-full w-full flex-col items-start justify-start gap-8 p-8 text-zinc-600 dark:text-zinc-200">
 						{@render children()}
 					</div>

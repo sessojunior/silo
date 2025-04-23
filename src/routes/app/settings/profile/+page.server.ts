@@ -1,36 +1,62 @@
 import { fail } from '@sveltejs/kit'
-import * as auth from '$lib/server/auth'
-import type { Actions } from './$types'
+import * as profile from '$lib/server/profile'
+import type { Actions, PageServerLoad } from './$types'
+
+export const load: PageServerLoad = async ({ locals }) => {
+	const user = locals.user ?? null
+
+	// Dados do perfil do usuário
+	let userProfile = {
+		genre: '',
+		phone: '',
+		role: '',
+		team: '',
+		company: '',
+		location: ''
+	}
+
+	// Obtém os dados do perfil do usuário
+	if (user?.id) {
+		const result = await profile.getUserProfile(user.id)
+		if ('success' in result) {
+			userProfile = result.userProfile
+		}
+	}
+
+	return {
+		// Dados do usuário
+		id: user?.id ?? '',
+		name: user?.name ?? '',
+		email: user?.email ?? '',
+
+		// Dados do perfil do usuário
+		...userProfile
+	}
+}
 
 export const actions: Actions = {
 	// Alterar perfil
 	'update-profile': async (event) => {
+		const user = event.locals.user
+		if (!user?.id) return fail(401, { field: null, message: 'Usuário não autenticado.' })
+
 		const formData = await event.request.formData()
+
 		const name = formData.get('name') as string
-		const email = formData.get('email') as string
-		const password = formData.get('password') as string
+		const genre = formData.get('genre') as string
+		const phone = formData.get('phone') as string
+		const role = formData.get('role') as string
+		const team = formData.get('team') as string
+		const company = formData.get('company') as string
+		const location = formData.get('location') as string
 
-		// Formata os dados para buscar no banco de dados
-		const formatEmail = email.trim().toLowerCase()
+		// Atualiza ou cria perfil de usuário
+		const userProfile = await profile.updateUserProfile(user.id, name, genre, phone, role, team, company, location)
+		if ('error' in userProfile) {
+			return fail(400, { field: userProfile.error.field, message: userProfile.error ? userProfile.error.message : 'Ocorreu um erro ao alterar o perfil.' })
+		}
 
-		// Cria a conta do usuário
-		// Caso o usuário já exista, será exibido um erro que já existe. O usuário precisará fazer login.
-		const resultUser = await auth.signUp(name, formatEmail, password)
-		if ('error' in resultUser) return fail(400, { field: resultUser.error.field, message: resultUser.error.message ?? 'Ocorreu um erro ao criar o usuário.' })
-
-		// Obtém um código OTP e salva-o no banco de dados
-		const otp = await auth.generateCode(formatEmail)
-		if ('error' in otp) return fail(400, { field: null, message: otp.error.message ?? 'Erro ao gerar o código para enviar por e-mail.' })
-
-		// Código OTP
-		const code = otp.code
-
-		// Envia o código OTP por e-mail
-		await auth.sendEmailCode({ email: formatEmail, type: 'email-verification', code })
-
-		// console.log('code', code)
-
-		// Retorna para a página o próximo passo
-		return { step: 2, email: formatEmail }
+		// Retorna sucesso
+		return { success: true, userProfile: userProfile.userProfile }
 	}
 }

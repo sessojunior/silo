@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms'
-	import type { PageProps, PageData } from './$types'
+	import type { PageProps } from './$types'
 
 	import { toast } from '$lib/client/utils/toast'
 
@@ -17,7 +17,7 @@
 <div class="flex w-full">
 	<div class="w-full flex-grow">
 		<h1 class="text-3xl font-bold tracking-tight">Segurança</h1>
-		<p class="mt-1 text-base">Altere seu e-mail de acesso ou sua senha.</p>
+		<p class="mt-1 text-base">Altere seu e-mail de acesso ou sua senha se for necessário.</p>
 	</div>
 </div>
 
@@ -26,7 +26,7 @@
 	<div class="flex w-1/2 flex-col gap-8">
 		<div class="flex w-full flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 			<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
-				<h3 class="text-xl font-bold">Alterar seu e-mail</h3>
+				<h3 class="text-xl font-bold">Alterar e-mail</h3>
 			</div>
 			<div class="flex flex-col gap-4 p-6">
 				<form
@@ -84,7 +84,7 @@
 							<Button type="submit" disabled={loading} className="w-auto">
 								{#if loading}
 									<span class="icon-[lucide--loader-circle] animate-spin"></span>
-									Salvando...
+									Aguarde...
 								{:else}
 									Salvar
 								{/if}
@@ -97,7 +97,7 @@
 
 		<div class="flex w-full flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 			<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
-				<h3 class="text-xl font-bold">Alterar sua senha</h3>
+				<h3 class="text-xl font-bold">Alterar senha</h3>
 			</div>
 			<div class="flex flex-col gap-4 p-6">
 				<form
@@ -133,10 +133,10 @@
 					<fieldset class="grid w-full gap-5">
 						<div class="flex gap-4">
 							<div class="w-full">
-								<Label htmlFor="email" isInvalid={form?.field === 'password'}>Nova senha</Label>
+								<Label htmlFor="password" isInvalid={form?.field === 'password'}>Nova senha</Label>
 								<Input
 									type="strong-password"
-									id="hs-strong-password-with-indicator-and-hint"
+									id="password"
 									name="password"
 									autocomplete="current-password"
 									placeholder="••••••••"
@@ -152,7 +152,7 @@
 							<Button type="submit" disabled={loading} className="w-auto">
 								{#if loading}
 									<span class="icon-[lucide--loader-circle] animate-spin"></span>
-									Salvando...
+									Aguarde...
 								{:else}
 									Salvar
 								{/if}
@@ -171,12 +171,11 @@
 			</div>
 			<div class="flex flex-col gap-6">
 				<div class="p-6">
-					<h3 class="text-lg font-bold tracking-tight text-zinc-600 dark:text-zinc-200">Alterar e-mail</h3>
+					<h3 class="text-lg font-bold tracking-tight text-zinc-600 dark:text-zinc-200">Alteração de e-mail</h3>
 					<div class="text-base text-zinc-400 dark:text-zinc-200">
-						<p class="mt-1">Altere seu e-mail somente se for realmente necessário.</p>
 						<p class="mt-1">
-							Quando alterar seu e-mail, será enviado um código para seu novo e-mail para confirmação de que ele existe. Você deve digitar esse código no campo correspondente que
-							irá aparecer em seguida.
+							Ao alterar seu e-mail, será enviado um código para seu novo e-mail para confirmação de que ele existe. Você deve digitar esse código no campo correspondente que irá
+							aparecer em seguida.
 						</p>
 					</div>
 				</div>
@@ -184,10 +183,9 @@
 			<div class="h-px w-full bg-zinc-200"></div>
 			<div class="flex flex-col gap-6">
 				<div class="p-6">
-					<h3 class="text-lg font-bold tracking-tight text-zinc-600 dark:text-zinc-200">Alterar senha</h3>
+					<h3 class="text-lg font-bold tracking-tight text-zinc-600 dark:text-zinc-200">Alteração de senha</h3>
 					<div class="text-base text-zinc-400 dark:text-zinc-200">
-						<p class="mt-1">É bom sempre alterar senha pelo menos uma vez ao ano.</p>
-						<p class="mt-1">Crie uma senha forte, se possível única, que contenha de 8 a 12 caracteres, com letras maiúsculas e minúsculas, números e caracteres especiais.</p>
+						<p class="mt-1">Crie uma senha forte, se possível única, que contenha de 8 a 40 caracteres, com letras maiúsculas e minúsculas, números e caracteres especiais.</p>
 					</div>
 				</div>
 			</div>

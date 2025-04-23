@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit'
 import * as auth from '$lib/server/auth'
+import * as utils from '$lib/server/utils'
 import type { Actions } from './$types'
 
 export const actions: Actions = {
@@ -12,7 +13,7 @@ export const actions: Actions = {
 		const formatEmail = email.trim().toLowerCase()
 
 		// Valida o e-mail
-		if (!auth.validateEmail(formatEmail)) return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
+		if (!utils.validateEmail(formatEmail)) return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
 
 		// Verifica se o e-mail existe no banco de dados
 		const resultUser = await auth.validateUserEmail(formatEmail)
@@ -44,7 +45,7 @@ export const actions: Actions = {
 		const formatEmail = email.trim().toLowerCase()
 
 		// Valida o e-mail
-		if (!auth.validateEmail(formatEmail)) return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
+		if (!utils.validateEmail(formatEmail)) return fail(400, { field: 'email', message: 'Digite um e-mail válido.' })
 
 		// Verifica se o e-mail existe no banco de dados
 		const resultUser = await auth.validateUserEmail(formatEmail)

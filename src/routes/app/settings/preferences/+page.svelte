@@ -21,7 +21,7 @@
 
 <!-- Cartões -->
 <div class="flex w-full max-w-7xl gap-8">
-	<div class="flex flex-grow flex-col gap-8 self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
+	<div class="flex flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 		<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-50 px-6 py-4">
 			<h3 class="text-xl font-bold">Permissões gerais</h3>
 		</div>
@@ -78,7 +78,7 @@
 				<Button type="submit" disabled={loading} className="w-auto">
 					{#if loading}
 						<span class="icon-[lucide--loader-circle] animate-spin"></span>
-						Salvando...
+						Aguarde...
 					{:else}
 						Salvar
 					{/if}

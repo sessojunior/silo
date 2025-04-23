@@ -2,167 +2,8 @@ import type { RequestEvent } from '@sveltejs/kit'
 import { eq, and, lt, ne } from 'drizzle-orm'
 import { db } from '$lib/server/db'
 import * as table from '$lib/server/db/schema'
-import { verify, hash } from '@node-rs/argon2'
-import { sha256 } from '@oslojs/crypto/sha2'
-import { encodeBase64url, encodeHexLowerCase, encodeBase32LowerCase } from '@oslojs/encoding'
-import { type RandomReader, generateRandomString } from '@oslojs/crypto/random'
+import * as utils from '$lib/server/utils'
 import { sendEmail } from './send-email'
-
-// Gera um ID
-export function generateId(): string {
-	// ID com 120 bits, ou aproximadamente o mesmo que o UUID v4.
-	const bytes = crypto.getRandomValues(new Uint8Array(15))
-	const id = encodeBase32LowerCase(bytes)
-	return id
-}
-
-// Gera um hash da senha
-export async function generateHashPassword(password: string): Promise<string> {
-	// Cria o hash da senha com os parâmetros mínimos recomendados
-	const passwordHash = await hash(password, {
-		memoryCost: 19456,
-		timeCost: 2,
-		outputLen: 32,
-		parallelism: 1
-	})
-	return passwordHash
-}
-
-// Verifica se a senha corresponde ao hash da senha
-export async function verifyPassword({ password, hashPassword }: { password: string; hashPassword: string }): Promise<boolean> {
-	// Verifica se a senha corresponde ao hash da senha
-	const validPassword = await verify(hashPassword, password, {
-		memoryCost: 19456,
-		timeCost: 2,
-		outputLen: 32,
-		parallelism: 1
-	})
-	return validPassword
-}
-
-// Gera um token
-export function generateToken(): string {
-	// Gera o token com 30 bytes
-	const bytes = crypto.getRandomValues(new Uint8Array(30))
-	const token = encodeBase64url(bytes)
-	return token
-}
-
-// Gera um hash do token
-export function generateHashToken(token: string): string {
-	// Gera o hash SHA-256 do token
-	const hashToken = encodeHexLowerCase(sha256(new TextEncoder().encode(token)))
-	return hashToken
-}
-
-// Gera um código OTP
-// - alphabet: Caracteres permitidos e legíveis em todas as tipografias, para evitar ambiguidades (exemplo: '347AEFHJKMNPRTWY')
-// - numberCharacters: Número de caracteres que serão gerados (exemplo: 5)
-export function generateOtp({ allowedCharacters, numberCharacters }: { allowedCharacters: string; numberCharacters: number }): string {
-	// Gera um código aleatório utilizando caracteres permitidos e comprimento fixo de caracteres
-	// A probabilidade de acertar aleatoriamente este código é de 1 em 1.048.576 (cerca de 1 em 1 milhão)
-	const code = generateRandomString(
-		{
-			read(bytes) {
-				crypto.getRandomValues(bytes)
-			}
-		} as RandomReader, // Sequência aleatória de bytes
-		allowedCharacters, // Caracteres permitidos
-		numberCharacters // Número de caracteres que serão gerados
-	)
-	return code
-}
-
-// Valida o e-mail
-export function validateEmail(email: string): boolean {
-	// 1. Verifica se o valor é uma string
-	if (typeof email !== 'string') return false
-
-	// 2. E-mail não pode exceder 255 caracteres (limite comum baseado no RFC 5321)
-	if (email.length > 255) return false
-
-	// 3. E-mail não pode começar nem terminar com espaços
-	if (email.trim() !== email) return false
-
-	// 4. Divide o e-mail pela "@" e verifica se há exatamente uma ocorrência
-	const atParts = email.split('@')
-	if (atParts.length !== 2) return false
-
-	// 5. Separa a parte local (antes do @) e o domínio (depois do @)
-	const [localPart, domainPart] = atParts
-
-	// 6. A parte local (antes do @) deve existir
-	if (!localPart) return false
-
-	// 7. A parte do domínio (após o @) deve existir e não conter dois pontos consecutivos
-	if (!domainPart || domainPart.includes('..')) return false
-
-	// 8. O domínio deve conter pelo menos um ponto (.)
-	const domainSegments = domainPart.split('.')
-	if (domainSegments.length < 2) return false
-
-	// 9. Nenhum segmento do domínio (antes ou depois do ponto) pode ser vazio
-	// Isso evita casos como "user@.com" ou "user@domain."
-	if (domainSegments.some((part) => part.length === 0)) return false
-
-	// 10. Regex para validar caracteres permitidos na parte local
-	// Aceita letras, números e os caracteres especiais mais comuns permitidos por RFCs
-	const validLocal = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$/
-	if (!validLocal.test(localPart)) return false
-
-	// 11. Regex para validar o domínio (letras, números, hífen e ponto)
-	// Não permite caracteres especiais nem espaços
-	const validDomain = /^[a-zA-Z0-9.-]+$/
-	if (!validDomain.test(domainPart)) return false
-
-	// 12. Se passou por todas as verificações, é um e-mail válido
-	return true
-}
-
-// Valida a senha
-export function validatePassword(password: string): boolean {
-	// 1. Verifica se é uma string
-	if (typeof password !== 'string') return false
-
-	// 2. Verifica o comprimento (mínimo 8, máximo 120)
-	if (password.length < 8 || password.length > 120) return false
-
-	// 3. Verifica presença de pelo menos uma letra minúscula
-	if (!/[a-z]/.test(password)) return false
-
-	// 4. Verifica presença de pelo menos uma letra maiúscula
-	if (!/[A-Z]/.test(password)) return false
-
-	// 5. Verifica presença de pelo menos um número
-	if (!/[0-9]/.test(password)) return false
-
-	// 6. Verifica presença de pelo menos um caractere especial
-	const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>_+=\-[\]/~]/
-	if (!hasSpecialChar.test(password)) return false
-
-	// 7. Se passou por todas as verificações, é uma senha válida
-	return true
-}
-
-// Valida o nome
-export function validateName(name: string): boolean {
-	// 1. Verifica se o valor é uma string
-	if (typeof name !== 'string') return false
-
-	// Remove espaços do início e fim da string
-	const trimmed = name.trim()
-
-	// 2. Verifica se o nome tem pelo menos 2 caracteres visíveis
-	if (trimmed.length < 2) return false
-
-	// 3. Verifica se o nome contém apenas caracteres permitidos:
-	// Letras latinas (com ou sem acento), ç, espaços, hífens e apóstrofos
-	const validNameRegex = /^[\p{L}\p{M}'\- ]+$/u
-	if (!validNameRegex.test(trimmed)) return false
-
-	// Se passou por todas as verificações, o nome é válido
-	return true
-}
 
 // Sessões
 // Os usuários usarão um token de sessão vinculado a uma sessão em vez do ID diretamente.
@@ -178,10 +19,10 @@ export async function createSessionToken(
 	userId: string
 ): Promise<{ session: { token: string; userId: string; expiresAt: Date }; token: string } | { error: { code: string; message: string } }> {
 	// Gera um token aleatório
-	const token = generateToken()
+	const token = utils.generateToken()
 
 	// Gera o hash do token
-	const hashToken = generateHashToken(token)
+	const hashToken = utils.generateHashToken(token)
 
 	// Um dia em milissegundos
 	const DAY_IN_MS = 24 * 60 * 60 * 1000 // 86400000 ms (1 dia)
@@ -190,7 +31,7 @@ export async function createSessionToken(
 	const expiresAt = new Date(Date.now() + DAY_IN_MS * 30)
 
 	// ID da sessão
-	const sessionId = generateId()
+	const sessionId = utils.generateId()
 
 	// Dados da sessão
 	const session: table.AuthSession = { id: sessionId, token: hashToken, userId, expiresAt }
@@ -214,7 +55,7 @@ export async function validateSessionToken(
 	{ session: { id: string; token: string; userId: string; expiresAt: Date }; user: { id: string; name: string; email: string } } | { error: { code: string; message: string } }
 > {
 	// Gera o hash do token
-	const hashToken = generateHashToken(token)
+	const hashToken = utils.generateHashToken(token)
 
 	// 1. Verifica se a sessão existe no banco de dados
 	const [selectSession] = await db
@@ -306,7 +147,7 @@ export async function generateCode(email: string): Promise<{ success: boolean; c
 	const formatEmail = email.trim().toLowerCase()
 
 	// Se o e-mail for inválido retorna null
-	if (!validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido.' } }
+	if (!utils.validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido.' } }
 
 	// Verifica se o usuário existe no banco de dados pelo e-mail
 	const selectUser = await db
@@ -320,11 +161,11 @@ export async function generateCode(email: string): Promise<{ success: boolean; c
 	if (!selectUser?.id) return { error: { code: 'NO_EMAIL_FOUND', message: 'Não existe um usuário com este e-mail.' } }
 
 	// ID do código
-	const codeId = generateId()
+	const codeId = utils.generateId()
 
 	// Gera um código aleatório utilizando caracteres legíveis em todas as tipografias, para evitar ambiguidades e número de caracteres que serão gerados
 	// A probabilidade de acertar aleatoriamente este código é de 1 em 1.048.576 (cerca de 1 em 1 milhão)
-	const code = generateOtp({ allowedCharacters: '347AEFHJKMNPRTWY', numberCharacters: 5 })
+	const code = utils.generateOtp({ allowedCharacters: '347AEFHJKMNPRTWY', numberCharacters: 5 })
 
 	// Remove códigos anteriores do mesmo usuário
 	await db.delete(table.authCode).where(eq(table.authCode.userId, selectUser.id))
@@ -366,7 +207,7 @@ export async function sendEmailCode({
 	const formatEmail = email.trim().toLowerCase()
 
 	// Se o e-mail for inválido retorna null
-	if (!validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido.' } }
+	if (!utils.validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'E-mail inválido.' } }
 
 	// Envia o e-mail com o código OTP
 	// Retorna um objeto: { success: boolean, error?: { code, message } }
@@ -385,7 +226,7 @@ export async function validateCode({ email, code }: { email: string; code: strin
 	const formatEmail = email.trim().toLowerCase()
 
 	// Verifica se o e-mail é válido
-	if (!validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
+	if (!utils.validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
 	// Apaga do banco de dados todos os códigos expirados
 	await db.delete(table.authCode).where(lt(table.authCode.expiresAt, new Date()))
@@ -427,7 +268,7 @@ export async function validateUserEmail(
 	const formatEmail = email.trim().toLowerCase()
 
 	// Verifica se o e-mail é válido
-	if (!validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
+	if (!utils.validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
 	// Verifica se o usuário existe no banco de dados pelo e-mail
 	const selectUser = await db
@@ -455,13 +296,13 @@ export async function signUp(
 	const formatEmail = email.trim().toLowerCase()
 
 	// Verifica se o nome é válido
-	if (!validateName(formatName)) return { error: { field: 'name', code: 'INVALID_NAME', message: 'O nome é inválido.' } }
+	if (!utils.validateName(formatName)) return { error: { field: 'name', code: 'INVALID_NAME', message: 'O nome é inválido.' } }
 
 	// Verifica se o e-mail é válido
-	if (!validateEmail(formatEmail)) return { error: { field: 'email', code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
+	if (!utils.validateEmail(formatEmail)) return { error: { field: 'email', code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
 	// Verifica se a senha é válida
-	if (!validatePassword(password)) return { error: { field: 'password', code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
+	if (!utils.validatePassword(password)) return { error: { field: 'password', code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
 
 	// Verifica se o usuário já existe no banco de dados pelo e-mail
 	const selectUser = await db
@@ -475,13 +316,13 @@ export async function signUp(
 	if (selectUser?.id) return { error: { field: 'email', code: 'USER_ALREADY_EXISTS', message: 'Já existe um usuário com este e-mail.' } }
 
 	// ID do usuário
-	const userId = generateId()
+	const userId = utils.generateId()
 
 	// E-mail não está verificado ainda
 	const emailVerified = 0 // Deixar como o (não verificado). 0 é false (não verificado) e 1 é true (verificado)
 
 	// Cria o hash da senha
-	const passwordHash = await generateHashPassword(password)
+	const passwordHash = await utils.generateHashPassword(password)
 
 	// Insere o usuário no banco de dados
 	const [insertUser] = await db
@@ -510,7 +351,7 @@ export async function signIn(
 	const formatEmail = email.trim().toLowerCase()
 
 	// Verifica se o e-mail é válido
-	if (!validateEmail(formatEmail)) return { error: { field: 'email', code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
+	if (!utils.validateEmail(formatEmail)) return { error: { field: 'email', code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
 	// Verifica se o usuário não existe no banco de dados pelo e-mail
 	const selectUser = await db
@@ -530,10 +371,10 @@ export async function signIn(
 	}
 
 	// Verifica se a senha é válida
-	if (!validatePassword(password)) return { error: { field: 'password', code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
+	if (!utils.validatePassword(password)) return { error: { field: 'password', code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
 
 	// Verifica se a senha corresponde ao hash armazenado no banco de dados
-	const validPassword = verifyPassword({ hashPassword: selectUser.password, password })
+	const validPassword = utils.verifyPassword({ hashPassword: selectUser.password, password })
 	if (!validPassword) return { error: { field: 'password', code: 'INCORRECT_PASSWORD', message: 'A senha está incorreta.' } }
 
 	// Retorna os dados do usuário
@@ -560,10 +401,10 @@ export async function changeUserPassword({
 	if (!selectUser?.id) return { error: { code: 'NO_USER_FOUND', message: 'O usuário não existe.' } }
 
 	// Verifica se a senha é válida
-	if (!validatePassword(password)) return { error: { code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
+	if (!utils.validatePassword(password)) return { error: { code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
 
 	// Cria o hash da senha
-	const passwordHash = await generateHashPassword(password)
+	const passwordHash = await utils.generateHashPassword(password)
 
 	// Altera a senha do usuário
 	const updateUser = await db.update(table.authUser).set({ password: passwordHash }).where(eq(table.authUser.id, selectUser.id)).returning({ id: table.authUser.id })
@@ -593,7 +434,7 @@ export async function changeUserEmail({
 	const formatEmail = email.trim().toLowerCase()
 
 	// Verifica se o e-mail é válido
-	if (!validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
+	if (!utils.validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
 	// Verifica se o usuário existe no banco de dados pelo ID do usuário (userId)
 	const selectUser = await db

@@ -77,7 +77,7 @@
 					{autocomplete}
 					{maxlength}
 					{required}
-					{value}
+					bind:value
 					{autofocus}
 					class="block rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50
 					{isInvalid ? 'border-red-600 focus:border-red-600 focus:ring-red-500' : 'focus:border-blue-500 focus:ring-blue-500'} 
@@ -168,7 +168,7 @@
 			{minlength}
 			{maxlength}
 			{required}
-			{value}
+			bind:value
 			{autofocus}
 			class="block rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50
 				{isInvalid ? 'border-red-600 focus:border-red-600 focus:ring-red-500' : 'focus:border-blue-500 focus:ring-blue-500'} 
@@ -204,7 +204,7 @@
 			{minlength}
 			{maxlength}
 			{required}
-			{value}
+			bind:value
 			{autofocus}
 			oninput={handleInput}
 			class="block rounded-lg py-3 ps-4 pe-10 disabled:pointer-events-none disabled:opacity-50
