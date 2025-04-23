@@ -17,7 +17,13 @@
 				<Button icon="icon-[lucide--menu]" style="menu">Exibir menu lateral</Button>
 			</div>
 			<!-- Title -->
-			<Title>{title}</Title>
+			<Title>
+				{#if title}
+					{title}
+				{:else}
+					<span class="icon-[lucide--loader-circle] shrink-0 animate-spin text-neutral-200"></span>
+				{/if}
+			</Title>
 			<!-- Buttons, divider & dropdown -->
 			<div class="flex flex-row items-center justify-end gap-1">
 				<Button href="#" icon="icon-[lucide--circle-help]">Ajuda</Button>

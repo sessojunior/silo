@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms'
-	import type { PageProps } from './$types'
+	import type { PageProps, PageData } from './$types'
+
+	import { toast } from '$lib/client/utils/toast'
 
 	import Label from '$lib/client/components/ui/Label.svelte'
 	import Input from '$lib/client/components/ui/Input.svelte'
-	import Alert from '$lib/client/components/ui/Alert.svelte'
 	import Button from '$lib/client/components/ui/Button.svelte'
 
-	let { form }: PageProps = $props()
+	let { data, form }: PageProps = $props()
 
 	let loading = $state(false)
 </script>
@@ -22,8 +23,8 @@
 
 <!-- Cartões -->
 <div class="flex w-full max-w-7xl gap-8">
-	<div class="flex w-1/2 flex-col">
-		<div class="mb-8 flex w-full flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
+	<div class="flex w-1/2 flex-col gap-8">
+		<div class="flex w-full flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 			<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
 				<h3 class="text-xl font-bold">Alterar seu e-mail</h3>
 			</div>
@@ -34,16 +35,33 @@
 					action="?/update-email"
 					use:enhance={() => {
 						loading = true
-						return async ({ update }) => {
+						return async ({ update, result }) => {
 							await update()
 							loading = false
+
+							if (result.type === 'success') {
+								toast({
+									title: 'Seu e-mail foi alterado com sucesso!',
+									description:
+										'Mas é necessário confirmar este e-mail no próximo login informando o código de verificação que será enviado para seu novo e-mail quando fizer login novamente.',
+									icon: 'icon-[lucide--circle-check]',
+									type: 'success',
+									duration: 10000,
+									position: 'bottom-right'
+								})
+							} else if (result.type === 'failure') {
+								toast({
+									title: (result.data as any).message ?? 'Erro desconhecido ao tentar alterar o e-mail.',
+									icon: 'icon-[lucide--triangle-alert]',
+									type: 'error',
+									duration: 10000,
+									position: 'bottom-right'
+								})
+							}
 						}
 					}}
 				>
 					<fieldset class="grid w-full gap-5">
-						{#if form?.message && !form?.field}
-							<Alert message={form.message} />
-						{/if}
 						<div class="flex gap-4">
 							<div class="w-full">
 								<Label htmlFor="email" isInvalid={form?.field === 'email'}>Novo e-mail</Label>
@@ -53,6 +71,7 @@
 									name="email"
 									autocomplete="email"
 									placeholder="seuemail@inpe.br"
+									value={data.email}
 									minlength={8}
 									maxlength={255}
 									required
@@ -76,7 +95,7 @@
 			</div>
 		</div>
 
-		<div class="mb-8 flex w-full flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
+		<div class="flex w-full flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 			<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
 				<h3 class="text-xl font-bold">Alterar sua senha</h3>
 			</div>
@@ -87,19 +106,34 @@
 					action="?/update-password"
 					use:enhance={() => {
 						loading = true
-						return async ({ update }) => {
+						return async ({ update, result }) => {
 							await update()
 							loading = false
+
+							if (result.type === 'success') {
+								toast({
+									title: 'A senha foi alterada com sucesso!',
+									icon: 'icon-[lucide--circle-check]',
+									type: 'success',
+									duration: 10000,
+									position: 'bottom-right'
+								})
+							} else if (result.type === 'failure') {
+								toast({
+									title: (result.data as any).message ?? 'Erro desconhecido ao tentar alterar a senha.',
+									icon: 'icon-[lucide--triangle-alert]',
+									type: 'error',
+									duration: 10000,
+									position: 'bottom-right'
+								})
+							}
 						}
 					}}
 				>
 					<fieldset class="grid w-full gap-5">
-						{#if form?.message && !form?.field}
-							<Alert message={form.message} />
-						{/if}
 						<div class="flex gap-4">
 							<div class="w-full">
-								<Label htmlFor="email" isInvalid={form?.field === 'email'}>Nova senha</Label>
+								<Label htmlFor="email" isInvalid={form?.field === 'password'}>Nova senha</Label>
 								<Input
 									type="strong-password"
 									id="hs-strong-password-with-indicator-and-hint"
@@ -130,7 +164,7 @@
 		</div>
 	</div>
 
-	<div class="mb-8 flex w-1/2 flex-col gap-8">
+	<div class="flex w-1/2 flex-col gap-8">
 		<div class="flex w-full flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 			<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
 				<h3 class="text-xl font-bold">Informações importantes</h3>

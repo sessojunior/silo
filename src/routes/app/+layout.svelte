@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { setContext } from 'svelte'
+	import type { LayoutProps } from './$types'
 
+	import Toast from '$lib/client/components/ui/Toast.svelte'
 	import Sidebar from '$lib/client/components/app/sidebar/Sidebar.svelte'
 	import Topbar from '$lib/client/components/app/topbar/Topbar.svelte'
 
-	let { children, data }: { children: any; data: { user: any } } = $props()
+	let { children, data }: LayoutProps = $props()
 
 	// Dados da página
 	const contextPage = $state({
-		title: 'Carregando...'
+		title: ''
 	})
 
 	// Disponibiliza os dados da página para serem alterados ou acessados pelos filhos
@@ -243,3 +245,6 @@
 		</div>
 	</div>
 </div>
+
+<!-- Toast -->
+<Toast />

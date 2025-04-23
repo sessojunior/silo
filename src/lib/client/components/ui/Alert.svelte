@@ -5,7 +5,7 @@
 		window.HSStaticMethods.autoInit()
 	})
 
-	let { message } = $props()
+	let { message, type = 'error' } = $props()
 </script>
 
 <div

@@ -1,36 +1,44 @@
 import { fail } from '@sveltejs/kit'
 import * as auth from '$lib/server/auth'
-import type { Actions } from './$types'
+import type { Actions, PageServerLoad } from './$types'
+
+export const load: PageServerLoad = async ({ locals }) => {
+	const user = locals.user ?? null
+	return {
+		email: user?.email ?? ''
+	}
+}
 
 export const actions: Actions = {
 	// Alterar e-mail
 	'update-email': async (event) => {
 		const formData = await event.request.formData()
-		const name = formData.get('name') as string
 		const email = formData.get('email') as string
+
+		// Dados do usuário autenticado
+		const user = event.locals.user ?? null
+
+		// Altera e e-mail do usuário
+		const userEmail = await auth.changeUserEmail({ userId: user.id, email })
+		if ('error' in userEmail) return fail(400, { field: 'email', message: userEmail.error ? userEmail.error.message : 'Ocorreu um erro ao alterar o e-mail.' })
+
+		// Retorna para a página o sucesso
+		return { success: true }
+	},
+
+	// Alterar senha
+	'update-password': async (event) => {
+		const formData = await event.request.formData()
 		const password = formData.get('password') as string
 
-		// Formata os dados para buscar no banco de dados
-		const formatEmail = email.trim().toLowerCase()
+		// Dados do usuário autenticado
+		const user = event.locals.user ?? null
 
-		// Cria a conta do usuário
-		// Caso o usuário já exista, será exibido um erro que já existe. O usuário precisará fazer login.
-		const resultUser = await auth.signUp(name, formatEmail, password)
-		if ('error' in resultUser) return fail(400, { field: resultUser.error.field, message: resultUser.error.message ?? 'Ocorreu um erro ao criar o usuário.' })
+		// Altera a senha do usuário
+		const userPassword = await auth.changeUserPassword({ userId: user.id, password })
+		if ('error' in userPassword) return fail(400, { field: 'password', message: userPassword.error ? userPassword.error.message : 'Ocorreu um erro ao alterar a senha.' })
 
-		// Obtém um código OTP e salva-o no banco de dados
-		const otp = await auth.generateCode(formatEmail)
-		if ('error' in otp) return fail(400, { field: null, message: otp.error.message ?? 'Erro ao gerar o código para enviar por e-mail.' })
-
-		// Código OTP
-		const code = otp.code
-
-		// Envia o código OTP por e-mail
-		await auth.sendEmailCode({ email: formatEmail, type: 'email-verification', code })
-
-		// console.log('code', code)
-
-		// Retorna para a página o próximo passo
-		return { step: 2, email: formatEmail }
+		// Retorna para a página o sucesso
+		return { success: true }
 	}
 }

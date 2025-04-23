@@ -1,5 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit'
-import { eq, and, lt } from 'drizzle-orm'
+import { eq, and, lt, ne } from 'drizzle-orm'
 import { db } from '$lib/server/db'
 import * as table from '$lib/server/db/schema'
 import { verify, hash } from '@node-rs/argon2'
@@ -444,39 +444,6 @@ export async function validateUserEmail(
 	return { success: true, user: { id: selectUser.id, name: selectUser.name, email: selectUser.email } }
 }
 
-// Altera a senha do usuário
-export async function changeUserPassword({
-	userId,
-	password
-}: {
-	userId: string
-	password: string
-}): Promise<{ success: boolean; user: { id: string; name: string; email: string } } | { error: { code: string; message: string } }> {
-	// Verifica se o usuário existe no banco de dados pelo ID do usuário (userId)
-	const selectUser = await db
-		.select()
-		.from(table.authUser)
-		.where(eq(table.authUser.id, userId))
-		.limit(1)
-		.then((results) => results.at(0))
-
-	// Se usuário não for encontrado
-	if (!selectUser?.id) return { error: { code: 'NO_USER_FOUND', message: 'O usuário não existe.' } }
-
-	// Verifica se a senha é válida
-	if (!validatePassword(password)) return { error: { code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
-
-	// Cria o hash da senha
-	const passwordHash = await generateHashPassword(password)
-
-	// Altera a senha do usuário
-	const updateUser = await db.update(table.authUser).set({ password: passwordHash }).where(eq(table.authUser.id, selectUser.id)).returning({ id: table.authUser.id })
-	if (!updateUser) return { error: { code: 'UPDATE_PASSWORD_ERROR', message: 'Ocorreu um erro ao alterar a senha.' } }
-
-	// Retorna os dados do usuário
-	return { success: true, user: { id: selectUser.id, name: selectUser.name, email: selectUser.email } }
-}
-
 // Cria um usuário
 export async function signUp(
 	name: string,
@@ -493,6 +460,9 @@ export async function signUp(
 	// Verifica se o e-mail é válido
 	if (!validateEmail(formatEmail)) return { error: { field: 'email', code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
 
+	// Verifica se a senha é válida
+	if (!validatePassword(password)) return { error: { field: 'password', code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
+
 	// Verifica se o usuário já existe no banco de dados pelo e-mail
 	const selectUser = await db
 		.select()
@@ -503,9 +473,6 @@ export async function signUp(
 
 	// Se usuário for encontrado
 	if (selectUser?.id) return { error: { field: 'email', code: 'USER_ALREADY_EXISTS', message: 'Já existe um usuário com este e-mail.' } }
-
-	// Verifica se a senha é válida
-	if (!validatePassword(password)) return { error: { field: 'password', code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
 
 	// ID do usuário
 	const userId = generateId()
@@ -571,4 +538,102 @@ export async function signIn(
 
 	// Retorna os dados do usuário
 	return { success: true, user: { id: selectUser.id, name: selectUser.name, email: selectUser.email, emailVerified: selectUser.emailVerified } }
+}
+
+// Altera a senha do usuário
+export async function changeUserPassword({
+	userId,
+	password
+}: {
+	userId: string
+	password: string
+}): Promise<{ success: boolean; user: { id: string; name: string; email: string } } | { error: { code: string; message: string } }> {
+	// Verifica se o usuário existe no banco de dados pelo ID do usuário (userId)
+	const selectUser = await db
+		.select()
+		.from(table.authUser)
+		.where(eq(table.authUser.id, userId))
+		.limit(1)
+		.then((results) => results.at(0))
+
+	// Se usuário não for encontrado
+	if (!selectUser?.id) return { error: { code: 'NO_USER_FOUND', message: 'O usuário não existe.' } }
+
+	// Verifica se a senha é válida
+	if (!validatePassword(password)) return { error: { code: 'INVALID_PASSWORD', message: 'A senha é inválida.' } }
+
+	// Cria o hash da senha
+	const passwordHash = await generateHashPassword(password)
+
+	// Altera a senha do usuário
+	const updateUser = await db.update(table.authUser).set({ password: passwordHash }).where(eq(table.authUser.id, selectUser.id)).returning({ id: table.authUser.id })
+	if (!updateUser) return { error: { code: 'UPDATE_PASSWORD_ERROR', message: 'Ocorreu um erro ao alterar a senha.' } }
+
+	// Envia o e-mail informando da alteração da senha
+	// Retorna um objeto: { success: boolean, error?: { code, message } }
+	await sendEmail({
+		to: selectUser.email,
+		subject: 'Senha alterada',
+		text: `Sua senha foi alterada no sistema.`
+	})
+
+	// Retorna os dados do usuário
+	return { success: true, user: { id: selectUser.id, name: selectUser.name, email: selectUser.email } }
+}
+
+// Altera o e-mail do usuário
+export async function changeUserEmail({
+	userId,
+	email
+}: {
+	userId: string
+	email: string
+}): Promise<{ success: boolean; user: { id: string; name: string; email: string } } | { error: { code: string; message: string } }> {
+	// Formata os dados recebidos
+	const formatEmail = email.trim().toLowerCase()
+
+	// Verifica se o e-mail é válido
+	if (!validateEmail(formatEmail)) return { error: { code: 'INVALID_EMAIL', message: 'O e-mail é inválido.' } }
+
+	// Verifica se o usuário existe no banco de dados pelo ID do usuário (userId)
+	const selectUser = await db
+		.select()
+		.from(table.authUser)
+		.where(eq(table.authUser.id, userId))
+		.limit(1)
+		.then((results) => results.at(0))
+
+	// Se usuário não for encontrado
+	if (!selectUser?.id) return { error: { code: 'NO_USER_FOUND', message: 'O usuário não existe.' } }
+
+	// Verifica se o e-mail informado é o mesmo do usuário
+	if (selectUser.email.toLowerCase() === formatEmail) {
+		return { error: { code: 'SAME_EMAIL', message: 'O e-mail informado é o mesmo que o atual.' } }
+	}
+
+	// Verifica se o e-mail já está em uso por outro usuário (que não seja o próprio)
+	const selectEmail = await db
+		.select()
+		.from(table.authUser)
+		.where(and(eq(table.authUser.email, formatEmail), ne(table.authUser.id, selectUser.id)))
+		.limit(1)
+		.then((results) => results.at(0))
+
+	// Se o e-mail já está em uso por outro usuário, que não seja o próprio usuário, retorna um erro
+	if (selectEmail?.id) return { error: { code: 'EMAIL_ALREADY_EXISTS', message: 'O e-mail já está em uso por outro usuário.' } }
+
+	// Altera o e-mail do usuário
+	const updateUser = await db.update(table.authUser).set({ email: formatEmail, emailVerified: 0 }).where(eq(table.authUser.id, selectUser.id)).returning({ id: table.authUser.id })
+	if (!updateUser) return { error: { code: 'UPDATE_EMAIL_ERROR', message: 'Ocorreu um erro ao alterar o e-mail.' } }
+
+	// Envia o e-mail informando da alteração do e-mail
+	// Retorna um objeto: { success: boolean, error?: { code, message } }
+	await sendEmail({
+		to: selectUser.email,
+		subject: 'E-mail alterado',
+		text: `Seu e-mail foi alterado com sucesso, mas é necessário confirmar o e-mail no próximo login, informando o código de verificação que será enviado para este e-mail quando fizer login novamente.`
+	})
+
+	// Retorna os dados do usuário
+	return { success: true, user: { id: selectUser.id, name: selectUser.name, email: selectUser.email } }
 }

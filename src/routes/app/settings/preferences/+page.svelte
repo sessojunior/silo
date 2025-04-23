@@ -21,7 +21,7 @@
 
 <!-- Cartões -->
 <div class="flex w-full max-w-7xl gap-8">
-	<div class="mb-8 flex flex-grow flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
+	<div class="flex flex-grow flex-col gap-8 self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 		<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-50 px-6 py-4">
 			<h3 class="text-xl font-bold">Permissões gerais</h3>
 		</div>
@@ -87,7 +87,7 @@
 		</form>
 	</div>
 
-	<div class="mb-8 flex flex-col gap-8">
+	<div class="flex flex-col gap-8">
 		<div class="flex w-96 flex-col self-start rounded-xl border border-zinc-200 bg-white shadow-2xs">
 			<div class="flex items-center rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-6 py-4">
 				<h3 class="text-xl font-bold">Recomendações</h3>
