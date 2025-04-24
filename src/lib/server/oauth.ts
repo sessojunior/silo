@@ -111,3 +111,19 @@ export async function createUserFromGoogleId(googleId: string, email: string, na
 	// Retorna os dados do usuário
 	return { id: userId, name: formatName, email: formatEmail, emailVerified: 1, googleId }
 }
+
+// Obtém o googleId vinculado ao userId
+export async function getGoogleIdFromUserId(userId: string): Promise<{ googleId: string | null }> {
+	// Verifica se existe um googleId vinculado ao userId fornecido
+	const result = await db
+		.select({
+			googleId: table.authProvider.googleId
+		})
+		.from(table.authProvider)
+		.where(eq(table.authProvider.userId, userId))
+		.limit(1)
+		.then((res) => res.at(0))
+
+	// Se encontrado, retorna o googleId, caso contrario, retorna null
+	return { googleId: result?.googleId ?? null }
+}

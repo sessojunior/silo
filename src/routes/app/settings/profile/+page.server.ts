@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit'
 import * as profile from '$lib/server/profile'
+import * as oauth from '$lib/server/oauth'
 import type { Actions, PageServerLoad } from './$types'
 import { existsSync } from 'fs'
 import path from 'path'
@@ -17,9 +18,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 		location: ''
 	}
 	let image = null as null | string
+	let googleId = null as null | string
 
-	// Dados do perfil do usuário
+	// Se o usuário existe
 	if (user?.id) {
+		// Dados do perfil do usuário
 		const result = await profile.getUserProfile(user.id)
 		if ('success' in result) {
 			userProfile = {
@@ -33,6 +36,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		if (existsSync(avatarPath)) {
 			image = `/uploads/avatar/${user.id}.webp`
 		}
+
+		// ID do usuário no Google
+		const resultGoogle = await oauth.getGoogleIdFromUserId(user.id)
+		googleId = resultGoogle.googleId
 	}
 
 	return {
@@ -43,7 +50,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		image,
 
 		// Dados do perfil do usuário
-		...userProfile
+		...userProfile,
+
+		// ID do usuário no Google
+		googleId
 	}
 }
 

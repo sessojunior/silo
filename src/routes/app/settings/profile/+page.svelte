@@ -13,7 +13,7 @@
 	let { data, form }: PageProps = $props()
 	let loading = $state(false)
 
-	let connected = true
+	let googleLinked = data.googleId ? true : false
 </script>
 
 <!-- Cabeçalho -->
@@ -199,21 +199,30 @@
 			<div class="flex flex-col p-6">
 				<div class="flex w-full items-center justify-between">
 					<div>
-						<img src="/images/google-logo.png" alt="Google" class="h-auto w-24" />
+						<img src="/images/google-logo.png" alt="Google" class="h-10 w-auto" />
 					</div>
 					<div>
-						<button
-							type="button"
-							class="border-zinx-200 inline-flex items-center gap-x-2 rounded-lg border border-green-200 bg-green-100 px-3 py-2 text-xs font-semibold text-green-600 transition-all duration-500 hover:border-green-200 hover:bg-green-200 focus:bg-green-100 focus:outline-hidden disabled:pointer-events-none disabled:opacity-75"
-							disabled={!connected}>{connected ? 'Conectado' : 'Conectar'}</button
-						>
+						{#if googleLinked}
+							<button disabled class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-400">
+								<span class="icon-[logos--google-icon] size-4 shrink-0"></span>
+								Conectado
+							</button>
+						{:else}
+							<a
+								href="/sign-in/google"
+								class="flex w-full items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-600 transition hover:bg-blue-600 hover:text-white"
+							>
+								<span class="icon-[logos--google-icon] size-4 shrink-0"></span>
+								Conectar
+							</a>
+						{/if}
 					</div>
 				</div>
 			</div>
 			<div class="px-6 pb-6">
 				<h3 class="text-lg font-bold tracking-tight text-zinc-600 dark:text-zinc-200">Entrar com o Google</h3>
-				<p class="mt-1 text-base text-zinc-600 dark:text-zinc-200">
-					Use o Google para fazer entrar em sua conta. <a href="/sign-in" class="hover-b-blue-600 text-blue-600 hover:border-b">Clique aqui para saber mais.</a>
+				<p class="mt-1 text-base text-zinc-400 dark:text-zinc-200">
+					Para conectar sua conta ao Google, use o mesmo e-mail de sua conta atual. Assim, você poderá entrar mais facilmente com a sua conta do Google.
 				</p>
 			</div>
 		</div>
