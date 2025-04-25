@@ -18,10 +18,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	// Atualiza o tema no banco de dados
 	const result = await profile.updateUserTheme(locals.user.id, theme)
-	if ('success' in result) {
-		console.log('Tema atualizado com sucesso:', theme)
+	if ('error' in result) {
 		return json({ type: 'success', theme })
-	} else {
-		return new Response(JSON.stringify({ error: 'Erro ao salvar o tema' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
 	}
+
+	return new Response(JSON.stringify({ error: 'Erro ao salvar o tema' }), { status: 500, headers: { 'Content-Type': 'application/json' } })
 }
