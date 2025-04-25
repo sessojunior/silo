@@ -1,4 +1,12 @@
 <script lang="ts">
+	import { getContext } from 'svelte'
+
+	// Pega os dados da página por meio do context
+	const contextPage = getContext<{ title: string }>('contextPage')
+
+	// Atualiza o título da página dinamicamente
+	contextPage.title = 'BRAMS ams 15 km'
+
 	interface Problems {
 		id: string
 		title: string

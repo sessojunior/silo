@@ -30,14 +30,14 @@
 						id: '1.1',
 						title: 'Visão geral',
 						icon: 'icon-[lucide--house]',
-						url: '#',
+						url: '/app/dashboard',
 						items: null
 					},
 					{
 						id: '1.2',
 						title: 'Produtos & tasks',
 						icon: 'icon-[lucide--folder-git-2]',
-						url: '#',
+						url: '/app/product',
 						items: [
 							{
 								id: '1.2.1',
@@ -101,7 +101,7 @@
 								id: '1.2.3',
 								title: 'BRAMS ams 15 km',
 								icon: null,
-								url: '#',
+								url: '/app/product',
 								items: null
 							},
 							{

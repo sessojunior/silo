@@ -1,8 +1,16 @@
 <script lang="ts">
+	import { getContext } from 'svelte'
+
 	import Product from '$lib/client/components/app/dashboard/Product.svelte'
 	import ChartColumn from '$lib/client/components/app/dashboard/ChartColumn.svelte'
 	import ChartDonut from '$lib/client/components/app/dashboard/ChartDonut.svelte'
 	import ChartLine from '$lib/client/components/app/dashboard/ChartLine.svelte'
+
+	// Pega os dados da página por meio do context
+	const contextPage = getContext<{ title: string }>('contextPage')
+
+	// Atualiza o título da página dinamicamente
+	contextPage.title = 'Visão geral'
 </script>
 
 <div class="flex w-full bg-white dark:bg-zinc-900">

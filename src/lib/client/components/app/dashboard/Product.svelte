@@ -625,59 +625,24 @@
 				{date}
 			</div>
 		</div>
-		<!-- Turno -->
+		<!-- Barra de turno -->
 		<div class="flex flex-col">
-			<!-- Barra de turno -->
 			<ProductTurn />
 		</div>
 	</div>
 	<div class="mt-1.5 flex items-center justify-between">
-		<!-- Popover -->
-		<div class="hs-tooltip inline-block [--trigger:focus] sm:[--placement:top]">
-			<!-- Popover Trigger -->
-			<button
-				type="button"
-				class="hs-tooltip-toggle rounded-lg bg-zinc-100 hover:bg-zinc-200 focus:bg-zinc-200 focus:outline-hidden dark:bg-zinc-900 dark:hover:bg-zinc-700 dark:focus:bg-zinc-700"
-			>
-				<!-- Linha do tempo -->
-				<ProductTimeline />
-				<!-- Popover Content -->
-				<div
-					class="hs-tooltip-content hs-tooltip-shown:opacity-100 hs-tooltip-shown:visible invisible absolute z-[80] hidden rounded-xl border border-zinc-200 bg-white text-start opacity-0 shadow-md transition-opacity after:absolute after:-start-4 after:top-0 after:h-full after:w-4 dark:border-zinc-700 dark:bg-zinc-800"
-					role="tooltip"
-				>
-					<div class="flex items-center justify-between rounded-t-xl border-b border-zinc-200 bg-zinc-100 px-4 py-3">
-						<!-- Produto -->
-						<div class="flex flex-col">
-							<div class="flex items-center gap-2">
-								<span class="icon-[lucide--folder-git-2] size-5 shrink-0 text-zinc-400"></span>
-								<span class="text-lg font-medium">{name}</span>
-							</div>
-						</div>
-						<!-- Prioridade -->
-						<div class="flex items-center text-xs leading-none">
-							{#if priority == 'urgent'}
-								<div class="inline-block rounded-full bg-red-100 px-4 py-2 dark:bg-red-600">
-									<span class="text-xs font-medium text-nowrap text-red-500 uppercase dark:text-white">Urgente</span>
-								</div>
-							{:else if priority == 'normal'}
-								<div class="inline-block rounded-full bg-orange-100 px-4 py-2 dark:bg-orange-600">
-									<span class="text-xs font-medium text-nowrap text-orange-500 uppercase dark:text-white">Normal</span>
-								</div>
-							{:else if priority == 'low'}
-								<div class="inline-block rounded-full bg-green-200 px-4 py-2 dark:bg-green-700">
-									<span class="text-xs font-medium text-nowrap text-green-600 uppercase dark:text-white">Baixa</span>
-								</div>
-							{/if}
-						</div>
-					</div>
-					<div class="flex flex-col divide-y divide-zinc-200">
-						<ProductCalendar calendar={month1} />
-						<ProductCalendar calendar={month2} />
-					</div>
-				</div>
-			</button>
-		</div>
+		<!-- Modal Trigger -->
+		<button
+			type="button"
+			class="rounded-lg bg-zinc-100 hover:bg-zinc-200 focus:bg-zinc-200 focus:outline-hidden dark:bg-zinc-900 dark:hover:bg-zinc-700 dark:focus:bg-zinc-700"
+			aria-haspopup="dialog"
+			aria-expanded="false"
+			aria-controls="hs-modal-{id}"
+			data-hs-overlay="#hs-modal-{id}"
+		>
+			<!-- Linha do tempo -->
+			<ProductTimeline />
+		</button>
 
 		<!-- Prioridade -->
 		<div class="flex items-center text-xs leading-none">
@@ -694,6 +659,61 @@
 					<span class="text-xs font-medium text-nowrap text-green-600 uppercase dark:text-white">Baixa</span>
 				</div>
 			{/if}
+		</div>
+	</div>
+</div>
+
+<!-- Modal -->
+<div
+	id="hs-modal-{id}"
+	class="hs-overlay pointer-events-none fixed start-0 top-0 z-80 hidden size-full overflow-x-hidden overflow-y-auto"
+	role="dialog"
+	tabindex="-1"
+	aria-labelledby="hs-modal-label-{id}"
+>
+	<div
+		class="hs-overlay-open:mt-7 hs-overlay-open:opacity-100 hs-overlay-open:duration-500 m-3 mt-0 flex min-h-[calc(100%-56px)] items-center opacity-0 transition-all ease-out lg:mx-auto lg:w-full lg:max-w-4xl"
+	>
+		<div
+			class="pointer-events-auto flex w-full flex-col rounded-xl border border-gray-200 bg-white shadow-2xs dark:border-neutral-700 dark:bg-neutral-800 dark:shadow-neutral-700/70"
+		>
+			<!-- Calendário do produto -->
+			<div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-neutral-700">
+				<div class="flex gap-3">
+					<span class="icon-[lucide--folder-git-2] size-6 shrink-0 text-zinc-400"></span>
+					<h3 id="hs-modal-label-{id}" class="font-bold text-gray-800 dark:text-white">{name}</h3>
+					{#if priority == 'low'}
+						<span class="inline-flex items-center gap-x-1 rounded-full bg-green-200 px-3 py-1 text-xs font-medium text-green-600 uppercase">Baixa</span>
+					{:else if priority == 'normal'}
+						<span class="inline-flex items-center gap-x-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-500 uppercase dark:bg-blue-500">Normal</span>
+					{:else if priority == 'urgent'}
+						<span class="inline-flex items-center gap-x-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-500 uppercase">Urgente</span>
+					{/if}
+				</div>
+				<button
+					type="button"
+					class="inline-flex size-8 items-center justify-center gap-x-2 rounded-full border border-transparent bg-gray-100 text-gray-800 hover:bg-gray-200 focus:bg-gray-200 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:bg-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-600 dark:focus:bg-neutral-600"
+					aria-label="Close"
+					data-hs-overlay="#hs-modal-{id}"
+				>
+					<span class="sr-only">Close</span>
+					<span class="icon-[lucide--x] size-4 shrink-0 text-zinc-400"></span>
+				</button>
+			</div>
+			<div class="flex flex-col divide-y divide-zinc-200">
+				<ProductCalendar calendar={month1} />
+				<ProductCalendar calendar={month2} />
+			</div>
+
+			<div class="flex items-center justify-end gap-x-2 border-t border-gray-200 px-4 py-3 dark:border-neutral-700">
+				<button
+					type="button"
+					class="inline-flex items-center gap-x-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-2xs hover:bg-gray-50 focus:bg-gray-50 focus:outline-hidden disabled:pointer-events-none disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700 dark:focus:bg-neutral-700"
+					data-hs-overlay="#hs-modal-{id}"
+				>
+					Fechar
+				</button>
+			</div>
 		</div>
 	</div>
 </div>
