@@ -12,7 +12,7 @@
 	<Logo {logo} />
 
 	<div class="flex gap-2">
-		<!-- Botão de alternar entre claro e escuro -->
+		<!-- Botão de alternar o tema entre claro e escuro -->
 		<ButtonTheme />
 
 		<!-- Botão de fechar -->

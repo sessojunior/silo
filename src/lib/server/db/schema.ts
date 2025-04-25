@@ -60,7 +60,7 @@ export const userPreferences = sqliteTable('user_preferences', {
 		.notNull()
 		.references(() => authUser.id),
 	theme: text('theme').notNull(),
-	notifyUpdates: text('notify_updates').notNull(),
-	sendNewsletters: text('send_newsletters').notNull()
+	notifyUpdates: integer({ mode: 'boolean' }).notNull(),
+	sendNewsletters: integer({ mode: 'boolean' }).notNull()
 })
 export type UserPreferences = typeof userPreferences.$inferSelect

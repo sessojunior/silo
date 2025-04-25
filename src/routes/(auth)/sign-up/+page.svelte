@@ -2,9 +2,10 @@
 	import { enhance } from '$app/forms'
 	import type { PageProps } from './$types'
 
+	import { toast } from '$lib/client/utils/toast'
+
 	import Label from '$lib/client/components/ui/Label.svelte'
 	import Input from '$lib/client/components/ui/Input.svelte'
-	import Alert from '$lib/client/components/ui/Alert.svelte'
 	import Button from '$lib/client/components/ui/Button.svelte'
 	import Header from '$lib/client/components/auth/Header.svelte'
 	import Link from '$lib/client/components/auth/Link.svelte'
@@ -15,6 +16,7 @@
 
 	let loading = $state(false)
 	let step = $state(1)
+	let name = $state('')
 	let email = $state('')
 </script>
 
@@ -34,21 +36,39 @@
 			action="?/register"
 			use:enhance={() => {
 				loading = true
-				return async ({ update }) => {
+				return async ({ update, result }) => {
 					await update()
 					loading = false
 					step = form?.step ?? 1
+					name = form?.name ?? ''
 					email = form?.email ?? ''
+
+					if (result.type === 'failure') {
+						toast({
+							title: (result.data as any).message ?? 'Erro desconhecido ao enviar os dados.',
+							icon: 'icon-[lucide--triangle-alert]',
+							type: 'error',
+							duration: 10000,
+							position: 'top-left'
+						})
+					}
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
-				{#if form?.message && !form?.field}
-					<Alert message={form.message} />
-				{/if}
 				<div>
 					<Label htmlFor="name" isInvalid={form?.field === 'name'}>Nome</Label>
-					<Input type="text" id="name" name="name" autocomplete="name" placeholder="Fulano" required isInvalid={form?.field === 'name'} invalidMessage={form?.message} />
+					<Input
+						type="text"
+						id="name"
+						name="name"
+						value={name}
+						autocomplete="name"
+						placeholder="Fulano"
+						required
+						isInvalid={form?.field === 'name'}
+						invalidMessage={form?.message}
+					/>
 				</div>
 				<div>
 					<Label htmlFor="email" isInvalid={form?.field === 'email'}>E-mail</Label>
@@ -56,6 +76,7 @@
 						type="email"
 						id="email"
 						name="email"
+						value={email}
 						autocomplete="email"
 						placeholder="seuemail@inpe.br"
 						minlength={8}
@@ -108,16 +129,23 @@
 			action="?/send-code"
 			use:enhance={() => {
 				loading = true
-				return async ({ update }) => {
+				return async ({ update, result }) => {
 					await update()
 					loading = false
+
+					if (result.type === 'failure') {
+						toast({
+							title: (result.data as any).message ?? 'Erro desconhecido ao enviar os dados.',
+							icon: 'icon-[lucide--triangle-alert]',
+							type: 'error',
+							duration: 10000,
+							position: 'top-left'
+						})
+					}
 				}
 			}}
 		>
 			<fieldset class="grid gap-5">
-				{#if form?.message && !form?.field}
-					<Alert message={form?.message} />
-				{/if}
 				<input type="hidden" name="email" value={email} />
 				<div>
 					<Label htmlFor="code" isInvalid={form?.field === 'code'}>Código que recebeu por e-mail</Label>

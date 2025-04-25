@@ -5,7 +5,7 @@
 		window.HSStaticMethods.autoInit()
 	})
 
-	let { id, name, size = 'md', title = '', description = '', isInvalid, invalidMessage } = $props()
+	let { id, name, checked = false, size = 'md', title = '', description = '', isInvalid, invalidMessage } = $props()
 </script>
 
 <div class="flex w-full items-center justify-between gap-3">
@@ -18,7 +18,7 @@
 		class="{size === 'lg' ? 'h-8 w-15' : size === 'md' ? 'h-7 w-13' : size === 'sm' ? 'h-6 w-11' : 'h-5 w-9'} 
 		relative inline-block cursor-pointer"
 	>
-		<input type="checkbox" {name} {id} class="peer sr-only" />
+		<input type="checkbox" {checked} {name} {id} class="peer sr-only" />
 		<span
 			class="absolute inset-0 rounded-full bg-gray-200 transition-colors duration-200 ease-in-out peer-checked:bg-blue-600 peer-disabled:pointer-events-none peer-disabled:opacity-50 dark:bg-neutral-700 dark:peer-checked:bg-blue-500"
 		></span>

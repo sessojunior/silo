@@ -2,7 +2,6 @@
 	import { setContext } from 'svelte'
 	import type { LayoutProps } from './$types'
 
-	import Toast from '$lib/client/components/ui/Toast.svelte'
 	import Sidebar from '$lib/client/components/app/sidebar/Sidebar.svelte'
 	import Topbar from '$lib/client/components/app/topbar/Topbar.svelte'
 
@@ -245,6 +244,3 @@
 		</div>
 	</div>
 </div>
-
-<!-- Toast -->
-<Toast />

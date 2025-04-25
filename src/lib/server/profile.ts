@@ -25,7 +25,7 @@ export async function getUserProfile(
 		.then((results) => results.at(0))
 
 	// Se perfil do usuário não for encontrado
-	if (!userProfile?.id) return { error: { field: null, code: 'NO_USER_PROFILE', message: 'O perfil do usuário nao foi encontrado.' } }
+	if (!userProfile?.id) return { error: { field: null, code: 'NO_USER_PROFILE', message: 'O perfil do usuário não foi encontrado.' } }
 
 	// Retorna sucesso
 	return { success: true, userProfile: userProfile }
@@ -173,4 +173,129 @@ export function deleteUserProfileImage(userId: string): { success: boolean } | {
 	}
 
 	return { success: true }
+}
+
+// Obtém as preferências do usuário
+export async function getUserPreferences(
+	userId: string
+): Promise<
+	| { success: boolean; userPreferences: { id: string; userId: string; theme: string; notifyUpdates: boolean; sendNewsletters: boolean } }
+	| { error: { field: string | null; code: string; message: string } }
+> {
+	// Verifica se enviou o ID do usuário
+	if (!userId) return { error: { field: null, code: 'NO_USER_ID', message: 'O ID do usuário é obrigatório.' } }
+
+	// Busca o perfil do usuário
+	const userPreferences = await db
+		.select()
+		.from(table.userPreferences)
+		.where(eq(table.userPreferences.userId, userId))
+		.limit(1)
+		.then((results) => results.at(0))
+
+	// Se perfil do usuário não for encontrado
+	if (!userPreferences?.id) return { error: { field: null, code: 'NO_USER_PREFERENCES', message: 'As preferências do usuário não foram encontradas.' } }
+
+	// Retorna sucesso
+	return { success: true, userPreferences: userPreferences }
+}
+
+// Altera ou cria as preferências do usuário, se não existir
+export async function updateUserPreferences(
+	userId: string,
+	theme: string,
+	notifyUpdates: boolean,
+	sendNewsletters: boolean
+): Promise<
+	| { success: boolean; userPreferences: { id: string; userId: string; theme: string; notifyUpdates: boolean; sendNewsletters: boolean } }
+	| { error: { field: string | null; code: string; message: string } }
+> {
+	// Verifica se enviou o ID do usuário
+	if (!userId) return { error: { field: null, code: 'NO_USER_ID', message: 'O ID do usuário é obrigatório.' } }
+
+	// Verifica se as preferências do usuário já existe no banco de dados pelo ID do usuário
+	const selectUserPreferences = await db
+		.select()
+		.from(table.userPreferences)
+		.where(eq(table.userPreferences.userId, userId))
+		.limit(1)
+		.then((results) => results.at(0))
+
+	// Se as preferências do usuário não existir
+	if (!selectUserPreferences?.id) {
+		// ID do perfil do usuário
+		const userPreferencesId = utils.generateId()
+
+		// Insere as preferências do usuário no banco de dados
+		const [insertUserPreferences] = await db
+			.insert(table.userPreferences)
+			.values({
+				id: userPreferencesId,
+				userId,
+				theme: theme,
+				notifyUpdates: notifyUpdates,
+				sendNewsletters: sendNewsletters
+			})
+			.returning()
+		if (!insertUserPreferences) return { error: { field: null, code: 'INSERT_USER_ERROR', message: 'Erro ao salvar o usuário no banco de dados.' } }
+
+		// Retorna os dados do usuário criado
+		return {
+			success: true,
+			userPreferences: {
+				id: insertUserPreferences.id,
+				userId: insertUserPreferences.userId,
+				theme: insertUserPreferences.theme,
+				notifyUpdates: insertUserPreferences.notifyUpdates,
+				sendNewsletters: insertUserPreferences.sendNewsletters
+			}
+		}
+	}
+
+	// Se as preferências do usuário existir, atualiza as preferências do usuário
+	const [updateUserPreferences] = await db
+		.update(table.userPreferences)
+		.set({
+			theme: theme,
+			notifyUpdates: notifyUpdates,
+			sendNewsletters: sendNewsletters
+		})
+		.where(eq(table.userPreferences.userId, userId))
+		.returning()
+	if (!updateUserPreferences) return { error: { field: null, code: 'UPDATE_USER_PROFILE_ERROR', message: 'Erro ao atualizar o perfil do usuário no banco de dados.' } }
+
+	// Retorna os dados do usuário alterado
+	return {
+		success: true,
+		userPreferences: {
+			id: updateUserPreferences.id,
+			userId: updateUserPreferences.userId,
+			theme: updateUserPreferences.theme,
+			notifyUpdates: updateUserPreferences.notifyUpdates,
+			sendNewsletters: updateUserPreferences.sendNewsletters
+		}
+	}
+}
+
+// Altera o tema das preferências do usuário
+export async function updateUserTheme(
+	userId: string,
+	theme: string
+): Promise<{ success: boolean; theme: string } | { error: { field: string | null; code: string; message: string } }> {
+	if (!userId) {
+		return { error: { field: null, code: 'NO_USER_ID', message: 'O ID do usuário é obrigatório.' } }
+	}
+
+	try {
+		const [updated] = await db.update(table.userPreferences).set({ theme }).where(eq(table.userPreferences.userId, userId)).returning({ theme: table.userPreferences.theme })
+
+		if (!updated?.theme) {
+			return { error: { field: null, code: 'UPDATE_THEME_FAILED', message: 'Erro ao atualizar o tema do usuário.' } }
+		}
+
+		return { success: true, theme: updated.theme }
+	} catch (err) {
+		console.error('Erro ao atualizar tema:', err)
+		return { error: { field: null, code: 'DB_ERROR', message: 'Erro interno ao atualizar o tema.' } }
+	}
 }

@@ -20,7 +20,7 @@
 			icon: 'icon-[lucide--user-round-pen]',
 			title: 'Complete seu perfil de usuário',
 			description: 'Termine de configurar as informações de seu perfil, como nome, imagem de perfil e outras informações.',
-			link: '#',
+			link: '/app/settings/profile',
 			completed: true
 		},
 		{

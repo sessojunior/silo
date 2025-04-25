@@ -2,12 +2,13 @@
 	import { enhance } from '$app/forms'
 	import type { PageProps } from './$types'
 
+	import { toast } from '$lib/client/utils/toast'
+
 	import Select from '$lib/client/components/ui/Select.svelte'
 	import Switch from '$lib/client/components/ui/Switch.svelte'
 	import Button from '$lib/client/components/ui/Button.svelte'
 
-	let { form }: PageProps = $props()
-
+	let { data, form }: PageProps = $props()
 	let loading = $state(false)
 </script>
 
@@ -28,31 +29,51 @@
 		<form
 			class="flex flex-col gap-6 p-6"
 			method="post"
-			action="?/update-profile"
+			action="?/update-preferences"
 			use:enhance={() => {
 				loading = true
-				return async ({ update }) => {
+				return async ({ update, result }) => {
 					await update()
 					loading = false
+
+					if (result.type === 'success') {
+						toast({
+							title: 'Suas preferências	foram alteradas com sucesso!',
+							icon: 'icon-[lucide--circle-check]',
+							type: 'success',
+							duration: 10000,
+							position: 'bottom-right'
+						})
+					} else if (result.type === 'failure') {
+						toast({
+							title: (result.data as any).message ?? 'Erro desconhecido ao enviar os dados.',
+							icon: 'icon-[lucide--triangle-alert]',
+							type: 'error',
+							duration: 10000,
+							position: 'bottom-right'
+						})
+					}
 				}
 			}}
 		>
 			<Switch
-				id="notifications"
-				name="notifications"
+				id="notify-updates"
+				name="notifyUpdates"
+				checked={data.notifyUpdates}
 				size="lg"
 				title="Notificar quando houver novas atualizações"
 				description="Notifique-me quando houver novas atualizações no sistema ou novas versões."
-				isInvalid={form?.field === 'notifications'}
+				isInvalid={form?.field === 'notifyUpdates'}
 				invalidMessage={form?.message}
 			/>
 			<Switch
-				id="send-messages"
-				name="send-messages"
+				id="send-newsletters"
+				name="sendNewsletters"
+				checked={data.sendNewsletters}
 				size="lg"
 				title="Enviar e-mails semanalmente"
 				description="Enviar e-mails semanalmente com novidades e atualizações."
-				isInvalid={form?.field === 'send-messages'}
+				isInvalid={form?.field === 'sendNewsletters'}
 				invalidMessage={form?.message}
 			/>
 			<div class="flex items-center justify-between">
@@ -62,9 +83,9 @@
 				</div>
 				<div>
 					<Select
-						name="location"
-						selected=""
-						placeholder="Selecione o tema..."
+						name="theme"
+						selected={data.theme}
+						placeholder="Selecione..."
 						options={[
 							{ label: 'Claro', value: 'light' },
 							{ label: 'Escuro', value: 'dark' }

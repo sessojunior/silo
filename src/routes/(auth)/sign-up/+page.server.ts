@@ -40,7 +40,7 @@ export const actions: Actions = {
 		// console.log('code', code)
 
 		// Retorna para a página o próximo passo
-		return { step: 2, email: formatEmail }
+		return { step: 2, name: name, email: formatEmail }
 	},
 	// Recebe o código OTP e o e-mail para verificação para enviar o token
 	'send-code': async (event) => {

@@ -51,7 +51,7 @@
 							})
 						} else if (result.type === 'failure') {
 							toast({
-								title: (result.data as any).message ?? 'Erro desconhecido ao tentar alterar seus dados de perfil.',
+								title: (result.data as any).message ?? 'Erro desconhecido ao enviar os dados.',
 								icon: 'icon-[lucide--triangle-alert]',
 								type: 'error',
 								duration: 10000,
