@@ -11,13 +11,12 @@
 	const contextPage = getContext<{ title: string }>('contextPage')
 
 	// Atualiza o título da página dinamicamente
-	contextPage.title = 'Configurações'
+	contextPage.title = 'Nome do produto'
 
 	// Lista de botões
 	const tabs = [
-		{ label: 'Alterar perfil', url: '/app/settings/profile' },
-		{ label: 'Preferências', url: '/app/settings/preferences' },
-		{ label: 'Segurança', url: '/app/settings/security' }
+		{ label: 'Base de conhecimento', url: '/app/products/slug-do-produto/manual' },
+		{ label: 'Problemas & soluções', url: '/app/products/slug-do-produto/problems' }
 	]
 </script>
 
@@ -39,7 +38,7 @@
 		<div>
 			<!-- Conteúdo -->
 			<Content>
-				<div class="flex h-full w-full flex-col items-start justify-start gap-8 p-8 text-zinc-600 dark:text-zinc-200">
+				<div class="flex h-full w-full">
 					{@render children()}
 				</div>
 			</Content>

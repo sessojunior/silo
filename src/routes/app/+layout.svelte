@@ -37,7 +37,7 @@
 						id: '1.2',
 						title: 'Produtos & tasks',
 						icon: 'icon-[lucide--folder-git-2]',
-						url: '/app/product',
+						url: '#',
 						items: [
 							{
 								id: '1.2.1',
@@ -49,7 +49,7 @@
 										id: '1.2.1.1',
 										title: 'Link 1',
 										icon: null,
-										url: '#',
+										url: '/app/products/bam/manual',
 										items: null
 									},
 									{
@@ -78,7 +78,7 @@
 										id: '1.2.2.1',
 										title: 'Link 1',
 										icon: null,
-										url: '#',
+										url: '/app/products/smec/manual',
 										items: null
 									},
 									{
@@ -101,14 +101,14 @@
 								id: '1.2.3',
 								title: 'BRAMS ams 15 km',
 								icon: null,
-								url: '/app/product',
+								url: '/app/products/brams-ams-15-km/manual',
 								items: null
 							},
 							{
 								id: '1.2.4',
 								title: 'WRF',
 								icon: null,
-								url: '#',
+								url: '/app/products/wrf/manual',
 								items: null
 							}
 						]
