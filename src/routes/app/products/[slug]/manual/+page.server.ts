@@ -1,3 +1,5 @@
+import { error } from '@sveltejs/kit'
+
 // Dados de documentos
 const docs = [
 	{
@@ -384,7 +386,10 @@ const manual = {
 	]
 }
 
-export function load() {
+export function load({ params }) {
+	// Verifica se o slug foi fornecido
+	if (!params.slug) error(404)
+
 	return {
 		docs,
 		contacts,

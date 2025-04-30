@@ -1,3 +1,5 @@
+import { error } from '@sveltejs/kit'
+
 interface Problem {
 	id: string
 	title: string
@@ -148,7 +150,10 @@ const problem = {
 	]
 }
 
-export function load() {
+export function load({ params }) {
+	// Verifica se o slug foi fornecido
+	if (!params.slug) error(404)
+
 	return {
 		problem,
 		problems

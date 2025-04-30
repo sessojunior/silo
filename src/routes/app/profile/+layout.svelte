@@ -11,14 +11,13 @@
 	const contextPage = getContext<{ title: string }>('contextPage')
 
 	// Atualiza o título da página dinamicamente
-	contextPage.title = 'Configurações'
+	contextPage.title = 'Perfil do usuário'
 
 	// Lista de botões
 	const tabs = [
-		{ label: 'Geral', url: '/app/settings/general' },
-		{ label: 'Produtos & tasks', url: '/app/settings/products' },
-		{ label: 'Projetos', url: '/app/settings/projects' },
-		{ label: 'Grupos', url: '/app/settings/groups' }
+		{ label: 'Alterar perfil', url: '/app/profile/general' },
+		{ label: 'Preferências', url: '/app/profile/preferences' },
+		{ label: 'Segurança', url: '/app/profile/security' }
 	]
 </script>
 

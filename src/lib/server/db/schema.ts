@@ -64,3 +64,10 @@ export const userPreferences = sqliteTable('user_preferences', {
 	sendNewsletters: integer({ mode: 'boolean' }).notNull()
 })
 export type UserPreferences = typeof userPreferences.$inferSelect
+
+export const products = sqliteTable('products', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	available: integer({ mode: 'boolean' }).notNull()
+})
+export type Products = typeof products.$inferSelect

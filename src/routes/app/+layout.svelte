@@ -155,23 +155,30 @@
 						items: [
 							{
 								id: '2.3.1',
-								title: 'Alterar perfil',
+								title: 'Config. gerais',
 								icon: null,
-								url: '/app/settings/profile',
+								url: '/app/settings/general',
 								items: null
 							},
 							{
 								id: '2.3.2',
-								title: 'Preferências',
+								title: 'Produtos & tasks',
 								icon: null,
-								url: '/app/settings/preferences',
+								url: '/app/settings/products',
 								items: null
 							},
 							{
 								id: '2.3.3',
-								title: 'Segurança',
+								title: 'Projetos',
 								icon: null,
-								url: '/app/settings/security',
+								url: '/app/settings/projects',
+								items: null
+							},
+							{
+								id: '2.3.4',
+								title: 'Grupos',
+								icon: null,
+								url: '/app/settings/groups',
 								items: null
 							}
 						]
@@ -205,19 +212,19 @@
 				id: '1',
 				icon: 'icon-[lucide--user-round-pen]',
 				title: 'Alterar perfil',
-				url: '/app/settings/profile'
+				url: '/app/profile/general'
 			},
 			{
 				id: '2',
 				icon: 'icon-[lucide--settings-2]',
 				title: 'Preferências',
-				url: '/app/settings/preferences'
+				url: '/app/profile/preferences'
 			},
 			{
 				id: '3',
 				icon: 'icon-[lucide--shield-check]',
 				title: 'Segurança',
-				url: '/app/settings/security'
+				url: '/app/profile/security'
 			},
 			{
 				id: '4',
