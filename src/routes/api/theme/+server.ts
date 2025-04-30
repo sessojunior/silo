@@ -1,8 +1,7 @@
 import { json } from '@sveltejs/kit'
-import type { RequestHandler } from '@sveltejs/kit'
 import * as profile from '$lib/server/profile'
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export async function POST({ request, locals }) {
 	// Verifica se o usuário está autenticado
 	if (!locals.user) {
 		return new Response(JSON.stringify({ error: 'Usuário não autenticado' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
