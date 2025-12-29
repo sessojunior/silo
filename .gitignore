@@ -1,26 +1,52 @@
-node_modules
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
 /build
 
-# OS
+# misc
 .DS_Store
-Thumbs.db
+*.pem
 
-# Env
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
 .env
-.env.*
-!.env.example
-!.env.test
+.env.docker
 
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
+# vercel
+.vercel
 
-# SQLite
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# database
 *.db
+
+# File Server - Arquivos de upload e dependências
+# Uploads são ignorados pois devem ser gerenciados pelo servidor de produção
+fileserver/uploads/
+fileserver/node_modules/
+fileserver/dist/
+fileserver/logs/

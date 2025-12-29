@@ -1,0 +1,44 @@
+# Arquivos desnecessários para o Docker
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Arquivos de ambiente (usar .env no host)
+.env.local
+.env.development
+.env.test
+
+# Arquivos de build e cache
+.next/
+out/
+dist/
+build/
+
+# Arquivos de upload (serão montados como volume)
+fileserver/uploads/
+
+# Logs e temporários
+*.log
+temp/
+logs/
+
+# Arquivos de teste
+test-results/
+playwright-report/
+coverage/
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos Git
+.git/
+.gitignore
+README.md

@@ -1,0 +1,13 @@
+# Ignorar arquivos de desenvolvimento
+.env.local
+.env.development
+.env.test
+
+# Ignorar logs e temporários
+*.log
+temp/
+logs/
+
+# Ignorar arquivos de teste
+test-results/
+playwright-report/

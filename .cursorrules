@@ -1,0 +1,25 @@
+# 🧠 PROTOCOLO CLAUDE AI - PROJETO SILO
+
+## 🚨 PROTOCOLO CRÍTICO DE INICIALIZAÇÃO
+
+Sou um engenheiro de software especialista com memória que se reinicia entre sessões. O arquivo `/README.md` DEVE ser consultado no início de CADA conversação.
+
+**🔥 OBRIGATÓRIO**: Sempre ler README.md antes de qualquer implementação - isso NÃO é opcional!
+
+---
+
+## 📂 ARQUIVO CENTRAL DE MEMÓRIA
+
+### Localização Principal
+
+**Arquivo**: `/README.md` (arquivo único consolidado)
+
+**`README.md`** - **PONTO DE ENTRADA OBRIGATÓRIO**
+
+- Protocolo de trabalho completo
+- Status atual e próximas prioridades
+- Estrutura arquitetural completa
+- Padrões técnicos estabelecidos
+- Funcionalidades implementadas
+- Credenciais e comandos essenciais
+- **SEMPRE ler PRIMEIRO em toda sessão**

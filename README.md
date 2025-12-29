@@ -1,39 +1,299 @@
-# Projeto Silo
+# Silo
 
-Silo é um aplicativo de gerenciamento de produtos e tarefas para o CPTEC/INPE.
+Sistema de **gestão de produtos meteorológicos** para colaboração, monitoramento e documentação técnica no CPTEC/INPE.
 
-## Dependências
+---
 
-Este aplicativo está sendo desenvolvido utilizando:
+## 📋 **Visão Geral**
 
-- [Svelte](https://svelte.dev/)
-- [TailwindCSS](https://tailwindcss.com/)
-- [Iconify](https://iconify.design/docs/usage/css/tailwind/tailwind4/)
-- [Preline](https://preline.co/)
-- [Drizzle](https://orm.drizzle.team/)
-- [Lucia Auth](https://lucia-auth.com/)
-- [Nodemailer](https://www.nodemailer.com/)
+O **Silo** centraliza e estrutura operações críticas em uma única plataforma:
 
-## Login com o Google
+- ✅ **Dashboard unificado** com visão consolidada de status e métricas
+- ✅ **Base de conhecimento** hierarquicamente organizada por produto
+- ✅ **Sistema integrado** de problemas e soluções colaborativas
+- ✅ **Gestão completa** de projetos e atividades com Kanban
+- ✅ **Chat institucional** para comunicação estruturada
+- ✅ **Relatórios automáticos** com análises em tempo real
 
-Para usar o Google como um provedor social, você precisa obter suas credenciais do Google.
+### 💡 **Funcionalidades Principais**
 
-Você pode obtê-las criando um novo projeto no [Google Cloud Console](https://console.cloud.google.com/apis/dashboard).
+#### 🔐 Autenticação
 
-Estamos utilizando a biblioteca [Arctic](https://arcticjs.dev/providers/google) para simplificar o processo.
+- Login com email/senha, OTP ou Google OAuth
+- Validação de domínio @inpe.br
+- Ativação obrigatória por administrador
 
-Para isso siga as seguintes etapas:
+#### 📦 Produtos
 
-1. Dentro do [Google Cloud Console](https://console.cloud.google.com/apis/dashboard), clique no botão `Criar credenciais` e em seguida selecione `ID do cliente OAuth`.
+- Estrutura completa de dependências
+- Sistema de problemas e soluções
+- Editor Markdown para manuais
+- Calendário de turnos
 
-2. Na tela a seguir, com o título `Criar ID do cliente do OAuth`, você deve selecionar o tipo de aplicativo. Selecione `Aplicativo da Web`. Depois dissom digite o nome como `Better Auth` (mas pode ser o nome que quiser, utilize um que identifique melhor o seu aplicativo).
+#### 📋 Projetos & Kanban
 
-3. Em URIs de redirecionamento autorizados, adicione a seguinte URL: `http://localhost:5173/sign-in/google/callback` (se estiver em ambiente de desenvolvimento).
+- Gestão de projetos com estrutura hierárquica
+- Kanban com 5 estados (todo, in_progress, blocked, review, done)
+- Drag & drop, histórico completo
 
-4. Irá exibir um modal, com o título `Cliente OAuth criado`. Irá exibir o `ID do cliente` e a `Chave secreta do cliente`. Você irá precisar copiar ambos.
+#### 💬 Chat
 
-5. Retornando ao Visual Studio Code, no arquivo `.env`, você deverá colar o conteúdo do `ID do cliente` em `GOOGLE_CLIENT_ID`. E o conteúdo da `Chave secreta do cliente` em `GOOGLE_CLIENT_SECRET`.
+- Comunicação em grupos e DMs
+- Sistema de presença com 4 estados
+- Notificações em tempo real
 
-6. Ao fechar o modal, você verá a credencial criada em `IDs do cliente OAuth 2.0`. Se quiser ver novamente o conteúdo do `ID do cliente` e da `Chave secreta do cliente`, clique no botão com o ícone `Editar cliente OAuth`.
+#### 👥 Gestão
 
-7. Agora já pode utilizar no projeto.
+- Grupos e usuários
+- Contatos vinculados a produtos
+- Configurações personalizadas
+
+---
+
+## 🚀 **Início Rápido**
+
+### **Opção 1: Docker (Recomendado)**
+
+```bash
+# 1. Configurar variáveis de ambiente
+cp env.docker.example .env
+# Edite o arquivo .env com suas configurações
+
+# 2. Executar containers
+docker-compose up -d --build
+
+# ✅ Acesse: http://localhost:3000
+```
+
+### **Opção 2: Desenvolvimento Local**
+
+```bash
+# 1. Instalar dependências
+npm install
+
+# 2. Configurar .env
+cp env.example .env
+
+# 3. Executar servidor
+npm run dev
+
+# ✅ Frontend: http://localhost:3000
+```
+
+---
+
+## 📚 **Documentação Completa**
+
+📘 **Documentação técnica detalhada disponível em:**
+
+- 📡 [**APIs e Endpoints**](./docs/API.md) - Todas as APIs do sistema
+- 🔐 [**Autenticação**](./docs/AUTH.md) - Login, OAuth, segurança
+- 🗄️ [**Banco de Dados**](./docs/DATABASE.md) - Schema, relacionamentos, migrações
+- 🐳 [**Docker e Deploy**](./docs/DOCKER.md) - Containerização, produção
+- 📧 [**Configuração SMTP**](./docs/SMTP.md) - Servidor de email
+- 📋 [**Sistema de Logs**](./docs/LOGS.md) - Padrões de logging
+- 📐 [**Padrões de Código**](./docs/PATTERNS.md) - Convenções e boas práticas
+
+---
+
+## 🏗️ **Arquitetura**
+
+### **Stack Técnica**
+
+- **Framework:** Next.js 16 + React 19 + TypeScript (strict)
+- **Database:** PostgreSQL + Drizzle ORM
+- **Upload/Arquivos:** Route Handlers do Next (Sharp)
+- **UI:** Tailwind CSS 4 + Design System customizado
+- **Auth:** JWT + OAuth Google (Arctic 3.7.0)
+- **Charts:** ApexCharts 4.7.0
+
+### **Estrutura**
+
+```text
+silo-frontend/
+├── src/
+│   ├── app/            # App Router (rotas e APIs)
+│   ├── components/    # Componentes React
+│   ├── context/       # Contextos globais
+│   ├── hooks/         # Hooks customizados
+│   ├── lib/           # DB, auth, utils, config
+│   └── types/          # Tipos TypeScript
+├── uploads/            # Arquivos enviados (persistidos no Docker)
+├── public/            # Arquivos estáticos
+├── drizzle/           # Migrações do banco
+└── docs/              # Documentação completa
+```
+
+---
+
+## 📦 **Módulos e Funcionalidades**
+
+| Módulo | Funcionalidades |
+|--------|----------------|
+| **Autenticação** | Login, registro, OAuth, recuperação de senha |
+| **Dashboard** | Estatísticas, gráficos, resumo executivo |
+| **Produtos** | CRUD, dependências, problemas, soluções, manuais |
+| **Projetos** | Kanban, atividades, tarefas, histórico |
+| **Chat** | Grupos, DMs, presença, notificações |
+| **Usuários** | Grupos, contatos, configurações |
+| **Relatórios** | Disponibilidade, problemas, performance |
+| **Upload** | Avatares, contatos, problemas, soluções |
+
+---
+
+## 🗂️ **Servidor de Arquivos**
+
+Uploads e arquivos são atendidos pelo próprio Next.js:
+
+- Uploads: `POST /api/upload/*` (e também `POST /upload/*` por compatibilidade)
+- Servir arquivos: `GET /files/:type/:filename`
+- Deletar arquivos: `DELETE /files/:type/:filename`
+
+---
+
+## 🎯 **Quick Commands**
+
+```bash
+# Instalar dependências
+npm install
+
+# Executar desenvolvimento local
+npm run dev              # Frontend
+
+# Executar com Docker
+docker-compose up -d --build
+
+# Banco de dados
+npm run db:generate      # Gerar migração
+npm run db:migrate       # Aplicar migração
+npm run db:studio        # GUI do banco
+
+# Build
+npm run build
+
+# Lint
+npm run lint
+```
+
+---
+
+## ⚙️ **Configuração Mínima**
+
+### **Variáveis de Ambiente Essenciais**
+
+```bash
+# .env
+
+# Banco de Dados
+DATABASE_URL='postgresql://user:pass@host:5432/db'
+
+# URLs do sistema
+APP_URL='http://localhost:3000'
+
+# Google OAuth (opcional)
+GOOGLE_CLIENT_ID=''
+GOOGLE_CLIENT_SECRET=''
+
+# Email (SMTP)
+SMTP_HOST='smtp.exemplo.com'
+SMTP_PORT='587'
+SMTP_SECURE=false # Defina como true se usar SSL (porta 465)
+SMTP_USERNAME='usuario@exemplo.com'
+SMTP_PASSWORD='senha'
+
+```
+
+---
+
+## 🔗 **Documentação por Tópico**
+
+- **APIs:** Todos os endpoints e contratos de resposta → [`docs/API.md`](./docs/API.md)
+- **Autenticação:** Login, OAuth, segurança → [`docs/AUTH.md`](./docs/AUTH.md)
+- **Database:** Schema, relacionamentos, migrações → [`docs/DATABASE.md`](./docs/DATABASE.md)
+- **Docker:** Containerização e deploy → [`docs/DOCKER.md`](./docs/DOCKER.md)
+- **SMTP:** Configuração de email → [`docs/SMTP.md`](./docs/SMTP.md)
+- **Logs:** Padrões de logging → [`docs/LOGS.md`](./docs/LOGS.md)
+- **Padrões:** Convenções e boas práticas → [`docs/PATTERNS.md`](./docs/PATTERNS.md)
+
+---
+
+## 🛡️ **Segurança**
+
+- ✅ Validação de domínio @inpe.br
+- ✅ Ativação obrigatória de usuários
+- ✅ Rate limiting (3 tentativas/min)
+- ✅ JWT com expiração
+- ✅ Proteções contra auto-modificação
+- ✅ CORS configurado
+
+### 🚨 **ALERTA CRÍTICO: Prefetch em Links de Logout**
+
+**⚠️ NUNCA use `Link` do Next.js sem `prefetch={false}` em rotas de API destrutivas!**
+
+O Next.js prefetcha automaticamente links visíveis na tela. Se um link apontar para `/api/logout`, o Next.js pode fazer logout automático do usuário sem que ele clique, causando bugs graves que levam horas para debugar.
+
+**Solução:**
+
+```typescript
+// ✅ CORRETO - Desabilita prefetch para APIs
+<Link href='/api/logout' prefetch={false}>Sair</Link>
+
+// ✅ CORRETO - Usar button ao invés de Link
+<button onClick={() => router.push('/api/logout')}>Sair</button>
+
+// ❌ ERRADO - Pode causar logout automático!
+<Link href='/api/logout'>Sair</Link>
+```
+
+**Onde aplicar:**
+
+- Todos os componentes com links de logout (`SidebarFooter`, `TopbarDropdown`)
+- Componentes genéricos que podem renderizar links para APIs (`Button`, `NavButton`, `TopbarButton`, `AuthLink`, `SidebarMenu`)
+
+**Regra:** Se o `href` começar com `/api/`, SEMPRE usar `prefetch={false}` ou usar `button` + `router.push()`.
+
+**Histórico:** Bug identificado após horas de debug. Usuários eram deslogados automaticamente após login devido ao prefetch automático do Next.js.
+
+---
+
+## 📊 **Características Técnicas**
+
+- **Total de Tabelas:** 25
+- **Módulos:** 8 principais
+- **APIs:** 40+ endpoints
+- **TypeScript:** Strict mode
+- **Performance:** Otimizado com SWR, lazy loading
+- **Responsivo:** Mobile, tablet, desktop
+- **Dark Mode:** Completo em todos os componentes
+
+---
+
+## 🤝 **Contribuição**
+
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'feat: Add AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+**Padrões:**
+
+- TypeScript strict
+- Zero warnings de lint
+- Commits semânticos
+- PRs pequenos e focados
+
+---
+
+## 📞 **Contato**
+
+- **Projeto:** Sistema SILO
+- **Instituição:** CPTEC/INPE
+- **Autor:** Mario A. Sesso Junior
+- **GitHub:** [@sessojunior](https://github.com/sessojunior)
+
+---
+
+**Desenvolvido para *CPTEC/INPE***
+
+Version: 1.0 | Última atualização: 2025

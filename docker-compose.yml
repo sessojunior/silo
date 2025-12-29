@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      # Ambiente e banco
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=${DATABASE_URL}
+      
+      # URLs do sistema
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      
+      # Google OAuth
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      
+      # Email SMTP
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    volumes:
+      # Cache do Next.js - persiste entre rebuilds para melhor performance
+      - ./.next:/app/.next
+      - ./uploads:/app/uploads
+      - ./public/uploads/profile:/app/public/uploads/profile
+    restart: unless-stopped

@@ -1,0 +1,56 @@
+/* Google Fonts: Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+/* Apex Charts personalizado */
+@import './apexcharts.css';
+
+/* Fontes personalizadas */
+@theme {
+	--font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+	--font-inter: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Trocar tema light/dark manualmente */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tailwind */
+@import 'tailwindcss';
+
+/* Plugins do Tailwind */
+@plugin '@tailwindcss/forms';
+
+/* Plugin: Iconify: https://iconify.design/docs/usage/css/tailwind/tailwind4/ */
+@plugin "@iconify/tailwind4" {
+	prefix: 'icon';
+	scale: 1.2;
+}
+
+/* Adiciona cursor-pointer aos botões */
+@layer base {
+	button:not(:disabled),
+	[role='button']:not(:disabled) {
+		cursor: pointer;
+	}
+}
+
+/* Padrão de estilo hover em todos os dispositivos */
+@custom-variant hover (&:hover);
+
+/* Barra de rolagem */
+.scrollbar {
+	@apply [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-100 dark:[&::-webkit-scrollbar-track]:bg-zinc-700;
+}
+
+/* Estilo personalizado para o ícone de loading */
+.animate-spin {
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}

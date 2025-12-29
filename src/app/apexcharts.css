@@ -1,0 +1,43 @@
+/* Personalização de estilos do ApexCharts === */
+
+.dark .apexcharts-tooltip {
+	background-color: #1f2937 !important; /* bg-zinc-800 */
+	border: 1px solid #4b5563 !important; /* border-zinc-600 */
+	color: #f9fafb !important; /* text-zinc-100 */
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.dark .apexcharts-tooltip-title {
+	background-color: #111827 !important; /* bg-zinc-900 */
+	border-bottom: 1px solid #374151 !important; /* border-zinc-700 */
+	color: #d1d5db !important; /* text-zinc-300 */
+}
+
+.dark .apexcharts-xaxis-label,
+.dark .apexcharts-yaxis-label {
+	fill: #d4d4d8 !important; /* text-zinc-300 */
+}
+
+.dark .apexcharts-legend-text {
+	color: #e4e4e7 !important; /* text-zinc-200 */
+}
+
+/* Linhas de grade horizontais (dark mode) */
+.dark .apexcharts-gridline {
+	stroke: #374151 !important; /* zinc-700 */
+}
+
+.dark .apexcharts-grid-row:nth-child(even) {
+	fill: #1f2937 !important; /* zinc-800 */
+}
+.dark .apexcharts-grid-row:nth-child(odd) {
+	fill: #111827 !important; /* zinc-900 */
+}
+
+.dark .apexcharts-bar-area {
+	stroke: none;
+}
+
+.dark .apexcharts-title-text {
+	fill: #e5e7eb !important; /* text-zinc-200 */
+}
