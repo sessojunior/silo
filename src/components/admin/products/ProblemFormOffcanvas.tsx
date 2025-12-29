@@ -14,6 +14,14 @@ import Select, { SelectOption } from '@/components/ui/Select'
 import { useEffect, useState } from 'react'
 import { NO_INCIDENTS_CATEGORY_ID } from '@/lib/constants'
 
+const toAppFileSrc = (input: string): string => {
+	if (input.startsWith('/files/')) return input
+	const base = input.split('?')[0] || input
+	const idx = base.indexOf('/files/')
+	if (idx === -1) return input
+	return base.slice(idx)
+}
+
 interface ProblemFormOffcanvasProps {
 	open: boolean
 	onClose: () => void
@@ -100,11 +108,11 @@ export default function ProblemFormOffcanvas({ open, onClose, editing, formTitle
 											<div
 												className='group cursor-pointer flex items-center justify-center h-32 w-32 bg-zinc-50 border border-zinc-200 rounded-lg overflow-hidden relative'
 												onClick={() => {
-													setLightboxImage({ src: img.image, alt: img.description })
+													setLightboxImage({ src: toAppFileSrc(img.image), alt: img.description })
 													setLightboxOpen(true)
 												}}
 											>
-												<Image src={img.image} alt={img.description} className='object-contain h-full w-full transition-transform duration-200 group-hover:scale-105 max-h-32 max-w-32' width={128} height={128} style={{ objectFit: 'contain' }} />
+												<Image src={toAppFileSrc(img.image)} alt={img.description} className='object-contain h-full w-full transition-transform duration-200 group-hover:scale-105 max-h-32 max-w-32' width={128} height={128} style={{ objectFit: 'contain' }} />
 												{/* Botão de apagar no canto superior direito */}
 												<button
 													type='button'
@@ -127,7 +135,7 @@ export default function ProblemFormOffcanvas({ open, onClose, editing, formTitle
 											// Processar todas as imagens enviadas
 											const uploadPromises = res.map(async (imageData) => {
 												const formData = new FormData()
-												formData.append('imageUrl', imageData.url)
+												formData.append('imageUrl', toAppFileSrc(imageData.url))
 												formData.append('productProblemId', editing?.id || '')
 												formData.append('description', 'Imagem enviada via servidor local')
 

@@ -88,8 +88,8 @@ export const storeImageAsWebp = async (params: {
 	const processed = await processToWebp(buffer, options)
 	await fs.writeFile(filePath, processed)
 
-	const origin = new URL(requestUrl).origin
-	const url = `${origin}/files/${kind}/${filename}`
+	void requestUrl
+	const url = `/files/${kind}/${filename}`
 
 	return { filename, originalName: file.name, size: file.size, url }
 }

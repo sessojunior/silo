@@ -44,9 +44,5 @@ next-env.d.ts
 # database
 *.db
 
-# File Server - Arquivos de upload e dependências
-# Uploads são ignorados pois devem ser gerenciados pelo servidor de produção
-fileserver/uploads/
-fileserver/node_modules/
-fileserver/dist/
-fileserver/logs/
+# Uploads locais (armazenamento em disco)
+/uploads/
