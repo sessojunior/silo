@@ -18,40 +18,45 @@ const appUrl = parseAppUrl()
 
 const nextConfig: NextConfig = {
 	images: {
+		localPatterns: [
+			{
+				pathname: '/uploads/**',
+			},
+		],
 		remotePatterns: [
 			{
 				protocol: 'http',
 				hostname: 'localhost',
 				port: '3000',
-				pathname: '/files/**',
+				pathname: '/uploads/**',
 			},
 			{
 				protocol: 'http',
 				hostname: 'localhost',
 				port: '3001',
-				pathname: '/files/**',
+				pathname: '/uploads/**',
 			},
 			{
 				protocol: 'http',
 				hostname: 'localhost',
-				pathname: '/files/**',
+				pathname: '/uploads/**',
 			},
 			{
 				protocol: 'http',
 				hostname: '127.0.0.1',
 				port: '3000',
-				pathname: '/files/**',
+				pathname: '/uploads/**',
 			},
 			{
 				protocol: 'http',
 				hostname: '127.0.0.1',
 				port: '3001',
-				pathname: '/files/**',
+				pathname: '/uploads/**',
 			},
 			{
 				protocol: 'http',
 				hostname: '127.0.0.1',
-				pathname: '/files/**',
+				pathname: '/uploads/**',
 			},
 			...(appUrl
 				? [
@@ -59,7 +64,7 @@ const nextConfig: NextConfig = {
 							protocol: appUrl.protocol,
 							hostname: appUrl.hostname,
 							port: appUrl.port,
-							pathname: '/files/**',
+							pathname: '/uploads/**',
 						},
 					]
 				: []),

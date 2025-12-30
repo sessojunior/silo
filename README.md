@@ -146,8 +146,8 @@ silo-frontend/
 Uploads e arquivos são atendidos pelo próprio Next.js:
 
 - Uploads: `POST /api/upload/*` (e também `POST /upload/*` por compatibilidade)
-- Servir arquivos: `GET /files/:type/:filename`
-- Deletar arquivos: `DELETE /files/:type/:filename`
+- Servir arquivos: `GET /uploads/:type/:filename`
+- Deletar arquivos: `DELETE /uploads/:type/:filename`
 
 ---
 

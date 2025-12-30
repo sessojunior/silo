@@ -7,6 +7,16 @@ import { twMerge } from 'tailwind-merge'
 import { toast } from '@/lib/toast'
 import { useUser } from '@/context/UserContext'
 
+const toPublicUploadsSrc = (input: string): string => {
+	const [pathPart, queryPart] = input.split('?')
+	const query = queryPart ? `?${queryPart}` : ''
+
+	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
+	if (pathPart?.includes('/uploads/')) return `${pathPart.slice(pathPart.indexOf('/uploads/'))}${query}`
+
+	return input
+}
+
 /**
  * Componente de upload de foto de perfil usando servidor local
  */
@@ -27,7 +37,7 @@ export default function PhotoUploadLocal({ image, className }: PhotoUploadLocalP
 	// Carrega imagem inicial (caso exista)
 	useEffect(() => {
 		if (image) {
-			setPreviewUrl(image)
+			setPreviewUrl(toPublicUploadsSrc(image))
 		}
 	}, [image])
 
@@ -73,19 +83,22 @@ export default function PhotoUploadLocal({ image, className }: PhotoUploadLocalP
 			const url = result.data?.url
 
 			if (url) {
+				const normalizedUrl = toPublicUploadsSrc(url)
+
 				// Envia a URL para a API para atualizar no banco de dados
 				const apiRes = await fetch('/api/user-profile-image/update', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ imageUrl: url }),
+					body: JSON.stringify({ imageUrl: normalizedUrl }),
 				})
 
 				if (apiRes.ok) {
-					setPreviewUrl(`${url}?t=${Date.now()}`)
+					const sep = normalizedUrl.includes('?') ? '&' : '?'
+					setPreviewUrl(`${normalizedUrl}${sep}t=${Date.now()}`)
 					setIsInvalid(false)
 					
 					// Atualizar contexto com nova imagem
-					updateUser({ image: url })
+					updateUser({ image: normalizedUrl })
 					
 					toast({ type: 'success', title: 'Imagem atualizada', description: 'Sua imagem de perfil foi alterada com sucesso.' })
 				} else {

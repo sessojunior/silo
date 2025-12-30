@@ -125,11 +125,11 @@ export const requestUtils = {
 	 */
 	isFileServerUrl(url: string): boolean {
 		const normalizedUrl = url.split('?')[0] || ''
-		if (normalizedUrl.startsWith('/files/')) return true
+		if (normalizedUrl.startsWith('/uploads/')) return true
 
 		const trimSlash = (value: string): string => value.replace(/\/$/, '')
 		const bases = [config.appUrl].filter((v) => v.length > 0).map(trimSlash)
-		return bases.some((base) => normalizedUrl.includes(`${base}/files/`))
+		return bases.some((base) => normalizedUrl.includes(`${base}/uploads/`))
 	},
 
 	/**
@@ -137,12 +137,12 @@ export const requestUtils = {
 	 */
 	extractFilePath(url: string): string | null {
 		const normalizedUrl = url.split('?')[0] || ''
-		if (normalizedUrl.startsWith('/files/')) return normalizedUrl.slice('/files/'.length)
+		if (normalizedUrl.startsWith('/uploads/')) return normalizedUrl.slice('/uploads/'.length)
 
-		const index = normalizedUrl.indexOf('/files/')
-		if (index === -1) return null
+		const uploadsIndex = normalizedUrl.indexOf('/uploads/')
+		if (uploadsIndex !== -1) return normalizedUrl.slice(uploadsIndex + '/uploads/'.length)
 
-		return normalizedUrl.slice(index + '/files/'.length)
+		return null
 	},
 
 	/**
@@ -150,8 +150,8 @@ export const requestUtils = {
 	 */
 	buildDeleteUrl(filePath: string, baseUrl?: string): string {
 		const base = (baseUrl || config.appUrl).replace(/\/$/, '')
-		if (!base) return `/files/${filePath}`
-		return `${base}/files/${filePath}`
+		if (!base) return `/uploads/${filePath}`
+		return `${base}/uploads/${filePath}`
 	}
 }
 

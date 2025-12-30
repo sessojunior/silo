@@ -5,6 +5,16 @@ import { twMerge } from 'tailwind-merge'
 import clsx from 'clsx'
 import Image from 'next/image'
 
+const toPublicUploadsSrc = (input: string): string => {
+	const [pathPart, queryPart] = input.split('?')
+	const query = queryPart ? `?${queryPart}` : ''
+
+	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
+	if (pathPart?.includes('/uploads/')) return `${pathPart.slice(pathPart.indexOf('/uploads/'))}${query}`
+
+	return input
+}
+
 export interface MultiSelectOption {
 	label: string
 	value: string
@@ -128,7 +138,7 @@ export default function MultiSelect({ placeholder = 'Selecione...', id, name, se
 							return (
 								<span key={index} className='inline-flex items-center gap-2 rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200'>
 									{/* Avatar do usuário selecionado */}
-									{selectedOption?.image ? <Image src={selectedOption.image} alt={label} width={16} height={16} className='w-4 h-4 rounded-full object-cover' /> : <div className='w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center text-xs font-medium text-white'>{label.charAt(0).toUpperCase()}</div>}
+									{selectedOption?.image ? <Image src={toPublicUploadsSrc(selectedOption.image)} alt={label} width={16} height={16} className='w-4 h-4 rounded-full object-cover' /> : <div className='w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center text-xs font-medium text-white'>{label.charAt(0).toUpperCase()}</div>}
 									{label}
 									<span
 										onClick={(e) => {
@@ -205,7 +215,7 @@ export default function MultiSelect({ placeholder = 'Selecione...', id, name, se
 								>
 									<div className='flex items-center gap-3'>
 										{/* Avatar do usuário */}
-										{opt.image ? <Image src={opt.image} alt={opt.label} width={24} height={24} className='w-6 h-6 rounded-full object-cover' /> : <div className='w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center text-xs font-medium text-white'>{opt.label.charAt(0).toUpperCase()}</div>}
+										{opt.image ? <Image src={toPublicUploadsSrc(opt.image)} alt={opt.label} width={24} height={24} className='w-6 h-6 rounded-full object-cover' /> : <div className='w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center text-xs font-medium text-white'>{opt.label.charAt(0).toUpperCase()}</div>}
 										<span className={twMerge(clsx({ 'group-hover:text-zinc-600': !opt.disabled && canSelectMore }))}>{opt.label}</span>
 									</div>
 									{!canSelectMore && <span className='icon-[lucide--lock] size-4 text-zinc-400' />}

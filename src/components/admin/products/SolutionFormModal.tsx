@@ -10,12 +10,16 @@ import { toast } from '@/lib/toast'
 import Image from 'next/image'
 import UploadButtonLocal from '@/components/ui/UploadButtonLocal'
 
-const toAppFileSrc = (input: string): string => {
-	if (input.startsWith('/files/')) return input
-	const base = input.split('?')[0] || input
-	const idx = base.indexOf('/files/')
-	if (idx === -1) return input
-	return base.slice(idx)
+const toAppUploadSrc = (input: string): string => {
+	const [pathPart, queryPart] = input.split('?')
+	const query = queryPart ? `?${queryPart}` : ''
+
+	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
+
+	const uploadsIdx = pathPart?.indexOf('/uploads/') ?? -1
+	if (uploadsIdx !== -1) return `${pathPart.slice(uploadsIdx)}${query}`
+
+	return input
 }
 
 // Tipo customizado para soluções retornadas pela API
@@ -130,11 +134,11 @@ export default function SolutionFormModal({ isOpen, onClose, mode, editingSoluti
 										<div
 											className='group cursor-pointer flex items-center justify-center h-32 w-32 bg-zinc-50 border border-zinc-200 rounded-lg overflow-hidden relative'
 											onClick={() => {
-												setLightboxImage({ src: toAppFileSrc(img.image), alt: img.description })
+												setLightboxImage({ src: toAppUploadSrc(img.image), alt: img.description })
 												setLightboxOpen(true)
 											}}
 										>
-											<Image src={toAppFileSrc(img.image)} alt={img.description} className='object-contain h-full w-full transition-transform duration-200 group-hover:scale-105 max-h-32 max-w-32' width={128} height={128} style={{ objectFit: 'contain' }} />
+											<Image src={toAppUploadSrc(img.image)} alt={img.description} className='object-contain h-full w-full transition-transform duration-200 group-hover:scale-105 max-h-32 max-w-32' width={128} height={128} style={{ objectFit: 'contain' }} />
 											{/* Botão de apagar no canto superior direito */}
 											<button
 												type='button'
@@ -157,7 +161,7 @@ export default function SolutionFormModal({ isOpen, onClose, mode, editingSoluti
 										// Processar todas as imagens enviadas
 										const uploadPromises = res.map(async (imageData) => {
 											const formData = new FormData()
-											formData.append('imageUrl', toAppFileSrc(imageData.url))
+											formData.append('imageUrl', toAppUploadSrc(imageData.url))
 											formData.append('productSolutionId', editingSolution?.id || '')
 											formData.append('description', 'Imagem enviada via servidor local')
 

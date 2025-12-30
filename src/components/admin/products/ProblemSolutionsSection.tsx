@@ -8,12 +8,16 @@ import { getMarkdownClasses } from '@/lib/markdown'
 import clsx from 'clsx'
 import Image from 'next/image'
 
-const toAppFileSrc = (input: string): string => {
-	if (input.startsWith('/files/')) return input
-	const base = input.split('?')[0] || input
-	const idx = base.indexOf('/files/')
-	if (idx === -1) return input
-	return base.slice(idx)
+const toAppUploadSrc = (input: string): string => {
+	const [pathPart, queryPart] = input.split('?')
+	const query = queryPart ? `?${queryPart}` : ''
+
+	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
+
+	const uploadsIdx = pathPart?.indexOf('/uploads/') ?? -1
+	if (uploadsIdx !== -1) return `${pathPart.slice(uploadsIdx)}${query}`
+
+	return input
 }
 
 interface SolutionWithDetails {
@@ -125,11 +129,11 @@ export function ProblemSolutionsSection({ solutions, expandedSolutionIds, onOpen
 										<div
 											key={img.id}
 											onClick={() => {
-												onImageClick(toAppFileSrc(img.image), img.description || '')
+												onImageClick(toAppUploadSrc(img.image), img.description || '')
 											}}
 											className='cursor-pointer'
 										>
-											<Image src={toAppFileSrc(img.image)} alt={img.description || 'Imagem da solução'} className='h-32 w-auto rounded-lg border border-zinc-200 shadow-sm hover:brightness-90' width={200} height={128} style={{ objectFit: 'cover' }} />
+											<Image src={toAppUploadSrc(img.image)} alt={img.description || 'Imagem da solução'} className='h-32 w-auto rounded-lg border border-zinc-200 shadow-sm hover:brightness-90' width={200} height={128} style={{ objectFit: 'cover' }} />
 										</div>
 									))}
 								</div>
@@ -261,11 +265,11 @@ export function ProblemSolutionsSection({ solutions, expandedSolutionIds, onOpen
 													<div
 														key={img.id}
 														onClick={() => {
-															onImageClick(toAppFileSrc(img.image), img.description || '')
+															onImageClick(toAppUploadSrc(img.image), img.description || '')
 														}}
 														className='cursor-pointer'
 													>
-														<Image src={toAppFileSrc(img.image)} alt={img.description || 'Imagem da solução'} className='h-32 w-auto rounded-lg border border-zinc-200 shadow-sm hover:brightness-90' width={200} height={128} style={{ objectFit: 'cover' }} />
+														<Image src={toAppUploadSrc(img.image)} alt={img.description || 'Imagem da solução'} className='h-32 w-auto rounded-lg border border-zinc-200 shadow-sm hover:brightness-90' width={200} height={128} style={{ objectFit: 'cover' }} />
 													</div>
 												))}
 											</div>

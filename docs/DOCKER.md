@@ -183,7 +183,7 @@ docker-compose up --build app
 Após iniciar os containers:
 
 - **Frontend**: http://localhost:3000
-- **Uploads**: `GET /files/<type>/<filename>`
+- **Uploads**: `GET /uploads/<type>/<filename>`
 
 ---
 

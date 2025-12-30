@@ -261,7 +261,7 @@ Response:
     "key": "1734567890-avatar.webp",
     "name": "avatar.jpg",
     "size": 1024768,
-    "url": "http://localhost:3000/files/avatars/1734567890-avatar.webp",
+    "url": "http://localhost:3000/uploads/avatars/1734567890-avatar.webp",
     "id": "1734567890-avatar.webp",
     "status": "uploaded",
     "optimized": true
@@ -274,13 +274,13 @@ POST /api/user-profile-image/update
 Content-Type: application/json
 
 {
-  "imageUrl": "http://localhost:3000/files/avatars/1734567890-avatar.webp"
+  "imageUrl": "http://localhost:3000/uploads/avatars/1734567890-avatar.webp"
 }
 
 Response:
 {
   "message": "URL da imagem atualizada com sucesso!",
-  "imageUrl": "http://localhost:3000/files/avatars/1734567890-avatar.webp"
+  "imageUrl": "http://localhost:3000/uploads/avatars/1734567890-avatar.webp"
 }
 ```
 
@@ -996,7 +996,7 @@ Response:
   key: "1734567890-abc12345.webp",
   name: "imagem.jpg",
   size: 2048576,
-  url: "http://localhost:3000/files/general/1734567890-abc12345.webp",
+  url: "http://localhost:3000/uploads/general/1734567890-abc12345.webp",
   id: "1734567890-abc12345.webp",
   status: "uploaded",
   optimized: true
@@ -1016,7 +1016,7 @@ Response:
     "key": "1734567890-avatar.webp",
     "name": "avatar.jpg",
     "size": 1024768,
-    "url": "http://localhost:3000/files/avatars/1734567890-avatar.webp",
+    "url": "http://localhost:3000/uploads/avatars/1734567890-avatar.webp",
     "id": "1734567890-avatar.webp",
     "status": "uploaded",
     "optimized": true
@@ -1037,7 +1037,7 @@ Response:
     "key": "1734567890-contato.webp",
     "name": "contato.jpg",
     "size": 1024768,
-    "url": "http://localhost:3000/files/contacts/1734567890-contato.webp",
+    "url": "http://localhost:3000/uploads/contacts/1734567890-contato.webp",
     "id": "1734567890-contato.webp",
     "status": "uploaded",
     "optimized": true
@@ -1064,7 +1064,7 @@ Response:
       "key": "1734567890-problema.webp",
       "name": "problema.jpg",
       "size": 1024768,
-      "url": "http://localhost:3000/files/problems/1734567890-problema.webp",
+      "url": "http://localhost:3000/uploads/problems/1734567890-problema.webp",
       "id": "1734567890-problema.webp",
       "status": "uploaded",
       "optimized": true

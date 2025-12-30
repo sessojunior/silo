@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { randomUUID } from 'crypto'
-import { eq, inArray, and } from 'drizzle-orm'
+import { eq, inArray, and, sql } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
@@ -60,10 +60,46 @@ async function checkTableData(tableName: string, queryFn: () => Promise<unknown[
 	}
 }
 
+async function migrateLegacyUploadUrls(): Promise<void> {
+	const legacyPrefix = '/' + 'files' + '/'
+	const newPrefix = '/' + 'uploads' + '/'
+	const likePattern = `%${legacyPrefix}%`
+
+	const [usersUpdated, contactsUpdated, problemImagesUpdated, solutionImagesUpdated] = await Promise.all([
+		db
+			.update(schema.authUser)
+			.set({ image: sql`REPLACE(${schema.authUser.image}, ${legacyPrefix}, ${newPrefix})` })
+			.where(sql`${schema.authUser.image} LIKE ${likePattern}`)
+			.returning({ id: schema.authUser.id }),
+		db
+			.update(schema.contact)
+			.set({ image: sql`REPLACE(${schema.contact.image}, ${legacyPrefix}, ${newPrefix})` })
+			.where(sql`${schema.contact.image} LIKE ${likePattern}`)
+			.returning({ id: schema.contact.id }),
+		db
+			.update(schema.productProblemImage)
+			.set({ image: sql`REPLACE(${schema.productProblemImage.image}, ${legacyPrefix}, ${newPrefix})` })
+			.where(sql`${schema.productProblemImage.image} LIKE ${likePattern}`)
+			.returning({ id: schema.productProblemImage.id }),
+		db
+			.update(schema.productSolutionImage)
+			.set({ image: sql`REPLACE(${schema.productSolutionImage.image}, ${legacyPrefix}, ${newPrefix})` })
+			.where(sql`${schema.productSolutionImage.image} LIKE ${likePattern}`)
+			.returning({ id: schema.productSolutionImage.id }),
+	])
+
+	const total = usersUpdated.length + contactsUpdated.length + problemImagesUpdated.length + solutionImagesUpdated.length
+	if (total === 0) return
+
+	console.log(`✅ URLs antigas migradas para uploads: ${total} registro(s)`)
+}
+
 // === FUNÇÃO PRINCIPAL ===
 async function seed() {
 	console.log('🔵 Iniciando seed do sistema...')
 	console.log('🔵 Verificando tabelas existentes...')
+
+	await migrateLegacyUploadUrls()
 
 	// === VERIFICAÇÕES INDIVIDUAIS DE TABELAS ===
 	const tableChecks = await Promise.all([checkTableData('groups', () => db.select().from(schema.group).limit(1)), checkTableData('users', () => db.select().from(schema.authUser).limit(1)), checkTableData('products', () => db.select().from(schema.product).limit(1)), checkTableData('contacts', () => db.select().from(schema.contact).limit(1)), checkTableData('projects', () => db.select().from(schema.project).limit(1)), checkTableData('project_activities', () => db.select().from(schema.projectActivity).limit(1)), checkTableData('help', () => db.select().from(schema.help).limit(1)), checkTableData('chat_user_presence', () => db.select().from(schema.chatUserPresence).limit(1)), checkTableData('chat_messages', () => db.select().from(schema.chatMessage).limit(1))])

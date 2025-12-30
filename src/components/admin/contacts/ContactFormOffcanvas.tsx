@@ -11,6 +11,16 @@ import Switch from '@/components/ui/Switch'
 import Image from 'next/image'
 import { Contact } from '@/lib/db/schema'
 
+const toPublicUploadsSrc = (input: string): string => {
+	const [pathPart, queryPart] = input.split('?')
+	const query = queryPart ? `?${queryPart}` : ''
+
+	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
+	if (pathPart?.includes('/uploads/')) return `${pathPart.slice(pathPart.indexOf('/uploads/'))}${query}`
+
+	return input
+}
+
 interface ContactFormOffcanvasProps {
 	isOpen: boolean
 	onClose: () => void
@@ -21,7 +31,7 @@ interface ContactFormOffcanvasProps {
 
 export default function ContactFormOffcanvas({ isOpen, onClose, contact, onSuccess, onChange }: ContactFormOffcanvasProps) {
 	const [loading, setLoading] = useState(false)
-	const [imagePreview, setImagePreview] = useState<string | null>(contact?.image || null)
+	const [imagePreview, setImagePreview] = useState<string | null>(contact?.image ? toPublicUploadsSrc(contact.image) : null)
 	const [removeImage, setRemoveImage] = useState(false)
 	// const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -49,7 +59,7 @@ export default function ContactFormOffcanvas({ isOpen, onClose, contact, onSucce
 				phone: contact.phone || '',
 				active: contact.active,
 			})
-			setImagePreview(contact.image || null)
+			setImagePreview(contact.image ? toPublicUploadsSrc(contact.image) : null)
 			setRemoveImage(false)
 		} else if (!contact && isOpen) {
 			setFormData({
@@ -289,7 +299,7 @@ export default function ContactFormOffcanvas({ isOpen, onClose, contact, onSucce
 											// Tratar tanto array quanto objeto único
 											const url = Array.isArray(res) ? res[0]?.url : res?.url
 											if (url) {
-												setImagePreview(url)
+												setImagePreview(toPublicUploadsSrc(url))
 												setRemoveImage(false)
 
 												// Marcar que houve mudanças
@@ -302,7 +312,7 @@ export default function ContactFormOffcanvas({ isOpen, onClose, contact, onSucce
 													try {
 														const formData = new FormData()
 														formData.append('id', contact.id)
-														formData.append('imageUrl', url)
+														formData.append('imageUrl', toPublicUploadsSrc(url))
 														// Incluir todos os campos obrigatórios da API
 														formData.append('name', contact.name)
 														formData.append('role', contact.role)

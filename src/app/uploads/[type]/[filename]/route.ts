@@ -53,3 +53,4 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ type
 
 	return NextResponse.json({ success: true, message: 'Arquivo deletado com sucesso' }, { status: 200 })
 }
+

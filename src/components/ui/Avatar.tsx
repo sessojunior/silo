@@ -1,5 +1,15 @@
 import Image from 'next/image'
 
+const toPublicUploadsSrc = (input: string): string => {
+	const [pathPart, queryPart] = input.split('?')
+	const query = queryPart ? `?${queryPart}` : ''
+
+	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
+	if (pathPart?.includes('/uploads/')) return `${pathPart.slice(pathPart.indexOf('/uploads/'))}${query}`
+
+	return input
+}
+
 interface AvatarProps {
 	src?: string | null
 	name: string
@@ -32,18 +42,19 @@ export default function Avatar({
 
 	const sizeClass = sizeClasses[size]
 	const sizePixel = sizePx[size]
+	const normalizedSrc = src ? toPublicUploadsSrc(src) : src
 
 	// Se tem imagem, usar Image do Next.js
-	if (src && src !== '/images/profile.png') {
+	if (normalizedSrc && normalizedSrc !== '/images/profile.png') {
 		return (
 			<div className='relative inline-block'>
 				<Image 
-					src={src} 
+					src={normalizedSrc} 
 					alt={name} 
 					width={sizePixel} 
 					height={sizePixel} 
 					className={`${sizeClass} rounded-full object-cover ${className}`}
-					unoptimized={src?.startsWith('blob:')}
+					unoptimized={normalizedSrc.startsWith('blob:')}
 				/>
 				{showPresence && presenceColor && (
 					<span className={`absolute right-0 bottom-0 block h-3 w-3 rounded-full ring-2 ring-white dark:ring-zinc-800 ${presenceColor} transition-opacity duration-300`} />

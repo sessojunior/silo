@@ -11,6 +11,16 @@ interface LightboxProps {
 type NaturalSize = { width: number; height: number }
 type DisplaySize = { width: number; height: number }
 
+const toPublicUploadsSrc = (input: string): string => {
+	const [pathPart, queryPart] = input.split('?')
+	const query = queryPart ? `?${queryPart}` : ''
+
+	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
+	if (pathPart?.includes('/uploads/')) return `${pathPart.slice(pathPart.indexOf('/uploads/'))}${query}`
+
+	return input
+}
+
 const getContainedSize = (natural: NaturalSize, maxWidth: number, maxHeight: number): DisplaySize => {
 	const safeWidth = Math.max(1, maxWidth)
 	const safeHeight = Math.max(1, maxHeight)
@@ -31,6 +41,7 @@ export default function Lightbox({ open, image, alt, onClose }: LightboxProps) {
 	const overlayRef = useRef<HTMLDivElement>(null)
 	const [naturalSize, setNaturalSize] = useState<NaturalSize | null>(null)
 	const [displaySize, setDisplaySize] = useState<DisplaySize | null>(null)
+	const normalizedImage = toPublicUploadsSrc(image)
 
 	useEffect(() => {
 		if (!open) return
@@ -45,7 +56,7 @@ export default function Lightbox({ open, image, alt, onClose }: LightboxProps) {
 		if (!open) return
 		setNaturalSize(null)
 		setDisplaySize(null)
-	}, [open, image])
+	}, [open, normalizedImage])
 
 	useEffect(() => {
 		if (!open) return
@@ -82,7 +93,7 @@ export default function Lightbox({ open, image, alt, onClose }: LightboxProps) {
 					}}
 				>
 					<Image
-						src={image}
+						src={normalizedImage}
 						alt={alt || 'Imagem ampliada'}
 						fill
 						sizes={displaySize ? `${displaySize.width}px` : '90vw'}

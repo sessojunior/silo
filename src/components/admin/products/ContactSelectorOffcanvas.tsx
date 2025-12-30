@@ -9,6 +9,16 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
+const toPublicUploadsSrc = (input: string): string => {
+	const [pathPart, queryPart] = input.split('?')
+	const query = queryPart ? `?${queryPart}` : ''
+
+	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
+	if (pathPart?.includes('/uploads/')) return `${pathPart.slice(pathPart.indexOf('/uploads/'))}${query}`
+
+	return input
+}
+
 interface Contact {
 	id: string
 	name: string
@@ -225,7 +235,7 @@ export default function ContactSelectorOffcanvas({ isOpen, onClose, productId, o
 									>
 										<div className='flex items-center gap-3'>
 											{contact.image ? (
-												<Image src={contact.image} alt={contact.name} className='size-12 rounded-full object-cover flex-shrink-0' width={48} height={48} style={{ objectFit: 'cover' }} />
+												<Image src={toPublicUploadsSrc(contact.image)} alt={contact.name} className='size-12 rounded-full object-cover flex-shrink-0' width={48} height={48} style={{ objectFit: 'cover' }} />
 											) : (
 												<div className='size-12 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0'>
 													<span className='icon-[lucide--user] size-6 text-zinc-500 dark:text-zinc-400' />

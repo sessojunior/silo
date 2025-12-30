@@ -7,12 +7,16 @@ import Image from 'next/image'
 import { ProductProblem, ProductProblemImage } from '@/lib/db/schema'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 
-const toAppFileSrc = (input: string): string => {
-	if (input.startsWith('/files/')) return input
-	const base = input.split('?')[0] || input
-	const idx = base.indexOf('/files/')
-	if (idx === -1) return input
-	return base.slice(idx)
+const toAppUploadSrc = (input: string): string => {
+	const [pathPart, queryPart] = input.split('?')
+	const query = queryPart ? `?${queryPart}` : ''
+
+	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
+
+	const uploadsIdx = pathPart?.indexOf('/uploads/') ?? -1
+	if (uploadsIdx !== -1) return `${pathPart.slice(uploadsIdx)}${query}`
+
+	return input
 }
 
 interface SolutionWithDetails {
@@ -110,8 +114,8 @@ export function ProblemDetailColumn({ loadingDetail, problem, solutions, images,
 				<div className='flex gap-2 pt-6'>
 					{images.length > 0 &&
 						images.map(({ id, image, description }) => (
-							<div key={id} className='cursor-pointer' onClick={() => onImageClick(toAppFileSrc(image), description)}>
-								<Image src={toAppFileSrc(image)} alt={description} className='h-32 w-auto rounded-lg transition hover:brightness-90' width={200} height={128} style={{ objectFit: 'cover', height: 'auto' }} priority />
+							<div key={id} className='cursor-pointer' onClick={() => onImageClick(toAppUploadSrc(image), description)}>
+								<Image src={toAppUploadSrc(image)} alt={description} className='h-32 w-auto rounded-lg transition hover:brightness-90' width={200} height={128} style={{ objectFit: 'cover', height: 'auto' }} priority />
 							</div>
 						))}
 				</div>
