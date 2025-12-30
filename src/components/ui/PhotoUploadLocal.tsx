@@ -5,17 +5,8 @@ import Image from 'next/image'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { toast } from '@/lib/toast'
+import { normalizeUploadsSrc } from '@/lib/utils'
 import { useUser } from '@/context/UserContext'
-
-const toPublicUploadsSrc = (input: string): string => {
-	const [pathPart, queryPart] = input.split('?')
-	const query = queryPart ? `?${queryPart}` : ''
-
-	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
-	if (pathPart?.includes('/uploads/')) return `${pathPart.slice(pathPart.indexOf('/uploads/'))}${query}`
-
-	return input
-}
 
 /**
  * Componente de upload de foto de perfil usando servidor local
@@ -37,7 +28,7 @@ export default function PhotoUploadLocal({ image, className }: PhotoUploadLocalP
 	// Carrega imagem inicial (caso exista)
 	useEffect(() => {
 		if (image) {
-			setPreviewUrl(toPublicUploadsSrc(image))
+			setPreviewUrl(normalizeUploadsSrc(image))
 		}
 	}, [image])
 
@@ -83,7 +74,7 @@ export default function PhotoUploadLocal({ image, className }: PhotoUploadLocalP
 			const url = result.data?.url
 
 			if (url) {
-				const normalizedUrl = toPublicUploadsSrc(url)
+				const normalizedUrl = normalizeUploadsSrc(url)
 
 				// Envia a URL para a API para atualizar no banco de dados
 				const apiRes = await fetch('/api/user-profile-image/update', {

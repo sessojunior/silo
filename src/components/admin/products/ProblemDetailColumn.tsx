@@ -6,18 +6,9 @@ import { getMarkdownClasses } from '@/lib/markdown'
 import Image from 'next/image'
 import { ProductProblem, ProductProblemImage } from '@/lib/db/schema'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import { normalizeUploadsSrc } from '@/lib/utils'
 
-const toAppUploadSrc = (input: string): string => {
-	const [pathPart, queryPart] = input.split('?')
-	const query = queryPart ? `?${queryPart}` : ''
-
-	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
-
-	const uploadsIdx = pathPart?.indexOf('/uploads/') ?? -1
-	if (uploadsIdx !== -1) return `${pathPart.slice(uploadsIdx)}${query}`
-
-	return input
-}
+const toAppUploadSrc = (input: string): string => normalizeUploadsSrc(input)
 
 interface SolutionWithDetails {
 	id: string

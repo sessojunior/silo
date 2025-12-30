@@ -6,6 +6,7 @@ import { getAuthUser } from '@/lib/auth/token'
 import { isValidName } from '@/lib/auth/validate'
 import { randomUUID } from 'crypto'
 import { getGoogleIdFromUserId } from '@/lib/auth/oauth'
+import { normalizeUploadsSrc } from '@/lib/utils'
 
 // Obtém os dados do perfil do usuário logado
 export async function GET() {
@@ -19,13 +20,18 @@ export async function GET() {
 
 		// Busca a imagem do usuário diretamente do banco de dados
 		const userData = await db.select({ image: authUser.image }).from(authUser).where(eq(authUser.id, user.id)).limit(1)
-		const image = userData[0]?.image || null
+		const storedImage = userData[0]?.image || null
+		const normalizedImage = storedImage ? normalizeUploadsSrc(storedImage) : null
+
+		if (storedImage && normalizedImage !== storedImage) {
+			await db.update(authUser).set({ image: normalizedImage }).where(eq(authUser.id, user.id))
+		}
 
 		// ID do usuário no Google
 		const { googleId } = await getGoogleIdFromUserId(user.id)
 
 		// Retorna os dados do perfil do usuário
-		return NextResponse.json({ user: { ...user, image }, userProfile: findUserProfile ?? {}, googleId }, { status: 200 })
+		return NextResponse.json({ user: { ...user, image: normalizedImage }, userProfile: findUserProfile ?? {}, googleId }, { status: 200 })
 	} catch (error) {
 		console.error('❌ [API_USER_PROFILE] Erro ao obter os dados do perfil do usuário:', { error })
 		return NextResponse.json({ field: null, message: 'Erro inesperado. Tente novamente.' }, { status: 500 })

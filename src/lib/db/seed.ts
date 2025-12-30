@@ -5,7 +5,7 @@ import { eq, inArray, and, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { hashPassword } from '@/lib/auth/hash'
-import { createLocalDate } from '@/lib/utils'
+import { createLocalDate, normalizeUploadsSrc } from '@/lib/utils'
 import { NO_INCIDENTS_CATEGORY_ID, NO_INCIDENTS_CATEGORY_NAME } from '@/lib/constants'
 
 // Importar dados do arquivo separado
@@ -60,38 +60,66 @@ async function checkTableData(tableName: string, queryFn: () => Promise<unknown[
 	}
 }
 
-async function migrateLegacyUploadUrls(): Promise<void> {
-	const legacyPrefix = '/' + 'files' + '/'
-	const newPrefix = '/' + 'uploads' + '/'
-	const likePattern = `%${legacyPrefix}%`
+async function normalizeUploadUrls(): Promise<void> {
+	const uploadKinds = ['general', 'avatars', 'contacts', 'problems', 'solutions'] as const
+	const likePatterns = uploadKinds.map((kind) => `%/${kind}/%`)
 
-	const [usersUpdated, contactsUpdated, problemImagesUpdated, solutionImagesUpdated] = await Promise.all([
+	const [users, contacts, problemImages, solutionImages] = await Promise.all([
 		db
-			.update(schema.authUser)
-			.set({ image: sql`REPLACE(${schema.authUser.image}, ${legacyPrefix}, ${newPrefix})` })
-			.where(sql`${schema.authUser.image} LIKE ${likePattern}`)
-			.returning({ id: schema.authUser.id }),
+			.select({ id: schema.authUser.id, url: schema.authUser.image })
+			.from(schema.authUser)
+			.where(sql`${schema.authUser.image} IS NOT NULL`),
 		db
-			.update(schema.contact)
-			.set({ image: sql`REPLACE(${schema.contact.image}, ${legacyPrefix}, ${newPrefix})` })
-			.where(sql`${schema.contact.image} LIKE ${likePattern}`)
-			.returning({ id: schema.contact.id }),
+			.select({ id: schema.contact.id, url: schema.contact.image })
+			.from(schema.contact)
+			.where(sql`${schema.contact.image} IS NOT NULL`),
 		db
-			.update(schema.productProblemImage)
-			.set({ image: sql`REPLACE(${schema.productProblemImage.image}, ${legacyPrefix}, ${newPrefix})` })
-			.where(sql`${schema.productProblemImage.image} LIKE ${likePattern}`)
-			.returning({ id: schema.productProblemImage.id }),
+			.select({ id: schema.productProblemImage.id, url: schema.productProblemImage.image })
+			.from(schema.productProblemImage)
+			.where(sql`${schema.productProblemImage.image} IS NOT NULL`),
 		db
-			.update(schema.productSolutionImage)
-			.set({ image: sql`REPLACE(${schema.productSolutionImage.image}, ${legacyPrefix}, ${newPrefix})` })
-			.where(sql`${schema.productSolutionImage.image} LIKE ${likePattern}`)
-			.returning({ id: schema.productSolutionImage.id }),
+			.select({ id: schema.productSolutionImage.id, url: schema.productSolutionImage.image })
+			.from(schema.productSolutionImage)
+			.where(sql`${schema.productSolutionImage.image} IS NOT NULL`),
 	])
 
-	const total = usersUpdated.length + contactsUpdated.length + problemImagesUpdated.length + solutionImagesUpdated.length
+	const isUploadCandidate = (value: string): boolean => likePatterns.some((pattern) => value.includes(pattern.slice(1, -1)))
+
+	const userUpdates = users
+		.map((row) => ({ id: row.id, url: row.url }))
+		.filter((row): row is { id: string; url: string } => typeof row.url === 'string' && isUploadCandidate(row.url))
+		.map((row) => ({ id: row.id, normalized: normalizeUploadsSrc(row.url), original: row.url }))
+		.filter((row) => row.normalized !== row.original)
+
+	const contactUpdates = contacts
+		.map((row) => ({ id: row.id, url: row.url }))
+		.filter((row): row is { id: string; url: string } => typeof row.url === 'string' && isUploadCandidate(row.url))
+		.map((row) => ({ id: row.id, normalized: normalizeUploadsSrc(row.url), original: row.url }))
+		.filter((row) => row.normalized !== row.original)
+
+	const problemImageUpdates = problemImages
+		.map((row) => ({ id: row.id, url: row.url }))
+		.filter((row): row is { id: string; url: string } => typeof row.url === 'string' && isUploadCandidate(row.url))
+		.map((row) => ({ id: row.id, normalized: normalizeUploadsSrc(row.url), original: row.url }))
+		.filter((row) => row.normalized !== row.original)
+
+	const solutionImageUpdates = solutionImages
+		.map((row) => ({ id: row.id, url: row.url }))
+		.filter((row): row is { id: string; url: string } => typeof row.url === 'string' && isUploadCandidate(row.url))
+		.map((row) => ({ id: row.id, normalized: normalizeUploadsSrc(row.url), original: row.url }))
+		.filter((row) => row.normalized !== row.original)
+
+	await Promise.all([
+		...userUpdates.map((row) => db.update(schema.authUser).set({ image: row.normalized }).where(eq(schema.authUser.id, row.id))),
+		...contactUpdates.map((row) => db.update(schema.contact).set({ image: row.normalized }).where(eq(schema.contact.id, row.id))),
+		...problemImageUpdates.map((row) => db.update(schema.productProblemImage).set({ image: row.normalized }).where(eq(schema.productProblemImage.id, row.id))),
+		...solutionImageUpdates.map((row) => db.update(schema.productSolutionImage).set({ image: row.normalized }).where(eq(schema.productSolutionImage.id, row.id))),
+	])
+
+	const total = userUpdates.length + contactUpdates.length + problemImageUpdates.length + solutionImageUpdates.length
 	if (total === 0) return
 
-	console.log(`✅ URLs antigas migradas para uploads: ${total} registro(s)`)
+	console.log(`✅ URLs de upload normalizadas: ${total} registro(s)`)
 }
 
 // === FUNÇÃO PRINCIPAL ===
@@ -99,7 +127,7 @@ async function seed() {
 	console.log('🔵 Iniciando seed do sistema...')
 	console.log('🔵 Verificando tabelas existentes...')
 
-	await migrateLegacyUploadUrls()
+	await normalizeUploadUrls()
 
 	// === VERIFICAÇÕES INDIVIDUAIS DE TABELAS ===
 	const tableChecks = await Promise.all([checkTableData('groups', () => db.select().from(schema.group).limit(1)), checkTableData('users', () => db.select().from(schema.authUser).limit(1)), checkTableData('products', () => db.select().from(schema.product).limit(1)), checkTableData('contacts', () => db.select().from(schema.contact).limit(1)), checkTableData('projects', () => db.select().from(schema.project).limit(1)), checkTableData('project_activities', () => db.select().from(schema.projectActivity).limit(1)), checkTableData('help', () => db.select().from(schema.help).limit(1)), checkTableData('chat_user_presence', () => db.select().from(schema.chatUserPresence).limit(1)), checkTableData('chat_messages', () => db.select().from(schema.chatMessage).limit(1))])

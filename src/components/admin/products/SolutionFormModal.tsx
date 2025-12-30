@@ -7,20 +7,11 @@ import Markdown from '@/components/ui/Markdown'
 import Dialog from '@/components/ui/Dialog'
 import Lightbox from '@/components/ui/Lightbox'
 import { toast } from '@/lib/toast'
+import { normalizeUploadsSrc } from '@/lib/utils'
 import Image from 'next/image'
 import UploadButtonLocal from '@/components/ui/UploadButtonLocal'
 
-const toAppUploadSrc = (input: string): string => {
-	const [pathPart, queryPart] = input.split('?')
-	const query = queryPart ? `?${queryPart}` : ''
-
-	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
-
-	const uploadsIdx = pathPart?.indexOf('/uploads/') ?? -1
-	if (uploadsIdx !== -1) return `${pathPart.slice(uploadsIdx)}${query}`
-
-	return input
-}
+const toAppUploadSrc = (input: string): string => normalizeUploadsSrc(input)
 
 // Tipo customizado para soluções retornadas pela API
 interface SolutionWithDetails {

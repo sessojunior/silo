@@ -5,20 +5,11 @@ import ReactMarkdown from 'react-markdown'
 import Button from '@/components/ui/Button'
 import Avatar from '@/components/ui/Avatar'
 import { getMarkdownClasses } from '@/lib/markdown'
+import { normalizeUploadsSrc } from '@/lib/utils'
 import clsx from 'clsx'
 import Image from 'next/image'
 
-const toAppUploadSrc = (input: string): string => {
-	const [pathPart, queryPart] = input.split('?')
-	const query = queryPart ? `?${queryPart}` : ''
-
-	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
-
-	const uploadsIdx = pathPart?.indexOf('/uploads/') ?? -1
-	if (uploadsIdx !== -1) return `${pathPart.slice(uploadsIdx)}${query}`
-
-	return input
-}
+const toAppUploadSrc = (input: string): string => normalizeUploadsSrc(input)
 
 interface SolutionWithDetails {
 	id: string

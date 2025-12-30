@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth/token'
 import { db } from '@/lib/db'
 import { authUser } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { normalizeUploadsSrc } from '@/lib/utils'
 
 // Atualiza a URL da imagem de perfil do usuário (vinda do servidor local)
 export async function POST(req: NextRequest) {
@@ -17,13 +18,15 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ field: null, message: 'URL da imagem não fornecida.' }, { status: 400 })
 		}
 
-		// Atualiza a URL da imagem no banco de dados
-		await db.update(authUser).set({ image: imageUrl }).where(eq(authUser.id, user.id))
+		const normalizedUrl = normalizeUploadsSrc(imageUrl)
 
-		console.log('ℹ️ [API_USER_PROFILE_IMAGE_UPDATE] URL da imagem de perfil atualizada com sucesso:', { imageUrl })
+		// Atualiza a URL da imagem no banco de dados
+		await db.update(authUser).set({ image: normalizedUrl }).where(eq(authUser.id, user.id))
+
+		console.log('ℹ️ [API_USER_PROFILE_IMAGE_UPDATE] URL da imagem de perfil atualizada com sucesso:', { imageUrl: normalizedUrl })
 
 		// Retorna a resposta com sucesso
-		return NextResponse.json({ message: 'URL da imagem atualizada com sucesso!', imageUrl })
+		return NextResponse.json({ message: 'URL da imagem atualizada com sucesso!', imageUrl: normalizedUrl })
 	} catch (error) {
 		console.error('❌ [API_USER_PROFILE_IMAGE_UPDATE] Erro ao atualizar URL da imagem de perfil:', { error })
 		return NextResponse.json({ message: 'Erro inesperado. Tente novamente.' }, { status: 500 })

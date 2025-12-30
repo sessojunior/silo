@@ -16,7 +16,7 @@ dist/
 build/
 
 # Arquivos de upload (serão montados como volume)
-fileserver/uploads/
+uploads/
 
 # Logs e temporários
 *.log

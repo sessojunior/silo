@@ -13,18 +13,9 @@ import type { ProductProblem, ProductProblemImage } from '@/lib/db/schema'
 import Select, { SelectOption } from '@/components/ui/Select'
 import { useEffect, useState } from 'react'
 import { NO_INCIDENTS_CATEGORY_ID } from '@/lib/constants'
+import { normalizeUploadsSrc } from '@/lib/utils'
 
-const toAppUploadSrc = (input: string): string => {
-	const [pathPart, queryPart] = input.split('?')
-	const query = queryPart ? `?${queryPart}` : ''
-
-	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
-
-	const uploadsIdx = pathPart?.indexOf('/uploads/') ?? -1
-	if (uploadsIdx !== -1) return `${pathPart.slice(uploadsIdx)}${query}`
-
-	return input
-}
+const toAppUploadSrc = (input: string): string => normalizeUploadsSrc(input)
 
 interface ProblemFormOffcanvasProps {
 	open: boolean

@@ -1,14 +1,5 @@
 import Image from 'next/image'
-
-const toPublicUploadsSrc = (input: string): string => {
-	const [pathPart, queryPart] = input.split('?')
-	const query = queryPart ? `?${queryPart}` : ''
-
-	if (pathPart?.startsWith('/uploads/')) return `${pathPart}${query}`
-	if (pathPart?.includes('/uploads/')) return `${pathPart.slice(pathPart.indexOf('/uploads/'))}${query}`
-
-	return input
-}
+import { normalizeUploadsSrc } from '@/lib/utils'
 
 interface AvatarProps {
 	src?: string | null
@@ -42,7 +33,7 @@ export default function Avatar({
 
 	const sizeClass = sizeClasses[size]
 	const sizePixel = sizePx[size]
-	const normalizedSrc = src ? toPublicUploadsSrc(src) : src
+	const normalizedSrc = src ? normalizeUploadsSrc(src) : src
 
 	// Se tem imagem, usar Image do Next.js
 	if (normalizedSrc && normalizedSrc !== '/images/profile.png') {
@@ -66,7 +57,7 @@ export default function Avatar({
 	// Se não tem imagem, usar primeira letra com gradiente azul
 	return (
 		<div className='relative inline-block'>
-			<div className={`${sizeClass} rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold ${className}`}>
+			<div className={`${sizeClass} rounded-full bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold ${className}`}>
 				{name.charAt(0).toUpperCase()}
 			</div>
 			{showPresence && presenceColor && (
