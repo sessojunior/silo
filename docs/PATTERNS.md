@@ -53,12 +53,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 // 2. Bibliotecas externas
-import { toast } from 'react-hot-toast'
-import axios from 'axios'
+import { z } from 'zod'
 
 // 3. Imports internos (com @/)
-import { Button } from '@/components/ui/button'
-import { useUser } from '@/hooks/useUser'
+import { Button } from '@/components/ui/Button'
 import { db } from '@/lib/db'
 
 // 4. Tipos
@@ -102,14 +100,20 @@ export async function POST(request: NextRequest) {
 
 ### **Padrão de Resposta**
 
-**✅ SEMPRE** retornar `{ success: boolean, error?: string }`:
+O código atual possui dois padrões principais:
+
+- **ApiResponse** (muito comum em `/api/admin/*`): `success/data/error/message`
+- **FormResponse** (muito comum em `/api/auth/*` e `/api/user-*`): `field/message`
 
 ```typescript
-// Sucesso
+// Sucesso (ApiResponse)
 { success: true, data: result }
 
-// Erro
+// Erro (ApiResponse)
 { success: false, error: 'Mensagem de erro' }
+
+// Erro de validação (FormResponse)
+{ field: 'email', message: 'O e-mail é inválido.' }
 ```
 
 ---
@@ -175,15 +179,8 @@ Arquivo: `src/lib/dateConfig.ts`
 export const timezone = 'America/Sao_Paulo'
 ```
 
-```typescript
-import { toZonedTime, fromZonedTime } from 'date-fns-tz'
-
-// Converter para timezone de São Paulo
-const spDate = toZonedTime(date, 'America/Sao_Paulo')
-
-// Converter de timezone de São Paulo
-const utcDate = fromZonedTime(spDate, 'America/Sao_Paulo')
-```
+O projeto centraliza utilitários em `src/lib/dateUtils.ts` e evita dependências extras para timezone,
+usando `toLocaleString(..., { timeZone: 'America/Sao_Paulo' })` de forma consistente.
 
 ---
 
@@ -213,8 +210,8 @@ const url = `${config.appUrl}/api/users`
 
 ```typescript
 export const config = {
-  appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-  databaseUrl: process.env.DATABASE_URL!
+  appUrl: process.env.APP_URL || 'http://localhost:3000',
+  databaseUrl: process.env.DATABASE_URL || ''
 }
 ```
 
@@ -323,8 +320,9 @@ function isValidDomain(email: string): boolean {
 
 ```text
 src/app/api/
-├── (user)/
-│   └── route.ts
+├── (user)/              (route group: não aparece na URL)
+│   ├── user-profile/
+│   └── user-preferences/
 ├── admin/
 │   ├── users/
 │   │   └── route.ts
@@ -336,6 +334,9 @@ src/app/api/
     └── register/
         └── route.ts
 ```
+
+Observação: pastas entre parênteses (ex.: `(user)`) são apenas organização interna e não fazem parte do path público.
+Ex.: `src/app/api/(user)/user-profile/route.ts` atende em `/api/user-profile`.
 
 ### **Handler Pattern**
 
@@ -416,7 +417,7 @@ await db.transaction(async (tx) => {
 ### **Estrutura Padrão**
 
 ```typescript
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 
 interface ComponentProps {
   title: string

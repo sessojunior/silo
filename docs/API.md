@@ -21,24 +21,39 @@ Documentação completa de todas as APIs do sistema SILO, incluindo endpoints, c
 
 ## 📊 **CONTRATO DE RESPOSTA**
 
-Todas as APIs seguem um padrão de resposta consistente:
+O código atual usa mais de um formato de resposta, dependendo do tipo de endpoint:
 
 ```typescript
+// 1) Padrão geral (muito comum em /api/admin/*)
 type ApiResponse<T> = {
-  success: boolean
-  data?: T
-  error?: string
+	success: boolean
+	data?: T
+	error?: string
+	message?: string
 }
+
+// 2) Padrão de formulário/validação (muito comum em /api/auth/* e /api/user-*)
+type FormResponse = {
+	field: string | null
+	message: string
+	success?: boolean
+}
+
+// 3) Alguns endpoints retornam objetos "diretos" (sem envelope), por legado
+// Ex.: { user, userProfile, googleId }
 ```
 
 **Exemplos:**
 
 ```typescript
-// Sucesso
+// Sucesso (ApiResponse)
 { success: true, data: { id: '123', name: 'Produto' } }
 
-// Erro
+// Erro (ApiResponse)
 { success: false, error: 'Mensagem de erro' }
+
+// Erro de validação (FormResponse)
+{ field: 'email', message: 'O e-mail é inválido.' }
 ```
 
 ---
@@ -54,13 +69,14 @@ Content-Type: application/json
 {
   "name": "João Silva",
   "email": "joao@inpe.br",
-  "password": "senha123"
+  "password": "SenhaSegura@123"
 }
 
 Response:
 {
-  "success": true,
-  "data": { userId: "123" }
+  "step": 2,
+  "email": "joao@inpe.br",
+  "message": "Cadastro realizado com sucesso! Após verificar seu e-mail, sua conta precisará ser ativada por um administrador para ter acesso ao sistema."
 }
 ```
 
@@ -72,17 +88,14 @@ Content-Type: application/json
 
 {
   "email": "joao@inpe.br",
-  "password": "senha123"
+  "password": "SenhaSegura@123"
 }
 
 // Observação: A sessão é criada automaticamente via cookie HTTP-only
-// Não há token na resposta, pois o sistema usa sessões baseadas em banco
+// A resposta não precisa trazer token para o frontend, pois o sistema usa sessão via cookie HTTP-only
 Response:
 {
-  "success": true,
-  "data": {
-    user: { id, name, email, image }
-  }
+  "success": true
 }
 ```
 
@@ -98,14 +111,20 @@ Content-Type: application/json
 
 Response:
 {
-  "success": true,
-  "message": "Código enviado para seu email"
+  "step": 2,
+  "email": "joao@inpe.br"
 }
 
 POST /api/auth/verify-code
 {
   "email": "joao@inpe.br",
-  "code": "123456"
+  "code": "347AE"
+}
+
+Response:
+{
+  "success": true,
+  "token": "<session_token>"
 }
 ```
 
@@ -121,8 +140,44 @@ Content-Type: application/json
 
 Response:
 {
+  "step": 2,
+  "email": "joao@inpe.br"
+}
+```
+
+### **Redefinir Senha (via token de sessão)**
+
+```http
+POST /api/auth/send-password
+Content-Type: application/json
+
+{
+  "token": "<session_token>",
+  "password": "SenhaSegura@123"
+}
+
+Response:
+{
+  "step": 4
+}
+```
+
+### **Definir Senha Inicial (via OTP)**
+
+```http
+POST /api/auth/setup-password
+Content-Type: application/json
+
+{
+  "email": "joao@inpe.br",
+  "code": "347AE",
+  "password": "SenhaSegura@123"
+}
+
+Response:
+{
   "success": true,
-  "message": "Instruções enviadas para seu email"
+  "message": "Senha definida com sucesso. Você já pode fazer login."
 }
 ```
 
@@ -166,82 +221,97 @@ Response: Redirect para /login
 ### **Perfil Profissional**
 
 ```http
-GET /api/(user)/user-profile
+GET /api/user-profile
 
 Response:
 {
-  "success": true,
-  "data": {
-    id: "123",
-    genre: "male",
-    phone: "11999999999",
-    role: "Desenvolvedor",
-    team: "DIPTC",
-    company: "CPTEC",
-    location: "São Paulo"
-  }
+  "user": { "id": "123", "name": "João Silva", "email": "joao@inpe.br", "image": "/uploads/profile/avatar.webp" },
+  "userProfile": { "genre": "male", "phone": "11999999999", "role": "Desenvolvedor", "team": "DIPTC", "company": "CPTEC", "location": "São Paulo" },
+  "googleId": null
 }
 
-PUT /api/(user)/user-profile
+PUT /api/user-profile
 {
+  "name": "João Silva",
   "genre": "male",
   "phone": "11999999999",
-  "role": "Desenvolvedor"
+  "role": "Desenvolvedor",
+  "team": "DIPTC",
+  "company": "CPTEC",
+  "location": "São Paulo"
+}
+
+Response:
+{
+  "message": "Dados atualizados com sucesso!"
 }
 ```
 
 ### **Preferências**
 
 ```http
-GET /api/(user)/user-preferences
+GET /api/user-preferences
 
 Response:
 {
-  "success": true,
-  "data": {
-    chatEnabled: true
-  }
+  "userPreferences": { "chatEnabled": true }
 }
 
-PUT /api/(user)/user-preferences
+PUT /api/user-preferences
 {
   "chatEnabled": true
+}
+
+Response:
+{
+  "message": "Preferências atualizadas com sucesso!"
 }
 ```
 
 ### **Alteração de Senha**
 
 ```http
-PUT /api/(user)/user-password
+PUT /api/user-password
 Content-Type: application/json
 
 {
-  "currentPassword": "senha123",
-  "newPassword": "novasenha456",
-  "confirmPassword": "novasenha456"
+  "password": "NovaSenha@456"
+}
+
+Response:
+{
+  "message": "Senha alterada com sucesso!"
 }
 ```
 
 ### **Alteração de Email**
 
 ```http
-POST /api/(user)/user-email-change
+POST /api/user-email-change
 Content-Type: application/json
 
 {
+  "email": "joao.silva@inpe.br"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Código de verificação enviado para o novo e-mail.",
+  "requestId": "request-uuid"
+}
+
+PUT /api/user-email-change
+{
+  "requestId": "request-uuid",
+  "code": "123456",
   "newEmail": "joao.silva@inpe.br"
 }
 
 Response:
 {
   "success": true,
-  "message": "Código enviado para novo email"
-}
-
-PUT /api/(user)/user-email-change
-{
-  "newEmail": "joao.silva@inpe.br",
-  "code": "123456"
+  "message": "E-mail alterado com sucesso!"
 }
 ```
 

@@ -146,11 +146,20 @@ drizzle/
 Todas as FK têm índices para performance:
 
 ```typescript
-export const sessions = pgTable('auth_session', {
-  userId: text('user_id').notNull().references(() => users.id, {
-    onDelete: 'cascade'
-  }).index()
-})
+export const authSession = pgTable(
+	'auth_session',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => authUser.id, { onDelete: 'cascade' }),
+		token: text('token').notNull(),
+		expiresAt: timestamp('expires_at').notNull(),
+	},
+	(table) => ({
+		userIdIdx: index('idx_auth_session_user_id').on(table.userId),
+	}),
+)
 ```
 
 ### **2. Constraints Únicos**
@@ -161,11 +170,20 @@ Previnem duplicações:
 // Email único
 email: text('email').notNull().unique()
 
-// Dupla constraint
-constraint uniqueProductActivity = unique(
-  productActivity.productId,
-  productActivity.date,
-  productActivity.turn
+// Constraint composto (exemplo real do projeto)
+export const rateLimit = pgTable(
+	'rate_limit',
+	{
+		id: text('id').primaryKey(),
+		route: text('route').notNull(),
+		email: text('email').notNull(),
+		ip: text('ip').notNull(),
+		count: integer('count').notNull(),
+		lastRequest: timestamp('last_request').notNull(),
+	},
+	(table) => ({
+		uniqueEmailIpRoute: unique('unique_rate_limit_email_ip_route').on(table.email, table.ip, table.route),
+	}),
 )
 ```
 
@@ -177,7 +195,7 @@ Campo `deletedAt` onde necessário:
 deletedAt: timestamp('deleted_at')
 
 // Query ignorando deletados
-.where(isNull(chatMessages.deletedAt))
+.where(isNull(chatMessage.deletedAt))
 ```
 
 ### **4. Timestamps**
@@ -204,10 +222,8 @@ userId: text('user_id')
 Types gerados automaticamente:
 
 ```typescript
-import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
-
-export type User = InferSelectModel<typeof users>
-export type NewUser = InferInsertModel<typeof users>
+export type AuthUser = typeof authUser.$inferSelect
+export type NewAuthUser = typeof authUser.$inferInsert
 ```
 
 ### **7. JSONB para Dados Flexíveis**

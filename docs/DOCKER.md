@@ -46,7 +46,7 @@ O **Silo** usa **1 container**:
    - Após instalar, verifique: `docker --version`
 
 2. **Docker Compose** (geralmente já vem com o Docker Desktop)
-   - Verifique: `docker-compose --version`
+   - Verifique: `docker compose version`
 
 ### **Variáveis de Ambiente**
 
@@ -66,30 +66,14 @@ GOOGLE_CLIENT_SECRET=''
 # Email SMTP
 SMTP_HOST='smtp.seuservidor.com'
 SMTP_PORT='587'
-SMTP_SECURE=false # Defina como true se usar SSL (porta 465)
+SMTP_SECURE=false
 SMTP_USERNAME='seu-email@dominio.com'
 SMTP_PASSWORD='sua-senha'
 ```
 
 ### **Arquivo docker-compose.yml**
 
-```yaml
-version: '3.8'
-
-services:
-  app:
-    build: .
-    ports:
-      - "80:3000"
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - DATABASE_URL=${DATABASE_URL}
-      - APP_URL=${APP_URL:-http://localhost:3000}
-      # ... outras variáveis de ambiente
-    volumes:
-      - ./.next:/app/.next  # Cache do Next.js
-    restart: unless-stopped
-```
+Veja o arquivo real do projeto em `docker-compose.yml`.
 
 ---
 
@@ -104,7 +88,7 @@ Recomendado para desenvolvimento ativo do código:
 npm install
 
 # 2. Configurar variáveis de ambiente
-cp env.example .env
+Copy-Item env.example .env
 # Edite o arquivo .env com suas configurações
 
 # 3. Executar servidor
@@ -122,13 +106,13 @@ Recomendado para testar ou usar o sistema sem configurar o ambiente:
 
 ```bash
 # 1. Copiar arquivo de exemplo
-cp env.docker.example .env
+Copy-Item env.docker.example .env
 
 # 2. Editar .env com suas configurações
 # Use um editor de texto (VSCode, Notepad++, etc.)
 
 # 3. Construir e executar containers
-docker-compose up --build
+docker compose up --build
 
 # Isso vai:
 # 1. Baixar as imagens necessárias (primeira vez demora mais)
@@ -143,10 +127,10 @@ docker-compose up --build
 **Executar em segundo plano:**
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 
 # Ver logs depois:
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ---
@@ -157,25 +141,25 @@ docker-compose logs -f
 
 ```bash
 # Ver status dos containers
-docker-compose ps
+docker compose ps
 
 # Ver logs em tempo real
-docker-compose logs -f
+docker compose logs -f
 
 # Ver logs de um container específico
-docker-compose logs -f app
+docker compose logs -f app
 
 # Parar todos os containers
-docker-compose down
+docker compose down
 
 # Parar e remover tudo (inclusive volumes)
-docker-compose down -v
+docker compose down -v
 
 # Reiniciar containers
-docker-compose restart
+docker compose restart
 
 # Reconstruir apenas um container
-docker-compose up --build app
+docker compose up --build app
 ```
 
 ### **Acessar o Sistema**
@@ -199,10 +183,8 @@ O projeto **Silo** está configurado para deploy separado:
 ### **Deploy do Frontend (Vercel)**
 
 ```bash
-# Deploy automático via Git
-git add .
-git commit -m "Deploy: configuração otimizada"
-git push origin main
+# Recomenda-se configurar o deploy pelo painel do provedor (ex.: Vercel)
+# ou por um pipeline existente do ambiente institucional.
 ```
 
 O Vercel fará deploy automaticamente apenas do frontend Next.js.
@@ -212,7 +194,6 @@ O Vercel fará deploy automaticamente apenas do frontend Next.js.
 - `.gitignore` - Ignora arquivos desnecessários
 - `.vercelignore` - Otimiza deploy no Vercel
 - `.dockerignore` - Otimiza containers Docker
-- `vercel.json` - Configuração específica do Vercel
 - `next.config.ts` - Configuração Next.js otimizada
 
 ---
@@ -221,7 +202,7 @@ O Vercel fará deploy automaticamente apenas do frontend Next.js.
 
 ### **Container Next.js (`app`)**
 
-- **Porta**: 3000 (mapeada para localhost:80)
+- **Porta**: 3000 (mapeada para localhost:3000)
 - **Função**: Aplicação frontend e APIs
 - **Volume**: `./.next` (cache do Next.js persiste entre rebuilds)
 - **Restart**: Automático (`unless-stopped`)
@@ -280,42 +261,42 @@ taskkill /PID <PID> /F
 
 ```bash
 # Ver logs detalhados
-docker-compose logs app
+docker compose logs app
 
 # Verificar variáveis de ambiente
-docker-compose config
+docker compose config
 
 # Verificar permissões dos volumes
-docker-compose exec app ls -la uploads/
+docker compose exec app ls -la uploads/
 ```
 
 ### **Limpar tudo e recomeçar**
 
 ```bash
 # Parar e remover containers, volumes e redes
-docker-compose down -v
+docker compose down -v
 
 # Remover imagens antigas (libera espaço)
 docker system prune -a
 
 # Reconstruir do zero
-docker-compose up --build
+docker compose up --build
 ```
 
 ### **Comandos de Debug**
 
 ```bash
 # Entrar dentro do container Next.js
-docker-compose exec app sh
+docker compose exec app sh
 
 # Ver configuração completa gerada
-docker-compose config
+docker compose config
 
 # Ver recursos usados pelos containers
 docker stats
 
 # Verificar logs de erro específicos
-docker-compose logs app | grep ERROR
+docker compose logs app | findstr ERROR
 ```
 
 ---

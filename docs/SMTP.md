@@ -107,8 +107,8 @@ await sendEmail({
 	to: 'destinatario@inpe.br',
 	subject: 'Código de verificação',
 	template: 'otpCode',
-	data: { code: '123456', type: 'sign-in' },
-	text: 'Utilize o código 123456 para fazer login.',
+	data: { code: '347AE', type: 'sign-in' },
+	text: 'Utilize o código 347AE para fazer login.',
 })
 ```
 
@@ -119,27 +119,8 @@ await sendEmail({
 ### **Testar Conexão SMTP**
 
 ```bash
-# Via código Node.js
-node -e "
-const nodemailer = require('nodemailer');
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: 'seu-email@gmail.com',
-    pass: 'senha-do-app'
-  }
-});
-
-transporter.verify((error, success) => {
-  if (error) {
-    console.log('❌ Erro:', error);
-  } else {
-    console.log('✅ Servidor pronto para enviar emails');
-  }
-});
-"
+# Windows (PowerShell)
+node -e 'const nodemailer = require(\"nodemailer\"); const transporter = nodemailer.createTransport({ host: \"smtp.gmail.com\", port: 587, secure: false, auth: { user: \"seu-email@gmail.com\", pass: \"senha-do-app\" } }); transporter.verify().then(() => console.log(\"✅ Servidor pronto para enviar emails\")).catch((error) => console.log(\"❌ Erro:\", error));'
 ```
 
 ### **Enviar Email de Teste**

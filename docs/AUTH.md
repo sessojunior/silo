@@ -40,28 +40,20 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 // Request
 {
   email: "usuario@inpe.br",
-  password: "senhaSegura123"
+  password: "SenhaSegura@123"
 }
 
 // Response
 {
-  success: true,
-  data: {
-    user: {
-      id: "user-123",
-      name: "João Silva",
-      email: "usuario@inpe.br",
-      image: "url_avatar",
-      isActive: true
-    }
-  }
+  success: true
 }
 ```
 
 **Validações:**
 
 - ✅ Email deve ser válido e do domínio @inpe.br
-- ✅ Senha deve ter no mínimo 6 caracteres
+- ✅ Senha deve ter entre 8 e 120 caracteres
+- ✅ Senha deve conter letra minúscula, maiúscula, número e caractere especial
 - ✅ Usuário deve estar ativo
 - ✅ Credenciais devem ser válidas
 
@@ -78,23 +70,21 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 
 // Response
 {
-  success: true,
-  message: "Código enviado para seu email"
+  step: 2,
+  email: "usuario@inpe.br"
 }
 
 // Passo 2: Verificar código
 // POST /api/auth/verify-code
 {
   email: "usuario@inpe.br",
-  code: "123456"
+  code: "347AE"
 }
 
 // Response
 {
   success: true,
-  data: {
-    user: { /* dados do usuário */ }
-  }
+  token: "<session_token>"
 }
 ```
 
@@ -114,13 +104,14 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 {
   name: "João Silva",
   email: "joao.silva@inpe.br",
-  password: "senha123"
+  password: "SenhaSegura@123"
 }
 
 // Response
 {
-  success: true,
-  message: "Usuário criado com sucesso. Aguarde ativação por um administrador."
+  step: 2,
+  email: "joao.silva@inpe.br",
+  message: "Cadastro realizado com sucesso! Após verificar seu e-mail, sua conta precisará ser ativada por um administrador para ter acesso ao sistema."
 }
 ```
 
@@ -142,8 +133,8 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 
 // Response
 {
-  success: true,
-  message: "Instruções de recuperação enviadas para seu email"
+  step: 2,
+  email: "usuario@inpe.br"
 }
 ```
 
@@ -189,31 +180,25 @@ GOOGLE_CLIENT_SECRET='seu-client-secret'
 Arquivo: `src/lib/auth/oauth.ts`
 
 ```typescript
-export const googleConfig = {
-  clientId: process.env.GOOGLE_CLIENT_ID!,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-}
+import { Google } from 'arctic'
+import { config } from '@/lib/config'
+
+export const google = new Google(config.googleClientId, config.googleClientSecret, config.googleCallbackUrl)
 ```
 
 ### **Fluxo de Autenticação Google**
 
 ```typescript
-// 1. Usuário clica em "Entrar com Google"
-// Frontend redireciona para:
-https://accounts.google.com/o/oauth2/v2/auth?
-  client_id=SEU_CLIENT_ID&
-  redirect_uri=http://localhost:3000/api/auth/callback/google&
-  response_type=code&
-  scope=email+profile&
-  state=random_state
+// 1) Usuário acessa a rota que inicia o OAuth (não é /api)
+GET /login-google
 
-// 2. Google redireciona para callback
+// 2) Backend cria state + code_verifier, salva em cookies httpOnly e redireciona para o Google
+
+// 3) Google redireciona para o callback
 GET /api/auth/callback/google?code=CODE_AQUI&state=STATE_AQUI
 
-// 3. Backend troca código por access token
-// 4. Backend obtém dados do usuário
-// 5. Backend cria sessão
-// 6. Redirect para /admin/dashboard
+// 4) Backend valida state, troca code por tokens (PKCE), cria/vincula usuário e cria sessão (cookie)
+// 5) Redirect para /admin/dashboard (ou página de erro)
 ```
 
 ### **Callback Handler**
@@ -293,19 +278,24 @@ export function isValidDomain(email: string): boolean {
 
 ### **Rate Limiting**
 
-**Limite:** 3 tentativas por minuto
+**Limite padrão:** 3 tentativas por minuto (por combinação de email + IP + rota)
 
 Arquivo: `src/lib/rateLimit.ts`
 
 ```typescript
-export async function checkRateLimit(
-  email: string,
-  ip: string,
-  route: string
-): Promise<boolean> {
-  // Verifica se excedeu limite
-  // Retorna true se OK, false se bloqueado
-}
+export async function isRateLimited(params: {
+	email: string
+	ip: string
+	route: string
+	limit?: number
+	windowInSeconds?: number
+}): Promise<boolean>
+
+export async function recordRateLimit(params: {
+	email: string
+	ip: string
+	route: string
+}): Promise<void>
 ```
 
 **Endpoints Protegidos:**
