@@ -4,10 +4,22 @@ import { db } from '@/lib/db'
 import { productProblem, productSolution } from '@/lib/db/schema'
 import { gte } from 'drizzle-orm'
 import { formatDateBR } from '@/lib/dateUtils'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // Agrupa problemas e soluções por dia nos últimos 28 dias (timeline completa)
 export async function GET() {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
+
 		const today = new Date()
 		today.setHours(23, 59, 59, 999) // Fim do dia
 

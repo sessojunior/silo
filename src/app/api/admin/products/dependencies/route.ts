@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { db } from '@/lib/db'
 import { productDependency } from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // Utilitários para campos híbridos
 function calculateTreePath(parentPath: string | null, position: number): string {
@@ -21,6 +22,16 @@ function calculateTreeDepth(parentDepth: number | null): number {
 
 export async function GET(req: NextRequest) {
 	try {
+		const authUser = await getAuthUser()
+		if (!authUser) {
+			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(authUser.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+		}
+
 		const { searchParams } = new URL(req.url)
 		const productId = searchParams.get('productId')
 
@@ -56,6 +67,11 @@ export async function POST(req: NextRequest) {
 		const authUser = await getAuthUser()
 		if (!authUser) {
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(authUser.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { productId, name, icon, description, parentId } = await req.json()
@@ -115,6 +131,11 @@ export async function PUT(req: NextRequest) {
 		const authUser = await getAuthUser()
 		if (!authUser) {
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(authUser.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { id, name, icon, description, parentId, newPosition } = await req.json()
@@ -184,6 +205,11 @@ export async function DELETE(req: NextRequest) {
 		const authUser = await getAuthUser()
 		if (!authUser) {
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(authUser.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { id } = await req.json()

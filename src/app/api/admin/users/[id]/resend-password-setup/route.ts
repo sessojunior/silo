@@ -69,7 +69,7 @@ export async function POST(
 		const otpResult = await generatePasswordSetupCode(targetUser.email, targetUser.id)
 
 		if ('error' in otpResult) {
-			console.error('❌ [API_RESEND_PASSWORD] Erro ao gerar código OTP:', otpResult.error)
+			console.error('❌ [API_RESEND_PASSWORD] Erro ao gerar código OTP:', { code: otpResult.error.code, message: otpResult.error.message })
 			return NextResponse.json(
 				{
 					success: false,
@@ -89,7 +89,7 @@ export async function POST(
 		})
 
 		if ('error' in emailResult) {
-			console.error('❌ [API_RESEND_PASSWORD] Erro ao enviar código por email:', emailResult.error)
+			console.error('❌ [API_RESEND_PASSWORD] Erro ao enviar código por email:', { code: emailResult.error.code, message: emailResult.error.message })
 			return NextResponse.json(
 				{
 					success: false,
@@ -99,8 +99,6 @@ export async function POST(
 				{ status: 500 },
 			)
 		}
-
-		console.log('✅ [API_RESEND_PASSWORD] Código OTP de setup de senha reenviado para:', targetUser.email)
 
 		return NextResponse.json({
 			success: true,

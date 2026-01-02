@@ -3,11 +3,17 @@ import { db } from '@/lib/db'
 import { userGroup } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function DELETE(request: NextRequest) {
 	try {
 		const user = await getAuthUser()
 		if (!user) return NextResponse.json({ success: false, message: 'Usuário não autenticado.' }, { status: 401 })
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
 
 		const { searchParams } = new URL(request.url)
 		const userId = searchParams.get('userId')

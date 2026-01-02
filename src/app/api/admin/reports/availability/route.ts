@@ -4,9 +4,20 @@ import { product, productActivity } from '@/lib/db/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
 import { getToday, getDaysAgo, formatDate } from '@/lib/dateUtils'
 import { INCIDENT_STATUS, ProductStatus } from '@/lib/productStatus'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function GET(request: Request) {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ success: false, error: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
+		}
 
 		// Extrair parâmetros da query - timezone São Paulo
 		const { searchParams } = new URL(request.url)

@@ -145,12 +145,10 @@ export async function POST(request: NextRequest) {
 		}
 
 		const body = await request.json()
-		const { name, email, password, emailVerified, groups, groupId, isActive } = body
+		const { name, email, password, groups, groupId, isActive } = body
 
 		// Determinar grupos usando novo formato ou legado
 		const userGroups: UserGroupInput[] = groups || (groupId ? [{ groupId }] : [])
-
-		console.log('ℹ️ [API_USERS] Criando novo usuário:', { name, email, emailVerified, groups: userGroups, isActive })
 
 		// Validações
 		if (!name || name.trim().length < 2) {
@@ -198,7 +196,6 @@ export async function POST(request: NextRequest) {
 		} else if (!password) {
 			// Se senha não foi fornecida, marcar para setup via OTP
 			needsPasswordSetup = true
-			console.log('🔑 [API_USERS] Usuário criado sem senha, será necessário definir via OTP:', { email })
 		} else {
 			// Senha fornecida mas inválida (< 8 caracteres)
 			return NextResponse.json(
@@ -285,7 +282,7 @@ export async function POST(request: NextRequest) {
 			const otpResult = await generatePasswordSetupCode(email.trim().toLowerCase(), userId)
 
 			if ('error' in otpResult) {
-				console.error('❌ [API_USERS] Erro ao gerar código OTP:', otpResult.error)
+				console.error('❌ [API_USERS] Erro ao gerar código OTP:', { code: otpResult.error.code, message: otpResult.error.message })
 				// Não falha a criação do usuário, mas loga o erro
 				// Admin pode solicitar reenvio do código depois
 			} else {
@@ -298,9 +295,7 @@ export async function POST(request: NextRequest) {
 				})
 
 				if ('error' in emailResult) {
-					console.error('❌ [API_USERS] Erro ao enviar código por email:', emailResult.error)
-				} else {
-					console.log('✅ [API_USERS] Código OTP de setup de senha enviado para:', email)
+					console.error('❌ [API_USERS] Erro ao enviar código por email:', { code: emailResult.error.code, message: emailResult.error.message })
 				}
 			}
 		}
@@ -366,8 +361,6 @@ export async function PUT(request: NextRequest) {
 
 		// Suporte a ambos os formatos: novo (groups array) e legado (groupId único)
 		const userGroups: UserGroupInput[] = groups || (groupId ? [{ groupId }] : [])
-
-		console.log('ℹ️ [API_USERS] Atualizando usuário:', { id, name, email, emailVerified, userGroups, isActive })
 
 		// Validações
 		if (!id) {

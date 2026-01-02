@@ -4,11 +4,16 @@ import { productProblemImage } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 import { requestUtils } from '@/lib/config'
+import { deleteUploadFile, isSafeFilename, isUploadKind } from '@/lib/localUploads'
 
 export async function GET(req: NextRequest) {
 	const user = await getAuthUser()
 	if (!user) return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 })
+
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
 
 	const { searchParams } = new URL(req.url)
 	const problemId = searchParams.get('problemId')
@@ -29,6 +34,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
 	const user = await getAuthUser()
 	if (!user) return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 })
+
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
 
 	try {
 		const formData = await req.formData()
@@ -63,6 +71,9 @@ export async function DELETE(req: NextRequest) {
 	const user = await getAuthUser()
 	if (!user) return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 })
 
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+
 	try {
 		const { id } = await req.json()
 		if (!id) {
@@ -79,13 +90,11 @@ export async function DELETE(req: NextRequest) {
 			if (requestUtils.isFileServerUrl(imageUrl)) {
 				const filePath = requestUtils.extractFilePath(imageUrl)
 				if (filePath) {
-					const baseUrl = requestUtils.getHostFromRequest(req)
-					const deleteUrl = requestUtils.buildDeleteUrl(filePath, baseUrl)
-
-					// Fazer requisição DELETE para o servidor de arquivos
-					await fetch(deleteUrl, {
-						method: 'DELETE',
-					})
+					const [kind, ...rest] = filePath.split('/')
+					const filename = rest.join('/')
+					if (kind && filename && isUploadKind(kind) && isSafeFilename(filename)) {
+						await deleteUploadFile(kind, filename)
+					}
 				}
 			}
 		} catch (error) {

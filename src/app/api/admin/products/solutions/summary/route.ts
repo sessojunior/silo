@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { product, productProblem, productSolution } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function GET(req: NextRequest) {
 	const { searchParams } = new URL(req.url)
@@ -19,6 +21,15 @@ export async function GET(req: NextRequest) {
 	}
 
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ success: false, error: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
+		}
 
 		// Query otimizada com JOINs - uma única consulta ao banco
 		// Retorna: total de soluções + última data de atualização

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { productActivity } from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 import { randomUUID } from 'crypto'
 import { eq } from 'drizzle-orm'
 import { formatDate } from '@/lib/dateUtils'
@@ -17,6 +18,11 @@ export async function POST(req: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return jsonResponse({ success: false, error: 'Unauthorized' }, 401)
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return jsonResponse({ success: false, error: adminCheck.error }, 403)
 		}
 
 		const data = await req.json()
@@ -75,6 +81,11 @@ export async function PUT(req: NextRequest) {
 	try {
 		const user = await getAuthUser()
 		if (!user) return jsonResponse({ success: false, error: 'Unauthorized' }, 401)
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return jsonResponse({ success: false, error: adminCheck.error }, 403)
+		}
 
 		const data = await req.json()
 		const { id, status, description, problemCategoryId } = data || {}

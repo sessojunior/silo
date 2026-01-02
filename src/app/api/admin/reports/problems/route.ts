@@ -4,9 +4,20 @@ import { productProblem, productProblemCategory, product, authUser, productSolut
 import { eq, and, gte, lte, ne, inArray, sql } from 'drizzle-orm'
 import { getToday, getDaysAgo, formatDate } from '@/lib/dateUtils'
 import { NO_INCIDENTS_CATEGORY_ID, NO_INCIDENTS_CATEGORY_NAME } from '@/lib/constants'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function GET(request: Request) {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ success: false, error: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
+		}
 
 		const { searchParams } = new URL(request.url)
 		const dateRange = searchParams.get('dateRange') || '30d'

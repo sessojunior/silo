@@ -4,11 +4,22 @@ import { product, productProblem, productProblemImage, productSolution, productS
 import { eq, inArray, desc } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 import fs from 'fs'
 import path from 'path'
 
 export async function GET(req: NextRequest) {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
+
 		const { searchParams } = new URL(req.url)
 		const slug = searchParams.get('slug')
 		const page = parseInt(searchParams.get('page') ?? '1')
@@ -64,6 +75,11 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
 		}
 
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
+
 		const { productId, title, description, problemCategoryId } = await req.json()
 		if (!productId || !problemCategoryId || typeof title !== 'string' || typeof description !== 'string') {
 			return NextResponse.json({ field: null, message: 'Todos os campos são obrigatórios.' }, { status: 400 })
@@ -104,6 +120,11 @@ export async function PUT(req: NextRequest) {
 		return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
 	}
 
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) {
+		return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+	}
+
 	try {
 		const { id, title, description, problemCategoryId } = await req.json()
 		if (!id || typeof title !== 'string' || typeof description !== 'string' || !problemCategoryId) {
@@ -129,6 +150,11 @@ export async function DELETE(req: NextRequest) {
 	const user = await getAuthUser()
 	if (!user) {
 		return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+	}
+
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) {
+		return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
 	}
 
 	try {

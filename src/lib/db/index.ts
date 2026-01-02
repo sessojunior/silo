@@ -2,9 +2,11 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
 import * as schema from '@/lib/db/schema'
 import { config } from '@/lib/config'
+import { initializeApp, isProductionBuildPhase } from '@/lib/init'
 
-// Inicializar aplicação (validação de config em produção)
-import '@/lib/init'
+if (config.nodeEnv === 'production' && !isProductionBuildPhase()) {
+	initializeApp()
+}
 
 const pool = new Pool({
 	connectionString: config.databaseUrl,

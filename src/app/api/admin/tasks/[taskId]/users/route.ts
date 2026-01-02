@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 import { eq } from 'drizzle-orm'
 
 // GET /api/admin/tasks/[taskId]/users - Buscar usuários associados a uma tarefa
@@ -11,6 +12,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ success: false, error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
 		}
 
 		const { taskId } = await params
@@ -47,6 +53,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ success: false, error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
 		}
 
 		const { taskId } = await params

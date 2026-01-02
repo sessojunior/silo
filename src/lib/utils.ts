@@ -59,7 +59,7 @@ export function normalizeUploadsSrc(input: string): string {
 	if (uploadsIdx !== -1) return `${pathname.slice(uploadsIdx)}${query}`
 
 	const isAllowedKind = (kind: string): boolean =>
-		kind === 'general' || kind === 'avatars' || kind === 'contacts' || kind === 'problems' || kind === 'solutions' || kind === 'profile'
+		kind === 'general' || kind === 'avatars' || kind === 'contacts' || kind === 'problems' || kind === 'solutions'
 
 	const normalizePathname = (value: string): string => {
 		if (!value.startsWith('/')) return value

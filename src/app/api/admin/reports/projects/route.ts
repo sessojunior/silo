@@ -3,9 +3,21 @@ import { db } from '@/lib/db'
 import { project, projectActivity, projectTask, authUser, projectTaskUser } from '@/lib/db/schema'
 import { eq, gte, lte, and } from 'drizzle-orm'
 import { getToday, getDaysAgo, formatDate } from '@/lib/dateUtils'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function GET(request: NextRequest) {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+		}
+
 		const { searchParams } = new URL(request.url)
 		const dateRange = searchParams.get('dateRange') || '30d'
 		const startDate = searchParams.get('startDate')

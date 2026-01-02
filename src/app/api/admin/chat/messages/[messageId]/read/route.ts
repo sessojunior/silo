@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { chatMessage } from '@/lib/db/schema'
 import { eq, and, isNull, ne } from 'drizzle-orm'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // POST: Marcar mensagem como lida
 export async function POST(request: NextRequest, { params }: { params: Promise<{ messageId: string }> }) {
@@ -11,6 +12,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const userId = user.id
@@ -76,6 +82,11 @@ export async function PUT(request: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const userId = user.id

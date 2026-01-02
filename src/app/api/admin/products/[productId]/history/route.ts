@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
@@ -10,6 +11,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ success: false, error: 'Não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
 		}
 
 		const { productId } = await params

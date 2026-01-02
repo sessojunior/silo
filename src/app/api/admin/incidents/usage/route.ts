@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { productActivity, productProblem } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // GET - Verificar se incidente está em uso
 export async function GET(request: NextRequest) {
@@ -10,6 +11,11 @@ export async function GET(request: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ success: false, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, message: adminCheck.error }, { status: 403 })
 		}
 
 		const { searchParams } = new URL(request.url)

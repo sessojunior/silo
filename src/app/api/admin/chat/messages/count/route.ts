@@ -3,12 +3,18 @@ import { and, or, isNull, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function GET(request: NextRequest) {
 	try {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { searchParams } = new URL(request.url)

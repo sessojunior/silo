@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth/token'
 import { getNowTimestamp } from '@/lib/dateUtils'
+import { requireAdmin } from '@/lib/auth/admin'
 
 /**
  * API endpoint para receber notificações sobre mudanças no status do chat
@@ -12,6 +13,11 @@ export async function POST(req: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ success: false, error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
 		}
 
 		// Obter dados da requisição

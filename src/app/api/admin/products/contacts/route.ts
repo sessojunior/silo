@@ -4,6 +4,7 @@ import { eq, and } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { productContact, contact } from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // GET - Listar contatos associados ao produto
 export async function GET(req: NextRequest) {
@@ -11,6 +12,11 @@ export async function GET(req: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
 		}
 
 		const { searchParams } = new URL(req.url)
@@ -62,6 +68,11 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
 		}
 
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
+
 		const { productId, contactIds } = await req.json()
 
 		if (!productId || !contactIds || !Array.isArray(contactIds)) {
@@ -100,6 +111,11 @@ export async function DELETE(req: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
 		}
 
 		const { associationId } = await req.json()

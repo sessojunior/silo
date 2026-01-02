@@ -4,8 +4,17 @@ import { productSolution, authUser, productSolutionChecked, productSolutionImage
 import { eq, inArray, desc } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function GET(req: NextRequest) {
+	const user = await getAuthUser()
+	if (!user) return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 })
+
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) {
+		return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+	}
+
 	const { searchParams } = new URL(req.url)
 	const problemId = searchParams.get('problemId')
 
@@ -73,6 +82,11 @@ export async function POST(req: NextRequest) {
 	const user = await getAuthUser()
 	if (!user) return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 })
 
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) {
+		return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+	}
+
 	const formData = await req.formData()
 	const description = (formData.get('description') as string)?.trim() || ''
 	const problemId = formData.get('problemId') as string | null
@@ -119,6 +133,11 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
 	const user = await getAuthUser()
 	if (!user) return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 })
+
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) {
+		return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+	}
 
 	const formData = await req.formData()
 	const id = formData.get('id') as string | null
@@ -174,6 +193,11 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
 	const user = await getAuthUser()
 	if (!user) return NextResponse.json({ error: 'Usuário não autenticado.' }, { status: 401 })
+
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) {
+		return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+	}
 
 	const { id } = await req.json()
 	if (!id) return NextResponse.json({ error: 'ID obrigatório.' }, { status: 400 })

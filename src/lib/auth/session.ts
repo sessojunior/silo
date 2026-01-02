@@ -26,11 +26,10 @@ export async function createSessionCookie(userId: string) {
 
 	// Insere a sessão no banco de dados
 	await db.insert(authSession).values(session)
-	console.log('✅ [AUTH_SESSION] Sessão criada no banco:', { 
-		userId, 
+	console.log('✅ [AUTH_SESSION] Sessão criada no banco:', {
+		userId,
 		sessionId: session.id,
-		tokenHashPrefix: hashToken.substring(0, 10) + '...',
-		expiresAt: expiresAt.toISOString()
+		expiresAt: expiresAt.toISOString(),
 	})
 
 	// Insere o cookie de sessão no navegador
@@ -42,15 +41,13 @@ export async function createSessionCookie(userId: string) {
 		path: '/',
 		expires: expiresAt,
 	})
-	console.log('✅ [AUTH_SESSION] Cookie salvo no navegador:', { 
-		userId, 
-		tokenPrefix: token.substring(0, 10) + '...',
-		tokenLength: token.length,
+	console.log('✅ [AUTH_SESSION] Cookie salvo no navegador:', {
+		userId,
 		httpOnly: true,
 		secure: config.nodeEnv === 'production',
 		sameSite: 'lax',
 		path: '/',
-		expiresAt: expiresAt.toISOString()
+		expiresAt: expiresAt.toISOString(),
 	})
 
 	// Retorna a sessão e o token
@@ -59,15 +56,9 @@ export async function createSessionCookie(userId: string) {
 
 // Remove a sessão do banco de dados e do cookie
 export async function destroySessionCookie(token: string) {
-	console.log('🗑️ [AUTH_SESSION] Iniciando remoção de sessão:', {
-		tokenPrefix: token.substring(0, 10) + '...',
-		tokenLength: token.length
-	})
-	
 	// Gera o hash do token para buscar no banco de dados
 	const hashToken = generateHashToken(token)
-	console.log('🗑️ [AUTH_SESSION] Hash gerado para busca:', hashToken.substring(0, 10) + '...')
-	
+
 	// Busca a sessão antes de deletar para log
 	const sessionToDelete = await db.query.authSession.findFirst({
 		where: eq(authSession.token, hashToken),

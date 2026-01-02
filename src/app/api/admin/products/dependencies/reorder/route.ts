@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { productDependency } from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 interface ReorderItem {
 	id: string
@@ -18,6 +19,11 @@ export async function PUT(req: NextRequest) {
 		const authUser = await getAuthUser()
 		if (!authUser) {
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(authUser.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const body = await req.json()

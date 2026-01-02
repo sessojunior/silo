@@ -83,7 +83,7 @@ export default function UploadButtonLocal({ endpoint = 'general', onClientUpload
 			if (onClientUploadComplete) {
 				// Adaptar resposta baseada no endpoint
 				if (endpoint === 'avatarUploader' && result.success) {
-					// Endpoint /upload/avatar retorna { success: true, data: {...} }
+					// Endpoint /api/upload/avatar retorna { success: true, data: {...} }
 					onClientUploadComplete({
 						url: result.data.url,
 						key: result.data.key,
@@ -91,7 +91,7 @@ export default function UploadButtonLocal({ endpoint = 'general', onClientUpload
 						size: result.data.size,
 					})
 				} else if (endpoint === 'contactImageUploader' && result.success) {
-					// Endpoint /upload/contact retorna { success: true, data: {...} }
+					// Endpoint /api/upload/contact retorna { success: true, data: {...} }
 					onClientUploadComplete({
 						url: result.data.url,
 						key: result.data.key,
@@ -99,7 +99,7 @@ export default function UploadButtonLocal({ endpoint = 'general', onClientUpload
 						size: result.data.size,
 					})
 				} else if ((endpoint === 'problemImageUploader' || endpoint === 'solutionImageUploader') && result.success) {
-					// Endpoints /upload/problem e /upload/solution retornam { success: true, data: [...] }
+					// Endpoints /api/upload/problem e /api/upload/solution retornam { success: true, data: [...] }
 					onClientUploadComplete(result.data)
 				} else {
 					// Endpoint genérico /api/upload retorna { url, key, name, size }

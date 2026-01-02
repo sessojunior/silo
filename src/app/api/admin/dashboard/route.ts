@@ -4,6 +4,8 @@ import { product, productActivity } from '@/lib/db/schema'
 import { eq, gte } from 'drizzle-orm'
 import { getMonthsAgo, getDaysAgo } from '@/lib/dateUtils'
 import { INCIDENT_STATUS } from '@/lib/productStatus'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 type AlertStatus = 'pending' | 'not_run' | 'with_problems' | 'run_again' | 'under_support' | 'suspended'
 
@@ -24,6 +26,27 @@ type DashboardProduct = {
 		alert: boolean
 	}[]
 	turns: string[]
+}
+
+const defaultTurns: ReadonlyArray<string> = ['0', '6', '12', '18']
+
+const normalizeTurns = (value: unknown): string[] => {
+	if (Array.isArray(value)) {
+		const normalized = value
+			.map((item) => {
+				if (typeof item === 'string') return item
+				if (typeof item === 'number') return String(item)
+				return null
+			})
+			.filter((item): item is string => typeof item === 'string' && item.length > 0)
+
+		return normalized.length > 0 ? normalized : [...defaultTurns]
+	}
+
+	if (typeof value === 'string') return [value]
+	if (typeof value === 'number') return [String(value)]
+
+	return [...defaultTurns]
 }
 
 function isAlert(status: string): status is AlertStatus {
@@ -48,6 +71,16 @@ function isAlert(status: string): status is AlertStatus {
 // }
 export async function GET() {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
+
 		// Buscar produtos ativos
 		const products = await db.select().from(product).where(eq(product.available, true))
 		if (products.length === 0) return NextResponse.json([])
@@ -64,7 +97,7 @@ export async function GET() {
 				productId: p.id,
 				name: p.name,
 				priority: p.priority,
-				turns: (p.turns as unknown as string[]) || ['0', '6', '12', '18'],
+				turns: normalizeTurns(p.turns),
 				last_run: null,
 				percent_completed: 0,
 				dates: [],

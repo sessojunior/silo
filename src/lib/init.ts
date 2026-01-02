@@ -14,8 +14,10 @@ export function initializeApp(): void {
 	// Validar configuração apenas em produção e runtime
 	if (config.nodeEnv === 'production') {
 		try {
-			configValidation.validateProductionConfig()
-			console.log('✅ [INIT] Configuração validada com sucesso')
+			const result = configValidation.validateProductionConfig()
+			if (result.status === 'validated') {
+				console.log('✅ [INIT] Configuração validada com sucesso')
+			}
 		} catch (error) {
 			console.error('❌ [INIT] Erro na validação de configuração:', error)
 			throw error
@@ -25,8 +27,6 @@ export function initializeApp(): void {
 	initialized = true
 }
 
-// Auto-inicialização quando o módulo é importado (apenas em runtime)
-if (typeof window === 'undefined' && config.nodeEnv === 'production') {
-	// Executa apenas no servidor e em produção
-	initializeApp()
+export function isProductionBuildPhase(): boolean {
+	return process.env.NEXT_PHASE === 'phase-production-build'
 }

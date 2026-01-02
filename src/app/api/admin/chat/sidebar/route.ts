@@ -3,6 +3,7 @@ import { count, eq, and, isNull, ne, desc, or } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // Tipos para sidebar
 interface ChatGroup {
@@ -41,6 +42,11 @@ export async function GET() {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 

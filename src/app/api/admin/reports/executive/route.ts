@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 import { db } from '@/lib/db'
 import { productProblem, productSolution, product, authUser, group, projectTask, projectActivity, project } from '@/lib/db/schema'
 import { eq, and, gte, lte } from 'drizzle-orm'
@@ -11,6 +12,11 @@ export async function GET(request: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		// Extrair parâmetros da query

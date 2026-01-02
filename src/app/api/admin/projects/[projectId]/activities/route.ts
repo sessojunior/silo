@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { projectActivity, project } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // GET /api/admin/projects/[projectId]/activities - Buscar todas as atividades de um projeto
 export async function GET(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
@@ -12,6 +13,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ success: false, error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
 		}
 
 		const { projectId } = await params
@@ -46,6 +52,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ success: false, error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
 		}
 
 		const { projectId } = await params
@@ -109,6 +120,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ success: false, error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
 		}
 
 		const { projectId } = await params
@@ -182,6 +198,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ success: false, error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
 		}
 
 		const { projectId } = await params

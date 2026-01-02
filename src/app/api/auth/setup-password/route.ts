@@ -43,23 +43,6 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Verifica se o código OTP é válido e não expirou
-		// Primeiro busca todos os códigos do usuário para debug
-		const allCodes = await db.query.authCode.findMany({
-			where: and(eq(authCode.email, email), eq(authCode.userId, user.id)),
-		})
-		
-		console.log('🔍 [API_AUTH_SETUP_PASSWORD] Códigos encontrados para o usuário:', {
-			email,
-			userId: user.id,
-			codes: allCodes.map((c) => ({
-				id: c.id,
-				code: c.code,
-				expiresAt: c.expiresAt,
-				isExpired: c.expiresAt < new Date(),
-			})),
-			codeProcurado: code,
-		})
-
 		const otpCode = await db.query.authCode.findFirst({
 			where: and(
 				eq(authCode.email, email),
@@ -84,11 +67,6 @@ export async function POST(req: NextRequest) {
 			})
 
 			if (expiredCode) {
-				console.log('⚠️ [API_AUTH_SETUP_PASSWORD] Código encontrado mas expirado:', {
-					code: expiredCode.code,
-					expiresAt: expiredCode.expiresAt,
-					now: new Date(),
-				})
 				return NextResponse.json(
 					{ field: 'code', message: 'O código expirou. Solicite um novo código.' },
 					{ status: 400 },
@@ -110,8 +88,6 @@ export async function POST(req: NextRequest) {
 		// 🆕 Atualiza a senha do usuário e marca email como verificado
 		// O usuário provou ter acesso ao email ao usar o código OTP
 		await db.update(authUser).set({ password: hashedPassword, emailVerified: true }).where(eq(authUser.id, user.id))
-
-		console.log('✅ [API_AUTH_SETUP_PASSWORD] Senha definida com sucesso para:', email)
 
 		// Retorna sucesso
 		return NextResponse.json({

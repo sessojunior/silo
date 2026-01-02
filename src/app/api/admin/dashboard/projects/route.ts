@@ -3,10 +3,22 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { project, projectTask } from '@/lib/db/schema'
 import { eq, inArray } from 'drizzle-orm'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // Retorna lista de projetos ativos com percentuais de conclusão das tarefas
 export async function GET() {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
+
 		// Buscar projetos com status 'active'
 		const projects = await db.select().from(project).where(eq(project.status, 'active'))
 		if (projects.length === 0) return NextResponse.json([])

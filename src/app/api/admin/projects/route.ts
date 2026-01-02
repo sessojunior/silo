@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto'
 import { db } from '@/lib/db'
 import { project, projectActivity, projectTask, projectTaskHistory, projectTaskUser } from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 import { asc, eq, ilike, or, and, inArray } from 'drizzle-orm'
 
 // Schema de validação para criação/edição de projetos
@@ -26,6 +27,11 @@ export async function GET(request: NextRequest) {
 		if (!user) {
 			console.warn('⚠️ [API_PROJECTS] Usuário não autenticado tentou acessar projetos')
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { searchParams } = new URL(request.url)
@@ -82,6 +88,11 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 		}
 
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+		}
+
 		const body = await request.json()
 
 		// Validar dados
@@ -122,6 +133,11 @@ export async function PUT(request: NextRequest) {
 		if (!user) {
 			console.warn('⚠️ [API_PROJECTS] Usuário não autenticado tentou atualizar projeto')
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const body = await request.json()
@@ -176,6 +192,11 @@ export async function DELETE(request: NextRequest) {
 		if (!user) {
 			console.warn('⚠️ [API_PROJECTS] Usuário não autenticado tentou excluir projeto')
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { searchParams } = new URL(request.url)

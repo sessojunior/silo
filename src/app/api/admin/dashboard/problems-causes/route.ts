@@ -3,11 +3,23 @@ import { db } from '@/lib/db'
 import { productActivity, productProblemCategory } from '@/lib/db/schema'
 import { gte, inArray as inArr, and, isNotNull, ne } from 'drizzle-orm'
 import { NO_INCIDENTS_CATEGORY_ID } from '@/lib/constants'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // Não filtrar por status – qualquer atividade com categoria conta como causa de problema
 
 export async function GET() {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
+
 		const cutDate = new Date()
 		cutDate.setDate(cutDate.getDate() - 28)
 

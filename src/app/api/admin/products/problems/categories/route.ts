@@ -4,12 +4,18 @@ import { db } from '@/lib/db'
 import { productProblemCategory } from '@/lib/db/schema'
 import { eq, ilike, and, not } from 'drizzle-orm'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // GET  /api/admin/products/problems/categories?search=text
 export async function GET(request: NextRequest) {
 	try {
 		const user = await getAuthUser()
 		if (!user) return NextResponse.json({ success: false, message: 'Usuário não autenticado.' }, { status: 401 })
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, message: adminCheck.error }, { status: 403 })
+		}
 
 		const { searchParams } = new URL(request.url)
 		const search = searchParams.get('search') || ''
@@ -32,6 +38,11 @@ export async function POST(request: NextRequest) {
 	try {
 		const user = await getAuthUser()
 		if (!user) return NextResponse.json({ success: false, message: 'Usuário não autenticado.' }, { status: 401 })
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, message: adminCheck.error }, { status: 403 })
+		}
 
 		const { name, color } = await request.json()
 		if (!name || name.trim().length < 2) {
@@ -57,6 +68,11 @@ export async function PUT(request: NextRequest) {
 	try {
 		const user = await getAuthUser()
 		if (!user) return NextResponse.json({ success: false, message: 'Usuário não autenticado.' }, { status: 401 })
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, message: adminCheck.error }, { status: 403 })
+		}
 
 		const { id, name, color } = await request.json()
 		if (!id) return NextResponse.json({ success: false, field: 'id', message: 'ID obrigatório.' }, { status: 400 })
@@ -89,6 +105,12 @@ export async function DELETE(request: NextRequest) {
 	try {
 		const user = await getAuthUser()
 		if (!user) return NextResponse.json({ success: false, message: 'Usuário não autenticado.' }, { status: 401 })
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, message: adminCheck.error }, { status: 403 })
+		}
+
 		const { searchParams } = new URL(request.url)
 		const id = searchParams.get('id')
 		if (!id) return NextResponse.json({ success: false, message: 'ID obrigatório.' }, { status: 400 })

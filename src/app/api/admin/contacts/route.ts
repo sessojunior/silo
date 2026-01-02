@@ -5,7 +5,9 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { contact, productContact } from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 import { requestUtils } from '@/lib/config'
+import { deleteUploadFile, isSafeFilename, isUploadKind } from '@/lib/localUploads'
 
 // GET - Listar contatos com filtros
 export async function GET(req: NextRequest) {
@@ -13,6 +15,11 @@ export async function GET(req: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
 		}
 
 		const { searchParams } = new URL(req.url)
@@ -56,6 +63,11 @@ export async function POST(req: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
 		}
 
 		const formData = await req.formData()
@@ -124,6 +136,11 @@ export async function PUT(req: NextRequest) {
 			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
 		}
 
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
+
 		const formData = await req.formData()
 		const id = formData.get('id') as string
 		const name = formData.get('name') as string
@@ -187,17 +204,13 @@ export async function PUT(req: NextRequest) {
 				if (requestUtils.isFileServerUrl(imageUrl)) {
 					const filePath = requestUtils.extractFilePath(imageUrl)
 					if (filePath) {
-						const baseUrl = requestUtils.getHostFromRequest(req)
-						const deleteUrl = requestUtils.buildDeleteUrl(filePath, baseUrl)
-
-						// Fazer requisição DELETE para o servidor de arquivos
-						const deleteResponse = await fetch(deleteUrl, {
-							method: 'DELETE',
-						})
-
-						if (deleteResponse.ok) {
-						} else {
-							console.warn('⚠️ [API_CONTACTS] Erro ao remover arquivo do disco:', { filePath })
+						const [kind, ...rest] = filePath.split('/')
+						const filename = rest.join('/')
+						if (kind && filename && isUploadKind(kind) && isSafeFilename(filename)) {
+							const deleted = await deleteUploadFile(kind, filename)
+							if (!deleted) {
+								console.warn('⚠️ [API_CONTACTS] Erro ao remover arquivo do disco:', { filePath })
+							}
 						}
 					}
 				}
@@ -237,6 +250,11 @@ export async function DELETE(req: NextRequest) {
 		if (!user) {
 			console.warn('⚠️ [API_CONTACTS] Usuário não autenticado tentou excluir contato')
 			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
 		}
 
 

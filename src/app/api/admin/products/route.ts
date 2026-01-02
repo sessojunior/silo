@@ -5,9 +5,20 @@ import { eq, like, asc, inArray } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 import { formatSlug } from '@/lib/utils'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // Listar produtos com paginação e filtro por nome ou buscar por slug
 export async function GET(request: Request) {
+	const user = await getAuthUser()
+	if (!user) {
+		return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+	}
+
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) {
+		return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+	}
+
 	const { searchParams } = new URL(request.url)
 	const slug = searchParams.get('slug')?.trim()
 
@@ -40,6 +51,16 @@ export async function GET(request: Request) {
 
 // Criar produto
 export async function POST(request: Request) {
+	const user = await getAuthUser()
+	if (!user) {
+		return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+	}
+
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) {
+		return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+	}
+
 	const body = await request.json()
 	const name = (body.name || '').trim()
 	const slug = formatSlug(body.slug) || ''
@@ -72,6 +93,16 @@ export async function POST(request: Request) {
 
 // Atualizar produto
 export async function PUT(request: Request) {
+	const user = await getAuthUser()
+	if (!user) {
+		return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+	}
+
+	const adminCheck = await requireAdmin(user.id)
+	if (!adminCheck.success) {
+		return NextResponse.json({ error: adminCheck.error }, { status: 403 })
+	}
+
 	const body = await request.json()
 	const id = (body.id || '').trim()
 	const name = (body.name || '').trim()
@@ -112,6 +143,11 @@ export async function DELETE(request: Request) {
 		if (!user) {
 			console.warn('⚠️ [API_PRODUCTS] Usuário não autenticado tentou excluir produto')
 			return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { searchParams } = new URL(request.url)

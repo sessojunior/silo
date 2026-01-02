@@ -25,5 +25,4 @@ services:
       # Cache do Next.js - persiste entre rebuilds para melhor performance
       - ./.next:/app/.next
       - ./uploads:/app/uploads
-      - ./public/uploads/profile:/app/public/uploads/profile
     restart: unless-stopped

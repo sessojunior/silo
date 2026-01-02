@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { productManual, product } from '@/lib/db/schema'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function GET(req: NextRequest) {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
+		}
+
 		const { searchParams } = new URL(req.url)
 		const productSlug = searchParams.get('productSlug')
 		const productId = searchParams.get('productId')
@@ -42,6 +54,16 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ success: false, error: adminCheck.error }, { status: 403 })
+		}
+
 		const { productId, description } = await req.json()
 
 		if (!productId || !description) {

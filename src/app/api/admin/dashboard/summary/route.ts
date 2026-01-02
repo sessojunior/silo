@@ -5,9 +5,21 @@ import { gte, and, isNotNull, inArray, ne } from 'drizzle-orm'
 import { NO_INCIDENTS_CATEGORY_ID } from '@/lib/constants'
 import { INCIDENT_STATUS } from '@/lib/productStatus'
 import { getDaysAgo } from '@/lib/dateUtils'
+import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function GET() {
 	try {
+		const user = await getAuthUser()
+		if (!user) {
+			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
+		}
+
 		// Usar timezone de São Paulo consistentemente
 		const dateStr7 = getDaysAgo(7) // últimos 7 dias
 		const dateStr14 = getDaysAgo(14) // últimos 14 dias

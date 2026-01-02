@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // Tipo específico para mensagens com informações do remetente
 type MessageWithSender = {
@@ -91,6 +92,11 @@ export async function GET(request: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { searchParams } = new URL(request.url)
@@ -249,6 +255,11 @@ export async function POST(request: NextRequest) {
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const body: SendMessageRequest = await request.json()

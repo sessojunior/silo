@@ -12,13 +12,17 @@ import path from 'path'
 // - O processo de redimensionamento e conversão for bem-sucedido.
 export async function uploadProfileImageFromUrl(url: string, userId: string): Promise<boolean> {
 	// Configurações da imagem
-	const IMAGE_DIRECTORY = 'static/uploads/profile'
-	const OUTPUT_PATH = `${IMAGE_DIRECTORY}/${userId}.webp`
+	const IMAGE_DIRECTORY = path.join(process.cwd(), 'uploads', 'avatars')
+	const OUTPUT_PATH = path.join(IMAGE_DIRECTORY, `${userId}.webp`)
 	const IMAGE_WIDTH = 64
 	const IMAGE_HEIGHT = 64
 	const IMAGE_QUALITY = 85
 
 	try {
+		if (!existsSync(IMAGE_DIRECTORY)) {
+			fs.mkdirSync(IMAGE_DIRECTORY, { recursive: true })
+		}
+
 		// Verifica se o arquivo já existe
 		if (existsSync(OUTPUT_PATH)) {
 			return false
@@ -61,8 +65,8 @@ export async function uploadProfileImageFromUrl(url: string, userId: string): Pr
 // redimensiona e converte para o formato WebP, e salva localmente no diretório especificado.
 export async function uploadProfileImageFromInput(file: File, userId: string): Promise<{ success: boolean } | { error: { code: string; message: string } }> {
 	// Configurações da imagem
-	const IMAGE_DIRECTORY = 'public/uploads/profile'
-	const OUTPUT_PATH = `${IMAGE_DIRECTORY}/${userId}.webp`
+	const IMAGE_DIRECTORY = path.join(process.cwd(), 'uploads', 'avatars')
+	const OUTPUT_PATH = path.join(IMAGE_DIRECTORY, `${userId}.webp`)
 	const IMAGE_WIDTH = 128
 	const IMAGE_HEIGHT = 128
 	const IMAGE_QUALITY = 85
@@ -82,6 +86,10 @@ export async function uploadProfileImageFromInput(file: File, userId: string): P
 	}
 
 	try {
+		if (!existsSync(IMAGE_DIRECTORY)) {
+			fs.mkdirSync(IMAGE_DIRECTORY, { recursive: true })
+		}
+
 		// Valida o tamanho do arquivo
 		if (file.size > IMAGE_SIZE_UPLOAD) {
 			console.warn('⚠️ [LIB_PROFILE_IMAGE] Arquivo excede o limite de tamanho:', { limit: IMAGE_SIZE_UPLOAD / (1024 * 1024) })
@@ -126,12 +134,12 @@ export async function uploadProfileImageFromInput(file: File, userId: string): P
 // Retorna o caminho relativo para a imagem de perfil do usuário
 export function getProfileImagePath(userId: string): string | null {
 	const profileImageFile = `${userId}.webp`
-	const profileImagePath = path.resolve('./public/uploads/profile', profileImageFile)
+	const profileImagePath = path.join(process.cwd(), 'uploads', 'avatars', profileImageFile)
 
 	// Verifica se a imagem de perfil do usuário existe no diretório
 	if (fs.existsSync(profileImagePath)) {
 		// Caminho relativo para uso no src da imagem
-		return `/uploads/profile/${profileImageFile}`
+		return `/uploads/avatars/${profileImageFile}`
 	}
 
 	return null
@@ -139,7 +147,7 @@ export function getProfileImagePath(userId: string): string | null {
 
 // Apaga a imagem de perfil
 export function deleteUserProfileImage(userId: string): { success: boolean } | { error: { code: string; message: string } } {
-	const imagePath = path.resolve('public/uploads/profile', `${userId}.webp`)
+	const imagePath = path.join(process.cwd(), 'uploads', 'avatars', `${userId}.webp`)
 
 	if (!existsSync(imagePath)) {
 		return { error: { code: 'IMAGE_NOT_FOUND', message: 'Imagem de perfil não encontrada.' } }

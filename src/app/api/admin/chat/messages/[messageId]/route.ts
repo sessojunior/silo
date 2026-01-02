@@ -3,6 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import * as schema from '@/lib/db/schema'
 import { getAuthUser } from '@/lib/auth/token'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // PATCH: Marcar userMessage como lida
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ messageId: string }> }) {
@@ -10,6 +11,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { messageId } = await params
@@ -50,6 +56,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 		const user = await getAuthUser()
 		if (!user) {
 			return NextResponse.json({ error: 'Usuário não autenticado' }, { status: 401 })
+		}
+
+		const adminCheck = await requireAdmin(user.id)
+		if (!adminCheck.success) {
+			return NextResponse.json({ error: adminCheck.error }, { status: 403 })
 		}
 
 		const { messageId } = await params

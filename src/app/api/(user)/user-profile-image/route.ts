@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth/token'
-import { uploadProfileImageFromInput, deleteUserProfileImage } from '@/lib/profileImage'
+import { getProfileImagePath, uploadProfileImageFromInput, deleteUserProfileImage } from '@/lib/profileImage'
 import { db } from '@/lib/db'
 import { authUser } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { requestUtils } from '@/lib/config'
+import { deleteUploadFile, isSafeFilename, isUploadKind } from '@/lib/localUploads'
 
 // Faz o upload da imagem de perfil do usuário
 export async function POST(req: NextRequest) {
@@ -12,6 +13,20 @@ export async function POST(req: NextRequest) {
 		// Verifica se o usuário está logado e obtém os dados do usuário
 		const user = await getAuthUser()
 		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 400 })
+
+		const currentUser = await db.select({ image: authUser.image }).from(authUser).where(eq(authUser.id, user.id)).limit(1)
+		const currentImageUrl = currentUser[0]?.image ?? null
+
+		if (currentImageUrl && requestUtils.isFileServerUrl(currentImageUrl)) {
+			const filePath = requestUtils.extractFilePath(currentImageUrl)
+			if (filePath) {
+				const [kind, ...rest] = filePath.split('/')
+				const filename = rest.join('/')
+				if (kind && filename && isUploadKind(kind) && isSafeFilename(filename)) {
+					await deleteUploadFile(kind, filename)
+				}
+			}
+		}
 
 		// Obtem a imagem de perfil do usuário
 		const formData = await req.formData()
@@ -28,8 +43,13 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ field: null, message: uploadImage.error.message ?? 'Ocorreu um erro ao fazer upload da imagem.' }, { status: 400 })
 		}
 
+		const imagePath = getProfileImagePath(user.id)
+		if (imagePath) {
+			await db.update(authUser).set({ image: imagePath }).where(eq(authUser.id, user.id))
+		}
+
 		// Retorna a resposta com sucesso
-		return NextResponse.json({ message: 'Imagem alterada com sucesso!' })
+		return NextResponse.json({ message: 'Imagem alterada com sucesso!', imageUrl: imagePath })
 	} catch (error) {
 		console.error('❌ [API_USER_PROFILE_IMAGE] Erro ao alterar a imagem de perfil do usuário:', { error })
 		return NextResponse.json({ message: 'Erro inesperado. Tente novamente.' }, { status: 500 })
@@ -37,7 +57,7 @@ export async function POST(req: NextRequest) {
 }
 
 // Apaga a imagem de perfil do usuário
-export async function DELETE(req: NextRequest) {
+export async function DELETE() {
 	try {
 		// Verifica se o usuário está logado e obtém os dados do usuário
 		const user = await getAuthUser()
@@ -54,11 +74,13 @@ export async function DELETE(req: NextRequest) {
 				const filePath = requestUtils.extractFilePath(imageUrl)
 				if (filePath) {
 					try {
-						const baseUrl = requestUtils.getHostFromRequest(req)
-						const deleteUrl = requestUtils.buildDeleteUrl(filePath, baseUrl)
-						const deleteResponse = await fetch(deleteUrl, { method: 'DELETE' })
-						if (!deleteResponse.ok) {
-							console.warn('⚠️ [API_USER_PROFILE_IMAGE] Erro ao deletar arquivo do servidor local')
+						const [kind, ...rest] = filePath.split('/')
+						const filename = rest.join('/')
+						if (kind && filename && isUploadKind(kind) && isSafeFilename(filename)) {
+							const deleted = await deleteUploadFile(kind, filename)
+							if (!deleted) {
+								console.warn('⚠️ [API_USER_PROFILE_IMAGE] Erro ao deletar arquivo do servidor local')
+							}
 						}
 					} catch (error) {
 						console.error('❌ [API_USER_PROFILE_IMAGE] Erro ao excluir imagem de perfil do servidor local:', { error })

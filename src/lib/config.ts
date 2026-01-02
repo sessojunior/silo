@@ -16,11 +16,7 @@ export const config = {
 	 * Ambiente de execução
 	 */
 	get nodeEnv(): string {
-		const env = process.env.NODE_ENV
-		if (!env && process.env.NODE_ENV === 'production') {
-			throw new Error('NODE_ENV deve ser configurada em produção')
-		}
-		return env || ''
+		return process.env.NODE_ENV ?? 'development'
 	},
 
 	/**
@@ -40,11 +36,9 @@ export const config = {
 	 * Usado para autenticação Google
 	 */
 	get googleCallbackUrl(): string {
-		const url = `${process.env.APP_URL}/api/auth/callback/google`
-		if (!url && process.env.NODE_ENV === 'production') {
-			throw new Error('APP_URL deve ser configurada em produção')
-		}
-		return url || ''
+		const base = config.appUrl
+		if (!base) return ''
+		return `${base.replace(/\/$/, '')}/api/auth/callback/google`
 	},
 
 	/**
@@ -163,10 +157,10 @@ export const configValidation = {
 	 * Valida se todas as configurações necessárias estão definidas
 	 * Deve ser chamada na inicialização da aplicação em produção
 	 */
-	validateProductionConfig(): void {
+	validateProductionConfig(): { status: 'skipped' | 'validated' } {
 		// Não executar durante o build (Next.js define NODE_ENV como 'production' durante build)
 		if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE === 'phase-production-build') {
-			return
+			return { status: 'skipped' }
 		}
 
 		const requiredVars = [
@@ -181,5 +175,10 @@ export const configValidation = {
 				`Variáveis de ambiente obrigatórias não configuradas em produção: ${missingVars.join(', ')}`
 			)
 		}
+
+		new URL(config.appUrl)
+		new URL(config.googleCallbackUrl)
+
+		return { status: 'validated' }
 	}
 }
