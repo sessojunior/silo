@@ -144,17 +144,20 @@ Todas as funções exportadas devem ter tipos:
 
 ```typescript
 // ✅ Correto
-export function getUser(email: string): Promise<User | null> {
-  return db.query.users.findFirst({
-    where: eq(users.email, email)
-  })
+import type { AuthUser } from '@/lib/db/schema'
+import { authUser } from '@/lib/db/schema'
+
+export function getUserByEmail(email: string): Promise<AuthUser | null> {
+	return db.query.authUser.findFirst({
+		where: eq(authUser.email, email),
+	})
 }
 
 // ❌ Incorreto
-export function getUser(email) {
-  return db.query.users.findFirst({
-    where: eq(users.email, email)
-  })
+export function getUserByEmail(email) {
+	return db.query.authUser.findFirst({
+		where: eq(authUser.email, email),
+	})
 }
 ```
 
@@ -210,8 +213,16 @@ const url = `${config.appUrl}/api/users`
 
 ```typescript
 export const config = {
-  appUrl: process.env.APP_URL || 'http://localhost:3000',
-  databaseUrl: process.env.DATABASE_URL || ''
+	get appUrl(): string {
+		const url = process.env.APP_URL
+		if (!url && process.env.NODE_ENV === 'production') throw new Error('APP_URL deve ser configurada em produção')
+		return url || ''
+	},
+	get databaseUrl(): string {
+		const url = process.env.DATABASE_URL
+		if (!url && process.env.NODE_ENV === 'production') throw new Error('DATABASE_URL deve ser configurada em produção')
+		return url || ''
+	},
 }
 ```
 
@@ -302,8 +313,10 @@ export function validarEmail() { }
 
 ```typescript
 // Buscar usuários do banco de dados
-async function fetchUsers(): Promise<User[]> {
-  return await db.query.users.findMany()
+import type { AuthUser } from '@/lib/db/schema'
+
+async function fetchUsers(): Promise<AuthUser[]> {
+	return await db.query.authUser.findMany()
 }
 
 // Validar domínio @inpe.br
@@ -341,11 +354,13 @@ Ex.: `src/app/api/(user)/user-profile/route.ts` atende em `/api/user-profile`.
 ### **Handler Pattern**
 
 ```typescript
+import { getAuthUser } from '@/lib/auth/token'
+
 export async function GET(request: NextRequest) {
   try {
     // Validação de autenticação
-    const session = await getSession(request)
-    if (!session) {
+		const user = await getAuthUser()
+		if (!user) {
       return NextResponse.json(
         { success: false, error: 'Não autenticado' },
         { status: 401 }
@@ -357,7 +372,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({ success: true, data })
   } catch (error) {
-    console.error('❌ [API_NAME] Erro', { error: error.message })
+		console.error('❌ [API_NAME] Erro', { error })
     return NextResponse.json(
       { success: false, error: 'Erro interno' },
       { status: 500 }
@@ -374,39 +389,40 @@ export async function GET(request: NextRequest) {
 
 ```typescript
 import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
+import { authUser } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
 // SELECT
-const user = await db.query.users.findFirst({
-  where: eq(users.email, email)
+const user = await db.query.authUser.findFirst({
+	where: eq(authUser.email, email),
 })
 
 // INSERT
-await db.insert(users).values({
-  id: 'user-123',
-  name: 'João Silva',
-  email: 'joao@inpe.br'
+await db.insert(authUser).values({
+	id: 'user-123',
+	name: 'João Silva',
+	email: 'joao@inpe.br',
 })
 
 // UPDATE
-await db.update(users)
-  .set({ name: 'João Silva Atualizado' })
-  .where(eq(users.id, userId))
+await db.update(authUser)
+	.set({ name: 'João Silva Atualizado' })
+	.where(eq(authUser.id, userId))
 
 // DELETE
-await db.delete(users)
-  .where(eq(users.id, userId))
+await db.delete(authUser)
+	.where(eq(authUser.id, userId))
 ```
 
 ### **Transações**
 
 ```typescript
 import { db } from '@/lib/db'
+import { authUser, userProfile } from '@/lib/db/schema'
 
 await db.transaction(async (tx) => {
-  await tx.insert(users).values(user)
-  await tx.insert(profiles).values(profile)
+	await tx.insert(authUser).values(user)
+	await tx.insert(userProfile).values(profile)
 })
 ```
 

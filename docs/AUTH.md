@@ -93,7 +93,7 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 1. Usuário informa apenas o email
 2. Sistema envia código OTP por email
 3. Usuário informa código recebido
-4. Sistema valida código, cria sessão e define cookie
+4. Sistema valida código, cria sessão e define cookie. A resposta também inclui `token` (o mesmo valor do cookie `session_token`), usado apenas em fluxos que precisam enviar o token explicitamente (ex.: redefinição de senha).
 
 ### **3. Registro de Usuário**
 
@@ -139,6 +139,46 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 ```
 
 O sistema envia email com código OTP para redefinição.
+
+**Passo 2: Verificar o código**
+
+**Endpoint:** `POST /api/auth/verify-code`
+
+```typescript
+// Request
+{
+  email: "usuario@inpe.br",
+  code: "347AE"
+}
+
+// Response
+{
+  success: true,
+  token: "<session_token>"
+}
+```
+
+**Passo 3: Definir a nova senha**
+
+**Endpoint:** `POST /api/auth/send-password`
+
+```typescript
+// Request
+{
+  token: "<session_token>",
+  password: "SenhaSegura@123"
+}
+
+// Response
+{
+  step: 4
+}
+```
+
+Observação:
+
+- A sessão é criada via cookie HTTP-only (`session_token`).
+- O `token` retornado é o mesmo valor definido no cookie e é usado no endpoint `send-password`. Guarde-o apenas temporariamente (em memória) até concluir o fluxo.
 
 ---
 
@@ -207,21 +247,13 @@ Arquivo: `src/app/api/auth/callback/google/route.ts`
 
 ```typescript
 export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get('code')
-  const state = request.nextUrl.searchParams.get('state')
-  
-  // Validar código e state
-  const tokens = await oauth.validateAuthorizationCode(code)
-  const userInfo = await oauth.getUserInfo(tokens.accessToken)
-  
-  // Verificar domínio
-  if (!isValidDomain(userInfo.email)) {
-    return NextResponse.redirect('/login?error=invalid_domain')
-  }
-  
-  // Criar ou atualizar usuário
-  // Criar sessão
-  // Redirect para dashboard
+	const code = request.nextUrl.searchParams.get('code')
+	const state = request.nextUrl.searchParams.get('state')
+
+	// Valida state (CSRF) e troca code por tokens (PKCE) via Arctic
+	// Em seguida, decodifica o ID token e extrai email/nome/foto
+	// Verifica domínio @inpe.br, cria/vincula usuário e cria sessão (cookie)
+	// Por fim, redireciona para /admin/welcome (ou página de erro)
 }
 ```
 
@@ -300,10 +332,7 @@ export async function recordRateLimit(params: {
 
 **Endpoints Protegidos:**
 
-- Login
-- Registro
-- Recuperação de senha
-- OTP
+- Envio de códigos OTP (login-email, register, forget-password, setup-password, email-change)
 
 ### **Sistema de Senhas**
 
@@ -333,47 +362,25 @@ Arquivo: `src/lib/auth/session.ts`
 **Criação de Sessão:**
 ```typescript
 export async function createSessionCookie(userId: string) {
-  // Gera token seguro (hash SHA-256)
-  const token = generateToken()
-  
-  // Gera hash do token para armazenar no banco
-  const hashToken = await generateHashToken(token)
-  
-  // Sessão expira em 30 dias
-  const expiresAt = new Date(Date.now() + DAY_IN_MS * 30)
-  
-  // Salva sessão no banco de dados
-  await db.insert(authSession).values({
-    id: randomUUID(),
-    userId,
-    token: hashToken,
-    expiresAt
-  })
-  
-  // Define cookie HTTP-only seguro
-  cookieStore.set('session_token', token, {
-    httpOnly: true,
-    secure: config.nodeEnv === 'production',
-    sameSite: 'lax',
-    expires: expiresAt
-  })
+	// Gera token e armazena apenas o hash no banco
+	const token = generateToken()
+	const hashToken = generateHashToken(token)
+
+	// Sessão expira em 30 dias
+	const expiresAt = new Date(Date.now() + DAY_IN_MS * 30)
+
+	// Salva sessão no banco e define cookie HTTP-only
+	await db.insert(authSession).values({ id: randomUUID(), userId, token: hashToken, expiresAt })
+	cookieStore.set('session_token', token, { httpOnly: true, secure: config.nodeEnv === 'production', sameSite: 'lax', path: '/', expires: expiresAt })
 }
 ```
 
 **Validação de Sessão:**
 ```typescript
 export async function validateSession(token: string) {
-  // Hash do token para buscar no banco
-  const hashToken = generateHashToken(token)
-  
-  // Busca sessão no banco
-  const session = await db.query.authSession.findFirst({
-    where: eq(authSession.token, hashToken)
-  })
-  
-  // Verifica expiração e renova se necessário
-  // Retorna usuário associado
-  return { session, user }
+	// Busca sessão pelo hash, valida expiração e renova se faltarem 15 dias
+	// Também remove sessões expiradas e retorna usuário associado
+	return { session, user }
 }
 ```
 
@@ -381,7 +388,7 @@ export async function validateSession(token: string) {
 - ✅ Token aleatório seguro (UUID + hash SHA-256)
 - ✅ Armazenado como hash no banco (segurança)
 - ✅ Expiração em 30 dias
-- ✅ Renovação automática (estende em 15 dias antes de expirar)
+- ✅ Renovação automática (estende em 30 dias quando faltam 15 dias)
 - ✅ Limpeza automática de sessões expiradas
 - ✅ Cookie HTTP-only (proteção XSS)
 - ✅ Secure em produção (proteção HTTPS)

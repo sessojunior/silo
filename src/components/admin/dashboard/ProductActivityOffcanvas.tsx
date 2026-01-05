@@ -29,7 +29,7 @@ interface Props {
 export default function ProductActivityOffcanvas({ open, onClose, productId, productName, date, turn, existingId = null, initialStatus = 'completed', initialDescription = '', initialCategoryId = null, onSaved, onAddSaveLog, onViewHistory }: Props) {
 	const [status, setStatus] = useState<string>(initialStatus)
 	const [description, setDescription] = useState<string>(initialDescription || '')
-	const [incidentId, setIncidentId] = useState<string | null>(initialCategoryId || null)
+	const [incidentId, setIncidentId] = useState<string | null>(initialCategoryId || '')
 	const [incidents, setIncidents] = useState<SelectOption[]>([])
 	const [allIncidents, setAllIncidents] = useState<SelectOption[]>([])
 	const [loading, setLoading] = useState(false)
@@ -40,7 +40,7 @@ export default function ProductActivityOffcanvas({ open, onClose, productId, pro
 			// reset fields when reopened
 			setStatus(initialStatus)
 			setDescription(initialDescription || '')
-			setIncidentId(initialCategoryId || null)
+			setIncidentId(initialCategoryId === NO_INCIDENTS_CATEGORY_ID ? '' : (initialCategoryId || ''))
 		}
 	}, [open, initialStatus, initialDescription, initialCategoryId])
 
@@ -84,18 +84,18 @@ export default function ProductActivityOffcanvas({ open, onClose, productId, pro
 	}, [status])
 
 	const updateIncidentsForStatus = (allOptions: SelectOption[], currentStatus: string) => {
-		// Se o status for "Concluído", permitir campo vazio OU seleção de incidentes
-		// Caso contrário, obrigar seleção de incidente real
-		if (currentStatus === 'completed') {
-			// Incluir opção vazia para permitir null quando não há incidentes
+		const requireIncidentForStatus = INCIDENT_STATUS.has(currentStatus as ProductStatus)
+
+		if (!requireIncidentForStatus) {
 			const optionsWithEmpty = [
 				{ label: 'Nenhum incidente', value: '' },
-				...allOptions.filter((option) => option.value !== NO_INCIDENTS_CATEGORY_ID)
+				...allOptions.filter((option) => option.value !== NO_INCIDENTS_CATEGORY_ID),
 			]
 			setIncidents(optionsWithEmpty)
-		} else {
-			setIncidents(allOptions.filter((option) => option.value !== NO_INCIDENTS_CATEGORY_ID))
+			return
 		}
+
+		setIncidents(allOptions.filter((option) => option.value !== NO_INCIDENTS_CATEGORY_ID))
 	}
 
 	// Carregar incidentes quando o offcanvas abre
@@ -110,13 +110,13 @@ export default function ProductActivityOffcanvas({ open, onClose, productId, pro
 		if (allIncidents.length > 0) {
 			updateIncidentsForStatus(allIncidents, status)
 
-			// Se o status não for "Concluído" e o incidente selecionado for "Não houve incidentes",
-			// limpar a seleção
-			if (status !== 'completed' && incidentId === NO_INCIDENTS_CATEGORY_ID) {
-				setIncidentId(null)
-			}
+			if (incidentId === NO_INCIDENTS_CATEGORY_ID) setIncidentId('')
 		}
 	}, [status, allIncidents, incidentId])
+
+	useEffect(() => {
+		if (!isRealIncident(incidentId)) setDescription('')
+	}, [incidentId])
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -151,7 +151,7 @@ export default function ProductActivityOffcanvas({ open, onClose, productId, pro
 				turn,
 				status,
 				description,
-				problemCategoryId: incidentId === '' ? null : incidentId,
+				problemCategoryId: incidentId && incidentId !== NO_INCIDENTS_CATEGORY_ID ? incidentId : null,
 			}
 			const url = '/api/admin/products/activities'
 			let method: 'POST' | 'PUT' = 'POST'
@@ -255,7 +255,7 @@ export default function ProductActivityOffcanvas({ open, onClose, productId, pro
 					<div className='flex-1'>
 						<Label required={requireIncident}>Incidentes</Label>
 						<div className='flex items-center gap-2'>
-							<Select name='incident' options={incidents} selected={incidentId ?? undefined} onChange={setIncidentId} placeholder='Selecione o incidente' required={requireIncident} />
+							<Select name='incident' options={incidents} selected={incidentId ?? undefined} onChange={setIncidentId} placeholder='Selecione o incidente' required={requireIncident} clearable={!requireIncident} onClear={() => setIncidentId(null)} />
 							<Button icon='icon-[lucide--settings]' type='button' style='bordered' onClick={() => setIncidentManagementOpen(true)} className='px-3 py-3 h-12' title='Gerenciar incidentes'></Button>
 						</div>
 					</div>

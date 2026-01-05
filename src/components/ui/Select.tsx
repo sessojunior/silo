@@ -17,11 +17,13 @@ export interface SelectProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onCha
 	options: SelectOption[]
 	required?: boolean
 	onChange?: (value: string) => void
+	clearable?: boolean
+	onClear?: () => void
 	isInvalid?: boolean
 	invalidMessage?: string
 }
 
-export default function Select({ placeholder = 'Selecione...', id, name, selected = null, isInvalid = false, invalidMessage, options, required = false, onChange, ...props }: SelectProps) {
+export default function Select({ placeholder = 'Selecione...', id, name, selected = null, isInvalid = false, invalidMessage, options, required = false, onChange, clearable = false, onClear, ...props }: SelectProps) {
 	const [isOpen, setIsOpen] = useState(false)
 	const [search, setSearch] = useState('')
 	const [highlight, setHighlight] = useState(0)
@@ -31,7 +33,9 @@ export default function Select({ placeholder = 'Selecione...', id, name, selecte
 	const dropdownRef = useRef<HTMLDivElement>(null)
 
 	const filtered = options.filter((opt) => opt.label.toLowerCase().includes(search.toLowerCase()))
-	const selectedLabel = options.find((opt) => opt.value === selected)?.label || 'Selecione...'
+	const hasSelection = selected !== null && selected !== undefined
+	const selectedLabel = options.find((opt) => opt.value === selected)?.label
+	const canClear = clearable && selected !== null && selected !== undefined && selected !== ''
 
 	useEffect(() => {
 		function onClickOutside(e: MouseEvent) {
@@ -99,19 +103,41 @@ export default function Select({ placeholder = 'Selecione...', id, name, selecte
 				aria-haspopup='listbox'
 				aria-expanded={isOpen}
 				className={twMerge(
-					clsx('relative w-full cursor-pointer rounded-lg border bg-white pl-4 pr-10 py-3 text-left text-base text-zinc-700 transition focus:outline-none', 'dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-200', isInvalid ? 'border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-600 dark:border-red-800 dark:focus:border-red-800 dark:focus:ring-red-800' : 'focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:focus:ring-zinc-600', {
+					clsx('relative w-full cursor-pointer rounded-lg border bg-white pl-4 py-3 text-left text-base text-zinc-700 transition focus:outline-none', canClear ? 'pr-16' : 'pr-10', 'dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-200', isInvalid ? 'border-red-400 focus:border-red-400 focus:ring-1 focus:ring-red-600 dark:border-red-800 dark:focus:border-red-800 dark:focus:ring-red-800' : 'focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:focus:ring-zinc-600', {
 						'border-blue-300': isOpen && !isInvalid,
 						'border-zinc-200': !isOpen && !isInvalid,
 					}),
 				)}
 			>
-				<span className='block w-full truncate'>{selected ? selectedLabel : <span className='text-zinc-400'>{placeholder ?? 'Selecione...'}</span>}</span>
+				<span className='block w-full truncate'>
+					{hasSelection && selectedLabel ? selectedLabel : <span className='text-zinc-400'>{placeholder ?? 'Selecione...'}</span>}
+				</span>
 
 				{/* Ícone */}
 				<span className='pointer-events-none absolute inset-y-0 right-3 flex items-center text-zinc-400 dark:text-zinc-500'>
 					<span className={twMerge('icon-[lucide--chevron-down] size-4 transition-transform duration-200 ease-in-out', isOpen && 'rotate-180')} />
 				</span>
 			</button>
+
+			{canClear && (
+				<button
+					type='button'
+					onClick={(e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						if (onClear) onClear()
+						else onChange?.('')
+						setIsOpen(false)
+						setSearch('')
+						setHighlight(0)
+					}}
+					className='absolute inset-y-0 right-9 flex items-center text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300'
+					aria-label='Limpar seleção'
+					title='Limpar seleção'
+				>
+					<span className='icon-[lucide--x] size-4' />
+				</button>
+			)}
 
 			{/* Dropdown */}
 			{isOpen && (
@@ -160,7 +186,7 @@ export default function Select({ placeholder = 'Selecione...', id, name, selecte
 			)}
 
 			{/* Input hidden para formulário */}
-			<input type='hidden' name={name} value={selected || ''} required={required} />
+			<input type='hidden' name={name} value={selected ?? ''} required={required} />
 
 			{isInvalid && <Message>{invalidMessage}</Message>}
 		</div>

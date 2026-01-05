@@ -96,7 +96,7 @@ export const DEFAULT_STATUS: ProductStatus = 'pending'
 /**
  * Status que são considerados incidentes
  */
-export const INCIDENT_STATUS = new Set<ProductStatus>(['pending', 'under_support', 'suspended', 'not_run', 'with_problems', 'run_again'])
+export const INCIDENT_STATUS = new Set<ProductStatus>(['under_support', 'suspended', 'not_run', 'with_problems', 'run_again'])
 
 /**
  * Mapeia status para cor (usado no Product.tsx)

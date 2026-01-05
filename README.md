@@ -39,8 +39,8 @@ O **Silo** centraliza e estrutura operações críticas em uma única plataforma
 #### 💬 Chat
 
 - Comunicação em grupos e DMs
-- Sistema de presença com 4 estados
-- Notificações em tempo real
+- Sistema de presença com 2 estados (visível/invisível)
+- Indicadores e contadores de mensagens não lidas
 
 #### 👥 Gestão
 
@@ -104,8 +104,8 @@ npm run dev
 - **Database:** PostgreSQL + Drizzle ORM
 - **Upload/Arquivos:** Route Handlers do Next (Sharp)
 - **UI:** Tailwind CSS 4 + Design System customizado
-- **Auth:** JWT + OAuth Google (Arctic 3.7.0)
-- **Charts:** ApexCharts 4.7.0
+- **Auth:** Sessão via cookie HTTP-only + OAuth Google (Arctic 3.7.0)
+- **Charts:** ApexCharts 5.3.6
 
 ### **Estrutura**
 
@@ -221,10 +221,10 @@ SMTP_PASSWORD='senha'
 
 - ✅ Validação de domínio @inpe.br
 - ✅ Ativação obrigatória de usuários
-- ✅ Rate limiting (3 tentativas/min)
-- ✅ JWT com expiração
+- ✅ Rate limiting (3 tentativas/min) para envio de códigos OTP
+- ✅ Sessões no banco com cookie HTTP-only (token armazenado como hash)
 - ✅ Proteções contra auto-modificação
-- ✅ CORS configurado
+- ✅ CORS aplicado apenas nas rotas de leitura de uploads (quando necessário)
 
 ### 🚨 **ALERTA CRÍTICO: Prefetch em Links de Logout**
 
@@ -262,21 +262,13 @@ O Next.js prefetcha automaticamente links visíveis na tela. Se um link apontar 
 - **Módulos:** 8 principais
 - **APIs:** 40+ endpoints
 - **TypeScript:** Strict mode
-- **Performance:** Otimizado com SWR, lazy loading
+- **Performance:** Otimizado com App Router, lazy loading e divisão de componentes
 - **Responsivo:** Mobile, tablet, desktop
 - **Dark Mode:** Completo em todos os componentes
 
 ---
 
-## 🤝 **Contribuição**
-
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'feat: Add AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-**Padrões:**
+## 🤝 **Padrões:**
 
 - TypeScript strict
 - Zero warnings de lint

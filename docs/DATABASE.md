@@ -141,23 +141,24 @@ drizzle/
 
 ## ✅ **BOAS PRÁTICAS**
 
-### **1. Índices Otimizados**
+### **1. Índices Onde Necessário**
 
-Todas as FK têm índices para performance:
+O schema define índices apenas onde há ganho real de performance (consultas frequentes/alto volume). Exemplos no `schema.ts`:
 
 ```typescript
-export const authSession = pgTable(
-	'auth_session',
+export const userGroup = pgTable(
+	'user_group',
 	{
 		id: uuid('id').primaryKey().defaultRandom(),
-		userId: text('user_id')
-			.notNull()
-			.references(() => authUser.id, { onDelete: 'cascade' }),
-		token: text('token').notNull(),
-		expiresAt: timestamp('expires_at').notNull(),
+		userId: text('user_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }),
+		groupId: text('group_id').notNull().references(() => group.id, { onDelete: 'cascade' }),
+		joinedAt: timestamp('joined_at').notNull().defaultNow(),
+		createdAt: timestamp('created_at').notNull().defaultNow(),
 	},
 	(table) => ({
-		userIdIdx: index('idx_auth_session_user_id').on(table.userId),
+		uniqueUserGroup: unique('unique_user_group').on(table.userId, table.groupId),
+		userIdIdx: index('idx_user_group_user_id').on(table.userId),
+		groupIdIdx: index('idx_user_group_group_id').on(table.groupId),
 	}),
 )
 ```
@@ -242,7 +243,7 @@ details: jsonb('details').$type<Record<string, unknown>>()
 
 ### **8. UUID para Alta Concorrência**
 
-IDs onde há muitas inserções concorrentes:
+Quando faz sentido (ex.: histórico, relacionamentos e entidades com alta taxa de criação), o schema usa `uuid(...).defaultRandom()`. Em outras tabelas, o `id` é `text(...)` e o código gera IDs com `randomUUID()` na aplicação (ex.: autenticação/sessões).
 
 ```typescript
 id: uuid('id').defaultRandom().primaryKey()

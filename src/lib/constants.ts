@@ -11,5 +11,5 @@ export const NO_INCIDENTS_CATEGORY_ID = 'no_incidents'
  * @returns true se for um incidente real, false se for "Não houve incidentes"
  */
 export const isRealIncident = (categoryId: string | null): boolean => {
-	return categoryId !== null && categoryId !== NO_INCIDENTS_CATEGORY_ID
+	return categoryId !== null && categoryId !== '' && categoryId !== NO_INCIDENTS_CATEGORY_ID
 }

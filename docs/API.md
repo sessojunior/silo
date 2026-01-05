@@ -128,6 +128,11 @@ Response:
 }
 ```
 
+Observação:
+
+- A sessão é criada via cookie HTTP-only (`session_token`).
+- O `token` retornado é o mesmo valor definido no cookie e pode ser necessário em fluxos que enviam o token explicitamente (ex.: `POST /api/auth/send-password`). Nesses casos, guarde-o apenas temporariamente (em memória) até concluir o fluxo.
+
 ### **Recuperação de Senha**
 
 ```http
@@ -186,7 +191,7 @@ Response:
 ```http
 GET /api/auth/callback/google?code=abc123&state=xyz
 
-Response: Redirect para /admin/dashboard
+Response: Redirect para /admin/welcome
 ```
 
 ### **Logout**
@@ -366,7 +371,7 @@ GET /api/admin/check-admin
 Response:
 {
   "success": true,
-  "data": { isAdmin: true }
+  "isAdmin": true
 }
 ```
 
@@ -378,15 +383,18 @@ GET /api/admin/users
 Response:
 {
   "success": true,
-  "data": [
-    {
-      id: "123",
-      name: "João Silva",
-      email: "joao@inpe.br",
-      isActive: true,
-      lastLogin: "2024-01-15T10:00:00.000Z"
-    }
-  ]
+  "data": {
+    "items": [
+      {
+        "id": "123",
+        "name": "João Silva",
+        "email": "joao@inpe.br",
+        "isActive": true,
+        "lastLogin": "2024-01-15T10:00:00.000Z"
+      }
+    ],
+    "total": 1
+  }
 }
 
 PUT /api/admin/users
