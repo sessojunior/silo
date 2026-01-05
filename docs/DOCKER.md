@@ -50,26 +50,36 @@ O **Silo** usa **1 container**:
 
 ### **Variáveis de Ambiente**
 
-Crie um arquivo `.env` na raiz do projeto:
+O projeto possui arquivos de exemplo prontos:
+
+- Desenvolvimento local (sem Docker): `env.example` (formato compatível com `dotenv`)
+- Docker Compose: `env.docker.example` (formato compatível com `.env` do Docker Compose)
+
+Para evitar inconsistências, copie um desses arquivos para `.env` na raiz do projeto.
 
 ```bash
 # Banco de Dados
-DATABASE_URL='postgresql://usuario:senha@host:5432/banco'
+DATABASE_URL=postgresql://usuario:senha@host:5432/silo_db
 
 # URLs do sistema
-APP_URL='http://localhost:3000'
+APP_URL=http://localhost:3000
 
 # Google OAuth (opcional)
-GOOGLE_CLIENT_ID=''
-GOOGLE_CLIENT_SECRET=''
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 
 # Email SMTP
-SMTP_HOST='smtp.seuservidor.com'
-SMTP_PORT='587'
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USERNAME='seu-email@dominio.com'
-SMTP_PASSWORD='sua-senha'
+SMTP_USERNAME=
+SMTP_PASSWORD=
 ```
+
+Observações:
+
+- Para Docker Compose, evite aspas no `.env` para não incluir aspas no valor final.
+- O banco de dados não sobe no `docker-compose.yml` deste projeto; o `DATABASE_URL` deve apontar para um PostgreSQL externo.
 
 ### **Arquivo docker-compose.yml**
 
@@ -175,10 +185,7 @@ Após iniciar os containers:
 
 ### **Estratégia de Deploy**
 
-O projeto **Silo** está configurado para deploy separado:
-
-- **Frontend Next.js**: Deploy no Vercel ou em servidor próprio
-- **FileServer**: Deploy em servidor próprio (CPTEC/INPE)
+O projeto **Silo** é uma aplicação Next.js (frontend + APIs) com uploads locais servidos por route handlers (`/uploads/...`).
 
 ### **Deploy do Frontend (Vercel)**
 

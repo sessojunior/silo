@@ -29,41 +29,46 @@ O sistema usa **SMTP** para envio de emails institucionais:
 
 ### **Variáveis de Ambiente**
 
+O projeto centraliza a leitura em `src/lib/config.ts` e usa estas variáveis:
+
 ```bash
 # .env
 
-SMTP_HOST='smtp.exemplo.com'
-SMTP_PORT='587'
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USERNAME='usuario@exemplo.com'
-SMTP_PASSWORD='senha-do-email'
+SMTP_USERNAME=
+SMTP_PASSWORD=
 ```
 
 Observações:
 
-- `SMTP_PORT` é convertido para número (ex.: `'587'` funciona).
+- `SMTP_PORT` é convertido para número (ex.: `587` e `'587'` funcionam no Node).
 - `SMTP_SECURE` deve ser a string `true` para ativar SSL (porta 465). Qualquer outro valor resulta em `false`.
+- Em `production`, o projeto valida e falha na inicialização se `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME` ou `SMTP_PASSWORD` estiverem ausentes.
 
 ### **Tipos de Conexão**
+
+Se você estiver usando Docker Compose, prefira valores sem aspas no `.env`. Para desenvolvimento local com `dotenv`, aspas também funcionam.
 
 #### **SMTP com TLS (Porta 587) - Recomendado**
 
 ```bash
-SMTP_HOST='smtp.gmail.com'
-SMTP_PORT='587'
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USERNAME='seu-email@gmail.com'
-SMTP_PASSWORD='senha-do-app'
+SMTP_USERNAME=seu-email@gmail.com
+SMTP_PASSWORD=senha-do-app
 ```
 
 #### **SMTP com SSL (Porta 465)**
 
 ```bash
-SMTP_HOST='smtp.gmail.com'
-SMTP_PORT='465'
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
 SMTP_SECURE=true
-SMTP_USERNAME='seu-email@gmail.com'
-SMTP_PASSWORD='senha-do-app'
+SMTP_USERNAME=seu-email@gmail.com
+SMTP_PASSWORD=senha-do-app
 ```
 
 ### **Arquivo de Configuração**
@@ -73,15 +78,7 @@ Arquivo: `src/lib/config.ts`
 ```typescript
 import { config } from '@/lib/config'
 
-const smtpConfig = {
-	host: config.email.host,
-	port: config.email.port,
-	secure: config.email.secure,
-	auth: {
-		user: config.email.username,
-		pass: config.email.password,
-	},
-}
+const { host, port, secure, username, password, from } = config.email
 ```
 
 ---

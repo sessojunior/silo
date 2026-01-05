@@ -76,15 +76,21 @@ Contexto entre `[]` em MAIÚSCULAS, sem acentos:
 
 ```typescript
 // ✅ Correto
-console.log('ℹ️ [API_CHAT] Mensagem enviada', { userId, groupId })
-console.error('❌ [HOOK_USERS] Erro ao carregar usuários', { error })
-console.warn('⚠️ [COMPONENT_KANBAN] Estado inválido', { state })
+console.log('ℹ️ [API_CHAT_MESSAGES] Mensagem enviada', { userId, groupId })
+console.error('❌ [API_USERS] Erro ao carregar usuários', { error })
+console.warn('⚠️ [COMPONENT_PRODUCT_ACTIVITY] Estado inválido', { state })
 
 // ❌ Incorreto
 console.log('ℹ️ [api-chat] Mensagem enviada')  // minúsculas
 console.log('ℹ️ [API Chat] Mensagem enviada')  // com espaço
 console.log('ℹ️ [API] Mensagem enviada')       // contexto genérico demais
 ```
+
+Recomendação prática (padrão usado no projeto):
+
+- `src/app/api/...` → `API_...` (ex.: `API_PRODUCTS_ACTIVITIES`, `API_USER_PROFILE`)
+- `src/lib/...` → `LIB_...` (ex.: `LIB_SEND_EMAIL`, `LIB_PROFILE_IMAGE`) ou um nome curto (ex.: `INIT`)
+- `src/components/...` → `COMPONENT_...` (ex.: `COMPONENT_PRODUCT_ACTIVITY`)
 
 ### **Detalhes**
 
@@ -104,14 +110,18 @@ console.error('❌ [API_AUTH] Erro no login', 'usuario@inpe.br')
 
 ### **Contextos Comuns**
 
-- `[API_CHAT]` - APIs de chat
-- `[API_AUTH]` - Autenticação
-- `[API_ADMIN]` - Administração
-- `[HOOK_USERS]` - Hooks de usuário
-- `[COMPONENT_KANBAN]` - Kanban
-- `[PAGE_PROJECTS]` - Página de projetos
-- `[DB_QUERY]` - Queries de banco
-- `[FILE_UPLOAD]` - Upload de arquivos
+Alguns exemplos reais do projeto (use como referência, não como lista fechada):
+
+- `[API_USERS]` - Rotas de usuários no admin
+- `[API_PRODUCTS_ACTIVITIES]` - Acontecimentos de produtos (admin)
+- `[API_CHAT_MESSAGES]` - Mensagens do chat (admin)
+- `[API_REPORTS_*]` - Relatórios (admin)
+- `[API_USER_PROFILE]` - Perfil do usuário
+- `[LIB_SEND_EMAIL]` - Envio de emails
+- `[LIB_PROFILE_IMAGE]` - Processamento de imagens de perfil
+- `[AUTH_SESSION]` - Sessões e autenticação
+- `[COMPONENT_PRODUCT_ACTIVITY]` - UI do offcanvas de atividade
+- `[COMPONENT_UPLOAD_BUTTON]` - Upload de arquivos no frontend
 
 ---
 
@@ -121,7 +131,7 @@ console.error('❌ [API_AUTH] Erro no login', 'usuario@inpe.br')
 
 ```typescript
 // Ação completada com sucesso
-console.log('ℹ️ [API_CHAT] Mensagem criada', {
+console.log('ℹ️ [API_CHAT_MESSAGES] Mensagem criada', {
   messageId: msg.id,
   senderId: msg.senderUserId,
   groupId: msg.receiverGroupId
@@ -136,7 +146,7 @@ try {
 } catch (error) {
   console.error('❌ [DB_QUERY] Erro ao criar usuário', {
     email: newUser.email,
-    error: error.message
+    error: error instanceof Error ? error.message : String(error)
   })
   throw error
 }
