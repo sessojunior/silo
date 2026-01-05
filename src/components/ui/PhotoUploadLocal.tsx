@@ -32,6 +32,21 @@ export default function PhotoUploadLocal({ image, className }: PhotoUploadLocalP
 		}
 	}, [image])
 
+	const extractErrorMessage = (data: unknown): string | null => {
+		if (!data || typeof data !== 'object') return null
+		const message = (data as Record<string, unknown>).message
+		return typeof message === 'string' && message.trim().length > 0 ? message : null
+	}
+
+	const getResponseErrorMessage = async (response: Response): Promise<string | null> => {
+		try {
+			const data: unknown = await response.json()
+			return extractErrorMessage(data)
+		} catch {
+			return null
+		}
+	}
+
 	const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0]
 		if (!file) return
@@ -93,13 +108,15 @@ export default function PhotoUploadLocal({ image, className }: PhotoUploadLocalP
 					
 					toast({ type: 'success', title: 'Imagem atualizada', description: 'Sua imagem de perfil foi alterada com sucesso.' })
 				} else {
-					throw new Error('Erro ao atualizar imagem no banco de dados')
+					const message = await getResponseErrorMessage(apiRes)
+					throw new Error(message ?? 'Erro ao atualizar imagem no banco de dados')
 				}
 			}
 		} catch (error) {
 			console.error('❌ [COMPONENT_PHOTO_UPLOAD] Erro no upload:', { error })
 			setIsInvalid(true)
-			setInvalidMessage('Erro ao fazer upload da imagem. Tente novamente.')
+			const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer upload da imagem. Tente novamente.'
+			setInvalidMessage(errorMessage)
 			toast({ type: 'error', title: 'Erro no upload' })
 		} finally {
 			setIsUploading(false)
@@ -112,8 +129,8 @@ export default function PhotoUploadLocal({ image, className }: PhotoUploadLocalP
 
 	const handleDelete = async () => {
 		try {
-			const ok = await fetch('/api/user-profile-image', { method: 'DELETE' }).then((r) => r.ok)
-			if (ok) {
+			const response = await fetch('/api/user-profile-image', { method: 'DELETE' })
+			if (response.ok) {
 				setPreviewUrl(null)
 				
 				// Atualizar contexto removendo imagem
@@ -121,7 +138,8 @@ export default function PhotoUploadLocal({ image, className }: PhotoUploadLocalP
 				
 				toast({ type: 'success', title: 'Imagem removida', description: 'Sua imagem de perfil foi removida.' })
 			} else {
-				throw new Error('Não foi possível remover a imagem.')
+				const message = await getResponseErrorMessage(response)
+				throw new Error(message ?? 'Não foi possível remover a imagem.')
 			}
 		} catch (err) {
 			setIsInvalid(true)

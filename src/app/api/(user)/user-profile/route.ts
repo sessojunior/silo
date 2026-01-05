@@ -13,7 +13,7 @@ export async function GET() {
 	try {
 		// Verifica se o usuário está logado e obtém os dados do usuário
 		const user = await getAuthUser()
-		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 400 })
+		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 401 })
 
 		// Busca os dados do perfil do usuário no banco de dados
 		const findUserProfile = await db.query.userProfile.findFirst({ where: eq(userProfile.userId, user.id) })
@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest) {
 	try {
 		// Verifica se o usuário está logado e obtém os dados do usuário
 		const user = await getAuthUser()
-		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 400 })
+		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 401 })
 
 		// Obtem os dados recebidos
 		const body = await req.json()

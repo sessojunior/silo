@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 	try {
 		// Verifica se o usuário está logado e obtém os dados do usuário
 		const user = await getAuthUser()
-		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 400 })
+		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 401 })
 
 		const currentUser = await db.select({ image: authUser.image }).from(authUser).where(eq(authUser.id, user.id)).limit(1)
 		const currentImageUrl = currentUser[0]?.image ?? null
@@ -61,7 +61,7 @@ export async function DELETE() {
 	try {
 		// Verifica se o usuário está logado e obtém os dados do usuário
 		const user = await getAuthUser()
-		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 400 })
+		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 401 })
 
 		// Busca a imagem atual do usuário
 		const currentUser = await db.select({ image: authUser.image }).from(authUser).where(eq(authUser.id, user.id)).limit(1)

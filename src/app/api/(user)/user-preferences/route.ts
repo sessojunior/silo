@@ -10,7 +10,7 @@ export async function GET() {
 	try {
 		// Verifica se o usuário está logado e obtém os dados do usuário
 		const user = await getAuthUser()
-		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 400 })
+		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 401 })
 
 		// Busca as preferências do usuário no banco de dados
 		const findUserPreferences = await db.query.userPreferences.findFirst({
@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest) {
 	try {
 		// Verifica se o usuário está logado e obtém os dados do usuário
 		const user = await getAuthUser()
-		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 400 })
+		if (!user) return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 401 })
 
 		// Obtem os dados recebidos
 		const body = await req.json()
