@@ -1,27 +1,55 @@
-# Dockerfile simplificado para Next.js
+# ======================================================
+# Dockerfile para aplicação Next.js
+# ======================================================
+
+# Imagem base com Node.js (Alpine)
 FROM node:22-alpine
 
-# Atualiza pacotes do Alpine para corrigir vulnerabilidades de segurança
+# ------------------------------------------------------
+# Atualiza pacotes do Alpine para correções de segurança
+# ------------------------------------------------------
 RUN apk update && apk upgrade && rm -rf /var/cache/apk/*
 
-# Define diretório de trabalho
+# ------------------------------------------------------
+# Define o diretório de trabalho dentro do container
+# ------------------------------------------------------
 WORKDIR /app
 
-# Copia os arquivos package.json e package-lock.json para o diretório de trabalho /app (.)
-COPY package*.json .
+# ------------------------------------------------------
+# Copia apenas os arquivos de dependências
+# ------------------------------------------------------
+COPY package.json package-lock.json* ./
 
-# Instala as dependências (ci = clean install) removendo node_modules e instalando as dependências novamente
-# Ou poderia usar o npm install, mas o npm ci é mais rápido e seguro
+# ------------------------------------------------------
+# Instala dependências de forma limpa e previsível
+# npm ci é recomendado para ambientes de produção
+# ------------------------------------------------------
 RUN npm ci
 
-# Copia todo o conteúdo do projeto que está no diretório atual (.) para o diretório de trabalho /app (.)
+# ------------------------------------------------------
+# Copia todo o restante do código da aplicação
+# ------------------------------------------------------
 COPY . .
 
-# Build da aplicação
+# ------------------------------------------------------
+# Define explicitamente o ambiente como produção
+# Evita warnings e comportamentos inconsistentes do Next.js
+# ------------------------------------------------------
+ENV NODE_ENV=production
+
+# ------------------------------------------------------
+# Executa o build da aplicação Next.js
+# Isso gera a pasta .next necessária para o next start
+# ------------------------------------------------------
 RUN npm run build
 
-# Expõe porta 3000
+# ------------------------------------------------------
+# Expõe a porta padrão do Next.js
+# ------------------------------------------------------
 EXPOSE 3000
 
-# Comando de inicialização (executa como root/admin)
-CMD ["npm", "start"]
+# ------------------------------------------------------
+# Comando de inicialização do container
+# Usa o servidor de produção do Next.js
+# ------------------------------------------------------
+CMD ["npm", "run", "start"]
