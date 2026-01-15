@@ -55,7 +55,7 @@ O **Silo** centraliza e estrutura operações críticas em uma única plataforma
 ### **Opção 1: Docker (Recomendado)**
 
 ```bash
-# 1. Configurar variáveis de ambiente
+# 1. Configurar variáveis de ambiente 
 cp env.example .env
 
 # Edite o arquivo .env com suas configurações
