@@ -50,19 +50,26 @@ O **Silo** usa **1 container**:
 
 ### **Variáveis de Ambiente**
 
-O projeto possui arquivos de exemplo prontos:
+O projeto possui um arquivo de exemplo pronto:
 
-- Desenvolvimento local (sem Docker): `env.example` (formato compatível com `dotenv`)
-- Docker Compose: `env.docker.example` (formato compatível com `.env` do Docker Compose)
+- `env.example` (formato compatível com `dotenv` e `.env` do Docker Compose)
 
-Para evitar inconsistências, copie um desses arquivos para `.env` na raiz do projeto.
+Para evitar inconsistências, copie o arquivo para `.env` na raiz do projeto.
 
 ```bash
-# Banco de Dados
-DATABASE_URL=postgresql://usuario:senha@host:5432/silo_db
+# Ambiente
+NODE_ENV=production # development ou production
 
-# URLs do sistema
-APP_URL=http://localhost:3000
+# Banco de Dados
+DATABASE_URL_DEV=postgresql://usuario:senha@host:5432/silo_db
+DATABASE_URL_PROD=postgresql://usuario:senha@host:5432/silo_db
+
+# URLs da aplicação
+NEXT_PUBLIC_BASE_PATH=/silo
+APP_URL_DEV=http://localhost:3000/silo
+APP_URL_PROD=https://fortuna.cptec.inpe.br/silo
+BETTER_AUTH_URL=https://fortuna.cptec.inpe.br/silo
+BETTER_AUTH_SECRET=your_secret_key_here
 
 # Google OAuth (opcional)
 GOOGLE_CLIENT_ID=
@@ -79,7 +86,7 @@ SMTP_PASSWORD=
 Observações:
 
 - Para Docker Compose, evite aspas no `.env` para não incluir aspas no valor final.
-- O banco de dados não sobe no `docker-compose.yml` deste projeto; o `DATABASE_URL` deve apontar para um PostgreSQL externo.
+- O banco de dados não sobe no `docker-compose.yml` deste projeto; as variáveis `DATABASE_URL_DEV`/`DATABASE_URL_PROD` devem apontar para um PostgreSQL externo.
 
 ### **Arquivo docker-compose.yml**
 
@@ -105,7 +112,7 @@ Copy-Item env.example .env
 npm run dev
 
 # ✅ Pronto! Acesse:
-# Frontend: http://localhost:3000
+# Frontend: http://localhost:3000/silo
 ```
 
 **Para parar**: Pressione `Ctrl+C` em cada terminal.
@@ -131,7 +138,7 @@ docker compose up --build
 # 4. Mostrar logs em tempo real
 
 # ✅ Aguarde a mensagem: "ready - started server on..."
-# ✅ Acesse: http://localhost:3000
+# ✅ Acesse: http://localhost:3000/silo
 ```
 
 **Executar em segundo plano:**
@@ -176,8 +183,8 @@ docker compose up --build app
 
 Após iniciar os containers:
 
-- **Frontend**: http://localhost:3000
-- **Uploads**: `GET /uploads/<type>/<filename>`
+- **Frontend**: http://localhost:3000/silo
+- **Uploads**: `GET /silo/uploads/<type>/<filename>`
 
 ---
 
@@ -185,7 +192,7 @@ Após iniciar os containers:
 
 ### **Estratégia de Deploy**
 
-O projeto **Silo** é uma aplicação Next.js (frontend + APIs) com uploads locais servidos por route handlers (`/uploads/...`).
+O projeto **Silo** é uma aplicação Next.js (frontend + APIs) com uploads locais servidos por route handlers (`/silo/uploads/...`).
 
 ### **Deploy do Frontend (Vercel)**
 
@@ -223,11 +230,16 @@ O Vercel fará deploy automaticamente apenas do frontend Next.js.
 ### **Configurações de Produção**
 
 ```bash
+# Caminho base da aplicação (mantido fixo neste projeto)
+NEXT_PUBLIC_BASE_PATH='/silo'
+
 # Desenvolvimento
-APP_URL='http://localhost:3000'
+APP_URL_DEV='http://localhost:3000/silo'
 
 # Produção
-APP_URL='https://silo.cptec.inpe.br'
+APP_URL_PROD='https://fortuna.cptec.inpe.br/silo'
+BETTER_AUTH_URL='https://fortuna.cptec.inpe.br/silo'
+BETTER_AUTH_SECRET='your_secret_key_here'
 ```
 
 **⚠️ Importante para Produção:**
@@ -310,14 +322,14 @@ docker compose logs app | findstr ERROR
 
 ## 📊 **QUANDO USAR CADA OPÇÃO?**
 
-| Situação | Recomendação |
-|----------|--------------|
+| Situação                 | Recomendação                        |
+| ------------------------ | ----------------------------------- |
 | **Desenvolvendo código** | Desenvolvimento Local (npm run dev) |
-| **Testando o sistema** | Docker |
-| **Primeira vez usando** | Docker |
-| **Deploy em servidor** | Docker |
-| **Debugando problemas** | Desenvolvimento Local |
-| **Demonstração rápida** | Docker |
+| **Testando o sistema**   | Docker                              |
+| **Primeira vez usando**  | Docker                              |
+| **Deploy em servidor**   | Docker                              |
+| **Debugando problemas**  | Desenvolvimento Local               |
+| **Demonstração rápida**  | Docker                              |
 
 ---
 

@@ -1,105 +1,77 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { eq, and, gt, lt } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { authUser, authCode } from '@/lib/db/schema'
-import { hashPassword } from '@/lib/auth/hash'
-import { isValidPassword, isValidEmail, isValidCode } from '@/lib/auth/validate'
+import { NextRequest } from "next/server";
+import { auth } from "@/lib/auth/server";
+import { db } from "@/lib/db";
+import { authAccount, authUser } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import { hashPassword } from "@/lib/auth/hash";
+import { headers } from "next/headers";
+import { successResponse, errorResponse } from "@/lib/api-response";
+import { randomUUID } from "crypto";
 
-// Define a senha inicial do usuário usando código OTP
 export async function POST(req: NextRequest) {
-	try {
-		const body = await req.json()
-		const email = (body.email as string)?.trim().toLowerCase()
-		const code = (body.code as string)?.trim().toUpperCase() // Normalizar para maiúsculas
-		const password = body.password as string
+  try {
+    const { email, code, password } = await req.json();
 
-		// Validação básica dos campos
-		if (!email || !code || !password) {
-			return NextResponse.json(
-				{ field: null, message: 'E-mail, código e senha são obrigatórios.' },
-				{ status: 400 },
-			)
-		}
+    if (!email || !code || !password) {
+      return errorResponse("Todos os campos são obrigatórios.", 400);
+    }
 
-		if (!isValidEmail(email)) {
-			return NextResponse.json({ field: 'email', message: 'O e-mail é inválido.' }, { status: 400 })
-		}
+    // 1. Verify OTP
+    const verification = await auth.api.checkVerificationOTP({
+      body: {
+        email,
+        otp: code,
+        type: "forget-password",
+      },
+      headers: await headers(),
+    });
 
-		if (!isValidCode(code)) {
-			return NextResponse.json({ field: 'code', message: 'O código é inválido.' }, { status: 400 })
-		}
+    if (!verification?.success) {
+      return errorResponse("Código inválido ou expirado.", 400, {
+        field: "code",
+      });
+    }
 
-		if (!isValidPassword(password)) {
-			return NextResponse.json({ field: 'password', message: 'A senha é inválida.' }, { status: 400 })
-		}
+    // 2. Find user
+    const user = await db.query.authUser.findFirst({
+      where: eq(authUser.email, email),
+    });
 
-		// Verifica se o usuário existe
-		const user = await db.query.authUser.findFirst({ where: eq(authUser.email, email) })
-		if (!user) {
-			return NextResponse.json(
-				{ field: 'email', message: 'Não existe um usuário com este e-mail.' },
-				{ status: 400 },
-			)
-		}
+    if (!user) {
+      return errorResponse("Usuário não encontrado.", 404);
+    }
 
-		// Verifica se o código OTP é válido e não expirou
-		const otpCode = await db.query.authCode.findFirst({
-			where: and(
-				eq(authCode.email, email),
-				eq(authCode.code, code.trim().toUpperCase()), // Garantir maiúsculas e sem espaços
-				eq(authCode.userId, user.id), // Garantir que o código pertence ao usuário
-				gt(authCode.expiresAt, new Date()),
-			),
-		})
+    // 3. Update password
+    const hashedPassword = await hashPassword(password);
 
-		if (!otpCode) {
-			// Limpa códigos expirados deste usuário (menores que a data atual = expirados)
-			await db.delete(authCode).where(and(eq(authCode.email, email), lt(authCode.expiresAt, new Date())))
+    // Check if account exists
+    const account = await db.query.authAccount.findFirst({
+      where: and(
+        eq(authAccount.userId, user.id),
+        eq(authAccount.providerId, "credential"),
+      ),
+    });
 
-			// Verifica se existe algum código com esse valor mas expirado
-			const expiredCode = await db.query.authCode.findFirst({
-				where: and(
-					eq(authCode.email, email),
-					eq(authCode.code, code.trim().toUpperCase()),
-					eq(authCode.userId, user.id),
-					lt(authCode.expiresAt, new Date()),
-				),
-			})
+    if (account) {
+      await db
+        .update(authAccount)
+        .set({ password: hashedPassword })
+        .where(eq(authAccount.id, account.id));
+    } else {
+      await db.insert(authAccount).values({
+        id: randomUUID(),
+        userId: user.id,
+        accountId: email,
+        providerId: "credential",
+        password: hashedPassword,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
 
-			if (expiredCode) {
-				return NextResponse.json(
-					{ field: 'code', message: 'O código expirou. Solicite um novo código.' },
-					{ status: 400 },
-				)
-			}
-
-			return NextResponse.json(
-				{ field: 'code', message: 'O código é inválido ou expirou.' },
-				{ status: 400 },
-			)
-		}
-
-		// Remove o código usado (segurança)
-		await db.delete(authCode).where(eq(authCode.id, otpCode.id))
-
-		// Criptografa a nova senha
-		const hashedPassword = await hashPassword(password)
-
-		// 🆕 Atualiza a senha do usuário e marca email como verificado
-		// O usuário provou ter acesso ao email ao usar o código OTP
-		await db.update(authUser).set({ password: hashedPassword, emailVerified: true }).where(eq(authUser.id, user.id))
-
-		// Retorna sucesso
-		return NextResponse.json({
-			success: true,
-			message: 'Senha definida com sucesso. Você já pode fazer login.',
-		})
-	} catch (error) {
-		console.error('❌ [API_AUTH_SETUP_PASSWORD] Erro ao definir senha:', { error })
-		return NextResponse.json(
-			{ field: null, message: 'Erro inesperado. Tente novamente.' },
-			{ status: 500 },
-		)
-	}
+    return successResponse({ success: true }, "Senha definida com sucesso.");
+  } catch (e) {
+    console.error("❌ [API_SETUP_PASSWORD] Erro ao definir senha:", e);
+    return errorResponse("Erro ao definir senha.", 500);
+  }
 }
-

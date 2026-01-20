@@ -25,42 +25,42 @@ Documentação sobre padrões, convenções e boas práticas do projeto SILO.
 
 ```typescript
 // ✅ Correto
-import { sendEmail } from '@/lib/sendEmail'
-import { db } from '@/lib/db'
-import { User } from '@/types'
+import { sendEmail } from "@/lib/sendEmail";
+import { db } from "@/lib/db";
+import { User } from "@/types";
 
 // ❌ Incorreto
-import { sendEmail } from '../../../lib/sendEmail'
-import { db } from '../db'
+import { sendEmail } from "../../../lib/sendEmail";
+import { db } from "../db";
 ```
 
 **Centralizar configurações:**
 
 ```typescript
 // ✅ Correto
-import { config } from '@/lib/config'
+import { config } from "@/lib/config";
 
 // ❌ Incorreto
-const apiUrl = process.env.NEXT_PUBLIC_API_URL
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 ```
 
 ### **Organização de Imports**
 
 ```typescript
 // 1. React e Next.js
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 // 2. Bibliotecas externas
-import { z } from 'zod'
+import { z } from "zod";
 
 // 3. Imports internos (com @/)
-import { Button } from '@/components/ui/Button'
-import { db } from '@/lib/db'
+import { Button } from "@/components/ui/Button";
+import { db } from "@/lib/db";
 
 // 4. Tipos
-import type { User } from '@/types'
+import type { User } from "@/types";
 ```
 
 ---
@@ -74,26 +74,26 @@ import type { User } from '@/types'
 ```typescript
 export async function POST(request: NextRequest) {
   try {
-    const data = await request.json()
-    
+    const data = await request.json();
+
     // Validação
     if (!data.email) {
       return NextResponse.json(
-        { success: false, error: 'Email é obrigatório' },
-        { status: 400 }
-      )
+        { success: false, error: "Email é obrigatório" },
+        { status: 400 },
+      );
     }
-    
+
     // Operação
-    const result = await saveData(data)
-    
-    return NextResponse.json({ success: true, data: result })
+    const result = await saveData(data);
+
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
-    console.error('❌ [API_NAME] Erro', { error: error.message })
+    console.error("❌ [API_NAME] Erro", { error: error.message });
     return NextResponse.json(
-      { success: false, error: 'Erro interno do servidor' },
-      { status: 500 }
-    )
+      { success: false, error: "Erro interno do servidor" },
+      { status: 500 },
+    );
   }
 }
 ```
@@ -127,14 +127,14 @@ O código atual possui dois padrões principais:
 ```typescript
 // ✅ Correto
 function processData(data: unknown): void {
-  if (typeof data === 'string') {
-    console.log(data)
+  if (typeof data === "string") {
+    console.log(data);
   }
 }
 
 // ❌ Incorreto
 function processData(data: any): void {
-  console.log(data)
+  console.log(data);
 }
 ```
 
@@ -144,20 +144,20 @@ Todas as funções exportadas devem ter tipos:
 
 ```typescript
 // ✅ Correto
-import type { AuthUser } from '@/lib/db/schema'
-import { authUser } from '@/lib/db/schema'
+import type { AuthUser } from "@/lib/db/schema";
+import { authUser } from "@/lib/db/schema";
 
 export function getUserByEmail(email: string): Promise<AuthUser | null> {
-	return db.query.authUser.findFirst({
-		where: eq(authUser.email, email),
-	})
+  return db.query.authUser.findFirst({
+    where: eq(authUser.email, email),
+  });
 }
 
 // ❌ Incorreto
 export function getUserByEmail(email) {
-	return db.query.authUser.findFirst({
-		where: eq(authUser.email, email),
-	})
+  return db.query.authUser.findFirst({
+    where: eq(authUser.email, email),
+  });
 }
 ```
 
@@ -179,7 +179,7 @@ npm run lint
 Arquivo: `src/lib/dateConfig.ts`
 
 ```typescript
-export const timezone = 'America/Sao_Paulo'
+export const timezone = "America/Sao_Paulo";
 ```
 
 O projeto centraliza utilitários em `src/lib/dateUtils.ts` e evita dependências extras para timezone,
@@ -194,36 +194,64 @@ usando `toLocaleString(..., { timeZone: 'America/Sao_Paulo' })` de forma consist
 **✅ SEMPRE** usar `src/lib/config.ts`:
 
 ```typescript
-import { config } from '@/lib/config'
+import { config } from "@/lib/config";
 
-const apiUrl = config.appUrl
+/**
+ * Constrói URL para chamadas de API respeitando o basePath da aplicação.
+ *
+ * - Em ambiente client, retorna sempre um path relativo (ex.: /silo/api/auth/sign-in/email)
+ * - Em ambiente server, concatena APP_URL_DEV/APP_URL_PROD com o path normalizado
+ *
+ * Exemplo:
+ * const url = config.getApiUrl('/api/auth/sign-in/email')
+ * // Client: '/silo/api/auth/sign-in/email'
+ * // Server (dev): 'http://localhost:3000/silo/api/auth/sign-in/email'
+ */
+const url = config.getApiUrl("/api/users");
 ```
 
 ### **Nunca Hardcodear URLs**
 
 ```typescript
 // ❌ Incorreto
-const url = 'http://localhost:3000/api/users'
+const url = "http://localhost:3000/api/users";
 
-// ✅ Correto
-const url = `${config.appUrl}/api/users`
+// ✅ Correto (usa basePath automaticamente em client/server)
+const url = config.getApiUrl("/api/users");
 ```
 
 ### **Produção**
 
 ```typescript
 export const config = {
-	get appUrl(): string {
-		const url = process.env.APP_URL
-		if (!url && process.env.NODE_ENV === 'production') throw new Error('APP_URL deve ser configurada em produção')
-		return url || ''
-	},
-	get databaseUrl(): string {
-		const url = process.env.DATABASE_URL
-		if (!url && process.env.NODE_ENV === 'production') throw new Error('DATABASE_URL deve ser configurada em produção')
-		return url || ''
-	},
-}
+  get nodeEnv(): string {
+    return process.env.NODE_ENV ?? "development";
+  },
+
+  get appUrl(): string {
+    const isProd = process.env.NODE_ENV === "production";
+    const url = isProd ? process.env.APP_URL_PROD : process.env.APP_URL_DEV;
+    if (!url && isProd) {
+      throw new Error("APP_URL_PROD deve ser configurada em produção");
+    }
+    return url || "";
+  },
+
+  get databaseUrl(): string {
+    const isProd = process.env.NODE_ENV === "production";
+    const primary = isProd
+      ? process.env.DATABASE_URL_PROD
+      : process.env.DATABASE_URL_DEV;
+    const fallback = process.env.DATABASE_URL;
+    const url = primary || fallback;
+
+    if (!url && isProd) {
+      throw new Error("DATABASE_URL_PROD deve ser configurada em produção");
+    }
+
+    return url || "";
+  },
+};
 ```
 
 ---
@@ -287,11 +315,11 @@ export function Button({ label, onClick, disabled }: ButtonProps) {
 
 ```typescript
 export function useAsyncState<T>(initialState: T) {
-  const [data, setData] = useState<T>(initialState)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  
-  return { data, setData, isLoading, setIsLoading, error, setError }
+  const [data, setData] = useState<T>(initialState);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return { data, setData, isLoading, setIsLoading, error, setError };
 }
 ```
 
@@ -299,29 +327,29 @@ export function useAsyncState<T>(initialState: T) {
 
 ```typescript
 // ✅ Correto
-export function handleSubmit() { }
-export function fetchData() { }
-export function validateEmail() { }
+export function handleSubmit() {}
+export function fetchData() {}
+export function validateEmail() {}
 
 // ❌ Incorreto
-export function enviar() { }
-export function buscarDados() { }
-export function validarEmail() { }
+export function enviar() {}
+export function buscarDados() {}
+export function validarEmail() {}
 ```
 
 ### **Comentários em Português**
 
 ```typescript
 // Buscar usuários do banco de dados
-import type { AuthUser } from '@/lib/db/schema'
+import type { AuthUser } from "@/lib/db/schema";
 
 async function fetchUsers(): Promise<AuthUser[]> {
-	return await db.query.authUser.findMany()
+  return await db.query.authUser.findMany();
 }
 
 // Validar domínio @inpe.br
 function isValidDomain(email: string): boolean {
-  return email.endsWith('@inpe.br')
+  return email.endsWith("@inpe.br");
 }
 ```
 
@@ -354,29 +382,29 @@ Ex.: `src/app/api/(user)/user-profile/route.ts` atende em `/api/user-profile`.
 ### **Handler Pattern**
 
 ```typescript
-import { getAuthUser } from '@/lib/auth/token'
+import { getAuthUser } from "@/lib/auth/token";
 
 export async function GET(request: NextRequest) {
   try {
     // Validação de autenticação
-		const user = await getAuthUser()
-		if (!user) {
+    const user = await getAuthUser();
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Não autenticado' },
-        { status: 401 }
-      )
+        { success: false, error: "Não autenticado" },
+        { status: 401 },
+      );
     }
-    
+
     // Lógica de negócio
-    const data = await fetchData()
-    
-    return NextResponse.json({ success: true, data })
+    const data = await fetchData();
+
+    return NextResponse.json({ success: true, data });
   } catch (error) {
-		console.error('❌ [API_NAME] Erro', { error })
+    console.error("❌ [API_NAME] Erro", { error });
     return NextResponse.json(
-      { success: false, error: 'Erro interno' },
-      { status: 500 }
-    )
+      { success: false, error: "Erro interno" },
+      { status: 500 },
+    );
   }
 }
 ```
@@ -388,42 +416,42 @@ export async function GET(request: NextRequest) {
 ### **Queries Drizzle**
 
 ```typescript
-import { db } from '@/lib/db'
-import { authUser } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { db } from "@/lib/db";
+import { authUser } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 // SELECT
 const user = await db.query.authUser.findFirst({
-	where: eq(authUser.email, email),
-})
+  where: eq(authUser.email, email),
+});
 
 // INSERT
 await db.insert(authUser).values({
-	id: 'user-123',
-	name: 'João Silva',
-	email: 'joao@inpe.br',
-})
+  id: "user-123",
+  name: "João Silva",
+  email: "joao@inpe.br",
+});
 
 // UPDATE
-await db.update(authUser)
-	.set({ name: 'João Silva Atualizado' })
-	.where(eq(authUser.id, userId))
+await db
+  .update(authUser)
+  .set({ name: "João Silva Atualizado" })
+  .where(eq(authUser.id, userId));
 
 // DELETE
-await db.delete(authUser)
-	.where(eq(authUser.id, userId))
+await db.delete(authUser).where(eq(authUser.id, userId));
 ```
 
 ### **Transações**
 
 ```typescript
-import { db } from '@/lib/db'
-import { authUser, userProfile } from '@/lib/db/schema'
+import { db } from "@/lib/db";
+import { authUser, userProfile } from "@/lib/db/schema";
 
 await db.transaction(async (tx) => {
-	await tx.insert(authUser).values(user)
-	await tx.insert(userProfile).values(profile)
-})
+  await tx.insert(authUser).values(user);
+  await tx.insert(userProfile).values(profile);
+});
 ```
 
 ---

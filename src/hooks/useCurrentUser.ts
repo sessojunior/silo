@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import { useCurrentUser as useUserContext } from '@/context/UserContext'
+import { useCurrentUser as useUserContext } from "@/context/UserContext";
 
 /**
  * Hook para obter informações do usuário atual
@@ -8,5 +8,5 @@ import { useCurrentUser as useUserContext } from '@/context/UserContext'
  * @returns {CurrentUserResult} Estado do usuário atual
  */
 export function useCurrentUser() {
-	return useUserContext()
+  return useUserContext();
 }

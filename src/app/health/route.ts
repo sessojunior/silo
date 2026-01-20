@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server'
+import { successResponse } from "@/lib/api-response";
 
-export const runtime = 'nodejs'
+export const runtime = "nodejs";
 
 export async function GET() {
-	return NextResponse.json({
-		success: true,
-		message: 'Aplicação funcionando',
-		timestamp: new Date().toISOString(),
-	})
+  return successResponse(
+    {
+      timestamp: new Date().toISOString(),
+    },
+    "Aplicação funcionando",
+  );
 }
-

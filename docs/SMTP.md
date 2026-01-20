@@ -76,9 +76,9 @@ SMTP_PASSWORD=senha-do-app
 Arquivo: `src/lib/config.ts`
 
 ```typescript
-import { config } from '@/lib/config'
+import { config } from "@/lib/config";
 
-const { host, port, secure, username, password, from } = config.email
+const { host, port, secure, username, password, from } = config.email;
 ```
 
 ---
@@ -98,15 +98,15 @@ Os templates são gerados por `generateEmailTemplate(...)` e tipados em:
 Arquivo: `src/lib/sendEmail.ts`
 
 ```typescript
-import { sendEmail } from '@/lib/sendEmail'
+import { sendEmail } from "@/lib/sendEmail";
 
 await sendEmail({
-	to: 'destinatario@inpe.br',
-	subject: 'Código de verificação',
-	template: 'otpCode',
-	data: { code: '347AE', type: 'sign-in' },
-	text: 'Utilize o código 347AE para fazer login.',
-})
+  to: "destinatario@inpe.br",
+  subject: "Código de verificação",
+  template: "otpCode",
+  data: { code: "347AE", type: "sign-in" },
+  text: "Utilize o código 347AE para fazer login.",
+});
 ```
 
 ---
@@ -123,13 +123,13 @@ node -e 'const nodemailer = require(\"nodemailer\"); const transporter = nodemai
 ### **Enviar Email de Teste**
 
 ```typescript
-import { sendEmail } from '@/lib/sendEmail'
+import { sendEmail } from "@/lib/sendEmail";
 
 await sendEmail({
-	to: 'destinatario@inpe.br',
-	subject: 'Teste SMTP',
-	text: 'Este é um teste.',
-})
+  to: "destinatario@inpe.br",
+  subject: "Teste SMTP",
+  text: "Este é um teste.",
+});
 ```
 
 ---

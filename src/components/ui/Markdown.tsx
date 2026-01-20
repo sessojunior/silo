@@ -1,84 +1,99 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import MDEditor, { commands } from '@uiw/react-md-editor'
+import { useEffect, useState } from "react";
+import MDEditor, { commands } from "@uiw/react-md-editor";
 
 interface MarkdownProps {
-	value: string
-	onChange: (value: string) => void
-	preview?: 'edit' | 'live' | 'preview'
-	className?: string
-	'data-color-mode'?: 'light' | 'dark'
-	height?: string | number // Nova prop para controlar altura
-	compact?: boolean // Nova prop para barra de ferramentas compacta
+  value: string;
+  onChange: (value: string) => void;
+  preview?: "edit" | "live" | "preview";
+  className?: string;
+  "data-color-mode"?: "light" | "dark";
+  height?: string | number; // Nova prop para controlar altura
+  compact?: boolean; // Nova prop para barra de ferramentas compacta
 }
 
-export default function Markdown({ value, onChange, preview = 'edit', className = '', 'data-color-mode': colorMode, compact = false, ...props }: MarkdownProps) {
-	const [theme, setTheme] = useState<'light' | 'dark'>('light')
+export default function Markdown({
+  value,
+  onChange,
+  preview = "edit",
+  className = "",
+  "data-color-mode": colorMode,
+  compact = false,
+  ...props
+}: MarkdownProps) {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
-	useEffect(() => {
-		// Detecta o tema atual
-		const isDark = document.documentElement.classList.contains('dark')
-		setTheme(isDark ? 'dark' : 'light')
+  useEffect(() => {
+    // Detecta o tema atual
+    const isDark = document.documentElement.classList.contains("dark");
+    setTheme(isDark ? "dark" : "light");
 
-		// Observer para mudanças de tema
-		const observer = new MutationObserver((mutations) => {
-			mutations.forEach((mutation) => {
-				if (mutation.attributeName === 'class') {
-					const isDark = document.documentElement.classList.contains('dark')
-					setTheme(isDark ? 'dark' : 'light')
-				}
-			})
-		})
+    // Observer para mudanças de tema
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === "class") {
+          const isDark = document.documentElement.classList.contains("dark");
+          setTheme(isDark ? "dark" : "light");
+        }
+      });
+    });
 
-		observer.observe(document.documentElement, {
-			attributes: true,
-			attributeFilter: ['class'],
-		})
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
 
-		return () => observer.disconnect()
-	}, [])
+    return () => observer.disconnect();
+  }, []);
 
-	// Force remove inline styles para ocupar altura máxima
-	useEffect(() => {
-		const removeInlineHeights = () => {
-			const editor = document.querySelector('.md-editor-custom .w-md-editor')
-			if (editor) {
-				// Remove altura fixa de todos os elementos filhos
-				const elementsWithHeight = editor.querySelectorAll('*[style*="height"]')
-				elementsWithHeight.forEach((el) => {
-					const element = el as HTMLElement
-					if (element.style.height && element.style.height !== 'auto' && element.style.height !== '100%') {
-						element.style.height = 'auto'
-					}
-				})
+  // Force remove inline styles para ocupar altura máxima
+  useEffect(() => {
+    const removeInlineHeights = () => {
+      const editor = document.querySelector(".md-editor-custom .w-md-editor");
+      if (editor) {
+        // Remove altura fixa de todos os elementos filhos
+        const elementsWithHeight =
+          editor.querySelectorAll('*[style*="height"]');
+        elementsWithHeight.forEach((el) => {
+          const element = el as HTMLElement;
+          if (
+            element.style.height &&
+            element.style.height !== "auto" &&
+            element.style.height !== "100%"
+          ) {
+            element.style.height = "auto";
+          }
+        });
 
-				// Força estrutura flexível nos containers principais
-				const containers = editor.querySelectorAll('.w-md-editor-content, .w-md-editor-text, .w-md-editor-preview, .w-md-editor-text-container')
-				containers.forEach((container) => {
-					const element = container as HTMLElement
-					element.style.display = 'flex'
-					element.style.flexDirection = 'column'
-					element.style.flex = '1'
-					element.style.minHeight = '0'
-					element.style.height = 'auto'
-				})
-			}
-		}
+        // Força estrutura flexível nos containers principais
+        const containers = editor.querySelectorAll(
+          ".w-md-editor-content, .w-md-editor-text, .w-md-editor-preview, .w-md-editor-text-container",
+        );
+        containers.forEach((container) => {
+          const element = container as HTMLElement;
+          element.style.display = "flex";
+          element.style.flexDirection = "column";
+          element.style.flex = "1";
+          element.style.minHeight = "0";
+          element.style.height = "auto";
+        });
+      }
+    };
 
-		// Execute imediatamente e depois a cada 100ms por 2 segundos para garantir
-		removeInlineHeights()
-		const interval = setInterval(removeInlineHeights, 100)
-		const timeout = setTimeout(() => clearInterval(interval), 2000)
+    // Execute imediatamente e depois a cada 100ms por 2 segundos para garantir
+    removeInlineHeights();
+    const interval = setInterval(removeInlineHeights, 100);
+    const timeout = setTimeout(() => clearInterval(interval), 2000);
 
-		return () => {
-			clearInterval(interval)
-			clearTimeout(timeout)
-		}
-	}, [value]) // Re-executa quando o valor muda
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [value]); // Re-executa quando o valor muda
 
-	// CSS Styles inline
-	const styles = `
+  // CSS Styles inline
+  const styles = `
 		/* MD Editor customizations - altura máxima (flex-1) */
 		.md-editor-custom {
 			height: 100% !important;
@@ -89,7 +104,7 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 		}
 
 		.md-editor-custom .w-md-editor {
-			border-color: ${theme === 'dark' ? 'rgb(63 63 70)' : 'rgb(228 228 231)'};
+			border-color: ${theme === "dark" ? "rgb(63 63 70)" : "rgb(228 228 231)"};
 			height: 100% !important;
 			flex: 1 !important;
 			display: flex !important;
@@ -156,8 +171,8 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 
 		/* Toolbar styling */
 		.md-editor-custom .w-md-editor-toolbar {
-			border-bottom-color: ${theme === 'dark' ? 'rgb(63 63 70)' : 'rgb(228 228 231)'};
-			background-color: ${theme === 'dark' ? 'rgb(39 39 42)' : 'rgb(249 250 251)'};
+			border-bottom-color: ${theme === "dark" ? "rgb(63 63 70)" : "rgb(228 228 231)"};
+			background-color: ${theme === "dark" ? "rgb(39 39 42)" : "rgb(249 250 251)"};
 		}
 
 		.md-editor-custom .w-md-editor-toolbar ul {
@@ -166,13 +181,13 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 		}
 
 		.md-editor-custom .w-md-editor-toolbar-divider {
-			background-color: ${theme === 'dark' ? 'rgb(82 82 91)' : 'rgb(228 228 231)'};
+			background-color: ${theme === "dark" ? "rgb(82 82 91)" : "rgb(228 228 231)"};
 			align-self: center;
 		}
 
 		/* Dividers dos grupos de botões */
 		.md-editor-custom .w-md-editor-toolbar ul li.w-md-editor-toolbar-divider {
-			background-color: ${theme === 'dark' ? 'rgb(82 82 91)' : 'rgb(228 228 231)'};
+			background-color: ${theme === "dark" ? "rgb(82 82 91)" : "rgb(228 228 231)"};
 			align-self: center;
 			margin: 0 4px;
 			height: 20px;
@@ -183,7 +198,7 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 		}
 
 		.md-editor-custom .w-md-editor-toolbar ul li .w-md-editor-toolbar-divider {
-			background-color: ${theme === 'dark' ? 'rgb(82 82 91)' : 'rgb(228 228 231)'};
+			background-color: ${theme === "dark" ? "rgb(82 82 91)" : "rgb(228 228 231)"};
 			align-self: center;
 			margin: 0 4px;
 			height: 16px;
@@ -204,13 +219,13 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 			background: transparent;
 			border: 0;
 			border-radius: 8px;
-			color: ${theme === 'dark' ? 'rgb(212 212 216)' : 'rgb(63 63 70)'};
+			color: ${theme === "dark" ? "rgb(212 212 216)" : "rgb(63 63 70)"};
 		}
 
 		.md-editor-custom .w-md-editor-toolbar ul li button:hover,
 		.md-editor-custom .w-md-editor-toolbar ul li .w-md-editor-toolbar-item:hover {
-			background-color: ${theme === 'dark' ? 'rgb(63 63 70)' : 'rgb(228 228 231)'};
-			color: ${theme === 'dark' ? 'rgb(244 244 245)' : 'rgb(24 24 27)'};
+			background-color: ${theme === "dark" ? "rgb(63 63 70)" : "rgb(228 228 231)"};
+			color: ${theme === "dark" ? "rgb(244 244 245)" : "rgb(24 24 27)"};
 		}
 
 		.md-editor-custom .w-md-editor-toolbar ul li button svg {
@@ -220,8 +235,8 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 
 		/* Botão ativo */
 		.md-editor-custom .w-md-editor-toolbar ul li button.active {
-			background-color: ${theme === 'dark' ? 'rgb(63 63 70)' : 'rgb(228 228 231)'};
-			color: ${theme === 'dark' ? 'rgb(244 244 245)' : 'rgb(24 24 27)'};
+			background-color: ${theme === "dark" ? "rgb(63 63 70)" : "rgb(228 228 231)"};
+			color: ${theme === "dark" ? "rgb(244 244 245)" : "rgb(24 24 27)"};
 			border-radius: 8px;
 		}
 
@@ -229,27 +244,29 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 		.md-editor-custom .w-md-editor-text-input,
 		.md-editor-custom .w-md-editor-text-textarea,
 		.md-editor-custom .w-md-editor-text {
-			border-color: ${theme === 'dark' ? 'rgb(63 63 70)' : 'rgb(228 228 231)'};
+			border-color: ${theme === "dark" ? "rgb(63 63 70)" : "rgb(228 228 231)"};
 			background-color: transparent;
+			font-size: 0.875rem;
+			line-height: 1.25rem;
 		}
 
 		/* Cor do texto específica para textarea */
 		.md-editor-custom .w-md-editor-text-input {
-			color: ${theme === 'dark' ? 'rgb(244 244 245)' : 'rgb(24 24 27)'} !important;
+			color: ${theme === "dark" ? "rgb(244 244 245)" : "rgb(24 24 27)"} !important;
 		}
 
 		/* Preview do markdown - usando os mesmos estilos da base de conhecimento */
 		.md-editor-custom .w-md-editor-preview {
-			background-color: ${theme === 'dark' ? 'rgb(24 24 27)' : '#ffffff'};
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
-			border-color: ${theme === 'dark' ? 'rgb(63 63 70)' : 'rgb(228 228 231)'};
+			background-color: ${theme === "dark" ? "rgb(24 24 27)" : "#ffffff"};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
+			border-color: ${theme === "dark" ? "rgb(63 63 70)" : "rgb(228 228 231)"};
 		}
 
 		/* Área do preview markdown - aplicando estilos consistentes com a base de conhecimento */
 		.md-editor-custom .w-md-editor-preview .wmde-markdown {
-			background-color: ${theme === 'dark' ? 'rgb(24 24 27)' : '#ffffff'};
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
-			font-size: 14px;
+			background-color: ${theme === "dark" ? "rgb(24 24 27)" : "#ffffff"};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
+			font-size: 0.875rem;
 		}
 
 		/* Elementos de markdown com espaçamento consistente */
@@ -261,7 +278,7 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 		.md-editor-custom .w-md-editor-preview .wmde-markdown h1 {
 			font-size: 18px;
 			font-weight: 700;
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
 			border-bottom: none;
 			padding-bottom: 0;
 		}
@@ -269,7 +286,7 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 		.md-editor-custom .w-md-editor-preview .wmde-markdown h2 {
 			font-size: 16px;
 			font-weight: 600;
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
 			border-bottom: none;
 			padding-bottom: 0;
 		}
@@ -277,7 +294,7 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 		.md-editor-custom .w-md-editor-preview .wmde-markdown h3 {
 			font-size: 14px;
 			font-weight: 500;
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
 			border-bottom: none;
 			padding-bottom: 0;
 		}
@@ -287,7 +304,7 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 		.md-editor-custom .w-md-editor-preview .wmde-markdown h6 {
 			font-size: 14px;
 			font-weight: 500;
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
 			border-bottom: none;
 			padding-bottom: 0;
 		}
@@ -295,7 +312,7 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 		/* Parágrafos */
 		.md-editor-custom .w-md-editor-preview .wmde-markdown p {
 			line-height: 1.625;
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
 		}
 
 		/* Listas */
@@ -311,63 +328,83 @@ export default function Markdown({ value, onChange, preview = 'edit', className 
 
 		/* Links */
 		.md-editor-custom .w-md-editor-preview .wmde-markdown a {
-			color: ${theme === 'dark' ? 'rgb(96 165 250)' : 'rgb(37 99 235)'};
+			color: ${theme === "dark" ? "rgb(96 165 250)" : "rgb(37 99 235)"};
 		}
 
 		/* Citações */
 		.md-editor-custom .w-md-editor-preview .wmde-markdown blockquote {
-			border-left: 4px solid ${theme === 'dark' ? 'rgb(63 63 70)' : 'rgb(212 212 216)'};
+			border-left: 4px solid ${theme === "dark" ? "rgb(63 63 70)" : "rgb(212 212 216)"};
 			padding-left: 16px;
 			font-style: italic;
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
 		}
 
 		/* Código inline */
 		.md-editor-custom .w-md-editor-preview .wmde-markdown code {
-			background-color: ${theme === 'dark' ? 'rgb(39 39 42)' : 'rgb(244 244 245)'};
+			background-color: ${theme === "dark" ? "rgb(39 39 42)" : "rgb(244 244 245)"};
 			padding: 2px 4px;
 			border-radius: 4px;
 			font-size: 12px;
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
 		}
 
 		/* Blocos de código */
 		.md-editor-custom .w-md-editor-preview .wmde-markdown pre {
-			background-color: ${theme === 'dark' ? 'rgb(39 39 42)' : 'rgb(244 244 245)'};
+			background-color: ${theme === "dark" ? "rgb(39 39 42)" : "rgb(244 244 245)"};
 			padding: 12px;
 			border-radius: 6px;
 		}
 
 		.md-editor-custom .w-md-editor-preview .wmde-markdown pre code {
 			background: transparent;
-			color: ${theme === 'dark' ? 'rgb(228 228 231)' : 'rgb(63 63 70)'};
+			color: ${theme === "dark" ? "rgb(228 228 231)" : "rgb(63 63 70)"};
 		}
 
 		/* Tabelas */
 		.md-editor-custom .w-md-editor-preview .wmde-markdown table {
-			border-color: ${theme === 'dark' ? 'rgb(63 63 70)' : 'rgb(228 228 231)'};
+			border-color: ${theme === "dark" ? "rgb(63 63 70)" : "rgb(228 228 231)"};
 		}
 
 		.md-editor-custom .w-md-editor-preview .wmde-markdown th,
 		.md-editor-custom .w-md-editor-preview .wmde-markdown td {
-			border-color: ${theme === 'dark' ? 'rgb(63 63 70)' : 'rgb(228 228 231)'};
+			border-color: ${theme === "dark" ? "rgb(63 63 70)" : "rgb(228 228 231)"};
 		}
 
 		.md-editor-custom .w-md-editor-preview .wmde-markdown th {
-			background-color: ${theme === 'dark' ? 'rgb(39 39 42)' : 'rgb(249 250 251)'};
+			background-color: ${theme === "dark" ? "rgb(39 39 42)" : "rgb(249 250 251)"};
 		}
-	`
+	`;
 
-	// Configuração da barra de ferramentas compacta
-	const compactCommands = compact ? [commands.bold, commands.italic, commands.strikethrough, commands.divider, commands.unorderedListCommand, commands.orderedListCommand, commands.divider, commands.link, commands.code] : undefined
+  // Configuração da barra de ferramentas compacta
+  const compactCommands = compact
+    ? [
+        commands.bold,
+        commands.italic,
+        commands.strikethrough,
+        commands.divider,
+        commands.unorderedListCommand,
+        commands.orderedListCommand,
+        commands.divider,
+        commands.link,
+        commands.code,
+      ]
+    : undefined;
 
-	return (
-		<>
-			{/* Inject styles */}
-			<style dangerouslySetInnerHTML={{ __html: styles }} />
+  return (
+    <>
+      {/* Inject styles */}
+      <style dangerouslySetInnerHTML={{ __html: styles }} />
 
-			{/* MDEditor component */}
-			<MDEditor value={value} onChange={(val) => onChange(val || '')} preview={preview} className={`md-editor-custom ${className}`} data-color-mode={colorMode || theme} {...(compact && { commands: compactCommands })} {...props} />
-		</>
-	)
+      {/* MDEditor component */}
+      <MDEditor
+        value={value}
+        onChange={(val) => onChange(val || "")}
+        preview={preview}
+        className={`md-editor-custom ${className}`}
+        data-color-mode={colorMode || theme}
+        {...(compact && { commands: compactCommands })}
+        {...props}
+      />
+    </>
+  );
 }

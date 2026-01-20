@@ -1,13 +1,12 @@
-import { compare, hash } from 'bcryptjs'
+import bcrypt from "bcryptjs";
 
-// Hash e verificação de senha
-
-// Usado para criar hashes (ex: no cadastro)
-export async function hashPassword(password: string) {
-	return await hash(password, 10)
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10);
 }
 
-// Verifica se a senha está correta (login)
-export async function verifyPassword(password: string, hashed: string) {
-	return await compare(password, hashed)
+export async function verifyPassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
+  return bcrypt.compare(password, hash);
 }

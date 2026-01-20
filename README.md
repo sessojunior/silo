@@ -55,7 +55,7 @@ O **Silo** centraliza e estrutura operações críticas em uma única plataforma
 ### **Opção 1: Docker (Recomendado)**
 
 ```bash
-# 1. Configurar variáveis de ambiente 
+# 1. Configurar variáveis de ambiente
 cp env.example .env
 
 # Edite o arquivo .env com suas configurações
@@ -63,7 +63,7 @@ cp env.example .env
 # 2. Executar containers
 docker-compose up -d --build
 
-# ✅ Acesse: http://localhost:3000
+# ✅ Acesse: http://localhost:3000/silo
 ```
 
 ### **Opção 2: Desenvolvimento Local**
@@ -78,7 +78,7 @@ cp env.example .env
 # 3. Executar servidor
 npm run dev
 
-# ✅ Frontend: http://localhost:3000
+# ✅ Frontend: http://localhost:3000/silo
 ```
 
 ---
@@ -87,6 +87,7 @@ npm run dev
 
 📘 **Documentação técnica detalhada disponível em:**
 
+- 🎯 [**Objetivos Estratégicos**](./docs/OBJETIVOS.md) - Visão e metas do sistema
 - 📡 [**APIs e Endpoints**](./docs/API.md) - Todas as APIs do sistema
 - 🔐 [**Autenticação**](./docs/AUTH.md) - Login, OAuth, segurança
 - 🗄️ [**Banco de Dados**](./docs/DATABASE.md) - Schema, relacionamentos, migrações
@@ -105,7 +106,7 @@ npm run dev
 - **Database:** PostgreSQL + Drizzle ORM
 - **Upload/Arquivos:** Route Handlers do Next (Sharp)
 - **UI:** Tailwind CSS 4 + Design System customizado
-- **Auth:** Sessão via cookie HTTP-only + OAuth Google (Arctic 3.7.0)
+- **Auth:** Better Auth + sessão via cookie HTTP-only + Google OAuth
 - **Charts:** ApexCharts 5.3.6
 
 ### **Estrutura**
@@ -129,16 +130,16 @@ silo-frontend/
 
 ## 📦 **Módulos e Funcionalidades**
 
-| Módulo | Funcionalidades |
-|--------|----------------|
-| **Autenticação** | Login, registro, OAuth, recuperação de senha |
-| **Dashboard** | Estatísticas, gráficos, resumo executivo |
-| **Produtos** | CRUD, dependências, problemas, soluções, manuais |
-| **Projetos** | Kanban, atividades, tarefas, histórico |
-| **Chat** | Grupos, DMs, presença, notificações |
-| **Usuários** | Grupos, contatos, configurações |
-| **Relatórios** | Disponibilidade, problemas, performance |
-| **Upload** | Avatares, contatos, problemas, soluções |
+| Módulo           | Funcionalidades                                  |
+| ---------------- | ------------------------------------------------ |
+| **Autenticação** | Login, registro, OAuth, recuperação de senha     |
+| **Dashboard**    | Estatísticas, gráficos, resumo executivo         |
+| **Produtos**     | CRUD, dependências, problemas, soluções, manuais |
+| **Projetos**     | Kanban, atividades, tarefas, histórico           |
+| **Chat**         | Grupos, DMs, presença, notificações              |
+| **Usuários**     | Grupos, contatos, configurações                  |
+| **Relatórios**   | Disponibilidade, problemas, performance          |
+| **Upload**       | Avatares, contatos, problemas, soluções          |
 
 ---
 
@@ -147,8 +148,8 @@ silo-frontend/
 Uploads e arquivos são atendidos pelo próprio Next.js:
 
 - Uploads: `POST /api/upload/*`
-- Servir arquivos: `GET /uploads/:type/:filename`
-- Deletar arquivos: `DELETE /uploads/:type/:filename`
+- Servir arquivos: `GET /silo/uploads/:type/:filename`
+- Deletar arquivos: `DELETE /silo/uploads/:type/:filename`
 
 ---
 
@@ -185,11 +186,19 @@ npm run lint
 ```bash
 # .env
 
-# Banco de Dados
-DATABASE_URL='postgresql://user:pass@host:5432/db'
+# Ambiente
+NODE_ENV='development' # development ou production
 
-# URLs do sistema
-APP_URL='http://localhost:3000'
+# Banco de Dados
+DATABASE_URL_DEV='postgresql://usuario:senha@localhost:5432/silo'
+DATABASE_URL_PROD='postgresql://usuario:senha@localhost:5432/silo'
+
+# URL da aplicação
+NEXT_PUBLIC_BASE_PATH='/silo'
+APP_URL_DEV='http://localhost:3000/silo'
+APP_URL_PROD='https://fortuna.cptec.inpe.br/silo'
+BETTER_AUTH_URL='https://fortuna.cptec.inpe.br/silo'
+BETTER_AUTH_SECRET='your_secret_key_here'
 
 # Google OAuth (opcional)
 GOOGLE_CLIENT_ID=''
@@ -287,6 +296,6 @@ O Next.js prefetcha automaticamente links visíveis na tela. Se um link apontar 
 
 ---
 
-**Desenvolvido para *CPTEC/INPE***
+**Desenvolvido para _CPTEC/INPE_**
 
 Version: 1.0 | Última atualização: 2025

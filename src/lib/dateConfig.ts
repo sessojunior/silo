@@ -7,13 +7,13 @@
  */
 
 export const DATE_CONFIG = {
-	TIMEZONE: 'America/Sao_Paulo',
-	DATE_FORMAT: 'YYYY-MM-DD',
-	DATETIME_FORMAT: 'YYYY-MM-DD HH:mm:ss',
-	DISPLAY_DATE_FORMAT: 'DD/MM/YYYY',
-	DISPLAY_DATETIME_FORMAT: 'DD/MM/YYYY HH:mm',
-	LOCALE: 'pt-BR',
-	TIMEZONE_OFFSET: -3, // GMT-3
-} as const
+  TIMEZONE: "America/Sao_Paulo",
+  DATE_FORMAT: "YYYY-MM-DD",
+  DATETIME_FORMAT: "YYYY-MM-DD HH:mm:ss",
+  DISPLAY_DATE_FORMAT: "DD/MM/YYYY",
+  DISPLAY_DATETIME_FORMAT: "DD/MM/YYYY HH:mm",
+  LOCALE: "pt-BR",
+  TIMEZONE_OFFSET: -3, // GMT-3
+} as const;
 
-export type DateConfig = typeof DATE_CONFIG
+export type DateConfig = typeof DATE_CONFIG;

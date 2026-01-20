@@ -32,87 +32,53 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 
 ## 🔑 **MÉTODOS DE AUTENTICAÇÃO**
 
+A autenticação é gerenciada pelo Better Auth e exposta em `/api/auth/*` pelo handler `src/app/api/auth/[...all]/route.ts`. O frontend usa `authClient` para iniciar login, registro e OTP.
+
 ### **1. Login com Email e Senha**
 
-**Endpoint:** `POST /api/auth/login`
-
 ```typescript
-// Request
-{
+const { error } = await authClient.signIn.email({
   email: "usuario@inpe.br",
-  password: "SenhaSegura@123"
-}
-
-// Response
-{
-  success: true
-}
+  password: "SenhaSegura@123",
+});
 ```
 
 **Validações:**
 
-- ✅ Email deve ser válido e do domínio @inpe.br
-- ✅ Senha deve ter entre 8 e 120 caracteres
-- ✅ Senha deve conter letra minúscula, maiúscula, número e caractere especial
-- ✅ Usuário deve estar ativo
-- ✅ Credenciais devem ser válidas
+- ✅ Email válido e do domínio @inpe.br
+- ✅ Senha entre 8 e 120 caracteres
+- ✅ Senha com minúscula, maiúscula, número e caractere especial
+- ✅ Usuário ativo
 
 ### **2. Login apenas com Email (OTP)**
 
-**Endpoint:** `POST /api/auth/login-email`
+O código OTP tem **6 dígitos**.
 
 ```typescript
-// Passo 1: Solicitar código
-// Request
-{
-  email: "usuario@inpe.br"
-}
-
-// Response
-{
-  step: 2,
-  email: "usuario@inpe.br"
-}
-
-// Passo 2: Verificar código
-// POST /api/auth/verify-code
-{
+await authClient.emailOtp.sendVerificationOtp({
   email: "usuario@inpe.br",
-  code: "347AE"
-}
+  type: "sign-in",
+});
 
-// Response
-{
-  success: true,
-  token: "<session_token>"
-}
+const { error } = await authClient.signIn.emailOtp({
+  email: "usuario@inpe.br",
+  otp: "347281",
+});
 ```
-
-**Fluxo:**
-
-1. Usuário informa apenas o email
-2. Sistema envia código OTP por email
-3. Usuário informa código recebido
-4. Sistema valida código, cria sessão e define cookie. A resposta também inclui `token` (o mesmo valor do cookie `session_token`), usado apenas em fluxos que precisam enviar o token explicitamente (ex.: redefinição de senha).
 
 ### **3. Registro de Usuário**
 
-**Endpoint:** `POST /api/auth/register`
-
 ```typescript
-// Request
-{
+const { error } = await authClient.signUp.email({
   name: "João Silva",
   email: "joao.silva@inpe.br",
-  password: "SenhaSegura@123"
-}
+  password: "SenhaSegura@123",
+});
 
-// Response
-{
-  step: 2,
+await authClient.emailOtp.sendVerificationOtp({
   email: "joao.silva@inpe.br",
-  message: "Cadastro realizado com sucesso! Após verificar seu e-mail, sua conta precisará ser ativada por um administrador para ter acesso ao sistema."
-}
+  type: "email-verification",
+});
 ```
 
 **Importante:**
@@ -123,62 +89,25 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 
 ### **4. Recuperação de Senha**
 
-**Endpoint:** `POST /api/auth/forget-password`
-
 ```typescript
-// Request
-{
-  email: "usuario@inpe.br"
-}
-
-// Response
-{
-  step: 2,
-  email: "usuario@inpe.br"
-}
-```
-
-O sistema envia email com código OTP para redefinição.
-
-**Passo 2: Verificar o código**
-
-**Endpoint:** `POST /api/auth/verify-code`
-
-```typescript
-// Request
-{
+await authClient.emailOtp.sendVerificationOtp({
   email: "usuario@inpe.br",
-  code: "347AE"
-}
-
-// Response
-{
-  success: true,
-  token: "<session_token>"
-}
+  type: "forget-password",
+});
 ```
 
-**Passo 3: Definir a nova senha**
+Após receber o OTP, a redefinição é feita no endpoint customizado:
 
-**Endpoint:** `POST /api/auth/send-password`
+```http
+POST /api/auth/setup-password
+Content-Type: application/json
 
-```typescript
-// Request
 {
-  token: "<session_token>",
-  password: "SenhaSegura@123"
-}
-
-// Response
-{
-  step: 4
+  "email": "usuario@inpe.br",
+  "code": "347281",
+  "password": "SenhaSegura@123"
 }
 ```
-
-Observação:
-
-- A sessão é criada via cookie HTTP-only (`session_token`).
-- O `token` retornado é o mesmo valor definido no cookie e é usado no endpoint `send-password`. Guarde-o apenas temporariamente (em memória) até concluir o fluxo.
 
 ---
 
@@ -200,8 +129,8 @@ Observação:
    - Credentials → Create Credentials → OAuth client ID
    - Application type: Web application
    - Name: SILO Web Client
-   - Authorized JavaScript origins: `http://localhost:3000` (dev), `https://silo.cptec.inpe.br` (prod)
-   - Authorized redirect URIs: `http://localhost:3000/api/auth/callback/google` (dev), `https://silo.cptec.inpe.br/api/auth/callback/google` (prod)
+   - Authorized JavaScript origins: `http://localhost:3000` (dev), `https://fortuna.cptec.inpe.br` (prod)
+   - Authorized redirect URIs: `http://localhost:3000/silo/api/auth/callback/google` (dev), `https://fortuna.cptec.inpe.br/silo/api/auth/callback/google` (prod)
 
 4. **Copiar Credenciais**
    - Client ID
@@ -217,45 +146,24 @@ GOOGLE_CLIENT_SECRET='seu-client-secret'
 
 ### **Arquivo de Configuração**
 
-Arquivo: `src/lib/auth/oauth.ts`
+Arquivo: `src/lib/auth/server.ts`
 
 ```typescript
-import { Google } from 'arctic'
-import { config } from '@/lib/config'
-
-export const google = new Google(config.googleClientId, config.googleClientSecret, config.googleCallbackUrl)
+export const auth = betterAuth({
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    },
+  },
+});
 ```
 
 ### **Fluxo de Autenticação Google**
 
-```typescript
-// 1) Usuário acessa a rota que inicia o OAuth (não é /api)
-GET /login-google
-
-// 2) Backend cria state + code_verifier, salva em cookies httpOnly e redireciona para o Google
-
-// 3) Google redireciona para o callback
-GET /api/auth/callback/google?code=CODE_AQUI&state=STATE_AQUI
-
-// 4) Backend valida state, troca code por tokens (PKCE), cria/vincula usuário e cria sessão (cookie)
-// 5) Redirect para /admin/dashboard (ou página de erro)
-```
-
-### **Callback Handler**
-
-Arquivo: `src/app/api/auth/callback/google/route.ts`
-
-```typescript
-export async function GET(request: NextRequest) {
-	const code = request.nextUrl.searchParams.get('code')
-	const state = request.nextUrl.searchParams.get('state')
-
-	// Valida state (CSRF) e troca code por tokens (PKCE) via Arctic
-	// Em seguida, decodifica o ID token e extrai email/nome/foto
-	// Verifica domínio @inpe.br, cria/vincula usuário e cria sessão (cookie)
-	// Por fim, redireciona para /admin/welcome (ou página de erro)
-}
-```
+- OAuth é iniciado pelas rotas do Better Auth em `/api/auth/*`
+- Callback padrão: `/api/auth/callback/google`
+- Sessão criada via cookie HTTP-only
 
 ---
 
@@ -266,11 +174,13 @@ export async function GET(request: NextRequest) {
 **⚠️ IMPORTANTE:** O Next.js prefetcha automaticamente links visíveis na página. Links para `/api/logout` SEMPRE devem ter `prefetch={false}` ou usar `button` ao invés de `Link`.
 
 **Problema:**
+
 - Next.js prefetcha links automaticamente quando aparecem na viewport
 - Se um link apontar para `/api/logout`, pode fazer logout automático sem clique do usuário
 - Bug crítico que causa deslogamento imediato após login
 
 **Solução:**
+
 ```typescript
 // ✅ CORRETO
 <Link href='/api/logout' prefetch={false}>Sair</Link>
@@ -283,6 +193,7 @@ export async function GET(request: NextRequest) {
 ```
 
 **Componentes afetados:**
+
 - `src/components/admin/sidebar/SidebarFooter.tsx`
 - `src/components/admin/topbar/TopbarDropdown.tsx`
 - Componentes genéricos (`Button`, `NavButton`, etc.) devem automaticamente desabilitar prefetch para URLs que começam com `/api/`
@@ -295,8 +206,8 @@ Função centralizada em `src/lib/auth/validate.ts`:
 
 ```typescript
 export function isValidDomain(email: string): boolean {
-  const lowerEmail = email.toLowerCase().trim()
-  return lowerEmail.endsWith('@inpe.br')
+  const lowerEmail = email.toLowerCase().trim();
+  return lowerEmail.endsWith("@inpe.br");
 }
 ```
 
@@ -316,18 +227,18 @@ Arquivo: `src/lib/rateLimit.ts`
 
 ```typescript
 export async function isRateLimited(params: {
-	email: string
-	ip: string
-	route: string
-	limit?: number
-	windowInSeconds?: number
-}): Promise<boolean>
+  email: string;
+  ip: string;
+  route: string;
+  limit?: number;
+  windowInSeconds?: number;
+}): Promise<boolean>;
 
 export async function recordRateLimit(params: {
-	email: string
-	ip: string
-	route: string
-}): Promise<void>
+  email: string;
+  ip: string;
+  route: string;
+}): Promise<void>;
 ```
 
 **Endpoints Protegidos:**
@@ -342,56 +253,33 @@ Arquivo: `src/lib/auth/hash.ts`
 
 ```typescript
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10)
+  return bcrypt.hash(password, 10);
 }
 
 export async function verifyPassword(
   password: string,
-  hash: string
+  hash: string,
 ): Promise<boolean> {
-  return bcrypt.compare(password, hash)
+  return bcrypt.compare(password, hash);
 }
 ```
 
 ### **Sistema de Sessões**
 
-O SILO utiliza **sessões baseadas em banco de dados** em vez de JWT. Isso oferece maior controle e segurança.
+O Better Auth mantém sessões no banco (tabela `session`) e usa cookie HTTP-only `better-auth.session_token`.
 
-Arquivo: `src/lib/auth/session.ts`
+### **Obter Usuário Autenticado**
 
-**Criação de Sessão:**
+Arquivo: `src/lib/auth/server.ts`
+
 ```typescript
-export async function createSessionCookie(userId: string) {
-	// Gera token e armazena apenas o hash no banco
-	const token = generateToken()
-	const hashToken = generateHashToken(token)
-
-	// Sessão expira em 30 dias
-	const expiresAt = new Date(Date.now() + DAY_IN_MS * 30)
-
-	// Salva sessão no banco e define cookie HTTP-only
-	await db.insert(authSession).values({ id: randomUUID(), userId, token: hashToken, expiresAt })
-	cookieStore.set('session_token', token, { httpOnly: true, secure: config.nodeEnv === 'production', sameSite: 'lax', path: '/', expires: expiresAt })
+export async function getAuthUser() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  return session?.user || null;
 }
 ```
-
-**Validação de Sessão:**
-```typescript
-export async function validateSession(token: string) {
-	// Busca sessão pelo hash, valida expiração e renova se faltarem 15 dias
-	// Também remove sessões expiradas e retorna usuário associado
-	return { session, user }
-}
-```
-
-**Características:**
-- ✅ Token aleatório seguro (UUID + hash SHA-256)
-- ✅ Armazenado como hash no banco (segurança)
-- ✅ Expiração em 30 dias
-- ✅ Renovação automática (estende em 30 dias quando faltam 15 dias)
-- ✅ Limpeza automática de sessões expiradas
-- ✅ Cookie HTTP-only (proteção XSS)
-- ✅ Secure em produção (proteção HTTPS)
 
 ---
 
@@ -403,7 +291,10 @@ export async function validateSession(token: string) {
 # .env
 
 # URLs do sistema
-APP_URL='http://localhost:3000'
+NEXT_PUBLIC_BASE_PATH='/silo'
+APP_URL_DEV='http://localhost:3000/silo'
+APP_URL_PROD='https://fortuna.cptec.inpe.br/silo'
+BETTER_AUTH_URL='https://fortuna.cptec.inpe.br/silo'
 
 # Google OAuth
 GOOGLE_CLIENT_ID='seu-client-id'
@@ -419,58 +310,14 @@ SMTP_PASSWORD='senha'
 
 ### **Obter Usuário Autenticado**
 
-Arquivo: `src/lib/auth/token.ts`
+Arquivo: `src/lib/auth/server.ts`
 
 ```typescript
 export async function getAuthUser() {
-  // Busca token do cookie
-  const cookieStore = await cookies()
-  const token = cookieStore.get('session_token')?.value
-  if (!token) return null
-
-  // Gera hash do token
-  const hashToken = generateHashToken(token)
-
-  // Busca sessão válida no banco
-  const session = await db.query.authSession.findFirst({
-    where: and(
-      eq(authSession.token, hashToken),
-      gt(authSession.expiresAt, new Date())
-    )
-  })
-  
-  if (!session) return null
-
-  // Busca usuário relacionado
-  const user = await db.query.authUser.findFirst({
-    where: eq(authUser.id, session.userId)
-  })
-
-  // Verifica se usuário está ativo e verificado
-  if (!user || user.emailVerified !== true || !user.isActive) {
-    return null
-  }
-
-  return user
-}
-```
-
-**Uso em APIs:**
-```typescript
-// src/app/api/admin/example/route.ts
-import { getAuthUser } from '@/lib/auth/token'
-
-export async function GET() {
-  const user = await getAuthUser()
-  if (!user) {
-    return NextResponse.json(
-      { success: false, error: 'Não autenticado' },
-      { status: 401 }
-    )
-  }
-  
-  // Usuário autenticado
-  return NextResponse.json({ success: true, data: user })
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  return session?.user || null;
 }
 ```
 
@@ -488,23 +335,28 @@ export async function GET() {
 
 ### **Verificação de Ativação**
 
-Aplicada em todos os endpoints de autenticação:
+Aplicada no hook `before` do Better Auth para as rotas de login com email e OTP:
 
 ```typescript
-// src/app/api/auth/login/route.ts
-export async function POST(request: NextRequest) {
-  const user = await db.query.users.findFirst({
-    where: eq(users.email, email)
-  })
-  
-  if (!user.isActive) {
-    return NextResponse.json({
-      success: false,
-      error: 'Sua conta ainda não foi ativada por um administrador'
-    }, { status: 403 })
-  }
-  
-  // ... resto do login
+hooks: {
+  before: createAuthMiddleware(async (ctx) => {
+    const isEmailPasswordSignIn = ctx.path === "/sign-in/email"
+    const isEmailOtpSignIn = ctx.path === "/sign-in/email-otp"
+
+    if (!isEmailPasswordSignIn && !isEmailOtpSignIn) return
+    const email = ctx.body?.email
+    if (!email) return
+
+    const user = await db.query.authUser.findFirst({
+      where: eq(authUser.email, email),
+    })
+
+    if (user && !user.isActive) {
+      throw new APIError("FORBIDDEN", {
+        message: "Usuário inativo. Contate o administrador.",
+      })
+    }
+  }),
 }
 ```
 
@@ -520,10 +372,13 @@ Usuários **não podem**:
 ```typescript
 // Proteção no backend
 if (userId === session.userId) {
-  return NextResponse.json({
-    success: false,
-    error: 'Você não pode modificar seu próprio usuário'
-  }, { status: 403 })
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Você não pode modificar seu próprio usuário",
+    },
+    { status: 403 },
+  );
 }
 ```
 
@@ -537,35 +392,35 @@ Arquivo: `src/context/UserContext.tsx`
 
 ```typescript
 export const UserContext = createContext<{
-  user: User | null
-  userProfile: UserProfile | null
-  userPreferences: UserPreferences | null
-  isLoading: boolean
-  refreshUser: () => Promise<void>
+  user: User | null;
+  userProfile: UserProfile | null;
+  userPreferences: UserPreferences | null;
+  isLoading: boolean;
+  refreshUser: () => Promise<void>;
 }>({
   user: null,
   userProfile: null,
   userPreferences: null,
   isLoading: true,
-  refreshUser: async () => {}
-})
+  refreshUser: async () => {},
+});
 ```
 
 ### **Hooks Disponíveis**
 
 ```typescript
 // Usuário completo
-const { user } = useUser()
+const { user } = useUser();
 
 // Perfil profissional
-const { userProfile } = useUserProfile()
+const { userProfile } = useUserProfile();
 
 // Preferências
-const { userPreferences } = useUserPreferences()
+const { userPreferences } = useUserPreferences();
 
 // Atualizar dados
-const { refreshUser } = useUser()
-await refreshUser()
+const { refreshUser } = useUser();
+await refreshUser();
 ```
 
 ### **Hook de Usuário Atual**
@@ -574,12 +429,9 @@ Arquivo: `src/hooks/useCurrentUser.ts`
 
 ```typescript
 export function useCurrentUser() {
-  const { data: user, isLoading, mutate } = useSWR(
-    '/api/user',
-    fetcher
-  )
-  
-  return { user, isLoading, refresh: mutate }
+  const { data: user, isLoading, mutate } = useSWR("/api/user", fetcher);
+
+  return { user, isLoading, refresh: mutate };
 }
 ```
 

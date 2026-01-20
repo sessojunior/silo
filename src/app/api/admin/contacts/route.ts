@@ -1,301 +1,300 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { randomUUID } from 'crypto'
-import { eq } from 'drizzle-orm'
+import { NextRequest } from "next/server";
+import { randomUUID } from "crypto";
+import { eq } from "drizzle-orm";
 
-import { db } from '@/lib/db'
-import { contact, productContact } from '@/lib/db/schema'
-import { getAuthUser } from '@/lib/auth/token'
-import { requireAdmin } from '@/lib/auth/admin'
-import { requestUtils } from '@/lib/config'
-import { deleteUploadFile, isSafeFilename, isUploadKind } from '@/lib/localUploads'
+import { db } from "@/lib/db";
+import { contact, productContact } from "@/lib/db/schema";
+import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requestUtils } from "@/lib/config";
+import {
+  deleteUploadFile,
+  isSafeFilename,
+  isUploadKind,
+} from "@/lib/localUploads";
+import { successResponse, errorResponse } from "@/lib/api-response";
 
 // GET - Listar contatos com filtros
 export async function GET(req: NextRequest) {
-	try {
-		const user = await getAuthUser()
-		if (!user) {
-			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
-		}
+  try {
+    const authResult = await requireAdminAuthUser();
+    if (!authResult.ok) return authResult.response;
 
-		const adminCheck = await requireAdmin(user.id)
-		if (!adminCheck.success) {
-			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
-		}
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search") || "";
+    const status = searchParams.get("status") || "all"; // all, active, inactive
 
-		const { searchParams } = new URL(req.url)
-		const search = searchParams.get('search') || ''
-		const status = searchParams.get('status') || 'all' // all, active, inactive
+    // Query ordenada alfabeticamente por nome
+    const contacts = await db.select().from(contact).orderBy(contact.name);
 
+    // Aplicar filtros em JavaScript por simplicidade
+    let filteredContacts = contacts;
 
-		// Query ordenada alfabeticamente por nome
-		const contacts = await db.select().from(contact).orderBy(contact.name)
+    if (search) {
+      filteredContacts = contacts.filter(
+        (c) =>
+          c.name.toLowerCase().includes(search.toLowerCase()) ||
+          c.email.toLowerCase().includes(search.toLowerCase()) ||
+          c.role.toLowerCase().includes(search.toLowerCase()) ||
+          c.team.toLowerCase().includes(search.toLowerCase()),
+      );
+    }
 
-		// Aplicar filtros em JavaScript por simplicidade
-		let filteredContacts = contacts
+    if (status === "active") {
+      filteredContacts = filteredContacts.filter((c) => c.active);
+    } else if (status === "inactive") {
+      filteredContacts = filteredContacts.filter((c) => !c.active);
+    }
 
-		if (search) {
-			filteredContacts = contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()) || c.role.toLowerCase().includes(search.toLowerCase()) || c.team.toLowerCase().includes(search.toLowerCase()))
-		}
-
-		if (status === 'active') {
-			filteredContacts = filteredContacts.filter((c) => c.active)
-		} else if (status === 'inactive') {
-			filteredContacts = filteredContacts.filter((c) => !c.active)
-		}
-
-
-		return NextResponse.json({
-			success: true,
-			data: {
-				items: filteredContacts,
-				total: filteredContacts.length,
-			},
-		})
-	} catch (error) {
-		console.error('❌ [API_CONTACTS] Erro ao listar contatos:', { error })
-		return NextResponse.json({ success: false, error: 'Erro interno do servidor' }, { status: 500 })
-	}
+    return successResponse({
+      items: filteredContacts,
+      total: filteredContacts.length,
+    });
+  } catch (error) {
+    console.error("❌ [API_CONTACTS] Erro ao listar contatos:", { error });
+    return errorResponse("Erro interno do servidor", 500);
+  }
 }
 
 // POST - Criar novo contato
 export async function POST(req: NextRequest) {
-	try {
-		const user = await getAuthUser()
-		if (!user) {
-			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
-		}
+  try {
+    const authResult = await requireAdminAuthUser();
+    if (!authResult.ok) return authResult.response;
 
-		const adminCheck = await requireAdmin(user.id)
-		if (!adminCheck.success) {
-			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
-		}
+    const formData = await req.formData();
+    const name = formData.get("name") as string;
+    const role = formData.get("role") as string;
+    const team = formData.get("team") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string | null;
+    const imageUrl = formData.get("imageUrl") as string | null;
+    const active = formData.get("active") === "true";
 
-		const formData = await req.formData()
-		const name = formData.get('name') as string
-		const role = formData.get('role') as string
-		const team = formData.get('team') as string
-		const email = formData.get('email') as string
-		const phone = formData.get('phone') as string | null
-		const imageUrl = formData.get('imageUrl') as string | null
-		const active = formData.get('active') === 'true'
+    // Validações
+    if (!name || name.trim().length < 2) {
+      return errorResponse("Nome deve ter pelo menos 2 caracteres", 400);
+    }
+    if (!role || role.trim().length < 2) {
+      return errorResponse("Função deve ter pelo menos 2 caracteres", 400);
+    }
+    if (!team || team.trim().length < 2) {
+      return errorResponse("Equipe deve ter pelo menos 2 caracteres", 400);
+    }
+    if (!email || !email.includes("@")) {
+      return errorResponse("Email inválido", 400);
+    }
 
+    // Verificar email único
+    const existingContact = await db
+      .select()
+      .from(contact)
+      .where(eq(contact.email, email));
+    if (existingContact.length > 0) {
+      return errorResponse("Este email já está em uso", 400);
+    }
 
-		// Validações
-		if (!name || name.trim().length < 2) {
-			return NextResponse.json({ success: false, error: 'Nome deve ter pelo menos 2 caracteres' }, { status: 400 })
-		}
-		if (!role || role.trim().length < 2) {
-			return NextResponse.json({ success: false, error: 'Função deve ter pelo menos 2 caracteres' }, { status: 400 })
-		}
-		if (!team || team.trim().length < 2) {
-			return NextResponse.json({ success: false, error: 'Equipe deve ter pelo menos 2 caracteres' }, { status: 400 })
-		}
-		if (!email || !email.includes('@')) {
-			return NextResponse.json({ success: false, error: 'Email inválido' }, { status: 400 })
-		}
+    let imagePath: string | null = null;
 
-		// Verificar email único
-		const existingContact = await db.select().from(contact).where(eq(contact.email, email))
-		if (existingContact.length > 0) {
-			return NextResponse.json({ success: false, error: 'Este email já está em uso' }, { status: 400 })
-		}
+    // Definir imagem a partir de URL se fornecida
+    if (imageUrl) {
+      imagePath = imageUrl;
+    }
 
-		let imagePath: string | null = null
+    // Criar contato
+    const contactId = randomUUID();
+    await db.insert(contact).values({
+      id: contactId,
+      name: name.trim(),
+      role: role.trim(),
+      team: team.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone?.trim() || null,
+      image: imagePath,
+      active,
+    });
 
-		// Definir imagem a partir de URL se fornecida
-		if (imageUrl) {
-			imagePath = imageUrl
-		}
-
-		// Criar contato
-		const contactId = randomUUID()
-		await db.insert(contact).values({
-			id: contactId,
-			name: name.trim(),
-			role: role.trim(),
-			team: team.trim(),
-			email: email.trim().toLowerCase(),
-			phone: phone?.trim() || null,
-			image: imagePath,
-			active,
-		})
-
-
-		return NextResponse.json({ success: true, data: { id: contactId } }, { status: 201 })
-	} catch (error) {
-		console.error('❌ [API_CONTACTS] Erro ao criar contato:', { error })
-		return NextResponse.json({ success: false, error: 'Erro interno do servidor' }, { status: 500 })
-	}
+    return successResponse(
+      { id: contactId },
+      "Contato criado com sucesso",
+      201,
+    );
+  } catch (error) {
+    console.error("❌ [API_CONTACTS] Erro ao criar contato:", { error });
+    return errorResponse("Erro interno do servidor", 500);
+  }
 }
 
 // PUT - Editar contato
 export async function PUT(req: NextRequest) {
-	try {
-		const user = await getAuthUser()
-		if (!user) {
-			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
-		}
+  try {
+    const authResult = await requireAdminAuthUser();
+    if (!authResult.ok) return authResult.response;
 
-		const adminCheck = await requireAdmin(user.id)
-		if (!adminCheck.success) {
-			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
-		}
+    const formData = await req.formData();
+    const id = formData.get("id") as string;
+    const name = formData.get("name") as string;
+    const role = formData.get("role") as string;
+    const team = formData.get("team") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string | null;
+    const imageUrl = formData.get("imageUrl") as string | null;
+    const active = formData.get("active") === "true";
+    const removeImage = formData.get("removeImage") === "true";
 
-		const formData = await req.formData()
-		const id = formData.get('id') as string
-		const name = formData.get('name') as string
-		const role = formData.get('role') as string
-		const team = formData.get('team') as string
-		const email = formData.get('email') as string
-		const phone = formData.get('phone') as string | null
-		const imageUrl = formData.get('imageUrl') as string | null
-		const active = formData.get('active') === 'true'
-		const removeImage = formData.get('removeImage') === 'true'
+    if (!id) {
+      return errorResponse("ID do contato é obrigatório", 400);
+    }
 
+    // Verificar se contato existe
+    const existingContacts = await db
+      .select()
+      .from(contact)
+      .where(eq(contact.id, id));
+    if (existingContacts.length === 0) {
+      return errorResponse("Contato não encontrado", 404);
+    }
 
-		if (!id) {
-			return NextResponse.json({ success: false, error: 'ID do contato é obrigatório' }, { status: 400 })
-		}
+    const existingContact = existingContacts[0];
 
-		// Verificar se contato existe
-		const existingContacts = await db.select().from(contact).where(eq(contact.id, id))
-		if (existingContacts.length === 0) {
-			return NextResponse.json({ success: false, error: 'Contato não encontrado' }, { status: 404 })
-		}
+    // Validações
+    if (!name || name.trim().length < 2) {
+      return errorResponse("Nome deve ter pelo menos 2 caracteres", 400);
+    }
+    if (!role || role.trim().length < 2) {
+      return errorResponse("Função deve ter pelo menos 2 caracteres", 400);
+    }
+    if (!team || team.trim().length < 2) {
+      return errorResponse("Equipe deve ter pelo menos 2 caracteres", 400);
+    }
+    if (!email || !email.includes("@")) {
+      return errorResponse("Email inválido", 400);
+    }
 
-		const existingContact = existingContacts[0]
+    // Verificar email único (exceto o próprio contato)
+    if (email !== existingContact.email) {
+      const emailCheck = await db
+        .select()
+        .from(contact)
+        .where(eq(contact.email, email));
+      if (emailCheck.length > 0) {
+        return errorResponse("Este email já está em uso", 400);
+      }
+    }
 
-		// Validações
-		if (!name || name.trim().length < 2) {
-			return NextResponse.json({ success: false, error: 'Nome deve ter pelo menos 2 caracteres' }, { status: 400 })
-		}
-		if (!role || role.trim().length < 2) {
-			return NextResponse.json({ success: false, error: 'Função deve ter pelo menos 2 caracteres' }, { status: 400 })
-		}
-		if (!team || team.trim().length < 2) {
-			return NextResponse.json({ success: false, error: 'Equipe deve ter pelo menos 2 caracteres' }, { status: 400 })
-		}
-		if (!email || !email.includes('@')) {
-			return NextResponse.json({ success: false, error: 'Email inválido' }, { status: 400 })
-		}
+    let imagePath = existingContact.image;
 
-		// Verificar email único (exceto o próprio contato)
-		if (email !== existingContact.email) {
-			const emailCheck = await db.select().from(contact).where(eq(contact.email, email))
-			if (emailCheck.length > 0) {
-				return NextResponse.json({ success: false, error: 'Este email já está em uso' }, { status: 400 })
-			}
-		}
+    // Se nova imagem via URL
+    if (imageUrl) {
+      imagePath = imageUrl;
+    }
 
-		let imagePath = existingContact.image
+    // Remover imagem se solicitado
+    if (removeImage && existingContact.image) {
+      imagePath = null;
 
-		// Se nova imagem via URL
-		if (imageUrl) {
-			imagePath = imageUrl
-		}
+      // Remover arquivo do disco também
+      try {
+        if (requestUtils.isFileServerUrl(existingContact.image)) {
+          const filePath = requestUtils.extractFilePath(existingContact.image);
+          if (filePath) {
+            const [kind, ...rest] = filePath.split("/");
+            const filename = rest.join("/");
+            if (
+              kind &&
+              filename &&
+              isUploadKind(kind) &&
+              isSafeFilename(filename)
+            ) {
+              await deleteUploadFile(kind, filename);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("⚠️ [API_CONTACTS] Erro ao remover arquivo antigo:", {
+          error,
+        });
+      }
+    }
 
-		// Remover imagem se solicitado
-		if (removeImage && existingContact.image) {
-			imagePath = null
+    // Atualizar contato
+    await db
+      .update(contact)
+      .set({
+        name: name.trim(),
+        role: role.trim(),
+        team: team.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone?.trim() || null,
+        image: imagePath,
+        active,
+        updatedAt: new Date(),
+      })
+      .where(eq(contact.id, id));
 
-			// Remover arquivo do disco também
-			try {
-				const imageUrl = existingContact.image
-				if (requestUtils.isFileServerUrl(imageUrl)) {
-					const filePath = requestUtils.extractFilePath(imageUrl)
-					if (filePath) {
-						const [kind, ...rest] = filePath.split('/')
-						const filename = rest.join('/')
-						if (kind && filename && isUploadKind(kind) && isSafeFilename(filename)) {
-							const deleted = await deleteUploadFile(kind, filename)
-							if (!deleted) {
-								console.warn('⚠️ [API_CONTACTS] Erro ao remover arquivo do disco:', { filePath })
-							}
-						}
-					}
-				}
-			} catch (error) {
-				console.warn('⚠️ [API_CONTACTS] Erro ao remover arquivo do disco:', { error })
-			}
-		}
-
-		// Atualizar contato
-		await db
-			.update(contact)
-			.set({
-				name: name.trim(),
-				role: role.trim(),
-				team: team.trim(),
-				email: email.trim().toLowerCase(),
-				phone: phone?.trim() || null,
-				image: imagePath,
-				active,
-				updatedAt: new Date(),
-			})
-			.where(eq(contact.id, id))
-
-
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		console.error('❌ [API_CONTACTS] Erro ao editar contato:', { error })
-		return NextResponse.json({ success: false, error: 'Erro interno do servidor' }, { status: 500 })
-	}
+    return successResponse(null, "Contato atualizado com sucesso");
+  } catch (error) {
+    console.error("❌ [API_CONTACTS] Erro ao atualizar contato:", { error });
+    return errorResponse("Erro interno do servidor", 500);
+  }
 }
 
 // DELETE - Excluir contato
 export async function DELETE(req: NextRequest) {
-	try {
+  try {
+    const authResult = await requireAdminAuthUser();
+    if (!authResult.ok) return authResult.response;
 
-		const user = await getAuthUser()
-		if (!user) {
-			console.warn('⚠️ [API_CONTACTS] Usuário não autenticado tentou excluir contato')
-			return NextResponse.json({ field: null, message: 'Usuário não autenticado.' }, { status: 401 })
-		}
+    const { id } = await req.json();
 
-		const adminCheck = await requireAdmin(user.id)
-		if (!adminCheck.success) {
-			return NextResponse.json({ field: null, message: adminCheck.error }, { status: 403 })
-		}
+    if (!id) {
+      return errorResponse("ID do contato é obrigatório", 400);
+    }
 
+    // Verificar se contato existe e pegar imagem para deletar
+    const existingContacts = await db
+      .select()
+      .from(contact)
+      .where(eq(contact.id, id));
+    if (existingContacts.length === 0) {
+      return errorResponse("Contato não encontrado", 404);
+    }
 
-		const { id } = await req.json()
+    const contactToDelete = existingContacts[0];
 
-		if (!id) {
-			return NextResponse.json({ success: false, error: 'ID do contato é obrigatório' }, { status: 400 })
-		}
+    // Remover associações primeiro (tabela productContact)
+    await db.delete(productContact).where(eq(productContact.contactId, id));
 
-		// Verificar se contato existe
-		const existingContacts = await db.select().from(contact).where(eq(contact.id, id))
-		if (existingContacts.length === 0) {
-			return NextResponse.json({ success: false, error: 'Contato não encontrado' }, { status: 404 })
-		}
+    // Remover contato
+    await db.delete(contact).where(eq(contact.id, id));
 
+    // Remover imagem se existir
+    if (contactToDelete.image) {
+      try {
+        if (requestUtils.isFileServerUrl(contactToDelete.image)) {
+          const filePath = requestUtils.extractFilePath(contactToDelete.image);
+          if (filePath) {
+            const [kind, ...rest] = filePath.split("/");
+            const filename = rest.join("/");
+            if (
+              kind &&
+              filename &&
+              isUploadKind(kind) &&
+              isSafeFilename(filename)
+            ) {
+              await deleteUploadFile(kind, filename);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("⚠️ [API_CONTACTS] Erro ao remover imagem do contato:", {
+          error,
+        });
+      }
+    }
 
-		// Executar exclusão em cascata usando transação
-		await db.transaction(async (tx) => {
-
-			// 1. Excluir associações produto-contato
-			await tx.delete(productContact).where(eq(productContact.contactId, id))
-
-			// 2. Finalmente, excluir o contato
-			await tx.delete(contact).where(eq(contact.id, id))
-		})
-
-
-		return NextResponse.json({ success: true })
-	} catch (error) {
-		console.error('❌ [API_CONTACTS] Erro detalhado ao excluir contato:', { error })
-		console.error('❌ [API_CONTACTS] Stack trace:', { stack: error instanceof Error ? error.stack : 'N/A' })
-		console.error('❌ [API_CONTACTS] Tipo do erro:', { type: typeof error })
-		console.error('❌ [API_CONTACTS] Mensagem do erro:', error instanceof Error ? error.message : String(error))
-
-		return NextResponse.json(
-			{
-				success: false,
-				error: 'Erro interno do servidor',
-				details: error instanceof Error ? error.message : String(error),
-			},
-			{ status: 500 },
-		)
-	}
+    return successResponse(null, "Contato excluído com sucesso");
+  } catch (error) {
+    console.error("❌ [API_CONTACTS] Erro ao excluir contato:", { error });
+    return errorResponse("Erro interno do servidor", 500);
+  }
 }

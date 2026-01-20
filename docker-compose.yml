@@ -2,19 +2,24 @@ services:
   app:
     build: .
     ports:
-      - '3000:3000'
+      - "3000:3000"
     environment:
       # Ambiente e banco
       - NODE_ENV=${NODE_ENV:-development}
-      - DATABASE_URL=${DATABASE_URL}
-      
+      - DATABASE_URL_DEV=${DATABASE_URL_DEV}
+      - DATABASE_URL_PROD=${DATABASE_URL_PROD}
+
       # URLs do sistema
-      - APP_URL=${APP_URL:-http://localhost:3000}
-      
+      - APP_URL_DEV=${APP_URL_DEV:-http://localhost:3000/silo}
+      - APP_URL_PROD=${APP_URL_PROD:-https://fortuna.cptec.inpe.br/silo}
+      - NEXT_PUBLIC_BASE_PATH=${NEXT_PUBLIC_BASE_PATH:-/silo}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://fortuna.cptec.inpe.br/silo}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+
       # Google OAuth
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      
+
       # Email SMTP
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}

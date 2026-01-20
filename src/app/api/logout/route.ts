@@ -1,23 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { destroySessionCookie } from '@/lib/auth/session'
+import { NextRequest, NextResponse } from "next/server";
+import { cookies, headers } from "next/headers";
+import { auth } from "@/lib/auth/server";
+import { config as appConfig } from "@/lib/config";
 
 // Faz logout do usuário
 
 export async function GET(req: NextRequest) {
-	try {
-		const cookieStore = await cookies()
-		const token = cookieStore.get('session_token')?.value
+  try {
+    const cookieStore = await cookies();
+    await auth.api.signOut({
+      headers: await headers(),
+    });
 
-		// Remove a sessão do banco de dados e do cookie
-		if (token) {
-			await destroySessionCookie(token)
-		}
+    const cookieNamesToDelete = [
+      "session_token",
+      "__Secure-session_token",
+      "better-auth.session_token",
+      "__Secure-better-auth.session_token",
+      "better-auth.session_data",
+      "__Secure-better-auth.session_data",
+      "better-auth.dont_remember",
+      "__Secure-better-auth.dont_remember",
+    ];
 
-		// Redireciona para a página de login
-		return NextResponse.redirect(new URL('/login', req.url))
-	} catch (error) {
-		console.error('❌ [API_LOGOUT] Erro ao fazer logout:', { error })
-		return NextResponse.redirect(new URL('/login', req.url))
-	}
+    for (const name of cookieNamesToDelete) {
+      if (cookieStore.get(name)) cookieStore.delete(name);
+    }
+
+    return NextResponse.redirect(
+      new URL(appConfig.getPublicPath("/login"), req.url),
+    );
+  } catch (error) {
+    console.error("❌ [API_LOGOUT] Erro ao fazer logout:", { error });
+    return NextResponse.redirect(
+      new URL(appConfig.getPublicPath("/login"), req.url),
+    );
+  }
 }

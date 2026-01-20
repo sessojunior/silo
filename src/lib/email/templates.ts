@@ -1,7 +1,7 @@
 // Templates de email modernos e clean para o sistema SILO
 
-import { EmailTemplate, EmailTemplateData } from './types'
-import { config } from '@/lib/config'
+import type { EmailTemplate, EmailTemplateData } from "./types";
+import { config } from "@/lib/config";
 
 // Template base com layout CPTEC/INPE
 const baseTemplate = (content: string, subject: string): string => `
@@ -55,31 +55,37 @@ const baseTemplate = (content: string, subject: string): string => `
     </table>
   </body>
 </html>
-`
+`;
 
 // Template para códigos OTP
-const otpCodeTemplate = (data: EmailTemplateData['otpCode']): string => {
-	const { code, type } = data
-	
-	const getTypeText = (type: string): string => {
-		switch (type) {
-			case 'sign-in': return 'para fazer login'
-			case 'email-verification': return 'para verificar seu e-mail'
-			case 'forget-password': return 'para recuperar sua senha'
-			case 'setup-password': return 'para definir sua senha inicial'
-			case 'email-change': return 'para alterar seu e-mail'
-			default: return 'a seguir'
-		}
-	}
-	
-	const expirationMinutes = type === 'setup-password' ? 30 : 10
-	
-	// 🆕 URL base do site usando config centralizado
-	const baseUrl = config.appUrl || 'http://localhost:3000'
-	const setupPasswordUrl = `${baseUrl}/setup-password`
-	
-	// Botão/link para setup-password
-	const setupPasswordButton = type === 'setup-password' ? `
+const otpCodeTemplate = (data: EmailTemplateData["otpCode"]): string => {
+  const { code, type } = data;
+
+  const getTypeText = (type: string): string => {
+    switch (type) {
+      case "sign-in":
+        return "para fazer login";
+      case "email-verification":
+        return "para verificar seu e-mail";
+      case "forget-password":
+        return "para recuperar ou definir sua senha";
+      case "email-change":
+        return "para alterar seu e-mail";
+      default:
+        return "a seguir";
+    }
+  };
+
+  const expirationMinutes = type === "forget-password" ? 30 : 10;
+
+  // 🆕 URL base do site usando config centralizado
+  const baseUrl = config.appUrl || "http://localhost:3000";
+  const setupPasswordUrl = `${baseUrl}/setup-password`;
+
+  // Botão/link para setup-password
+  const setupPasswordButton =
+    type === "forget-password"
+      ? `
 		<div style="margin:15px 0;">
 			<a href="${setupPasswordUrl}" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;text-align:center;">
 				Definir minha senha
@@ -89,9 +95,10 @@ const otpCodeTemplate = (data: EmailTemplateData['otpCode']): string => {
 			Ou copie e cole este link no seu navegador:<br>
 			<a href="${setupPasswordUrl}" style="color:#2563eb;text-decoration:underline;">${setupPasswordUrl}</a>
 		</p>
-	` : ''
-	
-	return `
+	`
+      : "";
+
+  return `
 		<h2 style="color:#1e293b;margin:0 0 20px;font-size:20px;">Código de Verificação</h2>
 		<p style="color:#64748b;margin:0;line-height:1.6;">
 			Utilize o seguinte código de verificação ${getTypeText(type)}:
@@ -104,14 +111,16 @@ const otpCodeTemplate = (data: EmailTemplateData['otpCode']): string => {
 			Este código expira em ${expirationMinutes} minutos.<br>
 			Se você não solicitou isso, ignore este email.
 		</p>
-	`
-}
+	`;
+};
 
 // Template para confirmação de alteração de email
-const emailChangedTemplate = (data: EmailTemplateData['emailChanged']): string => {
-	const { oldEmail, newEmail } = data
-	
-	return `
+const emailChangedTemplate = (
+  data: EmailTemplateData["emailChanged"],
+): string => {
+  const { oldEmail, newEmail } = data;
+
+  return `
 		<h2 style="color:#1e293b;margin:0 0 20px;font-size:20px;">Email Alterado</h2>
 		<p style="color:#64748b;margin:0 0 20px;line-height:1.6;">
 			Seu email foi alterado com sucesso de <strong>${oldEmail}</strong> para <strong>${newEmail}</strong>.
@@ -119,14 +128,16 @@ const emailChangedTemplate = (data: EmailTemplateData['emailChanged']): string =
 		<p style="color:#64748b;margin:0;font-size:14px;">
 			Se você não fez esta alteração, entre em contato conosco imediatamente.
 		</p>
-	`
-}
+	`;
+};
 
 // Template para confirmação de alteração de senha
-const passwordChangedTemplate = (data: EmailTemplateData['passwordChanged']): string => {
-	const { email } = data
-	
-	return `
+const passwordChangedTemplate = (
+  data: EmailTemplateData["passwordChanged"],
+): string => {
+  const { email } = data;
+
+  return `
 		<h2 style="color:#1e293b;margin:0 0 20px;font-size:20px;">Senha Alterada</h2>
 		<p style="color:#64748b;margin:0 0 20px;line-height:1.6;">
 			Sua senha foi alterada com sucesso para o email <strong>${email}</strong>.
@@ -134,57 +145,65 @@ const passwordChangedTemplate = (data: EmailTemplateData['passwordChanged']): st
 		<p style="color:#64748b;margin:0;font-size:14px;">
 			Se você não fez esta alteração, entre em contato conosco imediatamente.
 		</p>
-	`
-}
+	`;
+};
 
 // Função principal para gerar templates
 export function generateEmailTemplate<T extends EmailTemplate>(
-	template: T,
-	data: EmailTemplateData[T],
-	subject: string
+  template: T,
+  data: EmailTemplateData[T],
+  subject: string,
 ): string {
-	let content: string
-	
-	switch (template) {
-		case 'otpCode':
-			content = otpCodeTemplate(data as EmailTemplateData['otpCode'])
-			break
-		case 'emailChanged':
-			content = emailChangedTemplate(data as EmailTemplateData['emailChanged'])
-			break
-		case 'passwordChanged':
-			content = passwordChangedTemplate(data as EmailTemplateData['passwordChanged'])
-			break
-		default:
-			throw new Error(`Template não encontrado: ${template}`)
-	}
-	
-	return baseTemplate(content, subject)
+  let content: string;
+
+  switch (template) {
+    case "otpCode":
+      content = otpCodeTemplate(data as EmailTemplateData["otpCode"]);
+      break;
+    case "emailChanged":
+      content = emailChangedTemplate(data as EmailTemplateData["emailChanged"]);
+      break;
+    case "passwordChanged":
+      content = passwordChangedTemplate(
+        data as EmailTemplateData["passwordChanged"],
+      );
+      break;
+    default:
+      throw new Error(`Template não encontrado: ${template}`);
+  }
+
+  return baseTemplate(content, subject);
 }
 
 // Função para gerar fallback de texto simples
 export function generateTextFallback<T extends EmailTemplate>(
-	template: T,
-	data: EmailTemplateData[T]
+  template: T,
+  data: EmailTemplateData[T],
 ): string {
-	switch (template) {
-		case 'otpCode': {
-			const { code, type } = data as EmailTemplateData['otpCode']
-			const typeText = type === 'sign-in' ? 'para fazer login' : 
-				type === 'email-verification' ? 'para verificar seu e-mail' :
-				type === 'forget-password' ? 'para recuperar sua senha' :
-				type === 'email-change' ? 'para alterar seu e-mail' : 'a seguir'
-			return `Utilize o seguinte código de verificação ${typeText}: ${code}`
-		}
-		case 'emailChanged': {
-			const { oldEmail, newEmail } = data as EmailTemplateData['emailChanged']
-			return `Seu email foi alterado de ${oldEmail} para ${newEmail}. Se você não fez esta alteração, entre em contato conosco.`
-		}
-		case 'passwordChanged': {
-			const { email } = data as EmailTemplateData['passwordChanged']
-			return `Sua senha foi alterada para o email ${email}. Se você não fez esta alteração, entre em contato conosco.`
-		}
-		default:
-			throw new Error(`Template não encontrado: ${template}`)
-	}
+  switch (template) {
+    case "otpCode": {
+      const { code, type } = data as EmailTemplateData["otpCode"];
+      const typeText =
+        type === "sign-in"
+          ? "para fazer login"
+          : type === "email-verification"
+            ? "para verificar seu e-mail"
+            : type === "forget-password"
+              ? "para recuperar sua senha"
+              : type === "email-change"
+                ? "para alterar seu e-mail"
+                : "a seguir";
+      return `Utilize o seguinte código de verificação ${typeText}: ${code}`;
+    }
+    case "emailChanged": {
+      const { oldEmail, newEmail } = data as EmailTemplateData["emailChanged"];
+      return `Seu email foi alterado de ${oldEmail} para ${newEmail}. Se você não fez esta alteração, entre em contato conosco.`;
+    }
+    case "passwordChanged": {
+      const { email } = data as EmailTemplateData["passwordChanged"];
+      return `Sua senha foi alterada para o email ${email}. Se você não fez esta alteração, entre em contato conosco.`;
+    }
+    default:
+      throw new Error(`Template não encontrado: ${template}`);
+  }
 }

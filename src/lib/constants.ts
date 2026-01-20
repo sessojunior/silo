@@ -2,8 +2,8 @@
  * Constantes do sistema de incidentes
  */
 
-export const NO_INCIDENTS_CATEGORY_NAME = 'Não houve incidentes'
-export const NO_INCIDENTS_CATEGORY_ID = 'no_incidents'
+export const NO_INCIDENTS_CATEGORY_NAME = "Não houve incidentes";
+export const NO_INCIDENTS_CATEGORY_ID = "no_incidents";
 
 /**
  * Verifica se uma categoria representa um incidente real
@@ -11,5 +11,9 @@ export const NO_INCIDENTS_CATEGORY_ID = 'no_incidents'
  * @returns true se for um incidente real, false se for "Não houve incidentes"
  */
 export const isRealIncident = (categoryId: string | null): boolean => {
-	return categoryId !== null && categoryId !== '' && categoryId !== NO_INCIDENTS_CATEGORY_ID
-}
+  return (
+    categoryId !== null &&
+    categoryId !== "" &&
+    categoryId !== NO_INCIDENTS_CATEGORY_ID
+  );
+};

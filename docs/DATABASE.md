@@ -28,16 +28,16 @@ O **Silo** utiliza **PostgreSQL** com **Drizzle ORM** para gerenciamento do banc
 
 ## 📦 **MÓDULOS E TABELAS**
 
-| Módulo | Descrição |
-|--------|-----------|
-| **Autenticação** | Usuários, sessões, códigos OTP, provedores OAuth, rate limiting |
-| **Perfis** | Perfis e preferências dos usuários |
-| **Grupos** | Grupos e relacionamento many-to-many com usuários |
-| **Produtos** | Produtos, problemas, soluções, dependências, contatos, manuais, atividades |
-| **Chat** | Mensagens e presença de usuários |
-| **Projetos** | Projetos, atividades, tarefas, usuários e histórico |
-| **Ajuda** | Documentação do sistema |
-| **Contatos** | Base de contatos globais |
+| Módulo           | Descrição                                                                  |
+| ---------------- | -------------------------------------------------------------------------- |
+| **Autenticação** | Usuários, sessões, códigos OTP, provedores OAuth, rate limiting            |
+| **Perfis**       | Perfis e preferências dos usuários                                         |
+| **Grupos**       | Grupos e relacionamento many-to-many com usuários                          |
+| **Produtos**     | Produtos, problemas, soluções, dependências, contatos, manuais, atividades |
+| **Chat**         | Mensagens e presença de usuários                                           |
+| **Projetos**     | Projetos, atividades, tarefas, usuários e histórico                        |
+| **Ajuda**        | Documentação do sistema                                                    |
+| **Contatos**     | Base de contatos globais                                                   |
 
 ---
 
@@ -56,11 +56,11 @@ Pontos práticos:
 Exemplo de tipagem:
 
 ```typescript
-import type { InferInsertModel, InferSelectModel } from 'drizzle-orm'
-import { authUser } from '@/lib/db/schema'
+import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { authUser } from "@/lib/db/schema";
 
-export type AuthUser = InferSelectModel<typeof authUser>
-export type NewAuthUser = InferInsertModel<typeof authUser>
+export type AuthUser = InferSelectModel<typeof authUser>;
+export type NewAuthUser = InferInsertModel<typeof authUser>;
 ```
 
 ---
@@ -147,20 +147,27 @@ O schema define índices apenas onde há ganho real de performance (consultas fr
 
 ```typescript
 export const userGroup = pgTable(
-	'user_group',
-	{
-		id: uuid('id').primaryKey().defaultRandom(),
-		userId: text('user_id').notNull().references(() => authUser.id, { onDelete: 'cascade' }),
-		groupId: text('group_id').notNull().references(() => group.id, { onDelete: 'cascade' }),
-		joinedAt: timestamp('joined_at').notNull().defaultNow(),
-		createdAt: timestamp('created_at').notNull().defaultNow(),
-	},
-	(table) => ({
-		uniqueUserGroup: unique('unique_user_group').on(table.userId, table.groupId),
-		userIdIdx: index('idx_user_group_user_id').on(table.userId),
-		groupIdIdx: index('idx_user_group_group_id').on(table.groupId),
-	}),
-)
+  "user_group",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => group.id, { onDelete: "cascade" }),
+    joinedAt: timestamp("joined_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueUserGroup: unique("unique_user_group").on(
+      table.userId,
+      table.groupId,
+    ),
+    userIdIdx: index("idx_user_group_user_id").on(table.userId),
+    groupIdIdx: index("idx_user_group_group_id").on(table.groupId),
+  }),
+);
 ```
 
 ### **2. Constraints Únicos**
@@ -169,23 +176,27 @@ Previnem duplicações:
 
 ```typescript
 // Email único
-email: text('email').notNull().unique()
+email: text("email").notNull().unique();
 
 // Constraint composto (exemplo real do projeto)
 export const rateLimit = pgTable(
-	'rate_limit',
-	{
-		id: text('id').primaryKey(),
-		route: text('route').notNull(),
-		email: text('email').notNull(),
-		ip: text('ip').notNull(),
-		count: integer('count').notNull(),
-		lastRequest: timestamp('last_request').notNull(),
-	},
-	(table) => ({
-		uniqueEmailIpRoute: unique('unique_rate_limit_email_ip_route').on(table.email, table.ip, table.route),
-	}),
-)
+  "rate_limit",
+  {
+    id: text("id").primaryKey(),
+    route: text("route").notNull(),
+    email: text("email").notNull(),
+    ip: text("ip").notNull(),
+    count: integer("count").notNull(),
+    lastRequest: timestamp("last_request").notNull(),
+  },
+  (table) => ({
+    uniqueEmailIpRoute: unique("unique_rate_limit_email_ip_route").on(
+      table.email,
+      table.ip,
+      table.route,
+    ),
+  }),
+);
 ```
 
 ### **3. Soft Delete**
@@ -193,10 +204,9 @@ export const rateLimit = pgTable(
 Campo `deletedAt` onde necessário:
 
 ```typescript
-deletedAt: timestamp('deleted_at')
-
-// Query ignorando deletados
-.where(isNull(chatMessage.deletedAt))
+deletedAt: timestamp("deleted_at")
+  // Query ignorando deletados
+  .where(isNull(chatMessage.deletedAt));
 ```
 
 ### **4. Timestamps**
@@ -213,9 +223,9 @@ updatedAt: timestamp('updated_at').defaultNow()
 Relacionamentos com `onDelete: 'cascade'`:
 
 ```typescript
-userId: text('user_id')
+userId: text("user_id")
   .notNull()
-  .references(() => users.id, { onDelete: 'cascade' })
+  .references(() => users.id, { onDelete: "cascade" });
 ```
 
 ### **6. Tipagem TypeScript**
@@ -223,8 +233,8 @@ userId: text('user_id')
 Types gerados automaticamente:
 
 ```typescript
-export type AuthUser = typeof authUser.$inferSelect
-export type NewAuthUser = typeof authUser.$inferInsert
+export type AuthUser = typeof authUser.$inferSelect;
+export type NewAuthUser = typeof authUser.$inferInsert;
 ```
 
 ### **7. JSONB para Dados Flexíveis**
@@ -232,13 +242,13 @@ export type NewAuthUser = typeof authUser.$inferInsert
 Campos complexos como JSONB:
 
 ```typescript
-turns: jsonb('turns').$type<{
-  morning: boolean
-  afternoon: boolean
-  night: boolean
-}>()
+turns: jsonb("turns").$type<{
+  morning: boolean;
+  afternoon: boolean;
+  night: boolean;
+}>();
 
-details: jsonb('details').$type<Record<string, unknown>>()
+details: jsonb("details").$type<Record<string, unknown>>();
 ```
 
 ### **8. UUID para Alta Concorrência**
@@ -246,7 +256,7 @@ details: jsonb('details').$type<Record<string, unknown>>()
 Quando faz sentido (ex.: histórico, relacionamentos e entidades com alta taxa de criação), o schema usa `uuid(...).defaultRandom()`. Em outras tabelas, o `id` é `text(...)` e o código gera IDs com `randomUUID()` na aplicação (ex.: autenticação/sessões).
 
 ```typescript
-id: uuid('id').defaultRandom().primaryKey()
+id: uuid("id").defaultRandom().primaryKey();
 ```
 
 ---
@@ -258,55 +268,65 @@ id: uuid('id').defaultRandom().primaryKey()
 ```typescript
 const defaultGroups = [
   {
-    name: 'Administradores',
-    description: 'Administradores do sistema com acesso completo',
-    icon: 'icon-[lucide--shield-check]',
-    color: '#DC2626',
-    role: 'admin',
+    name: "Administradores",
+    description: "Administradores do sistema com acesso completo",
+    icon: "icon-[lucide--shield-check]",
+    color: "#DC2626",
+    role: "admin",
     active: true,
-    isDefault: false
+    isDefault: false,
   },
   {
-    name: 'Operadores',
-    description: 'Operadores responsáveis pelo funcionamento dos sistemas',
-    icon: 'icon-[lucide--settings]',
-    color: '#059669',
-    role: 'user',
+    name: "Operadores",
+    description: "Operadores responsáveis pelo funcionamento dos sistemas",
+    icon: "icon-[lucide--settings]",
+    color: "#059669",
+    role: "user",
     active: true,
-    isDefault: true
+    isDefault: true,
   },
   {
-    name: 'Suporte',
-    description: 'Equipe de suporte técnico e atendimento',
-    icon: 'icon-[lucide--headphones]',
-    color: '#EA580C',
-    role: 'user',
+    name: "Suporte",
+    description: "Equipe de suporte técnico e atendimento",
+    icon: "icon-[lucide--headphones]",
+    color: "#EA580C",
+    role: "user",
     active: true,
-    isDefault: false
+    isDefault: false,
   },
   {
-    name: 'Visitantes',
-    description: 'Usuários externos com acesso limitado',
-    icon: 'icon-[lucide--user-check]',
-    color: '#64748B',
-    role: 'user',
+    name: "Visitantes",
+    description: "Usuários externos com acesso limitado",
+    icon: "icon-[lucide--user-check]",
+    color: "#64748B",
+    role: "user",
     active: true,
-    isDefault: false
-  }
-]
+    isDefault: false,
+  },
+];
 ```
 
 ### **Categorias de Problemas Padrão**
 
 ```typescript
 const defaultCategories = [
-  { name: 'Não houve incidentes', color: '#10B981', isSystem: true, sortOrder: 0 },
-  { name: 'Dados indisponíveis', color: '#7C3AED', isSystem: false, sortOrder: 1 },
-  { name: 'Rede externa', color: '#DC2626', isSystem: false, sortOrder: 2 },
-  { name: 'Rede interna', color: '#EC4899', isSystem: false, sortOrder: 3 },
-  { name: 'Erro no modelo', color: '#F59E0B', isSystem: false, sortOrder: 4 },
-  { name: 'Falha humana', color: '#92400E', isSystem: false, sortOrder: 5 }
-]
+  {
+    name: "Não houve incidentes",
+    color: "#10B981",
+    isSystem: true,
+    sortOrder: 0,
+  },
+  {
+    name: "Dados indisponíveis",
+    color: "#7C3AED",
+    isSystem: false,
+    sortOrder: 1,
+  },
+  { name: "Rede externa", color: "#DC2626", isSystem: false, sortOrder: 2 },
+  { name: "Rede interna", color: "#EC4899", isSystem: false, sortOrder: 3 },
+  { name: "Erro no modelo", color: "#F59E0B", isSystem: false, sortOrder: 4 },
+  { name: "Falha humana", color: "#92400E", isSystem: false, sortOrder: 5 },
+];
 ```
 
 ### **Executar Seed**

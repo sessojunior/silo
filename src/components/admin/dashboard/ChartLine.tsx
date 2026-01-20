@@ -1,92 +1,121 @@
-'use client'
+"use client";
 
-import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
-import type { ApexOptions } from 'apexcharts'
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+import type { ApexOptions } from "apexcharts";
+import type { ApiResponse as HttpResponse } from "@/lib/api-response";
+import { config } from "@/lib/config";
 
 // Importação dinâmica para evitar SSR
-const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false })
+const ReactApexChart = dynamic(() => import("react-apexcharts"), {
+  ssr: false,
+});
 
 interface ChartApiResponse {
-	categories: string[]
-	problems: number[]
-	solutions: number[]
+  categories: string[];
+  problems: number[];
+  solutions: number[];
 }
 
 export default function ChartLine({ refresh = 0 }: { refresh?: number }) {
-	const [mounted, setMounted] = useState(false)
-	const [chartData, setChartData] = useState<ChartApiResponse | null>(null)
+  const [mounted, setMounted] = useState(false);
+  const [chartData, setChartData] = useState<ChartApiResponse | null>(null);
 
-	useEffect(() => {
-		setMounted(true)
-	}, [])
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-	useEffect(() => {
-		async function load() {
-			try {
-				const res = await fetch('/api/admin/dashboard/problems-solutions')
-				if (res.ok) {
-					const json = (await res.json()) as ChartApiResponse
-					setChartData(json)
-				}
-			} catch (error) {
-				console.error('❌ [COMPONENT_CHART_LINE] Erro ao carregar dados do gráfico de problemas & soluções:', { error })
-			}
-		}
-		load()
-	}, [refresh])
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch(
+          config.getApiUrl("/api/admin/dashboard/problems-solutions"),
+        );
+        if (res.ok) {
+          const json = (await res.json()) as HttpResponse<ChartApiResponse>;
+          if (json.success && json.data) {
+            setChartData(json.data);
+          } else {
+            setChartData(null);
+          }
+        }
+      } catch (error) {
+        console.error(
+          "❌ [COMPONENT_CHART_LINE] Erro ao carregar dados do gráfico de problemas & soluções:",
+          { error },
+        );
+      }
+    }
+    load();
+  }, [refresh]);
 
-	const series = chartData
-		? [
-				{ name: 'Problemas', data: chartData.problems },
-				{ name: 'Soluções', data: chartData.solutions },
-			]
-		: [
-				{ name: 'Problemas', data: [] },
-				{ name: 'Soluções', data: [] },
-			]
+  const categories = chartData?.categories ?? [];
+  const problems = chartData?.problems ?? [];
+  const solutions = chartData?.solutions ?? [];
 
-	const options: ApexOptions = {
-		chart: {
-			type: 'line',
-			toolbar: { show: false },
-			zoom: { enabled: false },
-		},
-		dataLabels: {
-			enabled: false,
-		},
-		stroke: {
-			width: [5, 7],
-			curve: 'straight',
-			dashArray: [0, 8],
-		},
-		markers: {
-			size: 0,
-			hover: {
-				sizeOffset: 6,
-			},
-		},
-		xaxis: {
-			categories: chartData ? chartData.categories : [],
-		},
-		tooltip: {
-			y: [
-				{
-					title: {
-						formatter: (val: string) => `${val}:`,
-					},
-				},
-				{
-					title: {
-						formatter: (val: string) => `${val} documentadas:`,
-					},
-				},
-			],
-		},
-		grid: {
-			borderColor: '#f1f1f1',
-		},
-	}
+  const series = [
+    { name: "Problemas", data: problems },
+    { name: "Soluções", data: solutions },
+  ];
 
-	return <div className='w-full max-w-lg'>{mounted && chartData && <ReactApexChart key={refresh} options={options} series={series} type='line' height={360} />}</div>
+  const options: ApexOptions = {
+    chart: {
+      type: "line",
+      toolbar: { show: false },
+      zoom: { enabled: false },
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    stroke: {
+      width: [5, 7],
+      curve: "straight",
+      dashArray: [0, 8],
+    },
+    markers: {
+      size: 0,
+      hover: {
+        sizeOffset: 6,
+      },
+    },
+    xaxis: {
+      categories,
+    },
+    tooltip: {
+      y: [
+        {
+          title: {
+            formatter: (val: string) => `${val}:`,
+          },
+        },
+        {
+          title: {
+            formatter: (val: string) => `${val} documentadas:`,
+          },
+        },
+      ],
+    },
+    grid: {
+      borderColor: "#f1f1f1",
+    },
+  };
+
+  const hasChartData =
+    categories.length > 0 &&
+    problems.length === categories.length &&
+    solutions.length === categories.length;
+
+  return (
+    <div className="w-full max-w-lg">
+      {mounted && hasChartData && (
+        <ReactApexChart
+          key={refresh}
+          options={options}
+          series={series}
+          type="line"
+          height={360}
+        />
+      )}
+    </div>
+  );
 }

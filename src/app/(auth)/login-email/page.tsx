@@ -1,221 +1,205 @@
-'use client'
+"use client";
 
-import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth/client";
+import { translateAuthError } from "@/lib/auth/i18n";
+import { postLoginRedirectPath } from "@/lib/auth/urls";
+import { isValidCode, isValidEmail } from "@/lib/auth/validate";
 
-import { toast } from '@/lib/toast'
+import { toast } from "@/lib/toast";
+import { useAuthFormState } from "@/hooks/useAuthFormState";
 
-import AuthHeader from '@/components/auth/AuthHeader'
-import AuthDivider from '@/components/auth/AuthDivider'
-import AuthLink from '@/components/auth/AuthLink'
+import AuthHeader from "@/components/auth/AuthHeader";
+import AuthDivider from "@/components/auth/AuthDivider";
+import AuthLink from "@/components/auth/AuthLink";
 
-import Label from '@/components/ui/Label'
-import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
-import Pin from '@/components/ui/Pin'
+import Label from "@/components/ui/Label";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Pin from "@/components/ui/Pin";
 
 export default function LoginEmailPage() {
-	const router = useRouter()
+  const router = useRouter();
 
-	const [loading, setLoading] = useState(false)
-	const [step, setStep] = useState(1)
-	const [form, setForm] = useState({ field: null as null | string, message: '' })
+  const [step, setStep] = useState(1);
+  const { form, loading, setFieldError, clearFieldError, withLoading } =
+    useAuthFormState();
 
-	const [email, setEmail] = useState('')
-	const [code, setCode] = useState('')
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
 
-	const emailRef = useRef<HTMLInputElement>(null)
-	const codeRef = useRef<HTMLInputElement>(null)
+  // Etapa 1: Enviar código OTP
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-	// Foca no campo inválido quando houver erro
-	useEffect(() => {
-		if (!form.field) return
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!isValidEmail(normalizedEmail)) {
+      setFieldError("email", "Digite um e-mail válido.");
+      return;
+    }
 
-		switch (form.field) {
-			case 'email':
-				emailRef.current?.focus()
-				break
-			case 'code':
-				codeRef.current?.focus()
-				break
-		}
-	}, [form])
+    await withLoading(async () => {
+      clearFieldError();
 
-	// Etapa 1: Fazer login
-	const handleLogin = async (e: React.FormEvent) => {
-		e.preventDefault()
+      try {
+        const { error } = await authClient.emailOtp.sendVerificationOtp({
+          email: normalizedEmail,
+          type: "sign-in",
+        });
 
-		setLoading(true)
-		setForm({ field: null, message: '' })
+        if (error) {
+          const errorMessage = translateAuthError(
+            error,
+            "Erro ao enviar código.",
+          );
+          setFieldError("email", errorMessage);
+          toast({
+            type: "error",
+            title: errorMessage,
+          });
+          return;
+        }
 
-		try {
-			const res = await fetch('/api/auth/login-email', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email }),
-			})
+        toast({
+          type: "info",
+          title: "Código enviado para seu e-mail.",
+        });
+        setStep(2);
+      } catch (err) {
+        console.error("❌ [PAGE_LOGIN_EMAIL] Erro inesperado:", { error: err });
+        toast({
+          type: "error",
+          title: "Erro inesperado. Tente novamente.",
+        });
+        setFieldError(null, "Erro inesperado. Tente novamente.");
+      }
+    });
+  };
 
-			const data = await res.json()
+  // Etapa 2: Verificar código e fazer login
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-			if (!res.ok) {
-				setForm({ field: data.field, message: data.message })
-				toast({
-					type: 'error',
-					title: data.message,
-				})
-			} else {
-				if (data.step && data.step === 2) {
-					toast({
-						type: 'info',
-						title: 'Agora só falta verificar seu e-mail.',
-					})
-					// Redireciona para a etapa 2
-					setStep(2)
-					return
-				}
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!isValidEmail(normalizedEmail)) {
+      setFieldError("email", "Digite um e-mail válido.");
+      return;
+    }
+    if (!isValidCode(code)) {
+      setFieldError("code", "Digite o código com 6 caracteres.");
+      return;
+    }
 
-				// Redireciona para a página protegida
-				router.push('/admin/welcome')
-			}
-		} catch (err) {
-			console.error('❌ [PAGE_LOGIN_EMAIL] Erro inesperado:', { error: err })
-			toast({
-				type: 'error',
-				title: 'Erro inesperado. Tente novamente.',
-			})
-			setForm({ field: null, message: 'Erro inesperado. Tente novamente.' })
-		} finally {
-			setLoading(false)
-		}
-	}
+    await withLoading(async () => {
+      clearFieldError();
 
-	// Etapa 2: Enviar código de verificação
-	const handleVerifyCode = async (e: React.FormEvent) => {
-		e.preventDefault()
-		setLoading(true)
-		setForm({ field: null, message: '' })
+      try {
+        const { error } = await authClient.signIn.emailOtp({
+          email: normalizedEmail,
+          otp: code,
+        });
 
-		try {
-			const res = await fetch('/api/auth/verify-code', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, code }),
-			})
+        if (error) {
+          const errorMessage = translateAuthError(error, "Código inválido.");
+          setFieldError("code", errorMessage);
+          toast({
+            type: "error",
+            title: errorMessage,
+          });
+          return;
+        }
 
-			const data = await res.json()
+        toast({
+          type: "success",
+          title: "Login realizado com sucesso!",
+        });
+        router.push(postLoginRedirectPath);
+      } catch (err) {
+        console.error("❌ [PAGE_LOGIN_EMAIL] Erro inesperado:", { error: err });
+        toast({
+          type: "error",
+          title: "Erro inesperado. Tente novamente.",
+        });
+        setFieldError(null, "Erro inesperado. Tente novamente.");
+      }
+    });
+  };
 
-			if (!res.ok) {
-				setForm({ field: data.field, message: data.message })
-				toast({
-					type: 'error',
-					title: data.message,
-				})
-			} else {
-				toast({
-					type: 'success',
-					title: 'Conta verificada com sucesso.',
-				})
-				// Redireciona para a página protegida
-				router.push('/admin/welcome')
-			}
-		} catch (err) {
-			console.error('❌ [PAGE_LOGIN_EMAIL] Erro ao verificar o código:', { error: err })
-			toast({
-				type: 'error',
-				title: 'Erro ao verificar o código.',
-			})
-			setForm({ field: null, message: 'Erro ao verificar o código.' })
-		} finally {
-			setLoading(false)
-		}
-	}
+  return (
+    <div className="flex w-full flex-col gap-6">
+      <AuthHeader
+        icon="icon-[lucide--mail]"
+        title={step === 1 ? "Acessar com e-mail" : "Verificar código"}
+        description={
+          step === 1
+            ? "Enviaremos um código de acesso para você."
+            : `Enviamos um código para ${email}`
+        }
+      />
 
-	return (
-		<>
-			{/* Header */}
-			{step === 1 && <AuthHeader icon='icon-[lucide--log-in]' title='Entrar' description='Entre para commençar a usar.' />}
-			{step === 2 && <AuthHeader icon='icon-[lucide--square-asterisk]' title='Verifique a conta' description='Precisamos verificar seu e-mail, insira o código que recebeu por e-mail.' />}
+      {step === 1 && (
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email">E-mail corporativo</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="nome@inpe.br"
+              value={email}
+              setValue={setEmail}
+              isInvalid={form.field === "email"}
+              invalidMessage={form.field === "email" ? form.message : undefined}
+              disabled={loading}
+              required
+            />
+          </div>
 
-			{/* Container */}
-			<div className='mt-10 text-base text-zinc-600 dark:text-zinc-200'>
-				{/* Etapa 1: Inserir o e-mail para fazer login */}
-				{step === 1 && (
-					<>
-						<form onSubmit={handleLogin}>
-							<fieldset className='grid gap-5' disabled={loading}>
-								<div>
-									<Label htmlFor='email' isInvalid={form?.field === 'email'}>
-										E-mail
-									</Label>
-									<Input ref={emailRef} type='email' id='email' name='email' value={email} setValue={setEmail} autoComplete='email' placeholder='seuemail@inpe.br' minLength={8} maxLength={255} required autoFocus isInvalid={form?.field === 'email'} invalidMessage={form?.message} />
-								</div>
-								<div>
-									<Button type='submit' disabled={loading} className='w-full'>
-										{loading ? (
-											<>
-												<span className='icon-[lucide--loader-circle] animate-spin'></span> Entrando...
-											</>
-										) : (
-											<>Entrar</>
-										)}
-									</Button>
-								</div>
-								<AuthDivider>ou</AuthDivider>
-								<div className='flex w-full flex-col items-center justify-center gap-3'>
-									<Button href='/login' type='button' style='bordered' icon='icon-[lucide--log-in]' className='w-full'>
-										Entrar com e-mail e senha
-									</Button>
-									<Button
-										type='button'
-										style='bordered'
-										icon='icon-[logos--google-icon]'
-										className='w-full'
-										onClick={() => {
-											window.location.href = '/login-google'
-										}}
-									>
-										Entrar com Google
-									</Button>
-								</div>
-								<p className='text-center'>
-									Não tem conta? <AuthLink href='/register'>Cadastre-se</AuthLink>.
-								</p>
-							</fieldset>
-						</form>
-					</>
-				)}
+          <Button type="submit" loading={loading} className="w-full">
+            Continuar
+          </Button>
+        </form>
+      )}
 
-				{/* Etapa 2: Enviar o código OTP para fazer login */}
-				{step === 2 && (
-					<>
-						<form onSubmit={handleVerifyCode}>
-							<fieldset className='grid gap-5' disabled={loading}>
-								<input type='hidden' name='email' value={email} />
-								<div>
-									<Label htmlFor='code' isInvalid={form?.field === 'code'}>
-										Código que recebeu por e-mail
-									</Label>
-									<Pin id='code' name='code' length={5} value={code} setValue={setCode} isInvalid={form?.field === 'code'} invalidMessage={form?.message} />
-								</div>
-								<div>
-									<Button type='submit' disabled={loading} className='w-full'>
-										{loading ? (
-											<>
-												<span className='icon-[lucide--loader-circle] animate-spin'></span> Enviando...
-											</>
-										) : (
-											<>Enviar código</>
-										)}
-									</Button>
-								</div>
-								<p className='text-center'>
-									<AuthLink onClick={() => setStep(1)}>Voltar</AuthLink>
-								</p>
-							</fieldset>
-						</form>
-					</>
-				)}
-			</div>
-		</>
-	)
+      {step === 2 && (
+        <form onSubmit={handleVerifyCode} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="code">Código de verificação</Label>
+            <Pin
+              id="code"
+              name="code"
+              length={6}
+              value={code}
+              setValue={setCode}
+              disabled={loading}
+            />
+            {form.field === "code" && (
+              <span className="text-sm font-medium text-red-500">
+                {form.message}
+              </span>
+            )}
+          </div>
+
+          <Button type="submit" loading={loading} className="w-full">
+            Entrar
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => setStep(1)}
+            className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+          >
+            Voltar e alterar e-mail
+          </button>
+        </form>
+      )}
+
+      <AuthDivider>ou</AuthDivider>
+
+      <div className="flex flex-col gap-4 text-center">
+        <AuthLink href="/login">Entrar com senha</AuthLink>
+        <AuthLink href="/register">Não tem uma conta? Cadastre-se</AuthLink>
+      </div>
+    </div>
+  );
 }

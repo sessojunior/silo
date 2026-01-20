@@ -1,155 +1,294 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
-import { db } from '@/lib/db'
-import { authUser, authCode } from '@/lib/db/schema'
-import { getAuthUser } from '@/lib/auth/token'
-import { isValidEmail, isValidDomain } from '@/lib/auth/validate'
-import { generateEmailChangeCode, sendEmailCode } from '@/lib/auth/code'
+import { NextRequest } from "next/server";
+import { and, eq, ne } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { authUser, authVerification } from "@/lib/db/schema";
+import { getAuthUser } from "@/lib/auth/server";
+import { isValidEmail, isValidDomain } from "@/lib/auth/validate";
+import { successResponse, errorResponse } from "@/lib/api-response";
+import { isRateLimited, recordRateLimit } from "@/lib/rateLimit";
+import { sendEmail } from "@/lib/sendEmail";
+import type { EmailTemplateData } from "@/lib/email/types";
+import { randomUUID, randomInt } from "crypto";
 
 // Solicita alteração de email - envia código OTP para o novo email
+export const runtime = "nodejs";
+
+const OTP_LENGTH = 6;
+const OTP_TTL_SECONDS = 5 * 60;
+const OTP_ALLOWED_ATTEMPTS = 3;
+const OTP_RATE_LIMIT_MAX = 3;
+const OTP_RATE_LIMIT_WINDOW_SECONDS = 60;
+
+const getRequestIp = (req: NextRequest): string => {
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (forwardedFor) return forwardedFor.split(",")[0]?.trim() || "unknown";
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+  return "unknown";
+};
+
+const generateNumericOtp = (): string =>
+  String(randomInt(0, 10 ** OTP_LENGTH)).padStart(OTP_LENGTH, "0");
+
+const buildEmailChangeIdentifier = (userId: string, newEmail: string): string =>
+  `email-change-otp-${userId}-${newEmail}`;
+
+const splitStoredOtpValue = (
+  value: string,
+): { otp: string; attempts: number } | null => {
+  const idx = value.lastIndexOf(":");
+  if (idx <= 0 || idx === value.length - 1) return null;
+  const otp = value.slice(0, idx);
+  const attemptsRaw = value.slice(idx + 1);
+  const attempts = Number.parseInt(attemptsRaw, 10);
+  if (Number.isNaN(attempts) || attempts < 0) return null;
+  return { otp, attempts };
+};
+
 export async function POST(req: NextRequest) {
-	try {
-		// Verifica se o usuário está logado
-		const user = await getAuthUser()
-		if (!user) {
-			return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 401 })
-		}
+  try {
+    // Verifica se o usuário está logado
+    const user = await getAuthUser();
+    if (!user) {
+      return errorResponse("Usuário não logado.", 401);
+    }
 
-		// Obtém os dados recebidos
-		const body = await req.json()
-		const newEmail = (body.email as string)?.trim().toLowerCase()
+    // Obtém os dados recebidos
+    const body: unknown = await req.json();
+    const newEmail =
+      typeof body === "object" &&
+      body !== null &&
+      "email" in body &&
+      typeof (body as { email?: unknown }).email === "string"
+        ? (body as { email: string }).email.trim().toLowerCase()
+        : "";
 
-		if (!isValidEmail(newEmail)) {
-			return NextResponse.json({ field: 'email', message: 'O e-mail é inválido.' }, { status: 400 })
-		}
+    if (!isValidEmail(newEmail)) {
+      return errorResponse("O e-mail é inválido.", 400, { field: "email" });
+    }
 
-		if (!isValidDomain(newEmail)) {
-			return NextResponse.json({ field: 'email', message: 'Apenas e-mails do domínio @inpe.br são permitidos.' }, { status: 400 })
-		}
+    if (!isValidDomain(newEmail)) {
+      return errorResponse(
+        "Apenas e-mails do domínio @inpe.br são permitidos.",
+        400,
+        { field: "email" },
+      );
+    }
 
-		// Verifica se o e-mail informado é o mesmo que o atual
-		if (newEmail === user.email) {
-			return NextResponse.json({ 
-				field: 'email', 
-				message: 'O e-mail informado é o mesmo que o atual. Escolha um e-mail diferente.' 
-			}, { status: 400 })
-		}
+    // Verifica se o e-mail informado é o mesmo que o atual
+    if (newEmail === user.email) {
+      return errorResponse(
+        "O e-mail informado é o mesmo que o atual. Escolha um e-mail diferente.",
+        400,
+        { field: "email" },
+      );
+    }
 
-		// Verifica se já existe um usuário com este email
-		const existingUser = await db.query.authUser.findFirst({ where: eq(authUser.email, newEmail) })
-		if (existingUser) {
-			return NextResponse.json({ 
-				field: 'email', 
-				message: 'Este e-mail já está sendo usado por outro usuário. Digite um e-mail diferente.' 
-			}, { status: 400 })
-		}
+    // Verifica se já existe um usuário com este email
+    const existingUser = await db.query.authUser.findFirst({
+      where: eq(authUser.email, newEmail),
+    });
+    if (existingUser) {
+      return errorResponse(
+        "Este e-mail já está sendo usado por outro usuário. Digite um e-mail diferente.",
+        400,
+        { field: "email" },
+      );
+    }
 
-		// Gera código OTP para o novo email (não verifica se usuário existe)
-		const codeResult = await generateEmailChangeCode(newEmail, user.id)
-		if ('error' in codeResult) {
-			return NextResponse.json({ field: 'email', message: codeResult.error.message }, { status: 400 })
-		}
+    const ip = getRequestIp(req);
+    const isLimited = await isRateLimited({
+      email: newEmail,
+      ip,
+      route: "user-email-change",
+      limit: OTP_RATE_LIMIT_MAX,
+      windowInSeconds: OTP_RATE_LIMIT_WINDOW_SECONDS,
+    });
+    if (isLimited) {
+      return errorResponse(
+        "Muitas tentativas. Aguarde um pouco e tente novamente.",
+        429,
+        { field: "email" },
+      );
+    }
 
-		// Envia código OTP para o novo email
-		const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
-		const emailResult = await sendEmailCode({
-			email: newEmail,
-			type: 'email-change',
-			code: codeResult.code,
-			ip,
-		})
+    await recordRateLimit({ email: newEmail, ip, route: "user-email-change" });
 
-		if ('error' in emailResult) {
-			return NextResponse.json({ field: 'email', message: emailResult.error.message }, { status: 400 })
-		}
+    const otp = generateNumericOtp();
+    const identifier = buildEmailChangeIdentifier(user.id, newEmail);
+    const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000);
 
-		// Retorna sucesso
-		return NextResponse.json({ 
-			success: true, 
-			message: 'Código de verificação enviado para o novo e-mail.',
-			requestId: codeResult.requestId
-		})
+    await db.delete(authVerification).where(eq(authVerification.identifier, identifier));
+    await db.insert(authVerification).values({
+      id: randomUUID(),
+      identifier,
+      value: `${otp}:0`,
+      expiresAt,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
-	} catch (error) {
-		console.error('❌ [API_USER_EMAIL_CHANGE] Erro ao solicitar alteração de e-mail:', { error })
-		return NextResponse.json({ message: 'Erro inesperado. Tente novamente.' }, { status: 500 })
-	}
+    const otpTemplateData: EmailTemplateData["otpCode"] = {
+      code: otp,
+      type: "email-change",
+    };
+
+    const emailResult = await sendEmail({
+      to: newEmail,
+      subject: "Código de verificação para troca de e-mail",
+      template: "otpCode",
+      data: otpTemplateData,
+      text: `Seu código de verificação é ${otp}.`,
+    });
+
+    if ("error" in emailResult) {
+      await db
+        .delete(authVerification)
+        .where(eq(authVerification.identifier, identifier));
+      return errorResponse(
+        "Não foi possível enviar o código de verificação. Tente novamente.",
+        500,
+      );
+    }
+
+    return successResponse({}, "Código de verificação enviado para o novo e-mail.");
+  } catch (error) {
+    console.error(
+      "❌ [API_USER_EMAIL_CHANGE] Erro ao solicitar alteração de e-mail:",
+      { error },
+    );
+    return errorResponse(
+      "Erro inesperado ao enviar código. Tente novamente.",
+      500,
+    );
+  }
 }
 
 // Confirma alteração de email com código OTP
 export async function PUT(req: NextRequest) {
-	try {
-		// Verifica se o usuário está logado
-		const user = await getAuthUser()
-		if (!user) {
-			return NextResponse.json({ field: null, message: 'Usuário não logado.' }, { status: 401 })
-		}
+  try {
+    // Verifica se o usuário está logado
+    const user = await getAuthUser();
+    if (!user) {
+      return errorResponse("Usuário não logado.", 401);
+    }
 
-		// Obtém os dados recebidos
-		const body = await req.json()
-		const { requestId, code, newEmail } = body
+    // Obtém os dados recebidos
+    const body: unknown = await req.json();
+    const code =
+      typeof body === "object" &&
+      body !== null &&
+      "code" in body &&
+      typeof (body as { code?: unknown }).code === "string"
+        ? (body as { code: string }).code.trim()
+        : "";
+    const newEmail =
+      typeof body === "object" &&
+      body !== null &&
+      "newEmail" in body &&
+      typeof (body as { newEmail?: unknown }).newEmail === "string"
+        ? (body as { newEmail: string }).newEmail.trim().toLowerCase()
+        : "";
 
-		if (!requestId || !code || !newEmail) {
-			return NextResponse.json({ field: null, message: 'Dados incompletos.' }, { status: 400 })
-		}
+    if (code.length === 0 || newEmail.length === 0) {
+      return errorResponse("Dados incompletos.", 400);
+    }
 
-		// Verifica se o código OTP é válido
-		const otpCode = await db.query.authCode.findFirst({
-			where: eq(authCode.id, requestId),
-		})
+    if (!isValidEmail(newEmail)) {
+      return errorResponse("O e-mail é inválido.", 400, { field: "newEmail" });
+    }
 
-		if (!otpCode || otpCode.code !== code || otpCode.email !== newEmail || otpCode.userId !== user.id) {
-			return NextResponse.json({ field: 'code', message: 'Código inválido ou expirado.' }, { status: 400 })
-		}
+    if (!isValidDomain(newEmail)) {
+      return errorResponse(
+        "Apenas e-mails do domínio @inpe.br são permitidos.",
+        400,
+        { field: "newEmail" },
+      );
+    }
 
-		if (otpCode.expiresAt < new Date()) {
-			return NextResponse.json({ field: 'code', message: 'Código expirado.' }, { status: 400 })
-		}
+    const conflictingUser = await db.query.authUser.findFirst({
+      where: and(eq(authUser.email, newEmail), ne(authUser.id, user.id)),
+    });
+    if (conflictingUser) {
+      return errorResponse(
+        "Este e-mail já está sendo usado por outro usuário. Digite um e-mail diferente.",
+        400,
+        { field: "newEmail" },
+      );
+    }
 
-		// Atualiza o email do usuário
-		const [updateUser] = await db
-			.update(authUser)
-			.set({ 
-				email: newEmail,
-				emailVerified: true // Marca como verificado já que confirmou o código
-			})
-			.where(eq(authUser.id, user.id))
-			.returning()
+    const identifier = buildEmailChangeIdentifier(user.id, newEmail);
+    const verificationRow = await db.query.authVerification.findFirst({
+      where: eq(authVerification.identifier, identifier),
+    });
+    if (!verificationRow || verificationRow.expiresAt < new Date()) {
+      if (verificationRow) {
+        await db
+          .delete(authVerification)
+          .where(eq(authVerification.id, verificationRow.id));
+      }
+      return errorResponse("Código inválido ou expirado.", 400, {
+        field: "code",
+      });
+    }
 
-		if (!updateUser) {
-			return NextResponse.json({ field: null, message: 'Erro ao alterar o e-mail.' }, { status: 500 })
-		}
+    const parsed = splitStoredOtpValue(verificationRow.value);
+    if (!parsed) {
+      await db
+        .delete(authVerification)
+        .where(eq(authVerification.id, verificationRow.id));
+      return errorResponse("Código inválido ou expirado.", 400, {
+        field: "code",
+      });
+    }
 
-		// Remove o código usado
-		await db.delete(authCode).where(eq(authCode.id, requestId))
+    if (parsed.attempts >= OTP_ALLOWED_ATTEMPTS) {
+      await db
+        .delete(authVerification)
+        .where(eq(authVerification.id, verificationRow.id));
+      return errorResponse(
+        "Muitas tentativas. Solicite um novo código.",
+        429,
+        { field: "code" },
+      );
+    }
 
-		// Envia email de confirmação para o email antigo usando template moderno
-		const { sendEmail } = await import('@/lib/sendEmail')
-		await sendEmail({
-			to: user.email,
-			subject: 'E-mail alterado com sucesso',
-			template: 'emailChanged',
-			data: { oldEmail: user.email, newEmail },
-			text: `Seu e-mail foi alterado de ${user.email} para ${newEmail}. Se você não fez esta alteração, entre em contato conosco imediatamente.`, // Fallback
-		})
+    if (code !== parsed.otp) {
+      await db
+        .update(authVerification)
+        .set({
+          value: `${parsed.otp}:${parsed.attempts + 1}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(authVerification.id, verificationRow.id));
 
-		// Envia email de confirmação para o novo email usando template moderno
-		await sendEmail({
-			to: newEmail,
-			subject: 'E-mail alterado com sucesso',
-			template: 'emailChanged',
-			data: { oldEmail: user.email, newEmail },
-			text: `Seu e-mail foi alterado com sucesso para ${newEmail}. Agora você pode usar este e-mail para fazer login no sistema.`, // Fallback
-		})
+      return errorResponse("Código inválido ou expirado.", 400, {
+        field: "code",
+      });
+    }
 
-		// Retorna sucesso
-		return NextResponse.json({ 
-			success: true, 
-			message: 'E-mail alterado com sucesso!' 
-		})
+    // Atualiza o email do usuário
+    await db
+      .update(authUser)
+      .set({
+        email: newEmail,
+        emailVerified: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(authUser.id, user.id));
 
-	} catch (error) {
-		console.error('❌ [API_USER_EMAIL_CHANGE] Erro ao confirmar alteração de e-mail:', { error })
-		return NextResponse.json({ message: 'Erro inesperado. Tente novamente.' }, { status: 500 })
-	}
+    await db
+      .delete(authVerification)
+      .where(eq(authVerification.id, verificationRow.id));
+
+    return successResponse({ success: true }, "E-mail alterado com sucesso!");
+  } catch (error) {
+    console.error("❌ [API_USER_EMAIL_CHANGE] Erro ao alterar e-mail:", {
+      error,
+    });
+    return errorResponse(
+      "Erro inesperado ao alterar e-mail. Tente novamente.",
+      500,
+    );
+  }
 }

@@ -26,18 +26,18 @@ O código atual usa mais de um formato de resposta, dependendo do tipo de endpoi
 ```typescript
 // 1) Padrão geral (muito comum em /api/admin/*)
 type ApiResponse<T> = {
-	success: boolean
-	data?: T
-	error?: string
-	message?: string
-}
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+};
 
 // 2) Padrão de formulário/validação (muito comum em /api/auth/* e /api/user-*)
 type FormResponse = {
-	field: string | null
-	message: string
-	success?: boolean
-}
+  field: string | null;
+  message: string;
+  success?: boolean;
+};
 
 // 3) Alguns endpoints retornam objetos "diretos" (sem envelope), por legado
 // Ex.: { user, userProfile, googleId }
@@ -230,7 +230,7 @@ GET /api/user-profile
 
 Response:
 {
-  "user": { "id": "123", "name": "João Silva", "email": "joao@inpe.br", "image": "/uploads/profile/avatar.webp" },
+  "user": { "id": "123", "name": "João Silva", "email": "joao@inpe.br", "image": "/silo/uploads/profile/avatar.webp" },
   "userProfile": { "genre": "male", "phone": "11999999999", "role": "Desenvolvedor", "team": "DIPTC", "company": "CPTEC", "location": "São Paulo" },
   "googleId": null
 }
@@ -336,7 +336,7 @@ Response:
     "key": "1734567890-avatar.webp",
     "name": "avatar.jpg",
     "size": 1024768,
-    "url": "http://localhost:3000/uploads/avatars/1734567890-avatar.webp",
+    "url": "https://fortuna.cptec.inpe.br/silo/uploads/avatars/1734567890-avatar.webp",
     "id": "1734567890-avatar.webp",
     "status": "uploaded",
     "optimized": true
@@ -349,13 +349,13 @@ POST /api/user-profile-image/update
 Content-Type: application/json
 
 {
-  "imageUrl": "http://localhost:3000/uploads/avatars/1734567890-avatar.webp"
+  "imageUrl": "https://fortuna.cptec.inpe.br/silo/uploads/avatars/1734567890-avatar.webp"
 }
 
 Response:
 {
   "message": "URL da imagem atualizada com sucesso!",
-  "imageUrl": "http://localhost:3000/uploads/avatars/1734567890-avatar.webp"
+  "imageUrl": "https://fortuna.cptec.inpe.br/silo/uploads/avatars/1734567890-avatar.webp"
 }
 ```
 
@@ -1000,20 +1000,40 @@ Response:
 ### **Presença**
 
 ```http
-GET /api/admin/chat/presence?userId=user-123
+GET /api/admin/chat/presence
+
+Response:
+{
+  "presence": [
+    {
+      "userId": "user-123",
+      "userName": "João Silva",
+      "status": "visible",
+      "lastActivity": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z"
+    }
+  ],
+  "currentUserPresence": {
+    "userId": "user-123",
+    "userName": "João Silva",
+    "status": "visible",
+    "lastActivity": "2024-01-15T10:00:00.000Z",
+    "updatedAt": "2024-01-15T10:00:00.000Z"
+  },
+  "timestamp": "2024-01-15T10:00:00.000Z"
+}
+
+POST /api/admin/chat/presence
+{
+  "status": "visible" // ou "invisible"
+}
+
+PATCH /api/admin/chat/presence
 
 Response:
 {
   "success": true,
-  "data": {
-    status: "online",
-    lastActivity: "2024-01-15T10:00:00.000Z"
-  }
-}
-
-PUT /api/admin/chat/presence
-{
-  "status": "away"
+  "lastActivity": "2024-01-15T10:00:00.000Z"
 }
 ```
 
@@ -1074,7 +1094,7 @@ Response:
   key: "1734567890-abc12345.webp",
   name: "imagem.jpg",
   size: 2048576,
-  url: "http://localhost:3000/uploads/general/1734567890-abc12345.webp",
+  url: "https://fortuna.cptec.inpe.br/silo/uploads/general/1734567890-abc12345.webp",
   id: "1734567890-abc12345.webp",
   status: "uploaded",
   optimized: true
@@ -1094,7 +1114,7 @@ Response:
     "key": "1734567890-avatar.webp",
     "name": "avatar.jpg",
     "size": 1024768,
-    "url": "http://localhost:3000/uploads/avatars/1734567890-avatar.webp",
+    "url": "https://fortuna.cptec.inpe.br/silo/uploads/avatars/1734567890-avatar.webp",
     "id": "1734567890-avatar.webp",
     "status": "uploaded",
     "optimized": true
@@ -1115,7 +1135,7 @@ Response:
     "key": "1734567890-contato.webp",
     "name": "contato.jpg",
     "size": 1024768,
-    "url": "http://localhost:3000/uploads/contacts/1734567890-contato.webp",
+    "url": "https://fortuna.cptec.inpe.br/silo/uploads/contacts/1734567890-contato.webp",
     "id": "1734567890-contato.webp",
     "status": "uploaded",
     "optimized": true
@@ -1142,7 +1162,7 @@ Response:
       "key": "1734567890-problema.webp",
       "name": "problema.jpg",
       "size": 1024768,
-      "url": "http://localhost:3000/uploads/problems/1734567890-problema.webp",
+      "url": "https://fortuna.cptec.inpe.br/silo/uploads/problems/1734567890-problema.webp",
       "id": "1734567890-problema.webp",
       "status": "uploaded",
       "optimized": true

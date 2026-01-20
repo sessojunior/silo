@@ -1,6 +1,6 @@
-import { db } from '@/lib/db'
-import { userGroup, group } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { db } from "@/lib/db";
+import { userGroup, group } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Verifica se um usuário é administrador do sistema
@@ -9,34 +9,29 @@ import { eq } from 'drizzle-orm'
  * @returns Promise<boolean> - true se o usuário for administrador
  */
 export async function isUserAdmin(userId: string): Promise<boolean> {
-	try {
-		console.log('ℹ️ [LIB_AUTH_ADMIN] Verificando se usuário é administrador:', { userId })
-		
-		// Buscar grupos do usuário onde o grupo tem role='admin'
-		const adminGroups = await db
-			.select({
-				groupId: userGroup.groupId,
-				groupRole: group.role,
-				groupName: group.name,
-			})
-			.from(userGroup)
-			.innerJoin(group, eq(userGroup.groupId, group.id))
-			.where(eq(userGroup.userId, userId))
+  try {
+    // Buscar grupos do usuário onde o grupo tem role='admin'
+    const adminGroups = await db
+      .select({
+        groupId: userGroup.groupId,
+        groupRole: group.role,
+        groupName: group.name,
+      })
+      .from(userGroup)
+      .innerJoin(group, eq(userGroup.groupId, group.id))
+      .where(eq(userGroup.userId, userId));
 
-		// Verificar se o usuário está em algum grupo com role='admin'
-		const isAdmin = adminGroups.some(ug => ug.groupRole === 'admin')
+    // Verificar se o usuário está em algum grupo com role='admin'
+    const isAdmin = adminGroups.some((ug) => ug.groupRole === "admin");
 
-		if (isAdmin) {
-			console.log('✅ [LIB_AUTH_ADMIN] Usuário é administrador:', { userId, adminGroups: adminGroups.filter(ug => ug.groupRole === 'admin').map(ug => ug.groupName) })
-		} else {
-			console.log('❌ [LIB_AUTH_ADMIN] Usuário não é administrador:', { userId, groups: adminGroups.map(ug => ({ name: ug.groupName, role: ug.groupRole })) })
-		}
-
-		return isAdmin
-	} catch (error) {
-		console.error('❌ [LIB_AUTH_ADMIN] Erro ao verificar se usuário é administrador:', { error })
-		return false
-	}
+    return isAdmin;
+  } catch (error) {
+    console.error(
+      "❌ [LIB_AUTH_ADMIN] Erro ao verificar se usuário é administrador:",
+      { error },
+    );
+    return false;
+  }
 }
 
 /**
@@ -44,24 +39,30 @@ export async function isUserAdmin(userId: string): Promise<boolean> {
  * @param userId - ID do usuário a ser verificado
  * @returns Promise<{ success: boolean, error?: string }>
  */
-export async function requireAdmin(userId: string): Promise<{ success: boolean, error?: string }> {
-	try {
-		const isAdmin = await isUserAdmin(userId)
-		
-		if (!isAdmin) {
-			console.log('ℹ️ [LIB_AUTH_ADMIN] Usuário não é administrador:', { userId })
-			return {
-				success: false,
-				error: 'Apenas administradores podem realizar esta ação'
-			}
-		}
+export async function requireAdmin(
+  userId: string,
+): Promise<
+  { success: true; error?: never } | { success: false; error: string }
+> {
+  try {
+    const isAdmin = await isUserAdmin(userId);
 
-		return { success: true }
-	} catch (error) {
-		console.error('❌ [LIB_AUTH_ADMIN] Erro ao verificar permissões de administrador:', { error })
-		return {
-			success: false,
-			error: 'Erro interno do servidor'
-		}
-	}
+    if (!isAdmin) {
+      return {
+        success: false,
+        error: "Apenas administradores podem realizar esta ação",
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error(
+      "❌ [LIB_AUTH_ADMIN] Erro ao verificar permissões de administrador:",
+      { error },
+    );
+    return {
+      success: false,
+      error: "Erro interno do servidor",
+    };
+  }
 }
