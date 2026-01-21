@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
 import { translateAuthError } from "@/lib/auth/i18n";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import { isValidCode, isValidEmail } from "@/lib/auth/validate";
+import { config } from "@/lib/config";
+import type { ApiResponse } from "@/lib/api-response";
+import {
+  computeSecondsLeftFromUnlockAtMs,
+  createSessionResendCooldown,
+} from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useAuthFormState } from "@/hooks/useAuthFormState";
 
@@ -19,6 +25,9 @@ import Input from "@/components/ui/Input";
 import InputPassword from "@/components/ui/InputPassword";
 import Pin from "@/components/ui/Pin";
 
+const loginCooldown = createSessionResendCooldown("login-password");
+const LOGIN_PASSWORD_WAIT_MESSAGE = "Aguarde para tentar novamente.";
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -29,6 +38,28 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [loginSecondsLeft, setLoginSecondsLeft] = useState(0);
+
+  useEffect(() => {
+    if (step !== 1) return;
+    const update = () => {
+      const unlockAtMs = loginCooldown.readUnlockAtMs(email);
+      setLoginSecondsLeft(
+        unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
+      );
+    };
+    update();
+
+    const interval = window.setInterval(update, 250);
+    return () => window.clearInterval(interval);
+  }, [email, step]);
+
+  useEffect(() => {
+    if (loginSecondsLeft > 0) return;
+    if (form.field !== "email") return;
+    if (form.message !== LOGIN_PASSWORD_WAIT_MESSAGE) return;
+    clearFieldError();
+  }, [clearFieldError, form.field, form.message, loginSecondsLeft]);
 
   // Etapa 1: Fazer login
   const handleLogin = async (e: React.FormEvent) => {
@@ -37,6 +68,15 @@ export default function LoginPage() {
     const normalizedEmail = email.trim().toLowerCase();
     if (!isValidEmail(normalizedEmail)) {
       setFieldError("email", "Digite um e-mail válido.");
+      return;
+    }
+    if (loginSecondsLeft > 0) {
+      setFieldError("email", LOGIN_PASSWORD_WAIT_MESSAGE);
+      toast({
+        type: "info",
+        title: LOGIN_PASSWORD_WAIT_MESSAGE,
+        description: `Tente novamente em ${loginSecondsLeft}s.`,
+      });
       return;
     }
     if (!password) {
@@ -48,19 +88,48 @@ export default function LoginPage() {
       clearFieldError();
 
       try {
-        const { error } = await authClient.signIn.email({
-          email: normalizedEmail,
-          password,
+        const res = await fetch(config.getApiUrl("/api/auth/login/password"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: normalizedEmail, password }),
         });
 
-        if (error) {
-          const errorMessage = translateAuthError(
-            error,
-            "Erro ao entrar. Verifique suas credenciais.",
-          );
+        const data = (await res.json()) as ApiResponse<unknown>;
+        const message = data.message || data.error || "Erro ao entrar.";
+
+        const retryAfterSeconds = (() => {
+          if (typeof data.data !== "object" || data.data === null) return null;
+          if (!("retryAfterSeconds" in data.data)) return null;
+          const raw = (data.data as { retryAfterSeconds?: unknown })
+            .retryAfterSeconds;
+          if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
+            return null;
+          return Math.ceil(raw);
+        })();
+
+        const retryAfterFromHeader = (() => {
+          const raw = res.headers.get("Retry-After");
+          if (!raw) return null;
+          const parsed = Number(raw);
+          if (!Number.isFinite(parsed) || parsed <= 0) return null;
+          return Math.ceil(parsed);
+        })();
+
+        if (!res.ok) {
+          const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
+          if (res.status === 429 && retryAfter) {
+            loginCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            setFieldError("email", LOGIN_PASSWORD_WAIT_MESSAGE);
+            toast({
+              type: "info",
+              title: message,
+              description: `Tente novamente em ${retryAfter}s.`,
+            });
+            return;
+          }
+
           const isInactiveUser =
-            error.status === 403 &&
-            errorMessage.toLowerCase().includes("usuário inativo");
+            res.status === 403 && message.toLowerCase().includes("usuário inativo");
 
           if (isInactiveUser) {
             const { error: otpError } =
@@ -90,10 +159,10 @@ export default function LoginPage() {
             return;
           }
 
-          setFieldError(null, errorMessage);
+          setFieldError(data.field || null, message);
           toast({
             type: "error",
-            title: errorMessage,
+            title: message,
           });
           return;
         }
@@ -144,20 +213,52 @@ export default function LoginPage() {
           return;
         }
 
-        const { error: signInError } = await authClient.signIn.email({
-          email: normalizedEmail,
-          password,
+        const signInRes = await fetch(config.getApiUrl("/api/auth/login/password"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: normalizedEmail, password }),
         });
 
-        if (signInError) {
-          const errorMessage = translateAuthError(
-            signInError,
-            "Erro ao entrar. Verifique suas credenciais.",
-          );
-          setFieldError(null, errorMessage);
+        const signInData = (await signInRes.json()) as ApiResponse<unknown>;
+        const signInMessage = signInData.message || signInData.error || "Erro ao entrar.";
+
+        const retryAfterSeconds = (() => {
+          if (typeof signInData.data !== "object" || signInData.data === null)
+            return null;
+          if (!("retryAfterSeconds" in signInData.data)) return null;
+          const raw = (signInData.data as { retryAfterSeconds?: unknown })
+            .retryAfterSeconds;
+          if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
+            return null;
+          return Math.ceil(raw);
+        })();
+
+        const retryAfterFromHeader = (() => {
+          const raw = signInRes.headers.get("Retry-After");
+          if (!raw) return null;
+          const parsed = Number(raw);
+          if (!Number.isFinite(parsed) || parsed <= 0) return null;
+          return Math.ceil(parsed);
+        })();
+
+        if (!signInRes.ok) {
+          const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
+          if (signInRes.status === 429 && retryAfter) {
+            loginCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            setStep(1);
+            setFieldError("email", LOGIN_PASSWORD_WAIT_MESSAGE);
+            toast({
+              type: "info",
+              title: signInMessage,
+              description: `Tente novamente em ${retryAfter}s.`,
+            });
+            return;
+          }
+
+          setFieldError(signInData.field || null, signInMessage);
           toast({
             type: "error",
-            title: errorMessage,
+            title: signInMessage,
           });
           return;
         }
@@ -180,6 +281,13 @@ export default function LoginPage() {
       }
     });
   };
+
+  const emailInvalidMessage =
+    form?.field === "email" &&
+    form?.message === LOGIN_PASSWORD_WAIT_MESSAGE &&
+    loginSecondsLeft > 0
+      ? `Aguarde ${loginSecondsLeft} segundos para tentar novamente.`
+      : (form?.message ?? "");
 
   return (
     <>
@@ -223,7 +331,7 @@ export default function LoginPage() {
                     required
                     autoFocus
                     isInvalid={form?.field === "email"}
-                    invalidMessage={form?.message}
+                    invalidMessage={emailInvalidMessage}
                   />
                 </div>
                 <div>

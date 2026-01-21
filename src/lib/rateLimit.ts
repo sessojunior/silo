@@ -1,4 +1,4 @@
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/db/schema";
 import { randomUUID } from "crypto";
@@ -123,6 +123,28 @@ export async function recordRateLimit({
         lastRequest: new Date(),
       },
     });
+}
+
+export async function clearRateLimitForEmail(params: {
+  email: string;
+  routes?: readonly string[];
+}): Promise<void> {
+  const normalizedEmail = params.email.trim().toLowerCase();
+  if (!normalizedEmail) return;
+
+  if (params.routes && params.routes.length > 0) {
+    await db
+      .delete(rateLimit)
+      .where(
+        and(
+          eq(rateLimit.email, normalizedEmail),
+          inArray(rateLimit.route, [...params.routes]),
+        ),
+      );
+    return;
+  }
+
+  await db.delete(rateLimit).where(eq(rateLimit.email, normalizedEmail));
 }
 
 // Função auxiliar que remove registros antigos do banco (ex: mais de 60 minutos)

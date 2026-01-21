@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth/server";
 import { isValidDomain, isValidEmail } from "@/lib/auth/validate";
 import { db } from "@/lib/db";
 import { authUser, authVerification } from "@/lib/db/schema";
+import { clearRateLimitForEmail } from "@/lib/rateLimit";
 
 const emailInputSchema = z
   .string()
@@ -243,6 +244,8 @@ export async function POST(req: NextRequest) {
       for (const cookie of readSetCookieHeaders(signInResponse.headers)) {
         responseHeaders.append("set-cookie", cookie);
       }
+
+      await clearRateLimitForEmail({ email });
 
       return successResponse<VerifyOtpResponse>(
         { signedIn: true },

@@ -8,6 +8,7 @@ import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-resp
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { isValidPassword } from "@/lib/auth/validate";
+import { clearRateLimitForEmail } from "@/lib/rateLimit";
 
 const SetupPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -221,6 +222,7 @@ export async function POST(req: NextRequest) {
         for (const cookie of readSetCookieHeaders(signInResponse.headers)) {
           responseHeaders.append("set-cookie", cookie);
         }
+        await clearRateLimitForEmail({ email });
         return successResponse(
           { signedIn: true },
           "Senha definida com sucesso.",
