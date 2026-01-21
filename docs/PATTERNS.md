@@ -199,13 +199,13 @@ import { config } from "@/lib/config";
 /**
  * Constrói URL para chamadas de API respeitando o basePath da aplicação.
  *
- * - Em ambiente client, retorna sempre um path relativo (ex.: /silo/api/auth/sign-in/email)
+ * - Em ambiente client, retorna sempre um path relativo (ex.: <BASE_PATH>/api/auth/sign-in/email)
  * - Em ambiente server, concatena APP_URL_DEV/APP_URL_PROD com o path normalizado
  *
  * Exemplo:
  * const url = config.getApiUrl('/api/auth/sign-in/email')
- * // Client: '/silo/api/auth/sign-in/email'
- * // Server (dev): 'http://localhost:3000/silo/api/auth/sign-in/email'
+ * // Client: '<BASE_PATH>/api/auth/sign-in/email'
+ * // Server (dev): 'http://localhost:3000<BASE_PATH>/api/auth/sign-in/email'
  */
 const url = config.getApiUrl("/api/users");
 ```

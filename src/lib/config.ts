@@ -27,26 +27,45 @@ export const config = {
   },
 
   get publicBasePath(): string {
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "/silo";
-    return basePath === "/" ? "" : basePath.replace(/\/$/, "");
+    const raw = (process.env.NEXT_PUBLIC_BASE_PATH || "/silo").trim();
+    if (raw.length === 0 || raw === "/") return "";
+
+    const withLeadingSlash = raw.startsWith("/") ? raw : `/${raw}`;
+    return withLeadingSlash.replace(/\/$/, "");
   },
 
   getPublicPath(path: string): string {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-    return `${this.publicBasePath}${normalizedPath}`;
+    const basePath = this.publicBasePath;
+    if (!basePath) return normalizedPath;
+    if (normalizedPath === basePath) return normalizedPath;
+    if (normalizedPath.startsWith(`${basePath}/`)) return normalizedPath;
+    return `${basePath}${normalizedPath}`;
   },
 
   /**
    * URL base da aplicação incluindo basePath (ex.: http://localhost:3000/silo)
    * Usa APP_URL_DEV em desenvolvimento e APP_URL_PROD em produção.
    */
-  get appUrl(): string {
+  get appOrigin(): string {
     const isProd = process.env.NODE_ENV === "production";
     const url = isProd ? process.env.APP_URL_PROD : process.env.APP_URL_DEV;
     if (!url && isProd) {
       throw new Error("APP_URL_PROD deve ser configurada em produção");
     }
-    return url || "";
+    if (!url) return "";
+
+    try {
+      return new URL(url).origin;
+    } catch {
+      return "";
+    }
+  },
+
+  get appUrl(): string {
+    const origin = this.appOrigin;
+    if (!origin) return "";
+    return `${origin}${this.publicBasePath}`;
   },
 
   /**
@@ -169,7 +188,7 @@ export const requestUtils = {
   getHostFromRequest(req: Request): string {
     const protocol = req.headers.get("x-forwarded-proto") || "http";
     const host =
-      req.headers.get("host") || config.appUrl.replace(/^https?:\/\//, "");
+      req.headers.get("host") || config.appOrigin.replace(/^https?:\/\//, "");
     return `${protocol}://${host}`;
   },
 

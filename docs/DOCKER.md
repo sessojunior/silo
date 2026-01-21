@@ -66,9 +66,9 @@ DATABASE_URL_PROD=postgresql://usuario:senha@host:5432/silo_db
 
 # URLs da aplicação
 NEXT_PUBLIC_BASE_PATH=/silo
-APP_URL_DEV=http://localhost:3000/silo
-APP_URL_PROD=https://fortuna.cptec.inpe.br/silo
-BETTER_AUTH_URL=https://fortuna.cptec.inpe.br/silo
+APP_URL_DEV=http://localhost:3000
+APP_URL_PROD=https://fortuna.cptec.inpe.br
+
 BETTER_AUTH_SECRET=your_secret_key_here
 
 # Google OAuth (opcional)
@@ -86,6 +86,8 @@ SMTP_PASSWORD=
 Observações:
 
 - Para Docker Compose, evite aspas no `.env` para não incluir aspas no valor final.
+- O caminho base público do sistema é configurado em `NEXT_PUBLIC_BASE_PATH` (sem barra final). Exemplos: `/silo` ou `/` (raiz).
+- `APP_URL_DEV` e `APP_URL_PROD` devem ser apenas a origem (sem subdiretório). O subdiretório base é sempre definido em `NEXT_PUBLIC_BASE_PATH`.
 - O banco de dados não sobe no `docker-compose.yml` deste projeto; as variáveis `DATABASE_URL_DEV`/`DATABASE_URL_PROD` devem apontar para um PostgreSQL externo.
 
 ### **Arquivo docker-compose.yml**
@@ -112,7 +114,7 @@ Copy-Item env.example .env
 npm run dev
 
 # ✅ Pronto! Acesse:
-# Frontend: http://localhost:3000/silo
+# Frontend: http://localhost:3000<BASE_PATH>
 ```
 
 **Para parar**: Pressione `Ctrl+C` em cada terminal.
@@ -138,7 +140,7 @@ docker compose up --build
 # 4. Mostrar logs em tempo real
 
 # ✅ Aguarde a mensagem: "ready - started server on..."
-# ✅ Acesse: http://localhost:3000/silo
+# ✅ Acesse: http://localhost:3000<BASE_PATH>
 ```
 
 **Executar em segundo plano:**
@@ -183,8 +185,8 @@ docker compose up --build app
 
 Após iniciar os containers:
 
-- **Frontend**: http://localhost:3000/silo
-- **Uploads**: `GET /silo/uploads/<type>/<filename>`
+- **Frontend**: http://localhost:3000<BASE_PATH>
+- **Uploads**: `GET <BASE_PATH>/uploads/<type>/<filename>`
 
 ---
 
@@ -230,15 +232,14 @@ O Vercel fará deploy automaticamente apenas do frontend Next.js.
 ### **Configurações de Produção**
 
 ```bash
-# Caminho base da aplicação (mantido fixo neste projeto)
+# Caminho base da aplicação (sem barra final). Exemplos: '/silo' ou '/'
 NEXT_PUBLIC_BASE_PATH='/silo'
 
 # Desenvolvimento
-APP_URL_DEV='http://localhost:3000/silo'
+APP_URL_DEV='http://localhost:3000'
 
 # Produção
-APP_URL_PROD='https://fortuna.cptec.inpe.br/silo'
-BETTER_AUTH_URL='https://fortuna.cptec.inpe.br/silo'
+APP_URL_PROD='https://fortuna.cptec.inpe.br'
 BETTER_AUTH_SECRET='your_secret_key_here'
 ```
 

@@ -2,25 +2,31 @@ import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { authUser } from "@/lib/db/schema";
-import { getAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { isValidEmail } from "@/lib/auth/validate";
 import { sendEmail } from "@/lib/sendEmail";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import { z } from "zod";
+
+const UpdateEmailSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email()
+    .refine(isValidEmail, "O e-mail é inválido."),
+});
 
 // Altera os dados do perfil do usuário logado
 export async function PUT(req: NextRequest) {
   try {
-    // Verifica se o usuário está logado e obtém os dados do usuário
-    const user = await getAuthUser();
-    if (!user) return errorResponse("Usuário não logado.", 401);
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const { user } = authResult;
 
-    // Obtem os dados recebidos
-    const body = await req.json();
-    const newEmail = (body.email as string)?.trim().toLowerCase();
-
-    if (!isValidEmail(newEmail)) {
-      return errorResponse("O e-mail é inválido.", 400, { field: "email" });
-    }
+    const parsedBody = await parseRequestJson(req, UpdateEmailSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const newEmail = parsedBody.data.email;
 
     // Verifica se o e-mail informado é o mesmo que o atual
     if (newEmail === user.email) {
@@ -63,7 +69,7 @@ export async function PUT(req: NextRequest) {
     });
 
     // Retorna a resposta com sucesso
-    return successResponse({ message: "E-mail alterado com sucesso!" });
+    return successResponse({}, "E-mail alterado com sucesso!");
   } catch (error) {
     console.error("❌ [API_USER_EMAIL] Erro ao alterar o e-mail do usuário:", {
       error,

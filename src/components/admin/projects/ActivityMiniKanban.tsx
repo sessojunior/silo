@@ -27,12 +27,14 @@ export default function ActivityMiniKanban({
         config.getApiUrl(
           `/api/admin/projects/${projectId}/activities/${activityId}/tasks`,
         ),
+        { credentials: "include", cache: "no-store" },
       );
 
       if (response.ok) {
-        const tasksData =
-          (await response.json()) as ApiResponse<Record<string, ProjectTask[]>>;
-        const groupedTasks = tasksData.success ? tasksData.data : null;
+        const tasksData = (await response.json()) as ApiResponse<{
+          tasks: Record<string, ProjectTask[]>;
+        }>;
+        const groupedTasks = tasksData.success ? tasksData.data?.tasks : null;
 
         if (groupedTasks && typeof groupedTasks === "object") {
           // A API retorna tasks agrupadas por status, precisamos converter para array

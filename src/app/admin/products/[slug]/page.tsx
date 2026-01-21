@@ -380,8 +380,9 @@ export default function ProductsPage() {
           config.getApiUrl(`/api/admin/products?slug=${slug}`),
         );
         const data = await res.json();
-        if (data.products && data.products.length > 0) {
-          setProductId(data.products[0].id);
+        const products = data?.data?.products as Array<{ id: string }> | undefined;
+        if (products && products.length > 0) {
+          setProductId(products[0].id);
         }
       } catch (error) {
         console.error("❌ [PAGE_PRODUCT_SLUG] Erro ao buscar produto:", {
@@ -456,10 +457,10 @@ export default function ProductsPage() {
             problemsRes.json(),
           ]);
 
-        const dependencies = depsData.dependencies || [];
+        const dependencies = depsData.data?.dependencies || [];
         const contacts = contactsData.data?.contacts || [];
         const manual = manualData.data || null;
-        const problems = problemsData.items || [];
+        const problems = problemsData.data?.items || [];
         const problemsCount = problems.length;
 
         setDependencies(dependencies);
@@ -528,7 +529,7 @@ export default function ProductsPage() {
         ),
       );
       const data = await res.json();
-      setDependencies(data.dependencies || []);
+      setDependencies(data.data?.dependencies || []);
     } catch (error) {
       console.error("❌ [PAGE_PRODUCT_SLUG] Erro ao recarregar dependências:", {
         error,

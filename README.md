@@ -63,7 +63,9 @@ cp env.example .env
 # 2. Executar containers
 docker-compose up -d --build
 
-# ✅ Acesse: http://localhost:3000/silo
+# ✅ Acesse:
+# - Se NEXT_PUBLIC_BASE_PATH='/silo' → http://localhost:3000/silo
+# - Se NEXT_PUBLIC_BASE_PATH='/' → http://localhost:3000
 ```
 
 ### **Opção 2: Desenvolvimento Local**
@@ -78,7 +80,9 @@ cp env.example .env
 # 3. Executar servidor
 npm run dev
 
-# ✅ Frontend: http://localhost:3000/silo
+# ✅ Frontend:
+# - Se NEXT_PUBLIC_BASE_PATH='/silo' → http://localhost:3000/silo
+# - Se NEXT_PUBLIC_BASE_PATH='/' → http://localhost:3000
 ```
 
 ---
@@ -148,8 +152,8 @@ silo-frontend/
 Uploads e arquivos são atendidos pelo próprio Next.js:
 
 - Uploads: `POST /api/upload/*`
-- Servir arquivos: `GET /silo/uploads/:type/:filename`
-- Deletar arquivos: `DELETE /silo/uploads/:type/:filename`
+- Servir arquivos: `GET <BASE_PATH>/uploads/:type/:filename`
+- Deletar arquivos: `DELETE <BASE_PATH>/uploads/:type/:filename`
 
 ---
 
@@ -194,10 +198,9 @@ DATABASE_URL_DEV='postgresql://usuario:senha@localhost:5432/silo'
 DATABASE_URL_PROD='postgresql://usuario:senha@localhost:5432/silo'
 
 # URL da aplicação
-NEXT_PUBLIC_BASE_PATH='/silo'
-APP_URL_DEV='http://localhost:3000/silo'
-APP_URL_PROD='https://fortuna.cptec.inpe.br/silo'
-BETTER_AUTH_URL='https://fortuna.cptec.inpe.br/silo'
+NEXT_PUBLIC_BASE_PATH='/silo' # sem barra final; use '/' para rodar na raiz
+APP_URL_DEV='http://localhost:3000' # sem subdiretório
+APP_URL_PROD='https://fortuna.cptec.inpe.br' # sem subdiretório
 BETTER_AUTH_SECRET='your_secret_key_here'
 
 # Google OAuth (opcional)
@@ -212,6 +215,11 @@ SMTP_USERNAME='usuario@exemplo.com'
 SMTP_PASSWORD='senha'
 
 ```
+
+**Regra do base path (muito importante):**
+
+- O sistema funciona com ou sem subdiretório apenas alterando `NEXT_PUBLIC_BASE_PATH`.
+- `APP_URL_DEV` e `APP_URL_PROD` devem ser somente a origem (sem subdiretório). O subdiretório público é sempre definido em `NEXT_PUBLIC_BASE_PATH`.
 
 ---
 

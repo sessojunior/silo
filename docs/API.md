@@ -2,6 +2,13 @@
 
 Documentação completa de todas as APIs do sistema SILO, incluindo endpoints, contratos de resposta e exemplos.
 
+**Observação sobre base path (muito importante):**
+
+- O caminho base público do sistema é configurado em `NEXT_PUBLIC_BASE_PATH` (sem barra final). Exemplos: `/silo` ou `/`.
+- Nesta documentação, os endpoints são descritos sem o `<BASE_PATH>` por simplicidade.
+  - Com `NEXT_PUBLIC_BASE_PATH='/silo'`: `GET /api/admin/users` fica público como `GET /silo/api/admin/users`
+  - Com `NEXT_PUBLIC_BASE_PATH='/'`: `GET /api/admin/users` fica público como `GET /api/admin/users`
+
 ---
 
 ## 📋 **ÍNDICE**

@@ -2,13 +2,14 @@ import { NextRequest } from "next/server";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { authUser, authVerification } from "@/lib/db/schema";
-import { getAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { isValidEmail, isValidDomain } from "@/lib/auth/validate";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
 import { isRateLimited, recordRateLimit } from "@/lib/rateLimit";
 import { sendEmail } from "@/lib/sendEmail";
 import type { EmailTemplateData } from "@/lib/email/types";
 import { randomUUID, randomInt } from "crypto";
+import { z } from "zod";
 
 // Solicita alteração de email - envia código OTP para o novo email
 export const runtime = "nodejs";
@@ -45,35 +46,41 @@ const splitStoredOtpValue = (
   return { otp, attempts };
 };
 
+const emailInputSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .superRefine((value, ctx) => {
+    if (!isValidEmail(value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O e-mail é inválido." });
+      return;
+    }
+    if (!isValidDomain(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Apenas e-mails do domínio @inpe.br são permitidos.",
+      });
+    }
+  });
+
+const requestEmailChangeSchema = z.object({
+  email: emailInputSchema,
+});
+
+const confirmEmailChangeSchema = z.object({
+  code: z.string().trim().min(1, "Código de verificação é obrigatório."),
+  newEmail: emailInputSchema,
+});
+
 export async function POST(req: NextRequest) {
   try {
-    // Verifica se o usuário está logado
-    const user = await getAuthUser();
-    if (!user) {
-      return errorResponse("Usuário não logado.", 401);
-    }
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const user = authResult.user;
 
-    // Obtém os dados recebidos
-    const body: unknown = await req.json();
-    const newEmail =
-      typeof body === "object" &&
-      body !== null &&
-      "email" in body &&
-      typeof (body as { email?: unknown }).email === "string"
-        ? (body as { email: string }).email.trim().toLowerCase()
-        : "";
-
-    if (!isValidEmail(newEmail)) {
-      return errorResponse("O e-mail é inválido.", 400, { field: "email" });
-    }
-
-    if (!isValidDomain(newEmail)) {
-      return errorResponse(
-        "Apenas e-mails do domínio @inpe.br são permitidos.",
-        400,
-        { field: "email" },
-      );
-    }
+    const parsedBody = await parseRequestJson(req, requestEmailChangeSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const newEmail = parsedBody.data.email;
 
     // Verifica se o e-mail informado é o mesmo que o atual
     if (newEmail === user.email) {
@@ -167,44 +174,13 @@ export async function POST(req: NextRequest) {
 // Confirma alteração de email com código OTP
 export async function PUT(req: NextRequest) {
   try {
-    // Verifica se o usuário está logado
-    const user = await getAuthUser();
-    if (!user) {
-      return errorResponse("Usuário não logado.", 401);
-    }
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const user = authResult.user;
 
-    // Obtém os dados recebidos
-    const body: unknown = await req.json();
-    const code =
-      typeof body === "object" &&
-      body !== null &&
-      "code" in body &&
-      typeof (body as { code?: unknown }).code === "string"
-        ? (body as { code: string }).code.trim()
-        : "";
-    const newEmail =
-      typeof body === "object" &&
-      body !== null &&
-      "newEmail" in body &&
-      typeof (body as { newEmail?: unknown }).newEmail === "string"
-        ? (body as { newEmail: string }).newEmail.trim().toLowerCase()
-        : "";
-
-    if (code.length === 0 || newEmail.length === 0) {
-      return errorResponse("Dados incompletos.", 400);
-    }
-
-    if (!isValidEmail(newEmail)) {
-      return errorResponse("O e-mail é inválido.", 400, { field: "newEmail" });
-    }
-
-    if (!isValidDomain(newEmail)) {
-      return errorResponse(
-        "Apenas e-mails do domínio @inpe.br são permitidos.",
-        400,
-        { field: "newEmail" },
-      );
-    }
+    const parsedBody = await parseRequestJson(req, confirmEmailChangeSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { code, newEmail } = parsedBody.data;
 
     const conflictingUser = await db.query.authUser.findFirst({
       where: and(eq(authUser.email, newEmail), ne(authUser.id, user.id)),

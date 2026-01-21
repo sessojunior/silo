@@ -12,7 +12,12 @@ import {
 } from "@/lib/db/schema";
 import { requireAdminAuthUser } from "@/lib/auth/server";
 import { asc, eq, ilike, or, and, inArray } from "drizzle-orm";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  parseRequestQuery,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
 
 export const runtime = "nodejs";
 
@@ -32,16 +37,29 @@ const ProjectSchema = z.object({
     .default("active"),
 });
 
+const ListProjectsQuerySchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(["all", "active", "completed", "paused", "cancelled"]).optional(),
+  priority: z.enum(["all", "low", "medium", "high", "urgent"]).optional(),
+});
+
+const UpdateProjectSchema = ProjectSchema.extend({
+  id: z.string().uuid("ID do projeto é obrigatório"),
+});
+
+const DeleteProjectQuerySchema = z.object({
+  id: z.string().uuid("ID do projeto é obrigatório"),
+});
+
 // GET - Listar projetos com filtros e busca
 export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search");
-    const status = searchParams.get("status");
-    const priority = searchParams.get("priority");
+    const parsedQuery = parseRequestQuery(request, ListProjectsQuerySchema);
+    if (!parsedQuery.ok) return parsedQuery.response;
+    const { search, status, priority } = parsedQuery.data;
 
     // Construir query com filtros de forma simplificada
     const whereConditions = [];
@@ -99,10 +117,9 @@ export async function POST(request: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const body = await request.json();
-
-    // Validar dados
-    const validatedData = ProjectSchema.parse(body);
+    const parsedBody = await parseRequestJson(request, ProjectSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const validatedData = parsedBody.data;
 
     // Criar projeto
     const newProject = await db
@@ -121,14 +138,6 @@ export async function POST(request: NextRequest) {
 
     return successResponse(newProject[0], "Projeto criado com sucesso", 201);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      console.warn(
-        "⚠️ [API_PROJECTS] Dados inválidos para criação de projeto:",
-        { issues: error.issues },
-      );
-      return errorResponse("Dados inválidos", 400, error.issues);
-    }
-
     const errorInfo =
       error instanceof Error
         ? { name: error.name, message: error.message, stack: error.stack }
@@ -144,15 +153,9 @@ export async function PUT(request: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const body = await request.json();
-    const { id, ...updateData } = body;
-
-    if (!id) {
-      return errorResponse("ID do projeto é obrigatório", 400);
-    }
-
-    // Validar dados
-    const validatedData = ProjectSchema.parse(updateData);
+    const parsedBody = await parseRequestJson(request, UpdateProjectSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { id, ...validatedData } = parsedBody.data;
 
     // Atualizar projeto
     const updatedProject = await db
@@ -171,20 +174,11 @@ export async function PUT(request: NextRequest) {
       .returning();
 
     if (updatedProject.length === 0) {
-      console.warn("⚠️ [API_PROJECTS] Projeto não encontrado:", { id });
       return errorResponse("Projeto não encontrado", 404);
     }
 
     return successResponse(updatedProject[0], "Projeto atualizado com sucesso");
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      console.warn(
-        "⚠️ [API_PROJECTS] Dados inválidos para atualização de projeto:",
-        { issues: error.issues },
-      );
-      return errorResponse("Dados inválidos", 400, error.issues);
-    }
-
     const errorInfo =
       error instanceof Error
         ? { name: error.name, message: error.message, stack: error.stack }
@@ -200,13 +194,9 @@ export async function DELETE(request: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      console.warn("⚠️ [API_PROJECTS] ID do projeto não fornecido");
-      return errorResponse("ID do projeto é obrigatório", 400);
-    }
+    const parsedQuery = parseRequestQuery(request, DeleteProjectQuerySchema);
+    if (!parsedQuery.ok) return parsedQuery.response;
+    const { id } = parsedQuery.data;
 
     // Verificar se projeto existe
     const existingProject = await db
@@ -216,9 +206,6 @@ export async function DELETE(request: NextRequest) {
       .limit(1);
 
     if (existingProject.length === 0) {
-      console.warn("⚠️ [API_PROJECTS] Projeto não encontrado para exclusão:", {
-        id,
-      });
       return errorResponse("Projeto não encontrado", 404);
     }
 

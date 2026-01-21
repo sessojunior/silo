@@ -130,7 +130,9 @@ Content-Type: application/json
    - Application type: Web application
    - Name: SILO Web Client
    - Authorized JavaScript origins: `http://localhost:3000` (dev), `https://fortuna.cptec.inpe.br` (prod)
-   - Authorized redirect URIs: `http://localhost:3000/silo/api/auth/callback/google` (dev), `https://fortuna.cptec.inpe.br/silo/api/auth/callback/google` (prod)
+   - Authorized redirect URIs:
+     - Com `NEXT_PUBLIC_BASE_PATH='/silo'`: `http://localhost:3000/silo/api/auth/callback/google` (dev), `https://fortuna.cptec.inpe.br/silo/api/auth/callback/google` (prod)
+     - Com `NEXT_PUBLIC_BASE_PATH='/'`: `http://localhost:3000/api/auth/callback/google` (dev), `https://fortuna.cptec.inpe.br/api/auth/callback/google` (prod)
 
 4. **Copiar Credenciais**
    - Client ID
@@ -291,10 +293,9 @@ export async function getAuthUser() {
 # .env
 
 # URLs do sistema
-NEXT_PUBLIC_BASE_PATH='/silo'
-APP_URL_DEV='http://localhost:3000/silo'
-APP_URL_PROD='https://fortuna.cptec.inpe.br/silo'
-BETTER_AUTH_URL='https://fortuna.cptec.inpe.br/silo'
+NEXT_PUBLIC_BASE_PATH='/silo' # sem barra final; use '/' para rodar na raiz
+APP_URL_DEV='http://localhost:3000' # sem subdiretório
+APP_URL_PROD='https://fortuna.cptec.inpe.br' # sem subdiretório
 
 # Google OAuth
 GOOGLE_CLIENT_ID='seu-client-id'

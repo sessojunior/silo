@@ -224,7 +224,6 @@ export default function PhotoUploadLocal({
               clsx("block font-semibold", isInvalid && "text-red-500"),
             )}
           >
-            Foto de perfil
           </div>
 
           <div className="flex gap-2">

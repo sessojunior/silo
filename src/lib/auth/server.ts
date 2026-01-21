@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { authApiPath, getAuthServerBaseURL } from "@/lib/auth/urls";
 import { errorResponse } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
+import { config } from "@/lib/config";
 
 const extractOrigin = (value: string): string | null => {
   try {
@@ -29,7 +30,6 @@ const resolveTrustedOrigins = (): string[] => {
   const candidates = [
     process.env.APP_URL_DEV,
     process.env.APP_URL_PROD,
-    process.env.BETTER_AUTH_URL,
     "http://localhost:3002",
     "http://127.0.0.1:3002",
     "http://localhost:3001",
@@ -47,10 +47,11 @@ const resolveTrustedOrigins = (): string[] => {
 };
 
 const authBaseURL = getAuthServerBaseURL();
+const authBasePath = config.getPublicPath(authApiPath);
 
 export const auth = betterAuth({
   ...(authBaseURL ? { baseURL: authBaseURL } : {}),
-  basePath: authApiPath,
+  basePath: authBasePath,
   trustedOrigins: resolveTrustedOrigins(),
   database: drizzleAdapter(db, {
     provider: "pg",

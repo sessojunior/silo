@@ -1,23 +1,26 @@
 import { NextRequest } from "next/server";
-import { getAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { authUser } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { normalizeUploadsSrc } from "@/lib/utils";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import { z } from "zod";
+
+const UpdateUserProfileImageSchema = z.object({
+  imageUrl: z.string().trim().min(1, "URL da imagem não fornecida."),
+});
 
 // Atualiza a URL da imagem de perfil do usuário (vinda do servidor local)
 export async function POST(req: NextRequest) {
   try {
-    // Verifica se o usuário está logado e obtém os dados do usuário
-    const user = await getAuthUser();
-    if (!user) return errorResponse("Usuário não logado.", 401);
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const { user } = authResult;
 
-    const { imageUrl } = await req.json();
-
-    if (!imageUrl || typeof imageUrl !== "string") {
-      return errorResponse("URL da imagem não fornecida.", 400);
-    }
+    const parsedBody = await parseRequestJson(req, UpdateUserProfileImageSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { imageUrl } = parsedBody.data;
 
     const normalizedUrl = normalizeUploadsSrc(imageUrl);
 
@@ -26,11 +29,6 @@ export async function POST(req: NextRequest) {
       .update(authUser)
       .set({ image: normalizedUrl })
       .where(eq(authUser.id, user.id));
-
-    console.log(
-      "ℹ️ [API_USER_PROFILE_IMAGE_UPDATE] URL da imagem de perfil atualizada com sucesso:",
-      { imageUrl: normalizedUrl },
-    );
 
     // Retorna a resposta com sucesso
     return successResponse(

@@ -2,27 +2,34 @@ import { NextRequest } from "next/server";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { authAccount } from "@/lib/db/schema";
-import { getAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { hashPassword } from "@/lib/auth/hash";
 import { isValidPassword } from "@/lib/auth/validate";
 import { sendEmail } from "@/lib/sendEmail";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
 import { randomUUID } from "crypto";
+import { z } from "zod";
+
+const updatePasswordSchema = z.object({
+  password: z
+    .string()
+    .superRefine((value, ctx) => {
+      if (!isValidPassword(value)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "A senha é inválida." });
+      }
+    }),
+});
 
 // Altera os dados do perfil do usuário logado
 export async function PUT(req: NextRequest) {
   try {
-    // Verifica se o usuário está logado e obtém os dados do usuário
-    const user = await getAuthUser();
-    if (!user) return errorResponse("Usuário não logado.", 401);
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const user = authResult.user;
 
-    // Obtem os dados recebidos
-    const body = await req.json();
-    const password = body.password as string;
-
-    if (!isValidPassword(password)) {
-      return errorResponse("A senha é inválida.", 400, { field: "password" });
-    }
+    const parsedBody = await parseRequestJson(req, updatePasswordSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { password } = parsedBody.data;
 
     // Criptografa a senha
     const hashedPassword = await hashPassword(password);
@@ -64,7 +71,7 @@ export async function PUT(req: NextRequest) {
     });
 
     // Retorna a resposta com sucesso
-    return successResponse({ message: "Senha alterada com sucesso!" });
+    return successResponse({}, "Senha alterada com sucesso!");
   } catch (error) {
     console.error(
       "❌ [API_USER_PASSWORD] Erro ao alterar a senha do usuário:",

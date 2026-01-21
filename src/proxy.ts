@@ -21,15 +21,17 @@ export async function proxy(req: NextRequest) {
   const homeWhenLoggedInPath = appConfig.getPublicPath(postLoginRedirectPath);
 
   if (routePath === "/") {
-    return NextResponse.redirect(
-      new URL(sessionCookie ? homeWhenLoggedInPath : loginPath, req.url),
-    );
+    const url = req.nextUrl.clone();
+    url.pathname = sessionCookie ? homeWhenLoggedInPath : loginPath;
+    return NextResponse.redirect(url);
   }
 
   // Proteção de páginas administrativas
   if (routePath.startsWith("/admin")) {
     if (!sessionCookie) {
-      return NextResponse.redirect(new URL(loginPath, req.url));
+      const url = req.nextUrl.clone();
+      url.pathname = loginPath;
+      return NextResponse.redirect(url);
     }
     return NextResponse.next();
   }
@@ -47,5 +49,7 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/admin/:path*", "/api/admin/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+  ],
 };

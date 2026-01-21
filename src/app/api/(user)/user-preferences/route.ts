@@ -2,18 +2,23 @@ import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { userPreferences } from "@/lib/db/schema";
-import { getAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { randomUUID } from "crypto";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import { z } from "zod";
+
+const UpdateUserPreferencesSchema = z.object({
+  chatEnabled: z.boolean(),
+});
 
 export const runtime = "nodejs";
 
 // Obtém os dados de preferências do usuário logado
 export async function GET() {
   try {
-    // Verifica se o usuário está logado e obtém os dados do usuário
-    const user = await getAuthUser();
-    if (!user) return errorResponse("Usuário não logado.", 401);
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const { user } = authResult;
 
     // Busca as preferências do usuário no banco de dados
     const findUserPreferences = await db.query.userPreferences.findFirst({
@@ -38,13 +43,13 @@ export async function GET() {
 // Altera as preferências do usuário logado
 export async function PUT(req: NextRequest) {
   try {
-    // Verifica se o usuário está logado e obtém os dados do usuário
-    const user = await getAuthUser();
-    if (!user) return errorResponse("Usuário não logado.", 401);
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const { user } = authResult;
 
-    // Obtem os dados recebidos
-    const body = await req.json();
-    const chatEnabled = body.chatEnabled;
+    const parsedBody = await parseRequestJson(req, UpdateUserPreferencesSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { chatEnabled } = parsedBody.data;
 
     // Verifica se as preferências do usuário já existem no banco de dados pelo ID do usuário
     const findUserPreferences = await db.query.userPreferences.findFirst({

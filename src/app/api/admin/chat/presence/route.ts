@@ -5,6 +5,8 @@ import * as schema from "@/lib/db/schema";
 import { requireAdminAuthUser } from "@/lib/auth/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
+export const runtime = "nodejs";
+
 // Tipos para presença
 interface PresenceStatus {
   userId: string;
@@ -106,22 +108,22 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
 
-    // Estratégia: primeiro tenta UPDATE; se nenhuma linha afetada, faz INSERT.
-    const updateResult = await db
-      .update(schema.chatUserPresence)
-      .set({ status, lastActivity: now, updatedAt: now })
-      .where(eq(schema.chatUserPresence.userId, user.id))
-      .returning();
-
-    if (updateResult.length === 0) {
-      // Nenhuma linha existente – realizar INSERT
-      await db.insert(schema.chatUserPresence).values({
+    await db
+      .insert(schema.chatUserPresence)
+      .values({
         userId: user.id,
         status,
         lastActivity: now,
         updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: schema.chatUserPresence.userId,
+        set: {
+          status,
+          lastActivity: now,
+          updatedAt: now,
+        },
       });
-    }
 
     return successResponse({ success: true }, "Status atualizado com sucesso");
   } catch (error) {
@@ -139,31 +141,21 @@ export async function PATCH() {
 
     const now = new Date();
 
-    // Atualizar apenas lastActivity mantendo status atual
     await db
-      .update(schema.chatUserPresence)
-      .set({
+      .insert(schema.chatUserPresence)
+      .values({
+        userId: user.id,
+        status: "visible",
         lastActivity: now,
         updatedAt: now,
       })
-      .where(eq(schema.chatUserPresence.userId, user.id));
-
-    // Se não existir registro, criar como online apenas se for o primeiro acesso
-    const existingPresence = await db
-      .select()
-      .from(schema.chatUserPresence)
-      .where(eq(schema.chatUserPresence.userId, user.id))
-      .limit(1);
-
-    if (existingPresence.length === 0) {
-      // Criar apenas como visible se for primeira vez (não sobrescrever status manual)
-      await db.insert(schema.chatUserPresence).values({
-        userId: user.id,
-        status: "visible", // Apenas primeira vez
-        lastActivity: now,
-        updatedAt: now,
+      .onConflictDoUpdate({
+        target: schema.chatUserPresence.userId,
+        set: {
+          lastActivity: now,
+          updatedAt: now,
+        },
       });
-    }
 
     return successResponse({
       success: true,

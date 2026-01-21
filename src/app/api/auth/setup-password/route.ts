@@ -5,16 +5,26 @@ import { authAccount, authUser } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { hashPassword } from "@/lib/auth/hash";
 import { headers } from "next/headers";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
 import { randomUUID } from "crypto";
+import { z } from "zod";
+import { isValidPassword } from "@/lib/auth/validate";
+
+const SetupPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  code: z.string().trim().length(6),
+  password: z
+    .string()
+    .min(8)
+    .max(120)
+    .refine(isValidPassword, "Senha inválida."),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, code, password } = await req.json();
-
-    if (!email || !code || !password) {
-      return errorResponse("Todos os campos são obrigatórios.", 400);
-    }
+    const parsedBody = await parseRequestJson(req, SetupPasswordSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { email, code, password } = parsedBody.data;
 
     // 1. Verify OTP
     const verification = await auth.api.checkVerificationOTP({

@@ -1,8 +1,10 @@
-import { count, eq, and, isNull, ne, desc, or } from "drizzle-orm";
+import { count, eq, and, inArray, isNotNull, isNull, ne, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { requireAdminAuthUser } from "@/lib/auth/server";
+
+export const runtime = "nodejs";
 
 // Tipos para sidebar
 interface ChatGroup {
@@ -61,69 +63,61 @@ export async function GET() {
         ),
       );
 
-    // 4. CONTAR MENSAGENS NÃO LIDAS POR GRUPO
-    // Para grupos, contar mensagens onde o usuário é membro do grupo E não são do próprio usuário
-    const groupUnreadCountsRaw = await db
-      .select({
-        receiverGroupId: schema.chatMessage.receiverGroupId,
-        unreadCount: count(schema.chatMessage.id),
-      })
-      .from(schema.chatMessage)
-      .innerJoin(
-        schema.userGroup,
-        eq(schema.userGroup.groupId, schema.chatMessage.receiverGroupId),
-      )
-      .where(
-        and(
-          eq(schema.userGroup.userId, user.id), // Usuário é membro do grupo
-          ne(schema.chatMessage.senderUserId, user.id), // Mensagens de OUTROS usuários
-          isNull(schema.chatMessage.readAt), // Não lida
-          isNull(schema.chatMessage.deletedAt), // Não excluída
-        ),
-      )
-      .groupBy(schema.chatMessage.receiverGroupId);
+    const groupIds = userGroups.map((g) => g.groupId);
+
+    const groupUnreadCountsRaw = groupIds.length
+      ? await db
+          .select({
+            receiverGroupId: schema.chatMessage.receiverGroupId,
+            unreadCount: count(schema.chatMessage.id),
+          })
+          .from(schema.chatMessage)
+          .where(
+            and(
+              inArray(schema.chatMessage.receiverGroupId, groupIds),
+              ne(schema.chatMessage.senderUserId, user.id),
+              isNull(schema.chatMessage.readAt),
+              isNull(schema.chatMessage.deletedAt),
+            ),
+          )
+          .groupBy(schema.chatMessage.receiverGroupId)
+      : [];
 
     const groupUnreadMap = new Map(
       groupUnreadCountsRaw.map((g) => [g.receiverGroupId, g.unreadCount]),
     );
 
-    // 4.1. BUSCAR ÚLTIMA MENSAGEM POR GRUPO
-    const groupLastMessagesRaw = await db
-      .select({
-        receiverGroupId: schema.chatMessage.receiverGroupId,
-        content: schema.chatMessage.content,
-        createdAt: schema.chatMessage.createdAt,
-      })
-      .from(schema.chatMessage)
-      .innerJoin(
-        schema.userGroup,
-        eq(schema.userGroup.groupId, schema.chatMessage.receiverGroupId),
-      )
-      .where(
-        and(
-          eq(schema.userGroup.userId, user.id), // Usuário é membro do grupo
-          isNull(schema.chatMessage.deletedAt), // Não excluída
-        ),
-      )
-      .orderBy(desc(schema.chatMessage.createdAt));
+    const groupLastMessagesRaw = groupIds.length
+      ? await db
+          .selectDistinctOn(
+            [schema.chatMessage.receiverGroupId],
+            {
+              receiverGroupId: schema.chatMessage.receiverGroupId,
+              content: schema.chatMessage.content,
+              createdAt: schema.chatMessage.createdAt,
+            },
+          )
+          .from(schema.chatMessage)
+          .where(
+            and(
+              inArray(schema.chatMessage.receiverGroupId, groupIds),
+              isNull(schema.chatMessage.deletedAt),
+            ),
+          )
+          .orderBy(
+            schema.chatMessage.receiverGroupId,
+            desc(schema.chatMessage.createdAt),
+          )
+      : [];
 
-    // Agrupar por grupo e pegar a mais recente
-    const groupLastMessageMap = new Map<
-      string,
-      { content: string; createdAt: Date }
-    >();
-
-    for (const msg of groupLastMessagesRaw) {
-      if (
-        msg.receiverGroupId &&
-        !groupLastMessageMap.has(msg.receiverGroupId)
-      ) {
-        groupLastMessageMap.set(msg.receiverGroupId, {
-          content: msg.content,
-          createdAt: msg.createdAt,
-        });
-      }
-    }
+    const groupLastMessageMap = new Map(
+      groupLastMessagesRaw
+        .filter((msg) => Boolean(msg.receiverGroupId))
+        .map((msg) => [
+          msg.receiverGroupId as string,
+          { content: msg.content, createdAt: msg.createdAt },
+        ]),
+    );
 
     // Mapear chatGroups com contagem real de não lidas e última mensagem
     const chatGroups: ChatGroup[] = userGroups.map((g) => {
@@ -157,14 +151,18 @@ export async function GET() {
         ),
       );
 
-    // 3. BUSCAR STATUS DE PRESENÇA
-    const presenceData = await db
-      .select({
-        userId: schema.chatUserPresence.userId,
-        status: schema.chatUserPresence.status,
-        lastActivity: schema.chatUserPresence.lastActivity,
-      })
-      .from(schema.chatUserPresence);
+    const activeUserIds = allActiveUsers.map((u) => u.id);
+
+    const presenceData = activeUserIds.length
+      ? await db
+          .select({
+            userId: schema.chatUserPresence.userId,
+            status: schema.chatUserPresence.status,
+            lastActivity: schema.chatUserPresence.lastActivity,
+          })
+          .from(schema.chatUserPresence)
+          .where(inArray(schema.chatUserPresence.userId, activeUserIds))
+      : [];
 
     const presenceMap = new Map(
       presenceData.map((p) => [
@@ -193,42 +191,55 @@ export async function GET() {
       unreadCountsRaw.map((u) => [u.senderUserId, u.unreadCount]),
     );
 
-    // 6. BUSCAR ÚLTIMA MENSAGEM POR USUÁRIO (enviadas e recebidas)
-    const lastMessagesRaw = await db
-      .select({
-        senderUserId: schema.chatMessage.senderUserId,
-        receiverUserId: schema.chatMessage.receiverUserId,
-        content: schema.chatMessage.content,
-        createdAt: schema.chatMessage.createdAt,
-      })
+    const sentLastMessagesRaw = await db
+      .selectDistinctOn(
+        [schema.chatMessage.receiverUserId],
+        {
+          otherUserId: schema.chatMessage.receiverUserId,
+          content: schema.chatMessage.content,
+          createdAt: schema.chatMessage.createdAt,
+        },
+      )
       .from(schema.chatMessage)
       .where(
         and(
-          // Mensagens onde usuário atual está envolvido
-          or(
-            eq(schema.chatMessage.senderUserId, user.id), // Enviadas pelo usuário
-            eq(schema.chatMessage.receiverUserId, user.id), // Recebidas pelo usuário
-          ),
-          isNull(schema.chatMessage.deletedAt), // Não excluídas
+          eq(schema.chatMessage.senderUserId, user.id),
+          isNotNull(schema.chatMessage.receiverUserId),
+          isNull(schema.chatMessage.deletedAt),
         ),
       )
-      .orderBy(desc(schema.chatMessage.createdAt));
+      .orderBy(
+        schema.chatMessage.receiverUserId,
+        desc(schema.chatMessage.createdAt),
+      );
 
-    // Mapear última mensagem por usuário (considerando como "outro usuário" na conversa)
-    const lastMessageMap = new Map<
-      string,
-      { content: string; createdAt: Date }
-    >();
+    const receivedLastMessagesRaw = await db
+      .selectDistinctOn(
+        [schema.chatMessage.senderUserId],
+        {
+          otherUserId: schema.chatMessage.senderUserId,
+          content: schema.chatMessage.content,
+          createdAt: schema.chatMessage.createdAt,
+        },
+      )
+      .from(schema.chatMessage)
+      .where(
+        and(
+          eq(schema.chatMessage.receiverUserId, user.id),
+          isNull(schema.chatMessage.deletedAt),
+        ),
+      )
+      .orderBy(
+        schema.chatMessage.senderUserId,
+        desc(schema.chatMessage.createdAt),
+      );
 
-    for (const msg of lastMessagesRaw) {
-      // Determinar o "outro usuário" da conversa
-      const otherUserId =
-        msg.senderUserId === user.id
-          ? msg.receiverUserId // Se eu enviei, o outro é o receiver
-          : msg.senderUserId; // Se eu recebi, o outro é o sender
-
-      if (otherUserId && !lastMessageMap.has(otherUserId)) {
-        lastMessageMap.set(otherUserId, {
+    const lastMessageMap = new Map<string, { content: string; createdAt: Date }>();
+    for (const msg of [...sentLastMessagesRaw, ...receivedLastMessagesRaw]) {
+      if (!msg.otherUserId) continue;
+      const prev = lastMessageMap.get(msg.otherUserId);
+      if (!prev || msg.createdAt > prev.createdAt) {
+        lastMessageMap.set(msg.otherUserId, {
           content: msg.content,
           createdAt: msg.createdAt,
         });

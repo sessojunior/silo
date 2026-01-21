@@ -5,7 +5,57 @@ import * as schema from "@/lib/db/schema";
 import { requireAdminAuthUser } from "@/lib/auth/server";
 import { recordBulkTaskHistory, recordTaskHistory } from "@/lib/taskHistory";
 import { syncActivityStatus } from "@/lib/db/activityStatusSync";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import { z } from "zod";
+
+const KanbanMoveTaskSchema = z.object({
+  taskId: z.string().uuid(),
+  status: z.string().min(1),
+  sort: z.number().int(),
+});
+
+const KanbanMoveSchema = z.object({
+  tasksBeforeMove: z.array(KanbanMoveTaskSchema),
+  tasksAfterMove: z.array(KanbanMoveTaskSchema),
+});
+
+const EstimatedDaysSchema = z.preprocess((value) => {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim().length > 0) return Number(value);
+  return undefined;
+}, z.number().int().nonnegative().optional());
+
+const TaskStatusSchema = z.enum(["todo", "in_progress", "blocked", "review", "done"]);
+
+const TaskPrioritySchema = z.enum(["low", "medium", "high", "urgent"]);
+
+const TaskBaseSchema = z.object({
+  name: z.string().trim().min(1, "Nome da tarefa é obrigatório"),
+  description: z.string().trim().min(1, "Descrição da tarefa é obrigatória"),
+  category: z
+    .preprocess((value) => {
+      if (typeof value !== "string") return null;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }, z.string().nullable())
+    .optional(),
+  estimatedDays: EstimatedDaysSchema.optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  priority: TaskPrioritySchema.optional().default("medium"),
+  status: TaskStatusSchema.optional().default("todo"),
+});
+
+const CreateTaskSchema = TaskBaseSchema;
+
+const UpdateTaskSchema = TaskBaseSchema.extend({
+  id: z.string().uuid("ID da tarefa é obrigatório"),
+});
+
+const DeleteTaskSchema = z.object({
+  id: z.string().uuid("ID da tarefa é obrigatório"),
+});
 
 // GET - Buscar tarefas da atividade
 export async function GET(
@@ -203,12 +253,9 @@ export async function PATCH(
     const user = authResult.user;
 
     const { projectId, activityId } = await params;
-    const body = await request.json();
-    const { tasksBeforeMove, tasksAfterMove } = body;
-
-    if (!Array.isArray(tasksBeforeMove) || !Array.isArray(tasksAfterMove)) {
-      return errorResponse("Payload inválido", 400);
-    }
+    const parsedBody = await parseRequestJson(request, KanbanMoveSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { tasksBeforeMove, tasksAfterMove } = parsedBody.data;
 
     // Buscar todas as tasks atuais do banco para o projeto/atividade
     const dbTasks = await db
@@ -366,26 +413,10 @@ export async function POST(
     const user = authResult.user;
 
     const { projectId, activityId } = await params;
-    const body = await request.json();
-    const {
-      name,
-      description,
-      category,
-      estimatedDays,
-      startDate,
-      endDate,
-      priority,
-      status,
-    } = body;
-
-    // Validações básicas
-    if (!name?.trim()) {
-      return errorResponse("Nome da tarefa é obrigatório", 400);
-    }
-
-    if (!description?.trim()) {
-      return errorResponse("Descrição da tarefa é obrigatória", 400);
-    }
+    const parsedBody = await parseRequestJson(request, CreateTaskSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { name, description, category, estimatedDays, startDate, endDate, priority, status } =
+      parsedBody.data;
 
     // Buscar o próximo sort para a coluna
     const existingTasks = await db
@@ -405,14 +436,14 @@ export async function POST(
     const taskValues = {
       projectId: projectId,
       projectActivityId: activityId,
-      name: name.trim(),
-      description: description.trim(),
-      category: category || null,
-      estimatedDays: estimatedDays || 1,
+      name,
+      description,
+      category: category ?? null,
+      estimatedDays: estimatedDays ?? 1,
       startDate: startDate || null,
       endDate: endDate || null,
-      priority: priority || "medium",
-      status: status || "todo",
+      priority,
+      status,
       sort: nextSort,
     };
 
@@ -427,11 +458,11 @@ export async function POST(
       userId: user.id,
       action: "created",
       fromStatus: null,
-      toStatus: status || "todo",
+      toStatus: status,
       fromSort: null,
       toSort: nextSort,
       details: {
-        initialData: { name: name.trim(), category, priority },
+        initialData: { name, category, priority },
         createdVia: "form",
       },
     });
@@ -457,31 +488,10 @@ export async function PUT(
     const user = authResult.user;
 
     const { projectId, activityId } = await params;
-    const body = await request.json();
-    const {
-      id,
-      name,
-      description,
-      category,
-      estimatedDays,
-      startDate,
-      endDate,
-      priority,
-      status,
-    } = body;
-
-    // Validações básicas
-    if (!id) {
-      return errorResponse("ID da tarefa é obrigatório", 400);
-    }
-
-    if (!name?.trim()) {
-      return errorResponse("Nome da tarefa é obrigatório", 400);
-    }
-
-    if (!description?.trim()) {
-      return errorResponse("Descrição da tarefa é obrigatória", 400);
-    }
+    const parsedBody = await parseRequestJson(request, UpdateTaskSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { id, name, description, category, estimatedDays, startDate, endDate, priority, status } =
+      parsedBody.data;
 
     // Verificar se a tarefa existe e pertence ao projeto/atividade
     const existingTask = await db
@@ -500,19 +510,19 @@ export async function PUT(
     }
 
     const oldTask = existingTask[0];
-    const newStatus = status || "todo";
+    const newStatus = status;
 
     // Atualizar tarefa
     const updatedTask = await db
       .update(schema.projectTask)
       .set({
-        name: name.trim(),
-        description: description.trim(),
-        category: category || null,
-        estimatedDays: estimatedDays || 1,
+        name,
+        description,
+        category: category ?? null,
+        estimatedDays: estimatedDays ?? 1,
         startDate: startDate || null,
         endDate: endDate || null,
-        priority: priority || "medium",
+        priority,
         status: newStatus,
         updatedAt: new Date(),
       })
@@ -521,11 +531,11 @@ export async function PUT(
 
     // Registrar histórico de edição
     const changedFields = [];
-    if (oldTask.name !== name.trim()) changedFields.push("name");
-    if (oldTask.description !== description.trim())
+    if (oldTask.name !== name) changedFields.push("name");
+    if (oldTask.description !== description)
       changedFields.push("description");
-    if (oldTask.category !== (category || null)) changedFields.push("category");
-    if (oldTask.priority !== (priority || "medium"))
+    if (oldTask.category !== (category ?? null)) changedFields.push("category");
+    if (oldTask.priority !== priority)
       changedFields.push("priority");
     if (oldTask.status !== newStatus) changedFields.push("status");
 
@@ -545,9 +555,9 @@ export async function PUT(
           priority: oldTask.priority,
         },
         newValues: {
-          name: name.trim(),
+          name,
           status: newStatus,
-          priority: priority || "medium",
+          priority,
         },
         editedVia: "form",
       },
@@ -574,13 +584,9 @@ export async function DELETE(
     const user = authResult.user;
 
     const { projectId, activityId } = await params;
-    const body = await request.json();
-    const { id } = body;
-
-    // Validações básicas
-    if (!id) {
-      return errorResponse("ID da tarefa é obrigatório", 400);
-    }
+    const parsedBody = await parseRequestJson(request, DeleteTaskSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { id } = parsedBody.data;
 
     // Verificar se a tarefa existe e pertence ao projeto/atividade
     const existingTask = await db

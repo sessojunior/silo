@@ -1,10 +1,9 @@
 import type { NextConfig } from "next";
 
-const parseAppUrl = (): {
+const parseAppOrigin = (): {
   protocol: "http" | "https";
   hostname: string;
   port?: string;
-  pathname: string;
 } | null => {
   const isProd = process.env.NODE_ENV === "production";
   const raw = isProd ? process.env.APP_URL_PROD : process.env.APP_URL_DEV;
@@ -16,19 +15,18 @@ const parseAppUrl = (): {
       | "https";
     const hostname = url.hostname;
     const port = url.port || undefined;
-    const pathname = url.pathname || "/";
-    return { protocol, hostname, port, pathname };
+    return { protocol, hostname, port };
   } catch {
     return null;
   }
 };
 
-const appUrl = parseAppUrl();
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "/silo";
 const normalizedBasePath = basePath === "/" ? "" : basePath.replace(/\/$/, "");
+const appOrigin = parseAppOrigin();
 
 const nextConfig: NextConfig = {
-  basePath,
+  ...(normalizedBasePath ? { basePath: normalizedBasePath } : {}),
   images: {
     localPatterns: [
       {
@@ -79,13 +77,13 @@ const nextConfig: NextConfig = {
         hostname: "127.0.0.1",
         pathname: "/uploads/**",
       },
-      ...(appUrl
+      ...(appOrigin
         ? [
             {
-              protocol: appUrl.protocol,
-              hostname: appUrl.hostname,
-              port: appUrl.port,
-              pathname: `${appUrl.pathname.replace(/\/$/, "")}/uploads/**`,
+              protocol: appOrigin.protocol,
+              hostname: appOrigin.hostname,
+              port: appOrigin.port,
+              pathname: `${normalizedBasePath}/uploads/**`,
             },
           ]
         : []),

@@ -4,7 +4,32 @@ import { group, userGroup, chatMessage } from "@/lib/db/schema";
 import { eq, desc, ilike, and, sql, not, inArray, count } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { requireAdminAuthUser } from "@/lib/auth/server";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  parseRequestQuery,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
+import { z } from "zod";
+
+const ListGroupsQuerySchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(["all", "active", "inactive"]).optional(),
+});
+
+const CreateGroupSchema = z.object({
+  name: z.string().trim().min(2, "Nome do grupo é obrigatório e deve ter pelo menos 2 caracteres."),
+  description: z.string().optional().nullable(),
+  icon: z.string().optional().nullable(),
+  color: z.string().optional().nullable(),
+  role: z.string().optional().nullable(),
+  active: z.boolean().optional(),
+  isDefault: z.boolean().optional(),
+});
+
+const UpdateGroupSchema = CreateGroupSchema.extend({
+  id: z.string().uuid("ID do grupo é obrigatório."),
+});
 
 // GET - Listar grupos com busca e filtros
 export async function GET(request: NextRequest) {
@@ -12,9 +37,10 @@ export async function GET(request: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "all";
+    const parsedQuery = parseRequestQuery(request, ListGroupsQuerySchema);
+    if (!parsedQuery.ok) return parsedQuery.response;
+    const search = parsedQuery.data.search ?? "";
+    const status = parsedQuery.data.status ?? "all";
 
     // Construir condições de filtro
     const conditions = [];
@@ -73,17 +99,10 @@ export async function POST(request: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const body = await request.json();
-    const { name, description, icon, color, role, active, isDefault } = body;
-
-    // Validações
-    if (!name || name.trim().length < 2) {
-      return errorResponse(
-        "Nome do grupo é obrigatório e deve ter pelo menos 2 caracteres.",
-        400,
-        { field: "name" },
-      );
-    }
+    const parsedBody = await parseRequestJson(request, CreateGroupSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { name, description, icon, color, role, active, isDefault } =
+      parsedBody.data;
 
     // Verificar se nome já existe
     const existingGroup = await db
@@ -145,22 +164,10 @@ export async function PUT(request: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const body = await request.json();
+    const parsedBody = await parseRequestJson(request, UpdateGroupSchema);
+    if (!parsedBody.ok) return parsedBody.response;
     const { id, name, description, icon, color, role, active, isDefault } =
-      body;
-
-    // Validações
-    if (!id) {
-      return errorResponse("ID do grupo é obrigatório.", 400, { field: "id" });
-    }
-
-    if (!name || name.trim().length < 2) {
-      return errorResponse(
-        "Nome do grupo é obrigatório e deve ter pelo menos 2 caracteres.",
-        400,
-        { field: "name" },
-      );
-    }
+      parsedBody.data;
 
     // Verificar se grupo existe
     const existingGroup = await db
@@ -211,9 +218,6 @@ export async function PUT(request: NextRequest) {
         }
       }
 
-      console.warn(
-        "⚠️ [API_GROUPS] Tentativa de alteração crítica em grupo administrativo bloqueada",
-      );
     }
 
     // Proteção específica para o grupo "Administradores" por nome (grupo especial do sistema)
@@ -305,7 +309,7 @@ export async function PUT(request: NextRequest) {
       icon: icon || existingGroup[0].icon,
       color: color || existingGroup[0].color,
       role:
-        role !== undefined && role !== "admin" ? role : existingGroup[0].role, // Manter role atual ou 'user', nunca permitir 'admin'
+        typeof role === "string" && role !== "admin" ? role : existingGroup[0].role, // Manter role atual ou 'user', nunca permitir 'admin'
       active: active !== undefined ? active : existingGroup[0].active,
       isDefault:
         isDefault !== undefined ? isDefault : existingGroup[0].isDefault,

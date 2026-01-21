@@ -1,5 +1,10 @@
 import { NextRequest } from "next/server";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  parseRequestQuery,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
 import { db } from "@/lib/db";
 import { authUser, group, userGroup, authAccount } from "@/lib/db/schema";
 import { eq, desc, ilike, and, inArray } from "drizzle-orm";
@@ -8,6 +13,36 @@ import bcrypt from "bcryptjs";
 import { requireAdminAuthUser } from "@/lib/auth/server";
 import { isValidEmail, isValidDomain } from "@/lib/auth/validate";
 import { auth } from "@/lib/auth/server";
+import { z } from "zod";
+
+const ListUsersQuerySchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(["all", "active", "inactive"]).optional(),
+  groupId: z.preprocess((value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, z.string().uuid().optional()),
+});
+
+const UserGroupInputSchema = z.object({
+  groupId: z.string().uuid(),
+});
+
+const CreateUserSchema = z.object({
+  name: z.string().trim().min(2, "Nome é obrigatório e deve ter pelo menos 2 caracteres."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email()
+    .refine(isValidEmail, "Email inválido.")
+    .refine(isValidDomain, "Apenas e-mails do domínio @inpe.br são permitidos."),
+  password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres.").max(120).optional(),
+  groups: z.array(UserGroupInputSchema).optional(),
+  groupId: z.string().uuid().optional(),
+  isActive: z.boolean().optional(),
+});
 
 // Interface para grupos de usuário
 interface UserGroupInput {
@@ -20,10 +55,12 @@ export async function GET(request: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "all";
-    const groupId = searchParams.get("groupId") || "";
+    const parsedQuery = parseRequestQuery(request, ListUsersQuerySchema);
+    if (!parsedQuery.ok) return parsedQuery.response;
+
+    const search = parsedQuery.data.search ?? "";
+    const status = parsedQuery.data.status ?? "all";
+    const groupId = parsedQuery.data.groupId ?? "";
 
     // Construir condições de filtro
     const conditions = [];
@@ -132,51 +169,24 @@ export async function POST(request: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const body = await request.json();
-    const { name, email, password, groups, groupId, isActive } = body;
+    const parsedBody = await parseRequestJson(request, CreateUserSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { name, email, password, groups, groupId, isActive } = parsedBody.data;
 
     // Determinar grupos usando novo formato ou legado
     const userGroups: UserGroupInput[] =
       groups || (groupId ? [{ groupId }] : []);
 
-    // Validações
-    if (!name || name.trim().length < 2) {
-      return errorResponse(
-        "Nome é obrigatório e deve ter pelo menos 2 caracteres.",
-        400,
-        { field: "name" },
-      );
-    }
-
-    // Validação de email robusta
-    if (!email || !isValidEmail(email)) {
-      return errorResponse("Email inválido.", 400, { field: "email" });
-    }
-
-    // Validação de domínio @inpe.br
-    if (!isValidDomain(email)) {
-      return errorResponse(
-        "Apenas e-mails do domínio @inpe.br são permitidos.",
-        400,
-        { field: "email" },
-      );
-    }
-
     // 🆕 Senha é OPCIONAL na criação - se não fornecida, usuário precisa definir via OTP (Link)
     let hashedPassword: string | null = null;
     let needsPasswordSetup = false;
 
-    if (password && password.length >= 8) {
+    if (password) {
       // Se senha foi fornecida e é válida, usar ela
       hashedPassword = await bcrypt.hash(password, 10);
     } else if (!password) {
       // Se senha não foi fornecida, marcar para setup via Link
       needsPasswordSetup = true;
-    } else {
-      // Senha fornecida mas inválida (< 8 caracteres)
-      return errorResponse("Senha deve ter pelo menos 8 caracteres.", 400, {
-        field: "password",
-      });
     }
 
     if (!userGroups || userGroups.length === 0) {
@@ -223,7 +233,7 @@ export async function POST(request: NextRequest) {
     const newUser = {
       id: userId,
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email,
       // 🆕 Sempre false para novos usuários - será verificado quando definir senha
       emailVerified: false,
       image: null,

@@ -2,19 +2,40 @@ import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { authUser, userProfile } from "@/lib/db/schema";
-import { getAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { isValidName } from "@/lib/auth/validate";
 import { randomUUID } from "crypto";
 import { getGoogleIdFromUserId } from "@/lib/auth/social-utils";
 import { normalizeUploadsSrc } from "@/lib/utils";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import { z } from "zod";
+
+const createRequiredTrimmedStringSchema = (label: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${label} é obrigatório.`);
+
+const UpdateUserProfileSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "O nome é obrigatório.")
+    .refine(isValidName, "O nome precisa ser completo e conter apenas letras."),
+  genre: createRequiredTrimmedStringSchema("Gênero"),
+  role: createRequiredTrimmedStringSchema("Função"),
+  phone: createRequiredTrimmedStringSchema("Telefone"),
+  company: createRequiredTrimmedStringSchema("Empresa"),
+  location: createRequiredTrimmedStringSchema("Localização"),
+  team: createRequiredTrimmedStringSchema("Equipe"),
+});
 
 // Obtém os dados do perfil do usuário logado
 export async function GET() {
   try {
-    // Verifica se o usuário está logado e obtém os dados do usuário
-    const user = await getAuthUser();
-    if (!user) return errorResponse("Usuário não logado.", 401);
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const { user } = authResult;
 
     // Busca os dados do perfil do usuário no banco de dados
     const findUserProfile = await db.query.userProfile.findFirst({
@@ -60,32 +81,14 @@ export async function GET() {
 // Altera os dados do perfil do usuário logado
 export async function PUT(req: NextRequest) {
   try {
-    // Verifica se o usuário está logado e obtém os dados do usuário
-    const user = await getAuthUser();
-    if (!user) return errorResponse("Usuário não logado.", 401);
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const { user } = authResult;
 
-    // Obtem os dados recebidos
-    const body = await req.json();
-    const name = (body.name as string)?.trim();
-    const phone = (body.phone as string)?.trim();
-    const company = (body.company as string)?.trim();
-    const genre = body.genre as string;
-    const role = body.role as string;
-    const location = body.location as string;
-    const team = body.team as string;
+    const parsedBody = await parseRequestJson(req, UpdateUserProfileSchema);
+    if (!parsedBody.ok) return parsedBody.response;
 
-    // Validação básica dos campos
-    if (!name) {
-      return errorResponse("O nome é obrigatório.", 400);
-    }
-
-    if (!isValidName(name)) {
-      return errorResponse(
-        "O nome precisa ser completo e conter apenas letras.",
-        400,
-        { field: "name" },
-      );
-    }
+    const { name, phone, company, genre, role, location, team } = parsedBody.data;
 
     // Atualiza o nome do usuário no banco de dados
     const [updateUser] = await db

@@ -147,30 +147,73 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // Controles de polling
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
   const isPollingActive = useRef(false);
+  const sidebarRequestInFlight = useRef(false);
+  const heartbeatInFlight = useRef(false);
 
   // === FUNÇÕES PRINCIPAIS ===
 
   const loadSidebarData = useCallback(async () => {
+    if (sidebarRequestInFlight.current) return;
+    sidebarRequestInFlight.current = true;
     try {
       setIsLoading(true);
-      const response = await fetch(config.getApiUrl("/api/admin/chat/sidebar"));
+      const delay = (ms: number): Promise<void> =>
+        new Promise((resolve) => window.setTimeout(resolve, ms));
 
-      if (response.ok) {
-        const data = await response.json();
+      const maxAttempts = 3;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+          const response = await fetch(
+            config.getApiUrl("/api/admin/chat/sidebar"),
+            {
+              signal: controller.signal,
+              credentials: "include",
+              cache: "no-store",
+            },
+          ).finally(() => window.clearTimeout(timeoutId));
 
-        setGroups(data.groups || []);
-        setUsers(data.users || []);
-        setTotalUnread(data.totalUnread || 0);
-        setLastSync(new Date().toISOString());
-      } else {
-        console.error("❌ [CONTEXT_CHAT] Erro ao carregar sidebar:", {
-          status: response.status,
-        });
+          if (response.ok) {
+            const data = (await response.json()) as {
+              groups?: ChatGroup[];
+              users?: ChatUser[];
+              totalUnread?: number;
+            };
+
+            setGroups(data.groups || []);
+            setUsers(data.users || []);
+            setTotalUnread(data.totalUnread || 0);
+            setLastSync(new Date().toISOString());
+            break;
+          }
+
+          const shouldRetry = response.status >= 500 && attempt < maxAttempts;
+          if (shouldRetry) {
+            await delay(250 * attempt);
+            continue;
+          }
+
+          console.error("❌ [CONTEXT_CHAT] Erro ao carregar sidebar:", {
+            status: response.status,
+          });
+          break;
+        } catch (error) {
+          const shouldRetry = attempt < maxAttempts;
+          if (shouldRetry) {
+            await delay(250 * attempt);
+            continue;
+          }
+          console.error("❌ [CONTEXT_CHAT] Erro na requisição sidebar:", {
+            error,
+          });
+        }
       }
     } catch (error) {
       console.error("❌ [CONTEXT_CHAT] Erro na requisição sidebar:", { error });
     } finally {
       setIsLoading(false);
+      sidebarRequestInFlight.current = false;
     }
   }, []);
 
@@ -813,6 +856,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       await fetch(config.getApiUrl("/api/admin/chat/presence"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status }),
       });
     } catch (error) {
@@ -821,14 +865,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const sendHeartbeat = useCallback(async () => {
+    if (heartbeatInFlight.current) return;
+    heartbeatInFlight.current = true;
     try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 10000);
       await fetch(config.getApiUrl("/api/admin/chat/presence"), {
         method: "PATCH",
-      });
+        signal: controller.signal,
+        credentials: "include",
+        keepalive: true,
+      }).finally(() => window.clearTimeout(timeoutId));
     } catch (error) {
       console.error("❌ [CONTEXT_CHAT] Erro no heartbeat de presença:", {
         error,
       });
+    } finally {
+      heartbeatInFlight.current = false;
     }
   }, []);
 

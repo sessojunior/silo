@@ -3,7 +3,45 @@ import { db } from "@/lib/db";
 import { projectActivity, project } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { requireAdminAuthUser } from "@/lib/auth/server";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  parseRequestQuery,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
+import { z } from "zod";
+
+export const runtime = "nodejs";
+
+const EstimatedDaysSchema = z.preprocess((value) => {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim().length > 0) return Number(value);
+  return undefined;
+}, z.number().nonnegative().optional());
+
+const ActivityBaseSchema = z.object({
+  name: z.string().trim().min(1, "Nome e descrição são obrigatórios"),
+  description: z.string().trim().min(1, "Nome e descrição são obrigatórios"),
+  category: z.preprocess((value) => {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }, z.string().nullable()),
+  estimatedDays: EstimatedDaysSchema,
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  status: z.enum(["todo", "progress", "done", "blocked"]).optional(),
+});
+
+const UpdateActivitySchema = ActivityBaseSchema.extend({
+  id: z.string().uuid("ID da atividade é obrigatório"),
+});
+
+const DeleteActivityQuerySchema = z.object({
+  activityId: z.string().uuid("ID da atividade é obrigatório"),
+});
 
 // GET /api/admin/projects/[projectId]/activities - Buscar todas as atividades de um projeto
 export async function GET(
@@ -53,12 +91,9 @@ export async function POST(
     if (!authResult.ok) return authResult.response;
 
     const { projectId } = await params;
-    const body = await request.json();
-
-    // Validação dos dados obrigatórios
-    if (!body.name || !body.description) {
-      return errorResponse("Nome e descrição são obrigatórios", 400);
-    }
+    const parsedBody = await parseRequestJson(request, ActivityBaseSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.data;
 
     // Verificar se o projeto existe
     const existingProject = await db
@@ -79,17 +114,6 @@ export async function POST(
       );
     }
 
-    // Validar dias estimados se fornecido
-    if (
-      body.estimatedDays &&
-      (isNaN(Number(body.estimatedDays)) || Number(body.estimatedDays) < 0)
-    ) {
-      return errorResponse(
-        "Dias estimados deve ser um número válido e positivo",
-        400,
-      );
-    }
-
     // Criar a atividade
     const newActivity = await db
       .insert(projectActivity)
@@ -98,7 +122,8 @@ export async function POST(
         name: body.name,
         description: body.description,
         category: body.category || null,
-        estimatedDays: body.estimatedDays ? Number(body.estimatedDays) : null,
+        estimatedDays:
+          typeof body.estimatedDays === "number" ? body.estimatedDays : null,
         startDate: body.startDate || null,
         endDate: body.endDate || null,
         priority: body.priority || "medium",
@@ -129,17 +154,9 @@ export async function PUT(
     if (!authResult.ok) return authResult.response;
 
     const { projectId } = await params;
-    const body = await request.json();
-
-    // Validação do ID da atividade
-    if (!body.id) {
-      return errorResponse("ID da atividade é obrigatório", 400);
-    }
-
-    // Validação dos dados obrigatórios
-    if (!body.name || !body.description) {
-      return errorResponse("Nome e descrição são obrigatórios", 400);
-    }
+    const parsedBody = await parseRequestJson(request, UpdateActivitySchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const body = parsedBody.data;
 
     // Verificar se a atividade existe e pertence ao projeto
     const existingActivity = await db
@@ -165,17 +182,6 @@ export async function PUT(
       );
     }
 
-    // Validar dias estimados se fornecido
-    if (
-      body.estimatedDays &&
-      (isNaN(Number(body.estimatedDays)) || Number(body.estimatedDays) < 0)
-    ) {
-      return errorResponse(
-        "Dias estimados deve ser um número válido e positivo",
-        400,
-      );
-    }
-
     // Atualizar a atividade
     const updatedActivity = await db
       .update(projectActivity)
@@ -183,7 +189,8 @@ export async function PUT(
         name: body.name,
         description: body.description,
         category: body.category || null,
-        estimatedDays: body.estimatedDays ? Number(body.estimatedDays) : null,
+        estimatedDays:
+          typeof body.estimatedDays === "number" ? body.estimatedDays : null,
         startDate: body.startDate || null,
         endDate: body.endDate || null,
         priority: body.priority || "medium",
@@ -220,13 +227,9 @@ export async function DELETE(
     if (!authResult.ok) return authResult.response;
 
     const { projectId } = await params;
-    const { searchParams } = new URL(request.url);
-    const activityId = searchParams.get("activityId");
-
-    // Validação do ID da atividade
-    if (!activityId) {
-      return errorResponse("ID da atividade é obrigatório", 400);
-    }
+    const parsedQuery = parseRequestQuery(request, DeleteActivityQuerySchema);
+    if (!parsedQuery.ok) return parsedQuery.response;
+    const { activityId } = parsedQuery.data;
 
     // Verificar se a atividade existe e pertence ao projeto
     const existingActivity = await db

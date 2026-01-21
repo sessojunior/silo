@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Sistema de gerenciamento de produtos e tarefas.",
 };
 
+export const runtime = "nodejs";
+
 export default async function AdminLayout({
   children,
 }: Readonly<{

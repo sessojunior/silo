@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { deleteUserProfileImage } from "@/lib/profileImage";
 import { db } from "@/lib/db";
 import { authUser } from "@/lib/db/schema";
@@ -16,9 +16,9 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 // Faz o upload da imagem de perfil do usuário
 export async function POST(req: NextRequest) {
   try {
-    // Verifica se o usuário está logado e obtém os dados do usuário
-    const user = await getAuthUser();
-    if (!user) return errorResponse("Usuário não logado.", 401);
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const { user } = authResult;
 
     const currentUser = await db
       .select({ image: authUser.image })
@@ -85,9 +85,9 @@ export async function POST(req: NextRequest) {
 // Apaga a imagem de perfil do usuário
 export async function DELETE() {
   try {
-    // Verifica se o usuário está logado e obtém os dados do usuário
-    const user = await getAuthUser();
-    if (!user) return errorResponse("Usuário não logado.", 401);
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const { user } = authResult;
 
     // Busca a imagem atual do usuário
     const currentUser = await db

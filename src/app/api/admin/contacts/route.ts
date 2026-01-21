@@ -11,7 +11,82 @@ import {
   isSafeFilename,
   isUploadKind,
 } from "@/lib/localUploads";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestFormData,
+  parseRequestJson,
+  parseRequestQuery,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
+import { z } from "zod";
+import { isValidEmail } from "@/lib/auth/validate";
+
+const ContactsQuerySchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(["all", "active", "inactive"]).optional(),
+});
+
+const toTrimmedStringOrNull = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const toTrimmedStringOrUndefined = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const toBoolean = (value: unknown): boolean | undefined => {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return undefined;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return undefined;
+};
+
+const ContactBaseFormSchema = z.object({
+  name: z.preprocess(
+    (v) => toTrimmedStringOrUndefined(v),
+    z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  ),
+  role: z.preprocess(
+    (v) => toTrimmedStringOrUndefined(v),
+    z.string().min(2, "Função deve ter pelo menos 2 caracteres"),
+  ),
+  team: z.preprocess(
+    (v) => toTrimmedStringOrUndefined(v),
+    z.string().min(2, "Equipe deve ter pelo menos 2 caracteres"),
+  ),
+  email: z.preprocess(
+    (v) => {
+      if (typeof v !== "string") return v;
+      return v.trim().toLowerCase();
+    },
+    z
+      .string()
+      .email("Email inválido")
+      .refine(isValidEmail, "Email inválido"),
+  ),
+  phone: z.preprocess((v) => toTrimmedStringOrNull(v), z.string().nullable()),
+  imageUrl: z.preprocess((v) => toTrimmedStringOrNull(v), z.string().nullable()),
+  active: z.preprocess((v) => toBoolean(v), z.boolean()),
+});
+
+const CreateContactFormSchema = ContactBaseFormSchema;
+
+const UpdateContactFormSchema = ContactBaseFormSchema.extend({
+  id: z.preprocess(
+    (v) => (typeof v === "string" ? v.trim() : v),
+    z.string().uuid("ID do contato é obrigatório"),
+  ),
+  removeImage: z.preprocess((v) => toBoolean(v) ?? false, z.boolean()),
+});
+
+const DeleteContactSchema = z.object({
+  id: z.string().uuid("ID do contato é obrigatório"),
+});
 
 // GET - Listar contatos com filtros
 export async function GET(req: NextRequest) {
@@ -19,9 +94,10 @@ export async function GET(req: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "all"; // all, active, inactive
+    const parsedQuery = parseRequestQuery(req, ContactsQuerySchema);
+    if (!parsedQuery.ok) return parsedQuery.response;
+    const search = parsedQuery.data.search ?? "";
+    const status = parsedQuery.data.status ?? "all";
 
     // Query ordenada alfabeticamente por nome
     const contacts = await db.select().from(contact).orderBy(contact.name);
@@ -61,28 +137,9 @@ export async function POST(req: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const formData = await req.formData();
-    const name = formData.get("name") as string;
-    const role = formData.get("role") as string;
-    const team = formData.get("team") as string;
-    const email = formData.get("email") as string;
-    const phone = formData.get("phone") as string | null;
-    const imageUrl = formData.get("imageUrl") as string | null;
-    const active = formData.get("active") === "true";
-
-    // Validações
-    if (!name || name.trim().length < 2) {
-      return errorResponse("Nome deve ter pelo menos 2 caracteres", 400);
-    }
-    if (!role || role.trim().length < 2) {
-      return errorResponse("Função deve ter pelo menos 2 caracteres", 400);
-    }
-    if (!team || team.trim().length < 2) {
-      return errorResponse("Equipe deve ter pelo menos 2 caracteres", 400);
-    }
-    if (!email || !email.includes("@")) {
-      return errorResponse("Email inválido", 400);
-    }
+    const parsedBody = await parseRequestFormData(req, CreateContactFormSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { name, role, team, email, phone, imageUrl, active } = parsedBody.data;
 
     // Verificar email único
     const existingContact = await db
@@ -90,7 +147,7 @@ export async function POST(req: NextRequest) {
       .from(contact)
       .where(eq(contact.email, email));
     if (existingContact.length > 0) {
-      return errorResponse("Este email já está em uso", 400);
+      return errorResponse("Este email já está em uso", 400, { field: "email" });
     }
 
     let imagePath: string | null = null;
@@ -104,11 +161,11 @@ export async function POST(req: NextRequest) {
     const contactId = randomUUID();
     await db.insert(contact).values({
       id: contactId,
-      name: name.trim(),
-      role: role.trim(),
-      team: team.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone?.trim() || null,
+      name,
+      role,
+      team,
+      email,
+      phone,
       image: imagePath,
       active,
     });
@@ -130,20 +187,10 @@ export async function PUT(req: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const formData = await req.formData();
-    const id = formData.get("id") as string;
-    const name = formData.get("name") as string;
-    const role = formData.get("role") as string;
-    const team = formData.get("team") as string;
-    const email = formData.get("email") as string;
-    const phone = formData.get("phone") as string | null;
-    const imageUrl = formData.get("imageUrl") as string | null;
-    const active = formData.get("active") === "true";
-    const removeImage = formData.get("removeImage") === "true";
-
-    if (!id) {
-      return errorResponse("ID do contato é obrigatório", 400);
-    }
+    const parsedBody = await parseRequestFormData(req, UpdateContactFormSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { id, name, role, team, email, phone, imageUrl, active, removeImage } =
+      parsedBody.data;
 
     // Verificar se contato existe
     const existingContacts = await db
@@ -177,7 +224,7 @@ export async function PUT(req: NextRequest) {
         .from(contact)
         .where(eq(contact.email, email));
       if (emailCheck.length > 0) {
-        return errorResponse("Este email já está em uso", 400);
+        return errorResponse("Este email já está em uso", 400, { field: "email" });
       }
     }
 
@@ -220,11 +267,11 @@ export async function PUT(req: NextRequest) {
     await db
       .update(contact)
       .set({
-        name: name.trim(),
-        role: role.trim(),
-        team: team.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone?.trim() || null,
+        name,
+        role,
+        team,
+        email,
+        phone,
         image: imagePath,
         active,
         updatedAt: new Date(),
@@ -244,11 +291,9 @@ export async function DELETE(req: NextRequest) {
     const authResult = await requireAdminAuthUser();
     if (!authResult.ok) return authResult.response;
 
-    const { id } = await req.json();
-
-    if (!id) {
-      return errorResponse("ID do contato é obrigatório", 400);
-    }
+    const parsedBody = await parseRequestJson(req, DeleteContactSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const { id } = parsedBody.data;
 
     // Verificar se contato existe e pegar imagem para deletar
     const existingContacts = await db
