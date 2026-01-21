@@ -8,6 +8,10 @@ import { postLoginRedirectPath } from "@/lib/auth/urls";
 import { isValidCode, isValidEmail, isValidPassword } from "@/lib/auth/validate";
 import { config } from "@/lib/config";
 import type { ApiResponse } from "@/lib/api-response";
+import {
+  computeSecondsLeftFromUnlockAtMs,
+  createSessionResendCooldown,
+} from "@/lib/utils";
 
 import { toast } from "@/lib/toast";
 import { useAuthFormState } from "@/hooks/useAuthFormState";
@@ -21,33 +25,7 @@ import Input from "@/components/ui/Input";
 import InputPasswordHints from "@/components/ui/InputPasswordHints";
 import Pin from "@/components/ui/Pin";
 
-const getResendStorageKey = (email: string): string =>
-  `forget-password:resend-unlock-at:${email}`;
-
-const readResendUnlockAtMs = (email: string): number | null => {
-  if (typeof window === "undefined") return null;
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail) return null;
-
-  const raw = window.sessionStorage.getItem(getResendStorageKey(normalizedEmail));
-  if (!raw) return null;
-
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  return parsed;
-};
-
-const writeResendUnlockAtMs = (email: string, seconds: number) => {
-  if (typeof window === "undefined") return;
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail) return;
-  const safeSeconds = Math.max(0, Math.ceil(seconds));
-  const unlockAtMs = Date.now() + safeSeconds * 1000;
-  window.sessionStorage.setItem(getResendStorageKey(normalizedEmail), String(unlockAtMs));
-};
-
-const computeSecondsLeft = (unlockAtMs: number): number =>
-  Math.max(0, Math.ceil((unlockAtMs - Date.now()) / 1000));
+const resendCooldown = createSessionResendCooldown("forget-password");
 
 export default function ForgetPasswordPage() {
   const [step, setStep] = useState(1);
@@ -64,8 +42,10 @@ export default function ForgetPasswordPage() {
   useEffect(() => {
     if (step !== 1 && step !== 2) return;
     const update = () => {
-      const unlockAtMs = readResendUnlockAtMs(email);
-      setResendSecondsLeft(unlockAtMs ? computeSecondsLeft(unlockAtMs) : 0);
+      const unlockAtMs = resendCooldown.readUnlockAtMs(email);
+      setResendSecondsLeft(
+        unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
+      );
     };
     update();
 
@@ -141,7 +121,7 @@ export default function ForgetPasswordPage() {
 
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            writeResendUnlockAtMs(normalizedEmail, retryAfter);
+            resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
             setFieldError("email", "Aguarde para reenviar o código.");
             toast({
               type: "info",
@@ -162,7 +142,10 @@ export default function ForgetPasswordPage() {
         setPassword("");
         setCanGoToDashboard(false);
         const initialCooldownSeconds = data.data?.cooldownSeconds ?? 90;
-        writeResendUnlockAtMs(normalizedEmail, initialCooldownSeconds);
+        resendCooldown.writeUnlockAtMsFromSeconds(
+          normalizedEmail,
+          initialCooldownSeconds,
+        );
         setStep(2);
       } catch (err) {
         console.error("❌ [PAGE_FORGET_PASSWORD] Erro inesperado:", {
@@ -291,7 +274,7 @@ export default function ForgetPasswordPage() {
         if (!res.ok) {
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            writeResendUnlockAtMs(normalizedEmail, retryAfter);
+            resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
             toast({
               type: "info",
               title: message,
@@ -316,7 +299,10 @@ export default function ForgetPasswordPage() {
         })();
 
         setCode("");
-        writeResendUnlockAtMs(normalizedEmail, cooldownSeconds ?? 90);
+        resendCooldown.writeUnlockAtMsFromSeconds(
+          normalizedEmail,
+          cooldownSeconds ?? 90,
+        );
         toast({ type: "info", title: message });
       } catch (err) {
         console.error("❌ [PAGE_FORGET_PASSWORD] Erro ao reenviar código:", {

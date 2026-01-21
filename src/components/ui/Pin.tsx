@@ -146,7 +146,7 @@ export default function Pin({
       <div
         id={id}
         className={
-          compact ? "flex justify-start gap-4" : "flex justify-between gap-x-3"
+          compact ? "flex justify-start gap-2" : "flex justify-between gap-x-1"
         }
       >
         {Array.from({ length }).map((_, index) => (
@@ -169,7 +169,7 @@ export default function Pin({
             onPaste={handlePaste}
             className={twMerge(
               clsx(
-                "block w-12 rounded-md p-3 text-center text-lg uppercase border focus:outline-none focus:ring-2",
+                "block w-10 rounded-md p-3 text-center text-lg uppercase border focus:outline-none focus:ring-2",
                 isInvalid
                   ? "border-red-400 focus:ring-red-500"
                   : "border-zinc-200 focus:ring-blue-500",

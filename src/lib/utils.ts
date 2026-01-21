@@ -114,3 +114,42 @@ export function formatSlug(input: string): string {
     .replace(/\s+/g, "-") // espaços internos viram hífens
     .replace(/-+/g, "-"); // hífens duplos/triplos viram um só
 }
+
+export const computeSecondsLeftFromUnlockAtMs = (unlockAtMs: number): number =>
+  Math.max(0, Math.ceil((unlockAtMs - Date.now()) / 1000));
+
+export const createSessionResendCooldown = (
+  namespace: string,
+): {
+  readUnlockAtMs: (email: string) => number | null;
+  writeUnlockAtMsFromSeconds: (email: string, seconds: number) => void;
+} => {
+  const getStorageKey = (email: string): string => {
+    const normalizedEmail = email.trim().toLowerCase();
+    return `${namespace}:resend-unlock-at:${normalizedEmail}`;
+  };
+
+  const readUnlockAtMs = (email: string): number | null => {
+    if (typeof window === "undefined") return null;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return null;
+
+    const raw = window.sessionStorage.getItem(getStorageKey(normalizedEmail));
+    if (!raw) return null;
+
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return parsed;
+  };
+
+  const writeUnlockAtMsFromSeconds = (email: string, seconds: number) => {
+    if (typeof window === "undefined") return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return;
+    const safeSeconds = Math.max(0, Math.ceil(seconds));
+    const unlockAtMs = Date.now() + safeSeconds * 1000;
+    window.sessionStorage.setItem(getStorageKey(normalizedEmail), String(unlockAtMs));
+  };
+
+  return { readUnlockAtMs, writeUnlockAtMsFromSeconds };
+};

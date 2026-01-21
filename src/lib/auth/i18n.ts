@@ -121,6 +121,10 @@ export const translateAuthError = (
 
   const normalized = message.toLowerCase();
 
+  if (normalized.includes("invalid email address")) {
+    return authErrorMessagesByCode.INVALID_EMAIL;
+  }
+
   if (normalized.includes("invalid email or password")) {
     return authErrorMessagesByCode.INVALID_EMAIL_OR_PASSWORD;
   }
