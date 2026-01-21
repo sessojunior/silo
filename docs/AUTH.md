@@ -89,14 +89,40 @@ await authClient.emailOtp.sendVerificationOtp({
 
 ### **4. Recuperação de Senha**
 
-```typescript
-await authClient.emailOtp.sendVerificationOtp({
-  email: "usuario@inpe.br",
-  type: "forget-password",
-});
+Fluxo em 3 etapas via endpoints dedicados.
+
+#### **Etapa 1: Solicitar código**
+
+```http
+POST /api/auth/forget-password
+Content-Type: application/json
+
+{
+  "email": "usuario@inpe.br"
+}
 ```
 
-Após receber o OTP, a redefinição é feita no endpoint customizado:
+- Se o e-mail existir no banco, um código OTP (6 dígitos) é enviado.
+- Se o e-mail não existir, retorna erro e o fluxo não avança.
+
+#### **Etapa 2: Validar código (anti força bruta)**
+
+```http
+POST /api/auth/forget-password/verify-otp
+Content-Type: application/json
+
+{
+  "email": "usuario@inpe.br",
+  "code": "347281"
+}
+```
+
+Regras:
+
+- Código inválido/expirado: retorna erro.
+- Após **5 tentativas inválidas**, retorna erro e exige solicitar um novo código (reinicia o fluxo).
+
+#### **Etapa 3: Redefinir senha**
 
 ```http
 POST /api/auth/setup-password

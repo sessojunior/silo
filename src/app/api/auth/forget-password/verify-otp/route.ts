@@ -1,27 +1,27 @@
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 import { NextRequest } from "next/server";
+import { z } from "zod";
+import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
-import { authAccount, authUser, authVerification } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { hashPassword } from "@/lib/auth/hash";
-import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import { authUser, authVerification } from "@/lib/db/schema";
 import { randomUUID } from "crypto";
-import { z } from "zod";
-import { isValidPassword } from "@/lib/auth/validate";
 
-const SetupPasswordSchema = z.object({
+const VerifyOtpSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   code: z.string().trim().length(6),
-  password: z
-    .string()
-    .min(8)
-    .max(120)
-    .refine(isValidPassword, "Senha inválida."),
-  autoSignIn: z.boolean().optional(),
 });
+
+type VerifyOtpResponse = {
+  success: true;
+};
 
 const OTP_MAX_ATTEMPTS = 5;
 const OTP_RESET_MESSAGE = "Excesso tentativas inválidas. Comece novamente.";
+
+const buildAttemptsIdentifier = (email: string): string =>
+  `forget-password:attempts:${email}`;
 
 const parseAttempts = (value: string | null | undefined): number => {
   if (!value) return 0;
@@ -58,31 +58,32 @@ const isResponse = (value: unknown): value is Response =>
   "status" in value &&
   "headers" in value;
 
-const readSetCookieHeaders = (headers: Headers): string[] => {
-  const maybe = headers as unknown as { getSetCookie?: () => string[] };
-  if (typeof maybe.getSetCookie === "function") return maybe.getSetCookie();
-  const raw = headers.get("set-cookie");
-  return raw ? [raw] : [];
-};
-
 export async function POST(req: NextRequest) {
   try {
-    const parsedBody = await parseRequestJson(req, SetupPasswordSchema);
+    const parsedBody = await parseRequestJson(req, VerifyOtpSchema);
     if (!parsedBody.ok) return parsedBody.response;
-    const { email, code, password, autoSignIn } = parsedBody.data;
+    const { email, code } = parsedBody.data;
 
-    const attemptsIdentifier = `forget-password:attempts:${email}`;
-    const now = new Date();
+    const user = await db.query.authUser.findFirst({
+      where: eq(authUser.email, email),
+    });
+
+    if (!user) {
+      return errorResponse("E-mail inexistente.", 404, { field: "email" });
+    }
+
+    const attemptsIdentifier = buildAttemptsIdentifier(email);
     const attemptsRow = await db.query.authVerification.findFirst({
       where: eq(authVerification.identifier, attemptsIdentifier),
     });
 
+    const now = new Date();
     if (attemptsRow && attemptsRow.expiresAt < now) {
       await db
         .delete(authVerification)
         .where(eq(authVerification.id, attemptsRow.id));
-    } else if (attemptsRow) {
-      const attempts = parseAttempts(attemptsRow.value);
+    } else {
+      const attempts = parseAttempts(attemptsRow?.value);
       if (attempts >= OTP_MAX_ATTEMPTS) {
         return errorResponse(
           OTP_RESET_MESSAGE,
@@ -92,7 +93,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 1. Verify OTP
     const verification = await (async (): Promise<{ success: boolean } | Response> => {
       try {
         const result = await auth.api.checkVerificationOTP({
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
             otp: code,
             type: "forget-password",
           },
-          headers: req.headers,
+          headers: await headers(),
         });
 
         return { success: result?.success === true };
@@ -163,77 +163,24 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return errorResponse("Código inválido ou expirado.", 400, {
-        field: "code",
-      });
+      return errorResponse("Código inválido ou expirado.", 400, { field: "code" });
     }
 
-    await db
-      .delete(authVerification)
-      .where(eq(authVerification.identifier, attemptsIdentifier));
-
-    // 2. Find user
-    const user = await db.query.authUser.findFirst({
-      where: eq(authUser.email, email),
-    });
-
-    if (!user) {
-      return errorResponse("Usuário não encontrado.", 404);
-    }
-
-    // 3. Update password
-    const hashedPassword = await hashPassword(password);
-
-    // Check if account exists
-    const account = await db.query.authAccount.findFirst({
-      where: and(
-        eq(authAccount.userId, user.id),
-        eq(authAccount.providerId, "credential"),
-      ),
-    });
-
-    if (account) {
+    if (attemptsRow) {
       await db
-        .update(authAccount)
-        .set({ password: hashedPassword })
-        .where(eq(authAccount.id, account.id));
+        .delete(authVerification)
+        .where(eq(authVerification.id, attemptsRow.id));
     } else {
-      await db.insert(authAccount).values({
-        id: randomUUID(),
-        userId: user.id,
-        accountId: email,
-        providerId: "credential",
-        password: hashedPassword,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      await db
+        .delete(authVerification)
+        .where(eq(authVerification.identifier, attemptsIdentifier));
     }
 
-    if (autoSignIn) {
-      const signInResponse = await auth.api.signInEmail({
-        body: { email, password },
-        headers: req.headers,
-        asResponse: true,
-      });
-
-      if (signInResponse.ok) {
-        const responseHeaders = new Headers();
-        for (const cookie of readSetCookieHeaders(signInResponse.headers)) {
-          responseHeaders.append("set-cookie", cookie);
-        }
-        return successResponse(
-          { signedIn: true },
-          "Senha definida com sucesso.",
-          200,
-          undefined,
-          responseHeaders,
-        );
-      }
-    }
-
-    return successResponse({ signedIn: false }, "Senha definida com sucesso.");
-  } catch (e) {
-    console.error("❌ [API_SETUP_PASSWORD] Erro ao definir senha:", e);
-    return errorResponse("Erro ao definir senha.", 500);
+    return successResponse<VerifyOtpResponse>({ success: true });
+  } catch (error) {
+    console.error("❌ [API_FORGET_PASSWORD_VERIFY_OTP] Erro ao verificar OTP:", {
+      error,
+    });
+    return errorResponse("Erro ao verificar código.", 500);
   }
 }

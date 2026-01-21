@@ -265,6 +265,7 @@ Exemplos práticos (mesmo build, só mudando env):
 - ✅ Validação de domínio @inpe.br
 - ✅ Ativação obrigatória de usuários
 - ✅ Rate limiting (3 tentativas/min) para envio de códigos OTP
+- ✅ Proteção contra força bruta no OTP de "Esqueceu a senha" (5 tentativas)
 - ✅ Sessões no banco com cookie HTTP-only (token armazenado como hash)
 - ✅ Proteções contra auto-modificação
 - ✅ CORS aplicado apenas nas rotas de leitura de uploads (quando necessário)

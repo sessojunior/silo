@@ -50,19 +50,58 @@ export async function isRateLimited({
   return existing.count >= limit;
 }
 
+export async function getRateLimitStatus({
+  email,
+  ip,
+  route,
+  limit = 3,
+  windowInSeconds = 60,
+}: {
+  email: string;
+  ip: string;
+  route: string;
+  limit?: number;
+  windowInSeconds?: number;
+}): Promise<{ isLimited: boolean; retryAfterSeconds: number }> {
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - windowInSeconds * 1000);
+
+  await cleanRateLimitRecords();
+
+  const existing = await db.query.rateLimit.findFirst({
+    where: and(
+      eq(rateLimit.email, email),
+      eq(rateLimit.ip, ip),
+      eq(rateLimit.route, route),
+    ),
+  });
+
+  if (!existing) return { isLimited: false, retryAfterSeconds: 0 };
+  if (existing.lastRequest < windowStart)
+    return { isLimited: false, retryAfterSeconds: 0 };
+  if (existing.count < limit) return { isLimited: false, retryAfterSeconds: 0 };
+
+  const unlockAtMs = existing.lastRequest.getTime() + windowInSeconds * 1000;
+  const remainingMs = Math.max(0, unlockAtMs - now.getTime());
+  const retryAfterSeconds = Math.ceil(remainingMs / 1000);
+  return { isLimited: true, retryAfterSeconds };
+}
+
 // Atualiza ou cria o registro de tentativa de envio
 export async function recordRateLimit({
   email,
   ip,
   route,
+  windowInSeconds = 60,
 }: {
   email: string;
   ip: string;
   route: string;
+  windowInSeconds?: number;
 }): Promise<void> {
   // Usar UPSERT para evitar race condition
   // PostgreSQL: ON CONFLICT DO UPDATE
-  const resetWindow = new Date(new Date().getTime() - 60 * 1000);
+  const resetWindow = new Date(new Date().getTime() - windowInSeconds * 1000);
 
   await db
     .insert(rateLimit)

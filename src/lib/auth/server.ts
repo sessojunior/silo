@@ -26,6 +26,13 @@ const extractOrigin = (value: string): string | null => {
   }
 };
 
+const normalizeTrustedOrigin = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  if (trimmed.includes("*")) return trimmed.replace(/\/$/, "");
+  return extractOrigin(trimmed);
+};
+
 const resolveTrustedOrigins = (): string[] => {
   const candidates = [
     process.env.APP_URL_DEV,
@@ -38,9 +45,13 @@ const resolveTrustedOrigins = (): string[] => {
     "http://127.0.0.1:3000",
   ];
 
+  if (process.env.NODE_ENV !== "production") {
+    candidates.push("http://localhost:*", "http://127.0.0.1:*");
+  }
+
   const origins = candidates
     .filter((value): value is string => Boolean(value))
-    .map((value) => extractOrigin(value))
+    .map((value) => normalizeTrustedOrigin(value))
     .filter((value): value is string => Boolean(value));
 
   return Array.from(new Set(origins));
