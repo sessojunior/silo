@@ -66,6 +66,7 @@ docker-compose up -d --build
 # ✅ Acesse:
 # - Se NEXT_PUBLIC_BASE_PATH='/silo' → http://localhost:3000/silo
 # - Se NEXT_PUBLIC_BASE_PATH='/' → http://localhost:3000
+# - Se NEXT_PUBLIC_BASE_PATH='/nome-qualquer' → http://localhost:3000/nome-qualquer
 ```
 
 ### **Opção 2: Desenvolvimento Local**
@@ -83,6 +84,7 @@ npm run dev
 # ✅ Frontend:
 # - Se NEXT_PUBLIC_BASE_PATH='/silo' → http://localhost:3000/silo
 # - Se NEXT_PUBLIC_BASE_PATH='/' → http://localhost:3000
+# - Se NEXT_PUBLIC_BASE_PATH='/nome-qualquer' → http://localhost:3000/nome-qualquer
 ```
 
 ---
@@ -218,8 +220,31 @@ SMTP_PASSWORD='senha'
 
 **Regra do base path (muito importante):**
 
-- O sistema funciona com ou sem subdiretório apenas alterando `NEXT_PUBLIC_BASE_PATH`.
-- `APP_URL_DEV` e `APP_URL_PROD` devem ser somente a origem (sem subdiretório). O subdiretório público é sempre definido em `NEXT_PUBLIC_BASE_PATH`.
+O `NEXT_PUBLIC_BASE_PATH` define o “prefixo” público de todas as rotas do sistema (páginas, APIs e callbacks de autenticação).
+
+- Ele é totalmente personalizável: pode ser `'/silo'`, `'/'` (rodar na raiz) ou qualquer outro nome, como `'/nome-qualquer'`, `'/sistemas/silo'`, etc.
+- Use sempre sem barra final. Exemplos válidos: `'/silo'`, `'/nome-qualquer'`, `'/'`. Exemplos inválidos: `'/silo/'`, `'/nome-qualquer/'`.
+- Ao trocar esse valor, o sistema continua funcionando da mesma forma; apenas muda o prefixo público das rotas.
+
+Exemplos práticos (mesmo build, só mudando env):
+
+- Com `NEXT_PUBLIC_BASE_PATH='/'`:
+  - Login: `/login`
+  - Admin: `/admin`
+  - Better Auth: `/api/auth/*`
+  - Uploads: `/uploads/<type>/<filename>`
+- Com `NEXT_PUBLIC_BASE_PATH='/silo'`:
+  - Login: `/silo/login`
+  - Admin: `/silo/admin`
+  - Better Auth: `/silo/api/auth/*`
+  - Uploads: `/silo/uploads/<type>/<filename>`
+- Com `NEXT_PUBLIC_BASE_PATH='/nome-qualquer'`:
+  - Login: `/nome-qualquer/login`
+  - Admin: `/nome-qualquer/admin`
+  - Better Auth: `/nome-qualquer/api/auth/*`
+  - Uploads: `/nome-qualquer/uploads/<type>/<filename>`
+
+**Importante:** `APP_URL_DEV` e `APP_URL_PROD` devem ser somente a origem (sem subdiretório). O subdiretório público é sempre definido em `NEXT_PUBLIC_BASE_PATH`.
 
 ---
 
