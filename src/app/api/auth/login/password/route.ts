@@ -2,6 +2,10 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
 import { translateAuthError } from "@/lib/auth/i18n";
+import {
+  AUTH_INVALID_CREDENTIALS_MAX_ATTEMPTS,
+  AUTH_INVALID_CREDENTIALS_WINDOW_SECONDS,
+} from "@/lib/auth/rate-limits";
 import { auth } from "@/lib/auth/server";
 import { isValidEmail } from "@/lib/auth/validate";
 import { clearRateLimitForEmail, getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
@@ -36,8 +40,6 @@ type LoginPasswordResponse = {
   signedIn: true;
 };
 
-const LOGIN_PASSWORD_MAX_ATTEMPTS = 5;
-const LOGIN_PASSWORD_WINDOW_SECONDS = 5 * 60;
 const LOGIN_PASSWORD_WAIT_MESSAGE = "Aguarde para tentar novamente.";
 
 const readSetCookieHeaders = (headers: Headers): string[] => {
@@ -93,8 +95,8 @@ export async function POST(req: NextRequest) {
       email,
       ip,
       route: "login-password",
-      limit: LOGIN_PASSWORD_MAX_ATTEMPTS,
-      windowInSeconds: LOGIN_PASSWORD_WINDOW_SECONDS,
+      limit: AUTH_INVALID_CREDENTIALS_MAX_ATTEMPTS,
+      windowInSeconds: AUTH_INVALID_CREDENTIALS_WINDOW_SECONDS,
     });
 
     if (rate.isLimited) {
@@ -128,15 +130,15 @@ export async function POST(req: NextRequest) {
           email,
           ip,
           route: "login-password",
-          windowInSeconds: LOGIN_PASSWORD_WINDOW_SECONDS,
+          windowInSeconds: AUTH_INVALID_CREDENTIALS_WINDOW_SECONDS,
         });
 
         const after = await getRateLimitStatus({
           email,
           ip,
           route: "login-password",
-          limit: LOGIN_PASSWORD_MAX_ATTEMPTS,
-          windowInSeconds: LOGIN_PASSWORD_WINDOW_SECONDS,
+          limit: AUTH_INVALID_CREDENTIALS_MAX_ATTEMPTS,
+          windowInSeconds: AUTH_INVALID_CREDENTIALS_WINDOW_SECONDS,
         });
 
         if (after.isLimited) {

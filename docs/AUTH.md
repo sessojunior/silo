@@ -36,11 +36,14 @@ A autenticação é gerenciada pelo Better Auth e exposta em `/api/auth/*` pelo 
 
 ### **1. Login com Email e Senha**
 
-```typescript
-const { error } = await authClient.signIn.email({
-  email: "usuario@inpe.br",
-  password: "SenhaSegura@123",
-});
+```http
+POST /api/auth/login/password
+Content-Type: application/json
+
+{
+  "email": "usuario@inpe.br",
+  "password": "SenhaSegura@123"
+}
 ```
 
 **Validações:**
@@ -52,33 +55,76 @@ const { error } = await authClient.signIn.email({
 
 ### **2. Login apenas com Email (OTP)**
 
-O código OTP tem **6 dígitos**.
+O código OTP tem **6 dígitos**. Fluxo em duas etapas com endpoints dedicados.
 
-```typescript
-await authClient.emailOtp.sendVerificationOtp({
-  email: "usuario@inpe.br",
-  type: "sign-in",
-});
+#### **Etapa 1: Solicitar código**
 
-const { error } = await authClient.signIn.emailOtp({
-  email: "usuario@inpe.br",
-  otp: "347281",
-});
+```http
+POST /api/auth/login-email/send-otp
+Content-Type: application/json
+
+{
+  "email": "usuario@inpe.br"
+}
 ```
+
+#### **Etapa 2: Validar código**
+
+```http
+POST /api/auth/login-email/verify-otp
+Content-Type: application/json
+
+{
+  "email": "usuario@inpe.br",
+  "code": "347281"
+}
+```
+
+Regras:
+
+- Código inválido/expirado: retorna erro.
+- Após **5 tentativas inválidas**, há bloqueio temporário e o fluxo retorna para a etapa do e-mail.
+- O reenvio respeita cooldown e usa o mesmo endpoint da etapa 1 com `resend: true`.
 
 ### **3. Registro de Usuário**
 
-```typescript
-const { error } = await authClient.signUp.email({
-  name: "João Silva",
-  email: "joao.silva@inpe.br",
-  password: "SenhaSegura@123",
-});
+Fluxo em duas etapas: criação da conta e verificação de e-mail via OTP.
 
-await authClient.emailOtp.sendVerificationOtp({
-  email: "joao.silva@inpe.br",
-  type: "email-verification",
-});
+#### **Etapa 1: Criar conta**
+
+```http
+POST /api/auth/sign-up/email
+Content-Type: application/json
+
+{
+  "name": "João Silva",
+  "email": "joao.silva@inpe.br",
+  "password": "SenhaSegura@123"
+}
+```
+
+#### **Etapa 2: Verificar código**
+
+```http
+POST /api/auth/sign-up/email/verify-otp
+Content-Type: application/json
+
+{
+  "email": "joao.silva@inpe.br",
+  "code": "347281"
+}
+```
+
+Reenvio do OTP:
+
+```http
+POST /api/auth/sign-up/email/send-otp
+Content-Type: application/json
+
+{
+  "email": "joao.silva@inpe.br",
+  "resend": true
+}
 ```
 
 **Importante:**
@@ -104,6 +150,7 @@ Content-Type: application/json
 
 - Se o e-mail existir no banco, um código OTP (6 dígitos) é enviado.
 - Se o e-mail não existir, retorna erro e o fluxo não avança.
+- Para reenvio, usar o mesmo endpoint com `resend: true`.
 
 #### **Etapa 2: Validar código (anti força bruta)**
 
@@ -120,7 +167,7 @@ Content-Type: application/json
 Regras:
 
 - Código inválido/expirado: retorna erro.
-- Após **5 tentativas inválidas**, retorna erro e exige solicitar um novo código (reinicia o fluxo).
+- Após **5 tentativas inválidas**, há bloqueio temporário e o fluxo retorna para a etapa do e-mail.
 
 #### **Etapa 3: Redefinir senha**
 
@@ -148,8 +195,8 @@ Content-Type: application/json
 2. **Configurar OAuth Consent Screen**
    - Tipo: Internal (para conta @inpe.br)
    - App name: SILO
-   - Support email: <seu-email@inpe.br>
-   - Developer contact: <seu-email@inpe.br>
+   - Support email: <silo.inpe@gmail.com>
+   - Developer contact: <silo.inpe@gmail.com>
 
 3. **Criar Credenciais OAuth**
    - Credentials → Create Credentials → OAuth client ID
@@ -249,7 +296,15 @@ export function isValidDomain(email: string): boolean {
 
 ### **Rate Limiting**
 
-**Limite padrão:** 3 tentativas por minuto (por combinação de email + IP + rota)
+Os rate limits são aplicados por combinação de email + IP + rota, com janelas curtas para reduzir abuso.
+
+**Regras atuais:**
+
+- **Credenciais inválidas:** 5 tentativas em 10s
+- **E-mail inválido/inexistente:** 5 tentativas em 10s
+- **OTP inválido:** 5 tentativas antes de lockout
+- **Lockout de OTP:** 10s
+- **Cooldown de reenvio de OTP:** 90s
 
 Arquivo: `src/lib/rateLimit.ts`
 

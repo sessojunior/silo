@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import { isValidCode, isValidEmail } from "@/lib/auth/validate";
+import { AUTH_OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/auth/rate-limits";
 import { config } from "@/lib/config";
 import type { ApiResponse } from "@/lib/api-response";
 import {
@@ -47,7 +48,8 @@ export default function LoginPage() {
   useEffect(() => {
     if (step !== 1) return;
     const update = () => {
-      const unlockAtMs = loginCooldown.readUnlockAtMs(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      const unlockAtMs = loginCooldown.readUnlockAtMs(normalizedEmail);
       setLoginSecondsLeft(
         unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
       );
@@ -68,7 +70,8 @@ export default function LoginPage() {
   useEffect(() => {
     if (step !== 2) return;
     const update = () => {
-      const unlockAtMs = emailVerificationCooldown.readUnlockAtMs(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      const unlockAtMs = emailVerificationCooldown.readUnlockAtMs(normalizedEmail);
       setEmailVerificationSecondsLeft(
         unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
       );
@@ -167,7 +170,7 @@ export default function LoginPage() {
         setCode("");
         emailVerificationCooldown.writeUnlockAtMsFromSeconds(
           normalizedEmail,
-          cooldownSeconds ?? 90,
+          cooldownSeconds ?? AUTH_OTP_RESEND_COOLDOWN_SECONDS,
         );
         setMustResendEmailVerificationCode(false);
         toast({ type: "info", title: message });
@@ -321,7 +324,7 @@ export default function LoginPage() {
             setCode("");
             emailVerificationCooldown.writeUnlockAtMsFromSeconds(
               normalizedEmail,
-              otpCooldownSeconds ?? 90,
+              otpCooldownSeconds ?? AUTH_OTP_RESEND_COOLDOWN_SECONDS,
             );
             setMustResendEmailVerificationCode(false);
             setStep(2);
@@ -409,8 +412,9 @@ export default function LoginPage() {
             setFieldError("code", EMAIL_VERIFICATION_WAIT_MESSAGE);
             toast({
               type: "info",
-              title: message,
-              description: `Tente novamente em ${retryAfter}s.`,
+              title: "Aguarde para reenviar o código.",
+              description: `Clique em "Reenviar o código novamente" para receber um novo código. Tente novamente em ${retryAfter}s.`,
+              duration: 60,
             });
             return;
           }
@@ -515,7 +519,11 @@ export default function LoginPage() {
         <AuthHeader
           icon="icon-[lucide--square-asterisk]"
           title="Verifique a conta"
-          description="Precisamos verificar seu e-mail, insira o código que recebeu por e-mail."
+          description={
+            email.trim().length > 0
+              ? `Para sua segurança, insira o código que recebeu em ${email.trim().toLowerCase()}.`
+              : "Para sua segurança, insira o código que recebeu por e-mail."
+          }
         />
       )}
 
@@ -636,6 +644,7 @@ export default function LoginPage() {
                     length={6}
                     value={code}
                     setValue={setCode}
+                    disabled={loading || mustResendEmailVerificationCode}
                     isInvalid={form?.field === "code"}
                     invalidMessage={
                       form?.field === "code" ? codeInvalidMessage : undefined

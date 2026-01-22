@@ -4,10 +4,15 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
 import { auth } from "@/lib/auth/server";
+import {
+  AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
+  AUTH_INVALID_EMAIL_WINDOW_SECONDS,
+  AUTH_OTP_RESEND_COOLDOWN_SECONDS,
+} from "@/lib/auth/rate-limits";
 import { isValidDomain, isValidEmail } from "@/lib/auth/validate";
 import { db } from "@/lib/db";
 import { authUser, authVerification } from "@/lib/db/schema";
-import { getRateLimitStatus, isRateLimited, recordRateLimit } from "@/lib/rateLimit";
+import { getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
 
 const emailInputSchema = z
   .string()
@@ -46,13 +51,6 @@ const getRequestIp = (req: NextRequest): string => {
   return "unknown";
 };
 
-const WRONG_EMAIL_LIMIT = 10;
-const WRONG_EMAIL_WINDOW_SECONDS = 5 * 60;
-
-const RESEND_COOLDOWN_SECONDS = 90;
-const RESEND_LIMIT = 8;
-const RESEND_WINDOW_SECONDS = 10 * 60;
-
 export async function POST(req: NextRequest) {
   try {
     const parsedBody = await parseRequestJson(req, LoginEmailSendOtpSchema);
@@ -65,18 +63,19 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       const ip = getRequestIp(req);
-      const isLimited = await isRateLimited({
+      const invalidEmailStatus = await getRateLimitStatus({
         email: "unknown",
         ip,
         route: "login-email-wrong-email",
-        limit: WRONG_EMAIL_LIMIT,
-        windowInSeconds: WRONG_EMAIL_WINDOW_SECONDS,
+        limit: AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
+        windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
       });
-      if (isLimited) {
+      if (invalidEmailStatus.isLimited) {
         return errorResponse(
-          "Muitas tentativas. Aguarde 5 minutos e tente novamente.",
+          "Aguarde para tentar novamente.",
           429,
-          { field: "email" },
+          { field: "email", retryAfterSeconds: invalidEmailStatus.retryAfterSeconds },
+          { "Retry-After": String(invalidEmailStatus.retryAfterSeconds) },
         );
       }
 
@@ -84,7 +83,7 @@ export async function POST(req: NextRequest) {
         email: "unknown",
         ip,
         route: "login-email-wrong-email",
-        windowInSeconds: WRONG_EMAIL_WINDOW_SECONDS,
+        windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
       });
 
       return errorResponse("E-mail inexistente.", 404, { field: "email" });
@@ -97,31 +96,13 @@ export async function POST(req: NextRequest) {
       ip,
       route: "login-email-send-otp-cooldown",
       limit: 1,
-      windowInSeconds: RESEND_COOLDOWN_SECONDS,
+      windowInSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS,
     });
 
     if (cooldownStatus.isLimited) {
       const retryAfter = cooldownStatus.retryAfterSeconds;
       return errorResponse(
         "Aguarde para reenviar o código.",
-        429,
-        { retryAfterSeconds: retryAfter },
-        { "Retry-After": String(retryAfter) },
-      );
-    }
-
-    const burstStatus = await getRateLimitStatus({
-      email,
-      ip,
-      route: "login-email-send-otp-burst",
-      limit: RESEND_LIMIT,
-      windowInSeconds: RESEND_WINDOW_SECONDS,
-    });
-
-    if (burstStatus.isLimited) {
-      const retryAfter = burstStatus.retryAfterSeconds;
-      return errorResponse(
-        "Muitas tentativas. Aguarde para reenviar o código.",
         429,
         { retryAfterSeconds: retryAfter },
         { "Retry-After": String(retryAfter) },
@@ -145,19 +126,12 @@ export async function POST(req: NextRequest) {
       email,
       ip,
       route: "login-email-send-otp-cooldown",
-      windowInSeconds: RESEND_COOLDOWN_SECONDS,
-    });
-
-    await recordRateLimit({
-      email,
-      ip,
-      route: "login-email-send-otp-burst",
-      windowInSeconds: RESEND_WINDOW_SECONDS,
+      windowInSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS,
     });
 
     return successResponse<LoginEmailSendOtpResponse>(
       {
-        cooldownSeconds: RESEND_COOLDOWN_SECONDS,
+        cooldownSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS,
       },
       resend ? "Código reenviado para seu e-mail." : "Código enviado para seu e-mail.",
     );

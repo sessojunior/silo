@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import { isValidCode, isValidEmail } from "@/lib/auth/validate";
+import { AUTH_OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/auth/rate-limits";
 import { config } from "@/lib/config";
 import type { ApiResponse } from "@/lib/api-response";
 import {
@@ -35,12 +36,12 @@ export default function LoginEmailPage() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [resendSecondsLeft, setResendSecondsLeft] = useState(0);
-  const [mustResendCode, setMustResendCode] = useState(false);
 
   useEffect(() => {
     if (step !== 1 && step !== 2) return;
     const update = () => {
-      const unlockAtMs = resendCooldown.readUnlockAtMs(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      const unlockAtMs = resendCooldown.readUnlockAtMs(normalizedEmail);
       setResendSecondsLeft(
         unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
       );
@@ -145,10 +146,9 @@ export default function LoginEmailPage() {
         toast({ type: "info", title: message });
         setEmail(normalizedEmail);
         setCode("");
-        setMustResendCode(false);
         resendCooldown.writeUnlockAtMsFromSeconds(
           normalizedEmail,
-          cooldownSeconds ?? 90,
+          cooldownSeconds ?? AUTH_OTP_RESEND_COOLDOWN_SECONDS,
         );
         setStep(2);
       } catch (err) {
@@ -233,9 +233,8 @@ export default function LoginEmailPage() {
         setCode("");
         resendCooldown.writeUnlockAtMsFromSeconds(
           normalizedEmail,
-          cooldownSeconds ?? 90,
+          cooldownSeconds ?? AUTH_OTP_RESEND_COOLDOWN_SECONDS,
         );
-        setMustResendCode(false);
         toast({ type: "info", title: message });
       } catch (err) {
         console.error("❌ [PAGE_LOGIN_EMAIL] Erro ao reenviar código:", {
@@ -260,7 +259,6 @@ export default function LoginEmailPage() {
       setFieldError("code", "Digite o código com 6 caracteres.");
       return;
     }
-    if (mustResendCode) return;
 
     await withLoading(async () => {
       clearFieldError();
@@ -297,13 +295,14 @@ export default function LoginEmailPage() {
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
             resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
-            setMustResendCode(true);
             setCode("");
-            setFieldError("code", "Aguarde para reenviar o código.");
+            setFieldError("email", "Aguarde para reenviar o código.");
+            setStep(1);
             toast({
               type: "info",
-              title: message,
+              title: "Aguarde para reenviar o código.",
               description: `Tente novamente em ${retryAfter}s.`,
+              duration: 60,
             });
             return;
           }
@@ -345,11 +344,13 @@ export default function LoginEmailPage() {
     <div className="flex w-full flex-col gap-6">
       <AuthHeader
         icon="icon-[lucide--mail]"
-        title={step === 1 ? "Acessar com e-mail" : "Verificar código"}
+        title={step === 1 ? "Acessar com e-mail" : "Verifique a conta"}
         description={
           step === 1
             ? "Enviaremos um código de acesso para você por e-mail."
-            : `Enviamos um código para ${email}`
+            : email.trim().length > 0
+              ? `Para sua segurança, insira o código que recebeu em ${email.trim().toLowerCase()}.`
+              : "Para sua segurança, insira o código que recebeu por e-mail."
         }
       />
 
@@ -399,7 +400,7 @@ export default function LoginEmailPage() {
           <Button
             type="submit"
             loading={loading}
-            disabled={loading || mustResendCode}
+            disabled={loading}
             className="w-full"
           >
             Entrar
@@ -423,7 +424,6 @@ export default function LoginEmailPage() {
             onClick={() => {
               clearFieldError();
               setCode("");
-              setMustResendCode(false);
               setStep(1);
             }}
             className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"

@@ -3,10 +3,17 @@ import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
+import {
+  AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
+  AUTH_INVALID_EMAIL_WINDOW_SECONDS,
+  AUTH_OTP_LOCKOUT_SECONDS,
+  AUTH_OTP_MAX_ATTEMPTS,
+  AUTH_OTP_RESEND_COOLDOWN_SECONDS,
+} from "@/lib/auth/rate-limits";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { authUser, authVerification } from "@/lib/db/schema";
-import { getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
+import { clearRateLimitForEmail, getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
 import { randomUUID } from "crypto";
 
 const VerifyOtpSchema = z.object({
@@ -18,8 +25,6 @@ type VerifyOtpResponse = {
   success: true;
 };
 
-const OTP_MAX_ATTEMPTS = 5;
-const VERIFY_LOCKOUT_SECONDS = 90;
 const VERIFY_LOCKOUT_ROUTE = "forget-password-verify-otp-lockout";
 const VERIFY_LOCKOUT_MESSAGE = "Aguarde para reenviar o código.";
 
@@ -69,6 +74,21 @@ const isResponse = (value: unknown): value is Response =>
   "status" in value &&
   "headers" in value;
 
+const getResendRetryAfterSeconds = async (params: {
+  email: string;
+  ip: string;
+  lockoutSeconds: number;
+}): Promise<number> => {
+  const resendCooldownStatus = await getRateLimitStatus({
+    email: params.email,
+    ip: params.ip,
+    route: "forget-password-send-otp-cooldown",
+    limit: 1,
+    windowInSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS,
+  });
+  return Math.max(params.lockoutSeconds, resendCooldownStatus.retryAfterSeconds);
+};
+
 export async function POST(req: NextRequest) {
   try {
     const parsedBody = await parseRequestJson(req, VerifyOtpSchema);
@@ -81,11 +101,15 @@ export async function POST(req: NextRequest) {
       ip,
       route: VERIFY_LOCKOUT_ROUTE,
       limit: 1,
-      windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+      windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS,
     });
 
     if (lockoutStatus.isLimited) {
-      const retryAfter = lockoutStatus.retryAfterSeconds;
+      const retryAfter = await getResendRetryAfterSeconds({
+        email,
+        ip,
+        lockoutSeconds: lockoutStatus.retryAfterSeconds,
+      });
       return errorResponse(
         VERIFY_LOCKOUT_MESSAGE,
         429,
@@ -99,6 +123,30 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
+      const invalidEmailStatus = await getRateLimitStatus({
+        email: "unknown",
+        ip,
+        route: "forget-password-wrong-email",
+        limit: AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
+        windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
+      });
+
+      if (invalidEmailStatus.isLimited) {
+        return errorResponse(
+          "Aguarde para tentar novamente.",
+          429,
+          { field: "email", retryAfterSeconds: invalidEmailStatus.retryAfterSeconds },
+          { "Retry-After": String(invalidEmailStatus.retryAfterSeconds) },
+        );
+      }
+
+      await recordRateLimit({
+        email: "unknown",
+        ip,
+        route: "forget-password-wrong-email",
+        windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
+      });
+
       return errorResponse("E-mail inexistente.", 404, { field: "email" });
     }
 
@@ -114,18 +162,23 @@ export async function POST(req: NextRequest) {
         .where(eq(authVerification.id, attemptsRow.id));
     } else {
       const attempts = parseAttempts(attemptsRow?.value);
-      if (attempts >= OTP_MAX_ATTEMPTS) {
+      if (attempts >= AUTH_OTP_MAX_ATTEMPTS) {
         await recordRateLimit({
           email,
           ip,
           route: VERIFY_LOCKOUT_ROUTE,
-          windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+          windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS,
+        });
+        const retryAfter = await getResendRetryAfterSeconds({
+          email,
+          ip,
+          lockoutSeconds: AUTH_OTP_LOCKOUT_SECONDS,
         });
         return errorResponse(
           VERIFY_LOCKOUT_MESSAGE,
           429,
-          { field: "code", retryAfterSeconds: VERIFY_LOCKOUT_SECONDS },
-          { "Retry-After": String(VERIFY_LOCKOUT_SECONDS) },
+          { field: "code", retryAfterSeconds: retryAfter },
+          { "Retry-After": String(retryAfter) },
         );
       }
     }
@@ -148,13 +201,18 @@ export async function POST(req: NextRequest) {
             email,
             ip,
             route: VERIFY_LOCKOUT_ROUTE,
-            windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+            windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS,
+          });
+          const retryAfter = await getResendRetryAfterSeconds({
+            email,
+            ip,
+            lockoutSeconds: AUTH_OTP_LOCKOUT_SECONDS,
           });
           return errorResponse(
             VERIFY_LOCKOUT_MESSAGE,
             429,
-            { field: "code", retryAfterSeconds: VERIFY_LOCKOUT_SECONDS },
-            { "Retry-After": String(VERIFY_LOCKOUT_SECONDS) },
+            { field: "code", retryAfterSeconds: retryAfter },
+            { "Retry-After": String(retryAfter) },
           );
         }
 
@@ -200,18 +258,18 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if (nextAttempts >= OTP_MAX_ATTEMPTS) {
+      if (nextAttempts >= AUTH_OTP_MAX_ATTEMPTS) {
         await recordRateLimit({
           email,
           ip,
           route: VERIFY_LOCKOUT_ROUTE,
-          windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+          windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS,
         });
         return errorResponse(
           VERIFY_LOCKOUT_MESSAGE,
           429,
-          { field: "code", retryAfterSeconds: VERIFY_LOCKOUT_SECONDS },
-          { "Retry-After": String(VERIFY_LOCKOUT_SECONDS) },
+          { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS },
+          { "Retry-After": String(AUTH_OTP_LOCKOUT_SECONDS) },
         );
       }
 
@@ -227,6 +285,8 @@ export async function POST(req: NextRequest) {
         .delete(authVerification)
         .where(eq(authVerification.identifier, attemptsIdentifier));
     }
+
+    await clearRateLimitForEmail({ email });
 
     return successResponse<VerifyOtpResponse>({ success: true });
   } catch (error) {

@@ -4,6 +4,12 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
 import { translateAuthError } from "@/lib/auth/i18n";
+import {
+  AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
+  AUTH_INVALID_EMAIL_WINDOW_SECONDS,
+  AUTH_OTP_LOCKOUT_SECONDS,
+  AUTH_OTP_MAX_ATTEMPTS,
+} from "@/lib/auth/rate-limits";
 import { auth } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import { authUser, authVerification, group, userGroup } from "@/lib/db/schema";
@@ -26,8 +32,6 @@ type VerifyOtpResponse = {
   signedIn?: boolean;
 };
 
-const OTP_MAX_ATTEMPTS = 5;
-const VERIFY_LOCKOUT_SECONDS = 90;
 const VERIFY_LOCKOUT_ROUTE = "sign-up-email-verification-verify-otp-lockout";
 
 const buildAttemptsIdentifier = (email: string): string =>
@@ -113,7 +117,7 @@ export async function POST(req: NextRequest) {
       ip,
       route: VERIFY_LOCKOUT_ROUTE,
       limit: 1,
-      windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+      windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS,
     });
 
     if (lockoutStatus.isLimited) {
@@ -131,6 +135,30 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
+      const invalidEmailStatus = await getRateLimitStatus({
+        email: "unknown",
+        ip,
+        route: "sign-up-email-verification-wrong-email",
+        limit: AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
+        windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
+      });
+
+      if (invalidEmailStatus.isLimited) {
+        return errorResponse(
+          "Aguarde para tentar novamente.",
+          429,
+          { field: "email", retryAfterSeconds: invalidEmailStatus.retryAfterSeconds },
+          { "Retry-After": String(invalidEmailStatus.retryAfterSeconds) },
+        );
+      }
+
+      await recordRateLimit({
+        email: "unknown",
+        ip,
+        route: "sign-up-email-verification-wrong-email",
+        windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
+      });
+
       return errorResponse("E-mail inexistente.", 404, { field: "email" });
     }
 
@@ -146,18 +174,18 @@ export async function POST(req: NextRequest) {
         .where(eq(authVerification.id, attemptsRow.id));
     } else {
       const attempts = parseAttempts(attemptsRow?.value);
-      if (attempts >= OTP_MAX_ATTEMPTS) {
+      if (attempts >= AUTH_OTP_MAX_ATTEMPTS) {
         await recordRateLimit({
           email,
           ip,
           route: VERIFY_LOCKOUT_ROUTE,
-          windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+          windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS,
         });
         return errorResponse(
           "Aguarde para reenviar o código.",
           429,
-          { field: "code", retryAfterSeconds: VERIFY_LOCKOUT_SECONDS },
-          { "Retry-After": String(VERIFY_LOCKOUT_SECONDS) },
+          { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS },
+          { "Retry-After": String(AUTH_OTP_LOCKOUT_SECONDS) },
         );
       }
     }
@@ -180,14 +208,14 @@ export async function POST(req: NextRequest) {
             email,
             ip,
             route: VERIFY_LOCKOUT_ROUTE,
-            windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+            windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS,
           });
 
           return errorResponse(
             "Aguarde para reenviar o código.",
             429,
-            { field: "code", retryAfterSeconds: VERIFY_LOCKOUT_SECONDS },
-            { "Retry-After": String(VERIFY_LOCKOUT_SECONDS) },
+            { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS },
+            { "Retry-After": String(AUTH_OTP_LOCKOUT_SECONDS) },
           );
         }
 
@@ -233,18 +261,18 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if (nextAttempts >= OTP_MAX_ATTEMPTS) {
+      if (nextAttempts >= AUTH_OTP_MAX_ATTEMPTS) {
         await recordRateLimit({
           email,
           ip,
           route: VERIFY_LOCKOUT_ROUTE,
-          windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+          windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS,
         });
         return errorResponse(
           "Aguarde para reenviar o código.",
           429,
-          { field: "code", retryAfterSeconds: VERIFY_LOCKOUT_SECONDS },
-          { "Retry-After": String(VERIFY_LOCKOUT_SECONDS) },
+          { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS },
+          { "Retry-After": String(AUTH_OTP_LOCKOUT_SECONDS) },
         );
       }
 
@@ -335,6 +363,8 @@ export async function POST(req: NextRequest) {
         responseHeaders,
       );
     }
+
+    await clearRateLimitForEmail({ email });
 
     return successResponse<VerifyOtpResponse>(
       { success: true, signedIn: false },

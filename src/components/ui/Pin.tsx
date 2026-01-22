@@ -36,6 +36,15 @@ export default function Pin({
   );
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const wasDisabledRef = useRef(Boolean(props.disabled));
+
+  useEffect(() => {
+    const isDisabled = Boolean(props.disabled);
+    if (wasDisabledRef.current && !isDisabled) {
+      inputRefs.current[0]?.focus();
+    }
+    wasDisabledRef.current = isDisabled;
+  }, [props.disabled]);
 
   // Atualiza valor externo (concatenado)
   useEffect(() => {
@@ -58,7 +67,9 @@ export default function Pin({
     const current = prevValuesRef.current.join("");
     const next = incoming.join("");
 
-    if (value.length === length && current !== next) {
+    if (value.length === 0 && current !== next) {
+      setValues(incoming);
+    } else if (value.length === length && current !== next) {
       setValues(incoming);
     }
 

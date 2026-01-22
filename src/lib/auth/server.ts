@@ -110,6 +110,20 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
+        const isEmailConfigured =
+          Boolean(config.email.host) &&
+          Boolean(config.email.username) &&
+          Boolean(config.email.password) &&
+          Boolean(config.email.from);
+
+        if (!isEmailConfigured && process.env.NODE_ENV !== "production") {
+          console.warn(
+            "⚠️ [AUTH_SEND_OTP] SMTP não configurado. Usando OTP apenas no log (dev).",
+            { email, type, otp },
+          );
+          return;
+        }
+
         const { sendEmail } = await import("@/lib/sendEmail");
 
         const subject =

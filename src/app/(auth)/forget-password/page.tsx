@@ -6,6 +6,7 @@ import { authClient } from "@/lib/auth/client";
 import { translateAuthError } from "@/lib/auth/i18n";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import { isValidCode, isValidEmail, isValidPassword } from "@/lib/auth/validate";
+import { AUTH_OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/auth/rate-limits";
 import { config } from "@/lib/config";
 import type { ApiResponse } from "@/lib/api-response";
 import {
@@ -38,12 +39,11 @@ export default function ForgetPasswordPage() {
   const [code, setCode] = useState("");
   const [resendSecondsLeft, setResendSecondsLeft] = useState(0);
   const [canGoToDashboard, setCanGoToDashboard] = useState(false);
-  const [mustResendCode, setMustResendCode] = useState(false);
-
   useEffect(() => {
     if (step !== 1 && step !== 2) return;
     const update = () => {
-      const unlockAtMs = resendCooldown.readUnlockAtMs(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      const unlockAtMs = resendCooldown.readUnlockAtMs(normalizedEmail);
       setResendSecondsLeft(
         unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
       );
@@ -148,8 +148,8 @@ export default function ForgetPasswordPage() {
         setCode("");
         setPassword("");
         setCanGoToDashboard(false);
-        setMustResendCode(false);
-        const initialCooldownSeconds = data.data?.cooldownSeconds ?? 90;
+        const initialCooldownSeconds =
+          data.data?.cooldownSeconds ?? AUTH_OTP_RESEND_COOLDOWN_SECONDS;
         resendCooldown.writeUnlockAtMsFromSeconds(
           normalizedEmail,
           initialCooldownSeconds,
@@ -180,8 +180,6 @@ export default function ForgetPasswordPage() {
       setFieldError("code", "Digite o código com 6 caracteres.");
       return;
     }
-    if (mustResendCode) return;
-
     await withLoading(async () => {
       clearFieldError();
 
@@ -220,13 +218,16 @@ export default function ForgetPasswordPage() {
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
             resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
-            setMustResendCode(true);
             setCode("");
-            setFieldError("code", "Aguarde para reenviar o código.");
+            setFieldError("email", "Aguarde para reenviar o código.");
+            setPassword("");
+            setCanGoToDashboard(false);
+            setStep(1);
             toast({
               type: "info",
-              title: message,
+              title: "Aguarde para reenviar o código.",
               description: `Tente novamente em ${retryAfter}s.`,
+              duration: 60,
             });
             return;
           }
@@ -345,9 +346,8 @@ export default function ForgetPasswordPage() {
         setCode("");
         resendCooldown.writeUnlockAtMsFromSeconds(
           normalizedEmail,
-          cooldownSeconds ?? 90,
+          cooldownSeconds ?? AUTH_OTP_RESEND_COOLDOWN_SECONDS,
         );
-        setMustResendCode(false);
         toast({ type: "info", title: message });
       } catch (err) {
         console.error("❌ [PAGE_FORGET_PASSWORD] Erro ao reenviar código:", {
@@ -513,7 +513,11 @@ export default function ForgetPasswordPage() {
         <AuthHeader
           icon="icon-[lucide--square-asterisk]"
           title="Verifique a conta"
-          description="Para sua segurança, insira o código que recebeu por e-mail."
+          description={
+            email.trim().length > 0
+              ? `Para sua segurança, insira o código que recebeu em ${email.trim().toLowerCase()}.`
+              : "Para sua segurança, insira o código que recebeu por e-mail."
+          }
         />
       )}
       {step === 3 && (
@@ -586,7 +590,7 @@ export default function ForgetPasswordPage() {
                 <input type="hidden" name="email" value={email} />
                 <div>
                   <Label htmlFor="code" isInvalid={form?.field === "code"}>
-                    Código recebdio por e-mail
+                    Código recebido por e-mail
                   </Label>
                   <Pin
                     id="code"
@@ -594,6 +598,7 @@ export default function ForgetPasswordPage() {
                     length={6}
                     value={code}
                     setValue={setCode}
+                    disabled={loading}
                     isInvalid={form?.field === "code"}
                     invalidMessage={
                       form?.field === "code" ? codeInvalidMessage : undefined
@@ -603,7 +608,7 @@ export default function ForgetPasswordPage() {
                 <div>
                   <Button
                     type="submit"
-                    disabled={loading || mustResendCode}
+                    disabled={loading}
                     className="w-full"
                   >
                     {loading ? (
@@ -628,9 +633,17 @@ export default function ForgetPasswordPage() {
                     </button>
                   </div>
                 )}
-                <p className="text-center">
-                  <AuthLink href="/login">Voltar</AuthLink>
-                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearFieldError();
+                    setCode("");
+                    setStep(1);
+                  }}
+                  className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+                >
+                  Voltar para alterar e-mail
+                </button>
               </fieldset>
             </form>
           </>

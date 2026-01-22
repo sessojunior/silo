@@ -11,6 +11,7 @@ import {
   isValidName,
   isValidPassword,
 } from "@/lib/auth/validate";
+import { AUTH_OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/auth/rate-limits";
 import {
   computeSecondsLeftFromUnlockAtMs,
   createSessionResendCooldown,
@@ -51,7 +52,8 @@ export default function RegisterPage() {
   useEffect(() => {
     if (step !== 1) return;
     const update = () => {
-      const unlockAtMs = signUpCooldown.readUnlockAtMs(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      const unlockAtMs = signUpCooldown.readUnlockAtMs(normalizedEmail);
       setSignUpSecondsLeft(
         unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
       );
@@ -72,7 +74,8 @@ export default function RegisterPage() {
   useEffect(() => {
     if (step !== 2) return;
     const update = () => {
-      const unlockAtMs = verificationCooldown.readUnlockAtMs(email);
+      const normalizedEmail = email.trim().toLowerCase();
+      const unlockAtMs = verificationCooldown.readUnlockAtMs(normalizedEmail);
       setVerificationSecondsLeft(
         unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
       );
@@ -201,11 +204,11 @@ export default function RegisterPage() {
         });
         signUpCooldown.writeUnlockAtMsFromSeconds(
           formatEmail,
-          cooldownSeconds ?? 90,
+          cooldownSeconds ?? AUTH_OTP_RESEND_COOLDOWN_SECONDS,
         );
         verificationCooldown.writeUnlockAtMsFromSeconds(
           formatEmail,
-          cooldownSeconds ?? 90,
+          cooldownSeconds ?? AUTH_OTP_RESEND_COOLDOWN_SECONDS,
         );
         setMustResendVerificationCode(false);
         setEmail(formatEmail);
@@ -282,8 +285,9 @@ export default function RegisterPage() {
             setFieldError("code", "Aguarde para reenviar o código.");
             toast({
               type: "info",
-              title: message,
-              description: `Tente novamente em ${retryAfter}s.`,
+              title: "Aguarde para reenviar o código.",
+              description: `Clique em "Reenviar o código novamente" para receber um novo código. Tente novamente em ${retryAfter}s.`,
+              duration: 60,
             });
             return;
           }
@@ -395,7 +399,7 @@ export default function RegisterPage() {
         setCode("");
         verificationCooldown.writeUnlockAtMsFromSeconds(
           normalizedEmail,
-          cooldownSeconds ?? 90,
+          cooldownSeconds ?? AUTH_OTP_RESEND_COOLDOWN_SECONDS,
         );
         setMustResendVerificationCode(false);
         toast({ type: "info", title: message });
@@ -435,7 +439,11 @@ export default function RegisterPage() {
         <AuthHeader
           icon="icon-[lucide--square-asterisk]"
           title="Verifique a conta"
-          description="Precisamos verificar seu e-mail, insira o código que recebeu por e-mail."
+          description={
+            email.trim().length > 0
+              ? `Para sua segurança, insira o código que recebeu em ${email.trim().toLowerCase()}.`
+              : "Para sua segurança, insira o código que recebeu por e-mail."
+          }
         />
       )}
 
@@ -559,6 +567,7 @@ export default function RegisterPage() {
                     length={6}
                     value={code}
                     setValue={setCode}
+                    disabled={loading || mustResendVerificationCode}
                     isInvalid={form?.field === "code"}
                     invalidMessage={
                       form?.field === "code" ? codeInvalidMessage : undefined
