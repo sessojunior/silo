@@ -63,6 +63,9 @@ const authBasePath = config.getPublicPath(authApiPath);
 export const auth = betterAuth({
   ...(authBaseURL ? { baseURL: authBaseURL } : {}),
   basePath: authBasePath,
+  account: {
+    storeStateStrategy: "cookie",
+  },
   trustedOrigins: resolveTrustedOrigins(),
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -85,6 +88,9 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      ...(config.googleCallbackUrl
+        ? { redirectURI: config.googleCallbackUrl }
+        : {}),
     },
   },
   hooks: {

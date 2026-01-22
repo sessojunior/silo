@@ -613,7 +613,9 @@ export default function LoginPage() {
                     icon="icon-[logos--google-icon]"
                     className="w-full"
                     onClick={() => {
-                      router.push("/login-google");
+                      window.location.href = config.getApiUrl(
+                        "/api/auth/login-google",
+                      );
                     }}
                   >
                     Entrar com Google
