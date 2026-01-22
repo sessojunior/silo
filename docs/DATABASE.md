@@ -139,6 +139,57 @@ drizzle/
 
 ---
 
+## 🏭 **POSTGRES EM PRODUÇÃO**
+
+### **1) Provisionamento (o que precisa existir)**
+
+- Um banco PostgreSQL acessível pela aplicação (gerenciado ou servidor dedicado).
+- Um usuário com permissão de criar/alterar tabelas (pelo menos para executar migrações).
+- Banco e schema alvo (ex.: database `silo`).
+
+Sugestão de permissões (alta confiança, evitando superuser):
+
+- Permitir `CONNECT` no database
+- Permitir `USAGE/CREATE` no schema usado pela app
+- Permitir `CREATE TABLE/ALTER TABLE/CREATE INDEX` para migrações
+
+### **2) String de conexão**
+
+O projeto usa `DATABASE_URL_PROD` quando `NODE_ENV=production`.
+
+Exemplos:
+
+```bash
+DATABASE_URL_PROD=postgresql://usuario:senha@host-producao:5432/silo
+```
+
+Se o ambiente exigir SSL, use `sslmode`:
+
+```bash
+DATABASE_URL_PROD=postgresql://usuario:senha@host-producao:5432/silo?sslmode=require
+```
+
+### **3) Deploy e migrações**
+
+Fluxo recomendado:
+
+1. Fazer backup do banco antes do deploy (dump).
+2. Aplicar migrações com a versão do código que será publicada:
+
+```bash
+npm run db:migrate
+```
+
+3. Subir a aplicação.
+
+### **4) Operação (boas práticas)**
+
+- Backups automáticos com retenção e restore testado.
+- Monitoramento de conexões/locks e uso de disco.
+- Ajuste de pool/conexões conforme o ambiente (especialmente em containers).
+
+---
+
 ## ✅ **BOAS PRÁTICAS**
 
 ### **1. Índices Onde Necessário**

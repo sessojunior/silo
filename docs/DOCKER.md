@@ -31,9 +31,10 @@ Docker é uma ferramenta que "empacota" aplicações em **containers** - ambient
 
 ## 🏗️ **ARQUITETURA**
 
-O **Silo** usa **1 container**:
+O **Silo** usa **1 container** (e opcionalmente um Postgres):
 
 1. **`app`** (porta 3000) - Aplicação Next.js (frontend + APIs + uploads locais)
+2. **`db`** (opcional) - PostgreSQL (via Docker Compose, recomendado apenas quando você não usa Postgres gerenciado)
 
 ---
 
@@ -88,7 +89,8 @@ Observações:
 - Para Docker Compose, evite aspas no `.env` para não incluir aspas no valor final.
 - O caminho base público do sistema é configurado em `NEXT_PUBLIC_BASE_PATH` (sem barra final). Exemplos: `/silo` ou `/` (raiz).
 - `APP_URL_DEV` e `APP_URL_PROD` devem ser apenas a origem (sem subdiretório). O subdiretório base é sempre definido em `NEXT_PUBLIC_BASE_PATH`.
-- O banco de dados não sobe no `docker-compose.yml` deste projeto; as variáveis `DATABASE_URL_DEV`/`DATABASE_URL_PROD` devem apontar para um PostgreSQL externo.
+- O `docker-compose.yml` suporta subir um PostgreSQL junto com a aplicação usando o profile `db`.
+- Se você não ativar o profile `db`, as variáveis `DATABASE_URL_DEV`/`DATABASE_URL_PROD` devem apontar para um PostgreSQL externo (gerenciado ou já existente).
 
 ### **Arquivo docker-compose.yml**
 
@@ -125,7 +127,7 @@ Recomendado para testar ou usar o sistema sem configurar o ambiente:
 
 ```bash
 # 1. Copiar arquivo de exemplo
-Copy-Item env.docker.example .env
+Copy-Item env.example .env
 
 # 2. Editar .env com suas configurações
 # Use um editor de texto (VSCode, Notepad++, etc.)
@@ -150,6 +152,26 @@ docker compose up -d --build
 
 # Ver logs depois:
 docker compose logs -f
+```
+
+### **Subir Postgres junto (profile db)**
+
+Se você quer subir o PostgreSQL no mesmo `docker-compose.yml`, use o profile `db`:
+
+```bash
+docker compose --profile db up -d --build
+```
+
+Configuração típica no `.env`:
+
+```bash
+POSTGRES_DB=silo
+POSTGRES_USER=silo
+POSTGRES_PASSWORD=uma_senha_forte
+POSTGRES_PORT=5432
+
+DATABASE_URL_DEV=postgresql://silo:uma_senha_forte@db:5432/silo
+DATABASE_URL_PROD=postgresql://silo:uma_senha_forte@db:5432/silo
 ```
 
 ---
@@ -195,6 +217,37 @@ Após iniciar os containers:
 ### **Estratégia de Deploy**
 
 O projeto **Silo** é uma aplicação Next.js (frontend + APIs) com uploads locais servidos por route handlers (`/silo/uploads/...`).
+
+---
+
+## 🏭 **PRODUÇÃO (POSTGRES)**
+
+### **Opção recomendada: Postgres gerenciado**
+
+Para produção, prefira um Postgres gerenciado (ou um servidor Postgres dedicado do próprio INPE). Nesse cenário:
+
+- O container `db` do Compose não é necessário.
+- Configure `DATABASE_URL_PROD` apontando para o host real do Postgres.
+- Use SSL se o provedor exigir (ex.: `?sslmode=require`).
+
+Exemplo:
+
+```bash
+DATABASE_URL_PROD=postgresql://usuario:senha@host-producao:5432/silo?sslmode=require
+```
+
+### **Aplicar migrações no Postgres de produção**
+
+Com `DATABASE_URL_PROD` configurada e `NODE_ENV=production`:
+
+```bash
+npm run db:migrate
+```
+
+Recomendação prática para deploy:
+
+- Execute migrações antes de subir a nova versão da aplicação.
+- Tenha backup/restore testado (dump diário, retenção e restauração validada).
 
 ### **Deploy do Frontend (Vercel)**
 

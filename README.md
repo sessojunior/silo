@@ -63,6 +63,9 @@ cp env.example .env
 # 2. Executar containers
 docker-compose up -d --build
 
+# (Opcional) Subir Postgres junto via Docker Compose:
+# docker compose --profile db up -d --build
+
 # ✅ Acesse:
 # - Se NEXT_PUBLIC_BASE_PATH='/silo' → http://localhost:3000/silo
 # - Se NEXT_PUBLIC_BASE_PATH='/' → http://localhost:3000

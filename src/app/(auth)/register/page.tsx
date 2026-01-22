@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import type { ApiResponse } from "@/lib/api-response";
 import { config } from "@/lib/config";
@@ -35,6 +35,7 @@ const verificationCooldown = createSessionResendCooldown("register-email-verific
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [step, setStep] = useState(1);
   const { form, loading, setFieldError, clearFieldError, withLoading } =
@@ -48,6 +49,78 @@ export default function RegisterPage() {
   const [verificationSecondsLeft, setVerificationSecondsLeft] = useState(0);
   const [mustResendVerificationCode, setMustResendVerificationCode] =
     useState(false);
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const errorDescription = searchParams.get("error_description");
+    const message = searchParams.get("message");
+    const normalized = `${error ?? ""}|${errorDescription ?? ""}|${message ?? ""}`
+      .trim()
+      .toLowerCase();
+    if (!normalized.includes("unauthorized")) return;
+
+    window.setTimeout(() => {
+      toast({
+        type: "error",
+        title: "E-mail não institucional",
+        description:
+          "O e-mail para entrar com o Google deve ser obrigatoriamente o e-mail institucional @inpe.br.",
+        duration: 30,
+      });
+    }, 0);
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("error");
+    url.searchParams.delete("error_description");
+    url.searchParams.delete("message");
+    url.searchParams.delete("code");
+    const basePath = config.publicBasePath;
+    const withoutBasePath =
+      basePath.length > 0 && url.pathname.startsWith(`${basePath}/`)
+        ? url.pathname.slice(basePath.length)
+        : url.pathname === basePath
+          ? "/"
+          : url.pathname;
+
+    router.replace(`${withoutBasePath}${url.search}`);
+  }, [router, searchParams]);
+
+  const handleGoogleRegister = async () => {
+    try {
+      const endpoint = config.getApiUrl("/api/auth/login-google?from=register");
+      const res = await fetch(endpoint, { method: "GET", credentials: "include" });
+      const raw = (await res.json().catch(() => null)) as unknown;
+
+      const redirectUrl = (() => {
+        if (raw && typeof raw === "object" && "url" in raw) {
+          const candidate = (raw as { url?: unknown }).url;
+          if (typeof candidate === "string" && candidate.length > 0)
+            return candidate;
+        }
+        const header = res.headers.get("location") ?? res.headers.get("Location");
+        if (typeof header === "string" && header.length > 0) return header;
+        return null;
+      })();
+
+      if (!res.ok || !redirectUrl) {
+        toast({
+          type: "error",
+          title: "Erro ao iniciar cadastro com Google.",
+        });
+        return;
+      }
+
+      window.location.href = redirectUrl;
+    } catch (error) {
+      console.error("❌ [PAGE_REGISTER] Erro ao iniciar cadastro com Google:", {
+        error,
+      });
+      toast({
+        type: "error",
+        title: "Erro ao iniciar cadastro com Google.",
+      });
+    }
+  };
 
   useEffect(() => {
     if (step !== 1) return;
@@ -537,9 +610,7 @@ export default function RegisterPage() {
                     icon="icon-[logos--google-icon]"
                     className="w-full"
                     onClick={() => {
-                      window.location.href = config.getApiUrl(
-                        "/api/auth/login-google",
-                      );
+                      void handleGoogleRegister();
                     }}
                   >
                     Criar com Google

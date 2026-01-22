@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
-import { createAuthMiddleware, APIError } from "better-auth/api";
+import { createAuthMiddleware, APIError, getOAuthState } from "better-auth/api";
 import { db } from "@/lib/db";
 import {
   authUser,
@@ -17,6 +17,7 @@ import { authApiPath, getAuthServerBaseURL } from "@/lib/auth/urls";
 import { errorResponse } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { config } from "@/lib/config";
+import { isValidDomain } from "@/lib/auth/validate";
 
 const extractOrigin = (value: string): string | null => {
   try {
@@ -65,6 +66,10 @@ export const auth = betterAuth({
   basePath: authBasePath,
   account: {
     storeStateStrategy: "cookie",
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+    },
   },
   trustedOrigins: resolveTrustedOrigins(),
   database: drizzleAdapter(db, {
@@ -76,6 +81,21 @@ export const auth = betterAuth({
       verification: authVerification,
     },
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (data) => {
+          const email =
+            typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
+          if (email.length === 0) return;
+          if (isValidDomain(email)) return;
+          throw new APIError("FORBIDDEN", {
+            message: "unauthorized",
+          });
+        },
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     autoSignIn: false,
@@ -88,6 +108,14 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      mapProfileToUser: (profile) => {
+        const rawEmail =
+          typeof (profile as { email?: unknown }).email === "string"
+            ? (profile as { email: string }).email
+            : null;
+        const email = rawEmail ? rawEmail.trim().toLowerCase() : null;
+        return email ? { email } : {};
+      },
       ...(config.googleCallbackUrl
         ? { redirectURI: config.googleCallbackUrl }
         : {}),
@@ -111,6 +139,42 @@ export const auth = betterAuth({
           message: "Usuário inativo. Contate o administrador.",
         });
       }
+    }),
+    after: createAuthMiddleware(async (ctx) => {
+      if (!ctx.path.startsWith("/callback/")) return;
+
+      const newSession = ctx.context.newSession;
+      if (!newSession) return;
+
+      const email = newSession.user.email.trim().toLowerCase();
+      if (isValidDomain(email)) return;
+
+      await ctx.context.internalAdapter
+        .deleteSession(newSession.session.token)
+        .catch(() => null);
+
+      const cookiesToExpire = [
+        ctx.context.authCookies.sessionToken,
+        ctx.context.authCookies.sessionData,
+        ctx.context.authCookies.dontRememberToken,
+        ...(ctx.context.options.account?.storeAccountCookie
+          ? [ctx.context.authCookies.accountData]
+          : []),
+      ];
+
+      for (const cookie of cookiesToExpire) {
+        ctx.setCookie(cookie.name, "", { ...cookie.attributes, maxAge: 0 });
+      }
+
+      const oauthState = await getOAuthState();
+      const rawErrorURL =
+        typeof oauthState?.errorURL === "string" && oauthState.errorURL.length > 0
+          ? oauthState.errorURL
+          : config.getPublicPath("/login");
+
+      const redirectUrl = new URL(rawErrorURL, ctx.request?.url ?? config.appUrl);
+      redirectUrl.searchParams.set("error", "unauthorized");
+      throw ctx.redirect(redirectUrl.toString());
     }),
   },
   plugins: [
