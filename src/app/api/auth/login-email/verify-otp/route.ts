@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth/server";
 import { isValidDomain, isValidEmail } from "@/lib/auth/validate";
 import { db } from "@/lib/db";
 import { authUser, authVerification } from "@/lib/db/schema";
-import { clearRateLimitForEmail } from "@/lib/rateLimit";
+import { clearRateLimitForEmail, getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
 
 const emailInputSchema = z
   .string()
@@ -40,7 +40,17 @@ type VerifyOtpResponse = {
 };
 
 const OTP_MAX_ATTEMPTS = 5;
-const OTP_RESET_MESSAGE = "Excesso tentativas inválidas. Comece novamente.";
+const VERIFY_LOCKOUT_SECONDS = 90;
+const VERIFY_LOCKOUT_ROUTE = "login-email-verify-otp-lockout";
+const VERIFY_LOCKOUT_MESSAGE = "Aguarde para reenviar o código.";
+
+const getRequestIp = (req: NextRequest): string => {
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (forwardedFor) return forwardedFor.split(",")[0]?.trim() || "unknown";
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+  return "unknown";
+};
 
 const buildAttemptsIdentifier = (email: string): string =>
   `login-email:attempts:${email}`;
@@ -131,6 +141,25 @@ export async function POST(req: NextRequest) {
     if (!parsedBody.ok) return parsedBody.response;
     const { email, code } = parsedBody.data;
 
+    const ip = getRequestIp(req);
+    const lockoutStatus = await getRateLimitStatus({
+      email,
+      ip,
+      route: VERIFY_LOCKOUT_ROUTE,
+      limit: 1,
+      windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+    });
+
+    if (lockoutStatus.isLimited) {
+      const retryAfter = lockoutStatus.retryAfterSeconds;
+      return errorResponse(
+        VERIFY_LOCKOUT_MESSAGE,
+        429,
+        { field: "code", retryAfterSeconds: retryAfter },
+        { "Retry-After": String(retryAfter) },
+      );
+    }
+
     const user = await db.query.authUser.findFirst({
       where: eq(authUser.email, email),
     });
@@ -152,10 +181,17 @@ export async function POST(req: NextRequest) {
     } else {
       const attempts = parseAttempts(attemptsRow?.value);
       if (attempts >= OTP_MAX_ATTEMPTS) {
+        await recordRateLimit({
+          email,
+          ip,
+          route: VERIFY_LOCKOUT_ROUTE,
+          windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+        });
         return errorResponse(
-          OTP_RESET_MESSAGE,
+          VERIFY_LOCKOUT_MESSAGE,
           429,
-          { field: "code", resetFlow: true },
+          { field: "code", retryAfterSeconds: VERIFY_LOCKOUT_SECONDS },
+          { "Retry-After": String(VERIFY_LOCKOUT_SECONDS) },
         );
       }
     }
@@ -221,10 +257,17 @@ export async function POST(req: NextRequest) {
 
     if (isInternalAuthResult(signInResponse)) {
       if (signInResponse.type === "too_many") {
+        await recordRateLimit({
+          email,
+          ip,
+          route: VERIFY_LOCKOUT_ROUTE,
+          windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+        });
         return errorResponse(
-          OTP_RESET_MESSAGE,
+          VERIFY_LOCKOUT_MESSAGE,
           429,
-          { field: "code", resetFlow: true },
+          { field: "code", retryAfterSeconds: VERIFY_LOCKOUT_SECONDS },
+          { "Retry-After": String(VERIFY_LOCKOUT_SECONDS) },
         );
       }
     } else if (signInResponse instanceof Response) {
@@ -293,10 +336,17 @@ export async function POST(req: NextRequest) {
     }
 
     if (nextAttempts >= OTP_MAX_ATTEMPTS) {
+      await recordRateLimit({
+        email,
+        ip,
+        route: VERIFY_LOCKOUT_ROUTE,
+        windowInSeconds: VERIFY_LOCKOUT_SECONDS,
+      });
       return errorResponse(
-        OTP_RESET_MESSAGE,
+        VERIFY_LOCKOUT_MESSAGE,
         429,
-        { field: "code", resetFlow: true },
+        { field: "code", retryAfterSeconds: VERIFY_LOCKOUT_SECONDS },
+        { "Retry-After": String(VERIFY_LOCKOUT_SECONDS) },
       );
     }
 

@@ -38,6 +38,7 @@ export default function ForgetPasswordPage() {
   const [code, setCode] = useState("");
   const [resendSecondsLeft, setResendSecondsLeft] = useState(0);
   const [canGoToDashboard, setCanGoToDashboard] = useState(false);
+  const [mustResendCode, setMustResendCode] = useState(false);
 
   useEffect(() => {
     if (step !== 1 && step !== 2) return;
@@ -60,12 +61,18 @@ export default function ForgetPasswordPage() {
     clearFieldError();
   }, [clearFieldError, form.field, form.message, resendSecondsLeft]);
 
+  useEffect(() => {
+    if (resendSecondsLeft > 0) return;
+    if (form.field !== "code") return;
+    if (form.message !== "Aguarde para reenviar o código.") return;
+    clearFieldError();
+  }, [clearFieldError, form.field, form.message, resendSecondsLeft]);
+
   const shouldResetFlow = (params: {
     status: number;
     message: string;
     data: unknown;
   }): boolean => {
-    if (params.status === 429) return true;
     if (params.message === "Excesso tentativas inválidas. Comece novamente.")
       return true;
     if (typeof params.data !== "object" || params.data === null) return false;
@@ -141,6 +148,7 @@ export default function ForgetPasswordPage() {
         setCode("");
         setPassword("");
         setCanGoToDashboard(false);
+        setMustResendCode(false);
         const initialCooldownSeconds = data.data?.cooldownSeconds ?? 90;
         resendCooldown.writeUnlockAtMsFromSeconds(
           normalizedEmail,
@@ -172,6 +180,7 @@ export default function ForgetPasswordPage() {
       setFieldError("code", "Digite o código com 6 caracteres.");
       return;
     }
+    if (mustResendCode) return;
 
     await withLoading(async () => {
       clearFieldError();
@@ -190,6 +199,38 @@ export default function ForgetPasswordPage() {
         const message = data.message || data.error || "Erro ao verificar código.";
 
         if (!res.ok) {
+          const retryAfterSeconds = (() => {
+            if (typeof data.data !== "object" || data.data === null) return null;
+            if (!("retryAfterSeconds" in data.data)) return null;
+            const raw = (data.data as { retryAfterSeconds?: unknown })
+              .retryAfterSeconds;
+            if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
+              return null;
+            return Math.ceil(raw);
+          })();
+
+          const retryAfterFromHeader = (() => {
+            const raw = res.headers.get("Retry-After");
+            if (!raw) return null;
+            const parsed = Number(raw);
+            if (!Number.isFinite(parsed) || parsed <= 0) return null;
+            return Math.ceil(parsed);
+          })();
+
+          const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
+          if (res.status === 429 && retryAfter) {
+            resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            setMustResendCode(true);
+            setCode("");
+            setFieldError("code", "Aguarde para reenviar o código.");
+            toast({
+              type: "info",
+              title: message,
+              description: `Tente novamente em ${retryAfter}s.`,
+            });
+            return;
+          }
+
           if (
             shouldResetFlow({
               status: res.status,
@@ -232,6 +273,7 @@ export default function ForgetPasswordPage() {
   };
 
   const handleResendCode = async () => {
+    setCode("");
     const normalizedEmail = email.trim().toLowerCase();
     if (!isValidEmail(normalizedEmail)) {
       setFieldError("email", "Digite um e-mail válido.");
@@ -239,6 +281,8 @@ export default function ForgetPasswordPage() {
       setStep(1);
       return;
     }
+
+    if (resendSecondsLeft > 0) return;
 
     await withLoading(async () => {
       clearFieldError();
@@ -303,6 +347,7 @@ export default function ForgetPasswordPage() {
           normalizedEmail,
           cooldownSeconds ?? 90,
         );
+        setMustResendCode(false);
         toast({ type: "info", title: message });
       } catch (err) {
         console.error("❌ [PAGE_FORGET_PASSWORD] Erro ao reenviar código:", {
@@ -447,6 +492,13 @@ export default function ForgetPasswordPage() {
       ? `Aguarde ${resendSecondsLeft} segundos para reenviar o código.`
       : (form?.message ?? "");
 
+  const codeInvalidMessage =
+    form?.field === "code" &&
+    form?.message === "Aguarde para reenviar o código." &&
+    resendSecondsLeft > 0
+      ? `Aguarde ${resendSecondsLeft}s para reenviar o código.`
+      : (form?.message ?? "");
+
   return (
     <>
       {/* Header */}
@@ -543,11 +595,17 @@ export default function ForgetPasswordPage() {
                     value={code}
                     setValue={setCode}
                     isInvalid={form?.field === "code"}
-                    invalidMessage={form?.message ?? ""}
+                    invalidMessage={
+                      form?.field === "code" ? codeInvalidMessage : undefined
+                    }
                   />
                 </div>
                 <div>
-                  <Button type="submit" disabled={loading} className="w-full">
+                  <Button
+                    type="submit"
+                    disabled={loading || mustResendCode}
+                    className="w-full"
+                  >
                     {loading ? (
                       <>
                         <span className="icon-[lucide--loader-circle] animate-spin"></span>{" "}
@@ -558,22 +616,17 @@ export default function ForgetPasswordPage() {
                     )}
                   </Button>
                 </div>
-                <div className="text-center text-sm">
-                  <button
-                    type="button"
-                    onClick={handleResendCode}
-                    disabled={loading || resendSecondsLeft > 0}
-                    className="font-semibold underline-offset-2 hover:underline disabled:pointer-events-none disabled:opacity-50"
-                  >
-                    {resendSecondsLeft > 0
-                      ? `Você pode reenviar o código em ${resendSecondsLeft}s`
-                      : "Reenviar o código novamente"}
-                  </button>
-                </div>
-                {resendSecondsLeft > 0 && (
-                  <p className="text-center text-xs text-zinc-500 dark:text-zinc-300">
-                    Aguarde {resendSecondsLeft}s para reenviar o código.
-                  </p>
+                {resendSecondsLeft <= 0 && (
+                  <div className="text-center text-sm">
+                    <button
+                      type="button"
+                      onClick={handleResendCode}
+                      disabled={loading}
+                      className="font-semibold underline-offset-2 hover:underline disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      Reenviar o código novamente
+                    </button>
+                  </div>
                 )}
                 <p className="text-center">
                   <AuthLink href="/login">Voltar</AuthLink>

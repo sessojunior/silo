@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth/client";
-import { translateAuthError } from "@/lib/auth/i18n";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import { isValidCode, isValidEmail } from "@/lib/auth/validate";
 import { config } from "@/lib/config";
@@ -26,7 +24,9 @@ import InputPassword from "@/components/ui/InputPassword";
 import Pin from "@/components/ui/Pin";
 
 const loginCooldown = createSessionResendCooldown("login-password");
+const emailVerificationCooldown = createSessionResendCooldown("login-email-verification");
 const LOGIN_PASSWORD_WAIT_MESSAGE = "Aguarde para tentar novamente.";
+const EMAIL_VERIFICATION_WAIT_MESSAGE = "Aguarde para reenviar o código.";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,6 +39,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [loginSecondsLeft, setLoginSecondsLeft] = useState(0);
+  const [emailVerificationSecondsLeft, setEmailVerificationSecondsLeft] =
+    useState(0);
+  const [mustResendEmailVerificationCode, setMustResendEmailVerificationCode] =
+    useState(false);
 
   useEffect(() => {
     if (step !== 1) return;
@@ -60,6 +64,120 @@ export default function LoginPage() {
     if (form.message !== LOGIN_PASSWORD_WAIT_MESSAGE) return;
     clearFieldError();
   }, [clearFieldError, form.field, form.message, loginSecondsLeft]);
+
+  useEffect(() => {
+    if (step !== 2) return;
+    const update = () => {
+      const unlockAtMs = emailVerificationCooldown.readUnlockAtMs(email);
+      setEmailVerificationSecondsLeft(
+        unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
+      );
+    };
+    update();
+
+    const interval = window.setInterval(update, 250);
+    return () => window.clearInterval(interval);
+  }, [email, step]);
+
+  useEffect(() => {
+    if (emailVerificationSecondsLeft > 0) return;
+    if (form.field !== "code") return;
+    if (form.message !== EMAIL_VERIFICATION_WAIT_MESSAGE) return;
+    clearFieldError();
+  }, [clearFieldError, emailVerificationSecondsLeft, form.field, form.message]);
+
+  useEffect(() => {
+    if (step !== 2) setMustResendEmailVerificationCode(false);
+  }, [step]);
+
+  const handleResendVerificationCode = async () => {
+    setCode("");
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!isValidEmail(normalizedEmail)) {
+      setFieldError("email", "Digite um e-mail válido.");
+      setStep(1);
+      return;
+    }
+
+    if (emailVerificationSecondsLeft > 0) return;
+
+    await withLoading(async () => {
+      clearFieldError();
+
+      try {
+        const res = await fetch(
+          config.getApiUrl("/api/auth/sign-up/email/send-otp"),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalizedEmail, resend: true }),
+          },
+        );
+
+        const data = (await res.json()) as ApiResponse<unknown>;
+        const message = data.message || data.error || "Erro ao reenviar código.";
+
+        const retryAfterSeconds = (() => {
+          if (typeof data.data !== "object" || data.data === null) return null;
+          if (!("retryAfterSeconds" in data.data)) return null;
+          const raw = (data.data as { retryAfterSeconds?: unknown })
+            .retryAfterSeconds;
+          if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
+            return null;
+          return Math.ceil(raw);
+        })();
+
+        const retryAfterFromHeader = (() => {
+          const raw = res.headers.get("Retry-After");
+          if (!raw) return null;
+          const parsed = Number(raw);
+          if (!Number.isFinite(parsed) || parsed <= 0) return null;
+          return Math.ceil(parsed);
+        })();
+
+        if (!res.ok) {
+          const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
+          if (res.status === 429 && retryAfter) {
+            emailVerificationCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
+            toast({
+              type: "info",
+              title: message,
+              description: `Tente novamente em ${retryAfter}s.`,
+            });
+            return;
+          }
+
+          toast({ type: "error", title: message });
+          setFieldError(null, message);
+          return;
+        }
+
+        const cooldownSeconds = (() => {
+          if (typeof data.data !== "object" || data.data === null) return null;
+          if (!("cooldownSeconds" in data.data)) return null;
+          const raw = (data.data as { cooldownSeconds?: unknown }).cooldownSeconds;
+          if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
+            return null;
+          return Math.ceil(raw);
+        })();
+
+        setCode("");
+        emailVerificationCooldown.writeUnlockAtMsFromSeconds(
+          normalizedEmail,
+          cooldownSeconds ?? 90,
+        );
+        setMustResendEmailVerificationCode(false);
+        toast({ type: "info", title: message });
+      } catch (err) {
+        console.error("❌ [PAGE_LOGIN] Erro ao reenviar código:", { error: err });
+        toast({ type: "error", title: "Erro ao reenviar código." });
+        setFieldError(null, "Erro ao reenviar código.");
+      }
+    });
+  };
 
   // Etapa 1: Fazer login
   const handleLogin = async (e: React.FormEvent) => {
@@ -132,29 +250,80 @@ export default function LoginPage() {
             res.status === 403 && message.toLowerCase().includes("usuário inativo");
 
           if (isInactiveUser) {
-            const { error: otpError } =
-              await authClient.emailOtp.sendVerificationOtp({
-                email: normalizedEmail,
-                type: "email-verification",
-              });
+            const otpRes = await fetch(
+              config.getApiUrl("/api/auth/sign-up/email/send-otp"),
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: normalizedEmail }),
+              },
+            );
 
-            if (otpError) {
-              const otpErrorMessage = translateAuthError(
-                otpError,
-                "Erro ao enviar código.",
-              );
-              setFieldError("email", otpErrorMessage);
-              toast({
-                type: "error",
-                title: otpErrorMessage,
-              });
+            const otpData = (await otpRes.json()) as ApiResponse<unknown>;
+            const otpMessage =
+              otpData.message || otpData.error || "Erro ao enviar código.";
+
+            const otpRetryAfterSeconds = (() => {
+              if (typeof otpData.data !== "object" || otpData.data === null)
+                return null;
+              if (!("retryAfterSeconds" in otpData.data)) return null;
+              const raw = (otpData.data as { retryAfterSeconds?: unknown })
+                .retryAfterSeconds;
+              if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
+                return null;
+              return Math.ceil(raw);
+            })();
+
+            const otpRetryAfterFromHeader = (() => {
+              const raw = otpRes.headers.get("Retry-After");
+              if (!raw) return null;
+              const parsed = Number(raw);
+              if (!Number.isFinite(parsed) || parsed <= 0) return null;
+              return Math.ceil(parsed);
+            })();
+
+            if (!otpRes.ok) {
+              const retryAfter = otpRetryAfterSeconds ?? otpRetryAfterFromHeader;
+              if (otpRes.status === 429 && retryAfter) {
+                emailVerificationCooldown.writeUnlockAtMsFromSeconds(
+                  normalizedEmail,
+                  retryAfter,
+                );
+                setFieldError("email", EMAIL_VERIFICATION_WAIT_MESSAGE);
+                toast({
+                  type: "info",
+                  title: otpMessage,
+                  description: `Tente novamente em ${retryAfter}s.`,
+                });
+                return;
+              }
+
+              setFieldError(otpData.field || "email", otpMessage);
+              toast({ type: "error", title: otpMessage });
               return;
             }
+
+            const otpCooldownSeconds = (() => {
+              if (typeof otpData.data !== "object" || otpData.data === null)
+                return null;
+              if (!("cooldownSeconds" in otpData.data)) return null;
+              const raw = (otpData.data as { cooldownSeconds?: unknown })
+                .cooldownSeconds;
+              if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
+                return null;
+              return Math.ceil(raw);
+            })();
 
             toast({
               type: "info",
               title: "Agora só falta verificar seu e-mail.",
             });
+            setCode("");
+            emailVerificationCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              otpCooldownSeconds ?? 90,
+            );
+            setMustResendEmailVerificationCode(false);
             setStep(2);
             return;
           }
@@ -192,24 +361,62 @@ export default function LoginPage() {
       setFieldError("code", "Digite o código com 6 caracteres.");
       return;
     }
+    if (mustResendEmailVerificationCode) return;
 
     await withLoading(async () => {
       clearFieldError();
 
       try {
-        const { error } = await authClient.emailOtp.checkVerificationOtp({
-          email: normalizedEmail,
-          otp: code,
-          type: "email-verification",
-        });
+        const res = await fetch(
+          config.getApiUrl("/api/auth/sign-up/email/verify-otp"),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalizedEmail, code }),
+          },
+        );
 
-        if (error) {
-          const message = translateAuthError(error, "Código inválido.");
-          setFieldError("code", message);
-          toast({
-            type: "error",
-            title: message,
-          });
+        const data = (await res.json()) as ApiResponse<unknown>;
+        const message = data.message || data.error || "Erro ao verificar código.";
+
+        if (!res.ok) {
+          const retryAfterSeconds = (() => {
+            if (typeof data.data !== "object" || data.data === null) return null;
+            if (!("retryAfterSeconds" in data.data)) return null;
+            const raw = (data.data as { retryAfterSeconds?: unknown })
+              .retryAfterSeconds;
+            if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
+              return null;
+            return Math.ceil(raw);
+          })();
+
+          const retryAfterFromHeader = (() => {
+            const raw = res.headers.get("Retry-After");
+            if (!raw) return null;
+            const parsed = Number(raw);
+            if (!Number.isFinite(parsed) || parsed <= 0) return null;
+            return Math.ceil(parsed);
+          })();
+
+          const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
+          if (res.status === 429 && retryAfter) {
+            emailVerificationCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
+            setMustResendEmailVerificationCode(true);
+            setCode("");
+            setFieldError("code", EMAIL_VERIFICATION_WAIT_MESSAGE);
+            toast({
+              type: "info",
+              title: message,
+              description: `Tente novamente em ${retryAfter}s.`,
+            });
+            return;
+          }
+
+          setFieldError(data.field || "code", message);
+          toast({ type: "error", title: message });
           return;
         }
 
@@ -283,10 +490,15 @@ export default function LoginPage() {
   };
 
   const emailInvalidMessage =
-    form?.field === "email" &&
-    form?.message === LOGIN_PASSWORD_WAIT_MESSAGE &&
     loginSecondsLeft > 0
       ? `Aguarde ${loginSecondsLeft} segundos para tentar novamente.`
+      : (form?.message ?? "");
+
+  const codeInvalidMessage =
+    form?.field === "code" &&
+    form?.message === EMAIL_VERIFICATION_WAIT_MESSAGE &&
+    emailVerificationSecondsLeft > 0
+      ? `Aguarde ${emailVerificationSecondsLeft}s para reenviar o código.`
       : (form?.message ?? "");
 
   return (
@@ -330,7 +542,7 @@ export default function LoginPage() {
                     maxLength={255}
                     required
                     autoFocus
-                    isInvalid={form?.field === "email"}
+                    isInvalid={form?.field === "email" || loginSecondsLeft > 0}
                     invalidMessage={emailInvalidMessage}
                   />
                 </div>
@@ -361,7 +573,11 @@ export default function LoginPage() {
                   </AuthLink>
                 </p>
                 <div>
-                  <Button type="submit" disabled={loading} className="w-full">
+                  <Button
+                    type="submit"
+                    disabled={loading || loginSecondsLeft > 0}
+                    className="w-full"
+                  >
                     {loading ? (
                       <>
                         <span className="icon-[lucide--loader-circle] animate-spin"></span>{" "}
@@ -421,11 +637,17 @@ export default function LoginPage() {
                     value={code}
                     setValue={setCode}
                     isInvalid={form?.field === "code"}
-                    invalidMessage={form?.message}
+                    invalidMessage={
+                      form?.field === "code" ? codeInvalidMessage : undefined
+                    }
                   />
                 </div>
                 <div>
-                  <Button type="submit" disabled={loading} className="w-full">
+                  <Button
+                    type="submit"
+                    disabled={loading || mustResendEmailVerificationCode}
+                    className="w-full"
+                  >
                     {loading ? (
                       <>
                         <span className="icon-[lucide--loader-circle] animate-spin"></span>{" "}
@@ -436,6 +658,18 @@ export default function LoginPage() {
                     )}
                   </Button>
                 </div>
+                {emailVerificationSecondsLeft <= 0 && (
+                  <div className="text-center text-sm">
+                    <button
+                      type="button"
+                      onClick={handleResendVerificationCode}
+                      disabled={loading}
+                      className="font-semibold underline-offset-2 hover:underline disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      Reenviar o código novamente
+                    </button>
+                  </div>
+                )}
                 <p className="text-center">
                   <AuthLink href="/login">Voltar</AuthLink>
                 </p>

@@ -75,6 +75,7 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    autoSignIn: false,
     password: {
       hash: hashPassword,
       verify: ({ hash, password }) => verifyPassword(password, hash),
