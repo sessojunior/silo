@@ -35,11 +35,24 @@ interface UserPreferences {
   showWelcome?: boolean;
 }
 
+type PermissionAction = string;
+type PermissionResource = string;
+type PermissionsSummary = Record<PermissionResource, PermissionAction[]>;
+
+type UserGroupInfo = {
+  id: string;
+  name: string;
+  role: string;
+};
+
 interface UserContextType {
   // Estados principais
   user: User | null;
   userProfile: UserProfile | null;
   userPreferences: UserPreferences | null;
+  userGroups: UserGroupInfo[];
+  permissions: PermissionsSummary;
+  isAdmin: boolean;
   loading: boolean;
   error: string | null;
 
@@ -93,6 +106,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userPreferences, setUserPreferences] =
     useState<UserPreferences | null>(null);
+  const [userGroups, setUserGroups] = useState<UserGroupInfo[]>([]);
+  const [permissions, setPermissions] = useState<PermissionsSummary>({});
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +125,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           emailVerified: boolean;
           image?: string | null;
         };
+        groups?: UserGroupInfo[];
+        permissions?: PermissionsSummary;
+        isAdmin?: boolean;
       }>("/api/user-profile");
 
       if (status === 401) return null;
@@ -124,6 +143,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         emailVerified: userFromApi.emailVerified,
         image: userFromApi.image || "/images/profile.png",
       };
+      setUserGroups(api?.data?.groups ?? []);
+      setPermissions(api?.data?.permissions ?? {});
+      setIsAdmin(api?.data?.isAdmin ?? false);
       return userData;
     } catch (err) {
       console.error("❌ [CONTEXT_USER] Erro ao buscar usuário:", {
@@ -306,6 +328,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     user,
     userProfile,
     userPreferences,
+    userGroups,
+    permissions,
+    isAdmin,
     loading,
     error,
     updateUser,

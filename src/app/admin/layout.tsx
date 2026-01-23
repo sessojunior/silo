@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth/server";
-import { isUserAdmin } from "@/lib/auth/admin";
 import { ChatProvider } from "@/context/ChatContext";
 import { UserProvider } from "@/context/UserContext";
 
@@ -30,11 +29,6 @@ export default async function AdminLayout({
   const currentUser = await getAuthUser();
   if (!currentUser) {
     redirect("/login");
-  }
-
-  const isAdmin = await isUserAdmin(currentUser.id);
-  if (!isAdmin) {
-    redirect("/error?status=403");
   }
 
   // Sessão válida - o UserContext fará a busca dos dados completos

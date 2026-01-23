@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { toast } from "@/lib/toast";
 import { config } from "@/lib/config";
 import { formatDateBR } from "@/lib/dateUtils";
-import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { useUser } from "@/context/UserContext";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -45,7 +45,7 @@ export default function GroupsPage() {
   const groupRefs = useRef<Map<string, GroupUsersSectionRef>>(new Map());
 
   // Verificar se usuário é administrador
-  const { isAdmin, loading: adminLoading } = useAdminCheck();
+  const { isAdmin, loading: adminLoading } = useUser();
 
   // Carregar grupos
   useEffect(() => {
@@ -73,6 +73,13 @@ export default function GroupsPage() {
     const groupRef = groupRefs.current.get(groupId);
     if (groupRef) {
       groupRef.refreshUsers();
+    }
+  }
+
+  function openGroupPermissions(groupId: string) {
+    const groupRef = groupRefs.current.get(groupId);
+    if (groupRef) {
+      groupRef.openPermissions();
     }
   }
 
@@ -424,6 +431,13 @@ export default function GroupsPage() {
                                 >
                                   <span className="icon-[lucide--users] size-4 text-green-600 dark:text-green-400" />
                                 </Button>
+                                <Button
+                                  onClick={() => openGroupPermissions(group.id)}
+                                  className="size-8 p-0 rounded-md bg-transparent hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                  title="Permissões do Grupo"
+                                >
+                                  <span className="icon-[lucide--shield-check] size-4 text-amber-600 dark:text-amber-400" />
+                                </Button>
 
                                 {/* Botões de Edição e Exclusão */}
                                 <Button
@@ -456,6 +470,7 @@ export default function GroupsPage() {
                           }}
                           group={group}
                           isExpanded={isExpanded}
+                            isAdmin={isAdmin}
                         />
                       </React.Fragment>
                     );

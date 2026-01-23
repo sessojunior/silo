@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 import { errorResponse } from "@/lib/api-response";
 import { config as appConfig } from "@/lib/config";
-import { postLoginRedirectPath } from "@/lib/auth/urls";
 
 // Proteção de rotas privadas
 // Redireciona páginas /admin/* sem sessão para login
@@ -18,12 +17,13 @@ export async function proxy(req: NextRequest) {
 
   const sessionCookie = getSessionCookie(req);
   const loginPath = appConfig.getPublicPath("/login");
-  const homeWhenLoggedInPath = appConfig.getPublicPath(postLoginRedirectPath);
-
   if (routePath === "/") {
-    const url = req.nextUrl.clone();
-    url.pathname = sessionCookie ? homeWhenLoggedInPath : loginPath;
-    return NextResponse.redirect(url);
+    if (!sessionCookie) {
+      const url = req.nextUrl.clone();
+      url.pathname = loginPath;
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
   }
 
   // Proteção de páginas administrativas

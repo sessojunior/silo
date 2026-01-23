@@ -1,23 +1,28 @@
-import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP } from "better-auth/plugins";
-import { createAuthMiddleware, APIError, getOAuthState } from "better-auth/api";
-import { db } from "@/lib/db";
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { emailOTP } from 'better-auth/plugins';
+import { createAuthMiddleware, APIError, getOAuthState } from 'better-auth/api';
+import { db } from '@/lib/db';
 import {
   authUser,
   authSession,
   authAccount,
   authVerification,
-} from "@/lib/db/schema";
-import { headers } from "next/headers";
-import type { EmailTemplateData } from "@/lib/email/types";
-import { hashPassword, verifyPassword } from "@/lib/auth/hash";
-import { eq } from "drizzle-orm";
-import { authApiPath, getAuthServerBaseURL } from "@/lib/auth/urls";
-import { errorResponse } from "@/lib/api-response";
-import { requireAdmin } from "@/lib/auth/admin";
-import { config } from "@/lib/config";
-import { isValidDomain } from "@/lib/auth/validate";
+} from '@/lib/db/schema';
+import { headers } from 'next/headers';
+import type { EmailTemplateData } from '@/lib/email/types';
+import { hashPassword, verifyPassword } from '@/lib/auth/hash';
+import { eq, and } from 'drizzle-orm';
+import { authApiPath, getAuthServerBaseURL } from '@/lib/auth/urls';
+import { errorResponse } from '@/lib/api-response';
+import { requireAdmin } from '@/lib/auth/admin';
+import { config } from '@/lib/config';
+import { isValidDomain } from '@/lib/auth/validate';
+import {
+  getProfileImagePath,
+  uploadProfileImageFromUrl,
+} from '@/lib/profileImage';
+import { addUserToDefaultGroup } from '@/lib/auth/user-groups';
 
 const extractOrigin = (value: string): string | null => {
   try {
@@ -30,7 +35,7 @@ const extractOrigin = (value: string): string | null => {
 const normalizeTrustedOrigin = (value: string): string | null => {
   const trimmed = value.trim();
   if (trimmed.length === 0) return null;
-  if (trimmed.includes("*")) return trimmed.replace(/\/$/, "");
+  if (trimmed.includes('*')) return trimmed.replace(/\/$/, '');
   return extractOrigin(trimmed);
 };
 
@@ -38,16 +43,16 @@ const resolveTrustedOrigins = (): string[] => {
   const candidates = [
     process.env.APP_URL_DEV,
     process.env.APP_URL_PROD,
-    "http://localhost:3002",
-    "http://127.0.0.1:3002",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    'http://localhost:3002',
+    'http://127.0.0.1:3002',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
   ];
 
-  if (process.env.NODE_ENV !== "production") {
-    candidates.push("http://localhost:*", "http://127.0.0.1:*");
+  if (process.env.NODE_ENV !== 'production') {
+    candidates.push('http://localhost:*', 'http://127.0.0.1:*');
   }
 
   const origins = candidates
@@ -65,15 +70,15 @@ export const auth = betterAuth({
   ...(authBaseURL ? { baseURL: authBaseURL } : {}),
   basePath: authBasePath,
   account: {
-    storeStateStrategy: "cookie",
+    storeStateStrategy: 'cookie',
     accountLinking: {
       enabled: true,
-      trustedProviders: ["google"],
+      trustedProviders: ['google'],
     },
   },
   trustedOrigins: resolveTrustedOrigins(),
   database: drizzleAdapter(db, {
-    provider: "pg",
+    provider: 'pg',
     schema: {
       user: authUser,
       session: authSession,
@@ -86,11 +91,13 @@ export const auth = betterAuth({
       create: {
         before: async (data) => {
           const email =
-            typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
+            typeof data.email === 'string'
+              ? data.email.trim().toLowerCase()
+              : '';
           if (email.length === 0) return;
           if (isValidDomain(email)) return;
-          throw new APIError("FORBIDDEN", {
-            message: "unauthorized",
+          throw new APIError('FORBIDDEN', {
+            message: 'unauthorized',
           });
         },
       },
@@ -110,7 +117,7 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       mapProfileToUser: (profile) => {
         const rawEmail =
-          typeof (profile as { email?: unknown }).email === "string"
+          typeof (profile as { email?: unknown }).email === 'string'
             ? (profile as { email: string }).email
             : null;
         const email = rawEmail ? rawEmail.trim().toLowerCase() : null;
@@ -123,8 +130,8 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      const isEmailPasswordSignIn = ctx.path === "/sign-in/email";
-      const isEmailOtpSignIn = ctx.path === "/sign-in/email-otp";
+      const isEmailPasswordSignIn = ctx.path === '/sign-in/email';
+      const isEmailOtpSignIn = ctx.path === '/sign-in/email-otp';
 
       if (!isEmailPasswordSignIn && !isEmailOtpSignIn) return;
       const email = ctx.body?.email;
@@ -135,46 +142,115 @@ export const auth = betterAuth({
       });
 
       if (user && !user.isActive) {
-        throw new APIError("FORBIDDEN", {
-          message: "Usuário inativo. Contate o administrador.",
+        throw new APIError('FORBIDDEN', {
+          message: 'Usuário inativo. Contate o administrador.',
         });
       }
     }),
     after: createAuthMiddleware(async (ctx) => {
-      if (!ctx.path.startsWith("/callback/")) return;
+      if (!ctx.path.startsWith('/callback/')) return;
 
       const newSession = ctx.context.newSession;
       if (!newSession) return;
 
       const email = newSession.user.email.trim().toLowerCase();
-      if (isValidDomain(email)) return;
+      if (!isValidDomain(email)) {
+        await ctx.context.internalAdapter
+          .deleteSession(newSession.session.token)
+          .catch(() => null);
 
-      await ctx.context.internalAdapter
-        .deleteSession(newSession.session.token)
-        .catch(() => null);
+        const cookiesToExpire = [
+          ctx.context.authCookies.sessionToken,
+          ctx.context.authCookies.sessionData,
+          ctx.context.authCookies.dontRememberToken,
+          ...(ctx.context.options.account?.storeAccountCookie
+            ? [ctx.context.authCookies.accountData]
+            : []),
+        ];
 
-      const cookiesToExpire = [
-        ctx.context.authCookies.sessionToken,
-        ctx.context.authCookies.sessionData,
-        ctx.context.authCookies.dontRememberToken,
-        ...(ctx.context.options.account?.storeAccountCookie
-          ? [ctx.context.authCookies.accountData]
-          : []),
-      ];
+        for (const cookie of cookiesToExpire) {
+          ctx.setCookie(cookie.name, '', { ...cookie.attributes, maxAge: 0 });
+        }
 
-      for (const cookie of cookiesToExpire) {
-        ctx.setCookie(cookie.name, "", { ...cookie.attributes, maxAge: 0 });
+        const oauthState = await getOAuthState();
+        const rawErrorURL =
+          typeof oauthState?.errorURL === 'string' &&
+          oauthState.errorURL.length > 0
+            ? oauthState.errorURL
+            : config.getPublicPath('/login');
+
+        const redirectUrl = new URL(
+          rawErrorURL,
+          ctx.request?.url ?? config.appUrl
+        );
+        redirectUrl.searchParams.set('error', 'unauthorized');
+        throw ctx.redirect(redirectUrl.toString());
       }
 
-      const oauthState = await getOAuthState();
-      const rawErrorURL =
-        typeof oauthState?.errorURL === "string" && oauthState.errorURL.length > 0
-          ? oauthState.errorURL
-          : config.getPublicPath("/login");
+      if (ctx.path !== '/callback/google') return;
 
-      const redirectUrl = new URL(rawErrorURL, ctx.request?.url ?? config.appUrl);
-      redirectUrl.searchParams.set("error", "unauthorized");
-      throw ctx.redirect(redirectUrl.toString());
+      const userId = newSession.user.id;
+      const addedToDefaultGroup = await addUserToDefaultGroup(userId);
+      if (!addedToDefaultGroup) {
+        throw new APIError('INTERNAL_SERVER_ERROR', {
+          message: 'Grupo padrão não configurado no sistema.',
+        });
+      }
+      const existingUser = await db
+        .select({ image: authUser.image })
+        .from(authUser)
+        .where(eq(authUser.id, userId))
+        .limit(1);
+      const existingImage = existingUser[0]?.image ?? null;
+
+      if (existingImage && existingImage !== '/images/profile.png') return;
+
+      const existingProfileImagePath = getProfileImagePath(userId);
+      if (existingProfileImagePath) {
+        await db
+          .update(authUser)
+          .set({ image: existingProfileImagePath })
+          .where(eq(authUser.id, userId));
+        return;
+      }
+
+      const account = await db.query.authAccount.findFirst({
+        where: and(
+          eq(authAccount.userId, userId),
+          eq(authAccount.providerId, 'google')
+        ),
+      });
+      const accessToken = account?.accessToken;
+      if (!accessToken) return;
+
+      const userInfoResponse = await fetch(
+        'https://openidconnect.googleapis.com/v1/userinfo',
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!userInfoResponse.ok) return;
+
+      const userInfo = (await userInfoResponse.json()) as {
+        picture?: unknown;
+      };
+      const picture =
+        typeof userInfo.picture === 'string' ? userInfo.picture.trim() : '';
+      if (!picture) return;
+
+      const uploaded = await uploadProfileImageFromUrl(picture, userId);
+      if (!uploaded) return;
+
+      const profileImagePath = getProfileImagePath(userId);
+      if (!profileImagePath) return;
+
+      await db
+        .update(authUser)
+        .set({ image: profileImagePath })
+        .where(eq(authUser.id, userId));
     }),
   },
   plugins: [
@@ -186,36 +262,36 @@ export const auth = betterAuth({
           Boolean(config.email.password) &&
           Boolean(config.email.from);
 
-        if (!isEmailConfigured && process.env.NODE_ENV !== "production") {
+        if (!isEmailConfigured && process.env.NODE_ENV !== 'production') {
           console.warn(
-            "⚠️ [AUTH_SEND_OTP] SMTP não configurado. Usando OTP apenas no log (dev).",
-            { email, type, otp },
+            '⚠️ [AUTH_SEND_OTP] SMTP não configurado. Usando OTP apenas no log (dev).',
+            { email, type, otp }
           );
           return;
         }
 
-        const { sendEmail } = await import("@/lib/sendEmail");
+        const { sendEmail } = await import('@/lib/sendEmail');
 
         const subject =
-          type === "forget-password"
-            ? "Código para redefinir sua senha"
-            : type === "email-verification"
-              ? "Código de verificação"
-              : "Seu código de login";
+          type === 'forget-password'
+            ? 'Código para redefinir sua senha'
+            : type === 'email-verification'
+              ? 'Código de verificação'
+              : 'Seu código de login';
 
         const result = await sendEmail({
           to: email,
           subject,
           text: `Seu código é ${otp}`,
-          template: "otpCode",
+          template: 'otpCode',
           data: {
             code: otp,
-            type: type as EmailTemplateData["otpCode"]["type"],
+            type: type as EmailTemplateData['otpCode']['type'],
           },
         });
 
-        if ("error" in result) {
-          throw new Error(result.error.message || "Erro ao enviar e-mail.");
+        if ('error' in result) {
+          throw new Error(result.error.message || 'Erro ao enviar e-mail.');
         }
       },
     }),
@@ -239,7 +315,10 @@ type AuthGuardResult =
 export async function requireAuthUser(): Promise<AuthGuardResult> {
   const user = await getAuthUser();
   if (!user) {
-    return { ok: false, response: errorResponse("Usuário não autenticado.", 401) };
+    return {
+      ok: false,
+      response: errorResponse('Usuário não autenticado.', 401),
+    };
   }
   return { ok: true, user };
 }

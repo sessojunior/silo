@@ -13,6 +13,7 @@ Documentação completa sobre autenticação, login, Google OAuth e configuraç�
 5. [Configuração](#-configuração)
 6. [Sistema de Ativação](#-sistema-de-ativação)
 7. [Contexto de Usuário](#-contexto-de-usuário)
+8. [Permissões e Grupos](#-permissões-e-grupos)
 
 ---
 
@@ -516,6 +517,27 @@ export function useCurrentUser() {
   return { user, isLoading, refresh: mutate };
 }
 ```
+
+---
+
+## 🛡️ **PERMISSÕES E GRUPOS**
+
+Permissões são controladas por **recurso/ação** e somadas entre todos os grupos do usuário.
+
+### **Permissões padrão imutáveis**
+
+Todos os grupos possuem permissões obrigatórias que não podem ser removidas:
+
+- `dashboard:view`
+- `projects:list`
+- `products:list`
+- `help:view`
+
+### **Regras**
+
+- Grupos administrativos possuem acesso total.
+- Permissões padrão são restauradas automaticamente se estiverem ausentes.
+- A UI de permissões bloqueia alteração dessas permissões obrigatórias.
 
 ---
 

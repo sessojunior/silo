@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { productProblemImage } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { requestUtils } from "@/lib/config";
 import {
   deleteUploadFile,
@@ -13,7 +13,7 @@ import {
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function GET(req: NextRequest) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser("productProblems", "list");
   if (!authResult.ok) return authResult.response;
 
   const { searchParams } = new URL(req.url);
@@ -36,7 +36,10 @@ export async function GET(req: NextRequest) {
 
 // Upload de imagem de problema
 export async function POST(req: NextRequest) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser(
+    "productProblems",
+    "update",
+  );
   if (!authResult.ok) return authResult.response;
 
   try {
@@ -73,7 +76,10 @@ export async function POST(req: NextRequest) {
 
 // Exclusão individual de imagem de problema
 export async function DELETE(req: NextRequest) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser(
+    "productProblems",
+    "update",
+  );
   if (!authResult.ok) return authResult.response;
 
   try {

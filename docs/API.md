@@ -468,6 +468,45 @@ POST /api/admin/groups/users
 }
 ```
 
+### **Permissões do Grupo**
+
+Permissões são controladas por **recurso/ação**. Usuários herdam a união das permissões dos grupos aos quais pertencem.
+
+Permissões padrão imutáveis para todos os grupos:
+
+- `dashboard:view`
+- `projects:list`
+- `products:list`
+- `help:view`
+
+```http
+GET /api/admin/groups/permissions?groupId=admins
+
+Response:
+{
+  "success": true,
+  "data": {
+    "permissions": {
+      "projects": ["list", "create"],
+      "products": ["list"]
+    }
+  }
+}
+
+PUT /api/admin/groups/permissions
+{
+  "groupId": "admins",
+  "resource": "projects",
+  "action": "list",
+  "enabled": true
+}
+```
+
+Regras:
+
+- Grupos `admin` possuem acesso total e não podem ter permissões alteradas.
+- Permissões padrão imutáveis não podem ser removidas e são restauradas automaticamente.
+
 ### **Gerenciar Contatos**
 
 ```http

@@ -3,12 +3,15 @@ import { db } from "@/lib/db";
 import { productSolution } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productSolutions",
+      "list",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { problemIds } = await req.json();

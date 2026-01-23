@@ -78,7 +78,7 @@ export const groups: GroupData[] = [
     color: "#059669",
     role: "user", // Grupo de usuários normais
     active: true,
-    isDefault: true,
+    isDefault: false,
   },
   {
     name: "Suporte",
@@ -96,7 +96,7 @@ export const groups: GroupData[] = [
     color: "#64748B",
     role: "user", // Grupo de usuários normais
     active: true,
-    isDefault: false,
+    isDefault: true,
   },
 ];
 

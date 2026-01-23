@@ -2,7 +2,8 @@ import { count, eq, and, inArray, isNotNull, isNull, ne, desc } from "drizzle-or
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
+import { getUserPermissionsSummary, hasPermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -40,9 +41,17 @@ interface SidebarData {
 // GET: Buscar dados completos da sidebar
 export async function GET() {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requireAuthUser();
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
+    const { permissions } = await getUserPermissionsSummary(user.id);
+    const canViewChat =
+      hasPermission(permissions, "chat", "view_private") ||
+      hasPermission(permissions, "chat", "view_group");
+
+    if (!canViewChat) {
+      return errorResponse("Permissão insuficiente.", 403);
+    }
 
     // 1. BUSCAR CHATGROUPS onde usuário participa
     const userGroups = await db

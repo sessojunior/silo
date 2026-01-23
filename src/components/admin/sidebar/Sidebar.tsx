@@ -11,6 +11,7 @@ import type { Project } from "@/types/projects";
 import { useState, useEffect } from "react";
 import { config } from "@/lib/config";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
+import { useUser } from "@/context/UserContext";
 
 export type SidebarMenuProps = {
   id: string;
@@ -27,9 +28,20 @@ export type SidebarProps = {
 export default function Sidebar() {
   const { isOpenSidebar, closeSidebar } = useSidebar();
   const { currentPresence } = useChat();
+  const { permissions } = useUser();
   const [chatEnabled, setChatEnabled] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const hasPermission = (resource: string, action: string) =>
+    permissions[resource]?.includes(action) ?? false;
+  const hasAnyPermission = (resource: string, actions: string[]) =>
+    actions.some((action) => permissions[resource]?.includes(action));
+  const canSeeProducts = hasPermission("products", "list");
+  const canSeeProjects = hasPermission("projects", "list");
+  const canSeeReports = hasPermission("reports", "view");
+  const canSeeGroups = hasPermission("groups", "list") || hasPermission("users", "list");
+  const canSeeChat = hasAnyPermission("chat", ["view_private", "view_group"]);
+  const canSeeContacts = hasPermission("contacts", "list");
 
   // Verificar se o chat está habilitado para o usuário
   useEffect(() => {
@@ -92,6 +104,11 @@ export default function Sidebar() {
   // Obter dados dos produtos
   useEffect(() => {
     const fetchProducts = async () => {
+      if (!canSeeProducts) {
+        setProducts([]);
+        return;
+      }
+
       try {
         const response = await fetch(config.getApiUrl("/api/admin/products"));
         if (!response.ok) {
@@ -123,11 +140,16 @@ export default function Sidebar() {
     };
 
     fetchProducts();
-  }, []);
+  }, [canSeeProducts]);
 
   // Obter dados dos projetos reais da API
   useEffect(() => {
     const fetchProjects = async () => {
+      if (!canSeeProjects) {
+        setProjects([]);
+        return;
+      }
+
       try {
         const response = await fetch(config.getApiUrl("/api/admin/projects"));
         if (!response.ok) {
@@ -191,7 +213,7 @@ export default function Sidebar() {
     };
 
     fetchProjects();
-  }, []);
+  }, [canSeeProjects]);
 
   // Dados para o menu lateral
   const sidebar: SidebarProps = {
@@ -207,68 +229,84 @@ export default function Sidebar() {
             url: postLoginRedirectPath,
             items: null,
           },
-          {
-            id: "1.2",
-            title: "Produtos & tasks",
-            icon: "icon-[lucide--folder-git-2]",
-            url: "#",
-            items: [
-              ...products
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((product) => ({
-                  id: product.id,
-                  title: product.name,
-                  icon: null,
-                  url: `/admin/products/${product.slug}`,
+          ...(canSeeProducts
+            ? [
+                {
+                  id: "1.2",
+                  title: "Produtos & tasks",
+                  icon: "icon-[lucide--folder-git-2]",
+                  url: "#",
+                  items: [
+                    ...products
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((product) => ({
+                        id: product.id,
+                        title: product.name,
+                        icon: null,
+                        url: `/admin/products/${product.slug}`,
+                        items: null,
+                      })),
+                  ],
+                },
+              ]
+            : []),
+          ...(canSeeProjects
+            ? [
+                {
+                  id: "1.3",
+                  title: "Projetos ativos",
+                  icon: "icon-[lucide--square-chart-gantt]",
+                  url: "/admin/projects",
+                  items: [
+                    {
+                      id: "all-projects",
+                      title: "Todos os projetos",
+                      icon: null,
+                      url: "/admin/projects",
+                      items: null,
+                    },
+                    ...projects
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((project) => ({
+                        id: project.id,
+                        title: project.name,
+                        icon: null,
+                        url: `/admin/projects/${project.id}`,
+                        items: null,
+                      })),
+                  ],
+                },
+              ]
+            : []),
+          ...(canSeeReports
+            ? [
+                {
+                  id: "1.4",
+                  title: "Relatórios",
+                  icon: "icon-[lucide--bar-chart-3]",
+                  url: "/admin/reports",
                   items: null,
-                })),
-            ],
-          },
-          {
-            id: "1.3",
-            title: "Projetos ativos",
-            icon: "icon-[lucide--square-chart-gantt]",
-            url: "/admin/projects",
-            items: [
-              {
-                id: "all-projects",
-                title: "Todos os projetos",
-                icon: null,
-                url: "/admin/projects",
-                items: null,
-              },
-              ...projects
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((project) => ({
-                  id: project.id,
-                  title: project.name,
-                  icon: null,
-                  url: `/admin/projects/${project.id}`,
+                },
+              ]
+            : []),
+          ...(canSeeGroups
+            ? [
+                {
+                  id: "1.5",
+                  title: "Grupos & usuários",
+                  icon: "icon-[lucide--users-round]",
+                  url: "/admin/groups",
                   items: null,
-                })),
-            ],
-          },
-          {
-            id: "1.4",
-            title: "Relatórios",
-            icon: "icon-[lucide--bar-chart-3]",
-            url: "/admin/reports",
-            items: null,
-          },
-          {
-            id: "1.5",
-            title: "Grupos & usuários",
-            icon: "icon-[lucide--users-round]",
-            url: "/admin/groups",
-            items: null,
-          },
+                },
+              ]
+            : []),
         ],
       },
       {
         id: "2",
         title: "Outros",
         items: [
-          ...(chatEnabled
+          ...(chatEnabled && canSeeChat
             ? [
                 {
                   id: "2.2",
@@ -292,36 +330,52 @@ export default function Sidebar() {
                 url: "/admin/settings",
                 items: null,
               },
-              {
-                id: "2.3.2",
-                title: "Produtos & tasks",
-                icon: null,
-                url: "/admin/settings/products",
-                items: null,
-              },
-              {
-                id: "2.3.4",
-                title: "Contatos",
-                icon: null,
-                url: "/admin/contacts",
-                items: null,
-              },
-              {
-                id: "2.3.3",
-                title: "Projetos",
-                icon: null,
-                url: "/admin/projects",
-                items: null,
-              },
+              ...(canSeeProducts
+                ? [
+                    {
+                      id: "2.3.2",
+                      title: "Produtos & tasks",
+                      icon: null,
+                      url: "/admin/settings/products",
+                      items: null,
+                    },
+                  ]
+                : []),
+              ...(canSeeContacts
+                ? [
+                    {
+                      id: "2.3.4",
+                      title: "Contatos",
+                      icon: null,
+                      url: "/admin/contacts",
+                      items: null,
+                    },
+                  ]
+                : []),
+              ...(canSeeProjects
+                ? [
+                    {
+                      id: "2.3.3",
+                      title: "Projetos",
+                      icon: null,
+                      url: "/admin/projects",
+                      items: null,
+                    },
+                  ]
+                : []),
             ],
           },
-          {
-            id: "2.4",
-            title: "Ajuda",
-            icon: "icon-[lucide--life-buoy]",
-            url: "/admin/help",
-            items: null,
-          },
+          ...(hasPermission("help", "view")
+            ? [
+                {
+                  id: "2.4",
+                  title: "Ajuda",
+                  icon: "icon-[lucide--life-buoy]",
+                  url: "/admin/help",
+                  items: null,
+                },
+              ]
+            : []),
         ],
       },
     ],

@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { toast } from "@/lib/toast";
 import { formatDateBR } from "@/lib/dateUtils";
-import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useUser } from "@/context/UserContext";
 import { config } from "@/lib/config";
 
 import Button from "@/components/ui/Button";
@@ -49,9 +49,14 @@ export default function UsersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserWithGroup | null>(null);
 
-  // Verificar se usuário é administrador
-  const { isAdmin, loading: adminLoading } = useAdminCheck();
+  // Verificar se usuário é administrador ou possui permissões
+  const { isAdmin, permissions, loading: userLoading } = useUser();
   const { currentUser } = useCurrentUser();
+  const canUpdateUsers =
+    isAdmin || (permissions.users?.includes("update") ?? false);
+  const canDeleteUsers =
+    isAdmin || (permissions.users?.includes("delete") ?? false);
+  const canManageUsers = canUpdateUsers || canDeleteUsers;
 
   // Carregar dados
   useEffect(() => {
@@ -379,7 +384,7 @@ export default function UsersPage() {
                       Último Acesso
                     </th>
                     {/* Coluna Ações - apenas para administradores */}
-                    {!adminLoading && isAdmin && (
+                    {!userLoading && canManageUsers && (
                       <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                         Ações
                       </th>
@@ -473,11 +478,13 @@ export default function UsersPage() {
                         </div>
                       </td>
                       {/* Célula de Ações - apenas para administradores */}
-                      {!adminLoading && isAdmin && (
+                      {!userLoading && canManageUsers && (
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
                             {/* Botão Ativar/Desativar - não permitir para próprio usuário */}
-                            {currentUser && user.id === currentUser.id ? (
+                            {canUpdateUsers &&
+                            currentUser &&
+                            user.id === currentUser.id ? (
                               <Button
                                 disabled
                                 className="size-8 p-0 rounded-md bg-transparent opacity-50 cursor-not-allowed"
@@ -487,7 +494,7 @@ export default function UsersPage() {
                                   className={`size-4 ${user.isActive ? "icon-[lucide--user-x] text-gray-400" : "icon-[lucide--user-check] text-gray-400"}`}
                                 />
                               </Button>
-                            ) : (
+                            ) : canUpdateUsers ? (
                               <Button
                                 onClick={() => toggleUserStatus(user)}
                                 className={`size-8 p-0 rounded-md bg-transparent ${user.isActive ? "hover:bg-red-50 dark:hover:bg-red-900/20" : "hover:bg-green-50 dark:hover:bg-green-900/20"}`}
@@ -501,17 +508,21 @@ export default function UsersPage() {
                                   className={`size-4 ${user.isActive ? "icon-[lucide--user-x] text-red-600 dark:text-red-400" : "icon-[lucide--user-check] text-green-600 dark:text-green-400"}`}
                                 />
                               </Button>
-                            )}
+                            ) : null}
 
                             {/* Botões de Edição e Exclusão */}
-                            <Button
-                              onClick={() => openEditForm(user)}
-                              className="size-8 p-0 rounded-md bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                            >
-                              <span className="icon-[lucide--edit] size-4 text-blue-600 dark:text-blue-400" />
-                            </Button>
+                            {canUpdateUsers && (
+                              <Button
+                                onClick={() => openEditForm(user)}
+                                className="size-8 p-0 rounded-md bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                              >
+                                <span className="icon-[lucide--edit] size-4 text-blue-600 dark:text-blue-400" />
+                              </Button>
+                            )}
                             {/* Não permitir exclusão do próprio usuário */}
-                            {currentUser && user.id === currentUser.id ? (
+                            {canDeleteUsers &&
+                            currentUser &&
+                            user.id === currentUser.id ? (
                               <Button
                                 disabled
                                 className="size-8 p-0 rounded-md bg-transparent opacity-50 cursor-not-allowed"
@@ -519,14 +530,14 @@ export default function UsersPage() {
                               >
                                 <span className="icon-[lucide--trash] size-4 text-gray-400" />
                               </Button>
-                            ) : (
+                            ) : canDeleteUsers ? (
                               <Button
                                 onClick={() => openDeleteDialog(user)}
                                 className="size-8 p-0 rounded-md bg-transparent hover:bg-red-50 dark:hover:bg-red-900/20"
                               >
                                 <span className="icon-[lucide--trash] size-4 text-red-600 dark:text-red-400" />
                               </Button>
-                            )}
+                            ) : null}
                           </div>
                         </td>
                       )}

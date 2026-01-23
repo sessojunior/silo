@@ -3,11 +3,11 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 import { db } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { productManual, product } from "@/lib/db/schema";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 
 export async function GET(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("productManual", "view");
     if (!authResult.ok) return authResult.response;
 
     const { searchParams } = new URL(req.url);
@@ -51,7 +51,10 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productManual",
+      "update",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { productId, description } = await req.json();

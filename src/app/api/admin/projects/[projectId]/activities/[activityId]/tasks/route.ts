@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { eq, and, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { recordBulkTaskHistory, recordTaskHistory } from "@/lib/taskHistory";
 import { syncActivityStatus } from "@/lib/db/activityStatusSync";
 import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
@@ -63,7 +63,7 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string; activityId: string }> },
 ) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("projectTasks", "list");
     if (!authResult.ok) return authResult.response;
 
     const { projectId, activityId } = await params;
@@ -248,7 +248,10 @@ export async function PATCH(
   // Com isso, o frontend pode sempre fazer setKanbanTasks(tasks) após qualquer PATCH, sem precisar de transformações extras.
 
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "projectTasks",
+      "update",
+    );
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -408,7 +411,10 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string; activityId: string }> },
 ) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "projectTasks",
+      "create",
+    );
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -483,7 +489,10 @@ export async function PUT(
   { params }: { params: Promise<{ projectId: string; activityId: string }> },
 ) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "projectTasks",
+      "update",
+    );
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -579,7 +588,10 @@ export async function DELETE(
   { params }: { params: Promise<{ projectId: string; activityId: string }> },
 ) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "projectTasks",
+      "delete",
+    );
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 

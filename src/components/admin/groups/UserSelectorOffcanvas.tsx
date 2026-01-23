@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "@/lib/toast";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import Offcanvas from "@/components/ui/Offcanvas";
 import { AuthUser, Group } from "@/lib/db/schema";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { config } from "@/lib/config";
@@ -250,35 +251,25 @@ export default function UserSelectorOffcanvas({
     }
   }
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-
-      {/* Offcanvas */}
-      <div className="fixed right-0 top-0 h-screen w-full max-w-md bg-white dark:bg-zinc-900 shadow-xl transform transition-transform flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0">
+    <Offcanvas
+      open={isOpen}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-3">
+          <span className="icon-[lucide--users] size-5 text-blue-600" />
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-              Gerenciar Usuários
-            </h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <h2 className="text-lg font-semibold">Gerenciar Usuários</h2>
+            <p className="text-sm font-normal text-zinc-500 dark:text-zinc-400">
               Gerencie os usuários do grupo &quot;{group?.name}&quot;
             </p>
           </div>
-          <Button
-            onClick={onClose}
-            className="size-8 p-0 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          >
-            <span className="icon-[lucide--x] size-4 text-zinc-600 dark:text-zinc-400" />
-          </Button>
         </div>
-
-        {/* Search */}
-        <div className="p-6 border-b border-zinc-200 dark:border-zinc-700 flex-shrink-0">
+      }
+      width="md"
+    >
+      <div className="flex flex-col gap-6 h-full">
+        <div className="flex-shrink-0">
           <div className="relative">
             <Input
               type="text"
@@ -287,12 +278,11 @@ export default function UserSelectorOffcanvas({
               setValue={setSearch}
               className="pr-10"
             />
-            <span className="icon-[lucide--search] absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 size-4" />
+            <span className="icon-[lucide--search] absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 size-4" />
           </div>
         </div>
 
-        {/* Users List */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <LoadingSpinner
@@ -326,7 +316,6 @@ export default function UserSelectorOffcanvas({
                     className={`p-4 rounded-lg border cursor-pointer transition-all ${isSelected ? "border-blue-300 bg-blue-50 dark:border-blue-600 dark:bg-blue-900/20" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"}`}
                   >
                     <div className="flex items-center gap-3">
-                      {/* Checkbox visual */}
                       <div
                         className={`size-5 rounded border-2 flex items-center justify-center ${isSelected ? "border-blue-500 bg-blue-500" : "border-zinc-300 dark:border-zinc-600"}`}
                       >
@@ -335,12 +324,10 @@ export default function UserSelectorOffcanvas({
                         )}
                       </div>
 
-                      {/* Avatar */}
                       <div className="size-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
                         <span className="icon-[lucide--user] size-5 text-blue-600 dark:text-blue-400" />
                       </div>
 
-                      {/* User info */}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-zinc-900 dark:text-zinc-100 truncate">
                           {user.name}
@@ -369,8 +356,7 @@ export default function UserSelectorOffcanvas({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-zinc-200 dark:border-zinc-700 flex-shrink-0">
+        <div className="mt-auto border-t border-zinc-200 dark:border-zinc-700 pt-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex gap-3">
               <Button onClick={onClose} style="bordered">
@@ -397,6 +383,6 @@ export default function UserSelectorOffcanvas({
           </div>
         </div>
       </div>
-    </div>
+    </Offcanvas>
   );
 }

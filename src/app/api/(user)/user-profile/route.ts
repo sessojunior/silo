@@ -9,6 +9,7 @@ import { getGoogleIdFromUserId } from "@/lib/auth/social-utils";
 import { normalizeUploadsSrc } from "@/lib/utils";
 import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
 import { z } from "zod";
+import { getUserPermissionsSummary } from "@/lib/permissions";
 
 const createRequiredTrimmedStringSchema = (label: string) =>
   z
@@ -62,12 +63,16 @@ export async function GET() {
 
     // ID do usuário no Google
     const { googleId } = await getGoogleIdFromUserId(user.id);
+    const permissionResult = await getUserPermissionsSummary(user.id);
 
     // Retorna os dados do perfil do usuário
     return successResponse({
       user: { ...user, image: normalizedImage },
       userProfile: findUserProfile ?? {},
       googleId,
+      groups: permissionResult.groups,
+      permissions: permissionResult.summary,
+      isAdmin: permissionResult.isAdmin,
     });
   } catch (error) {
     console.error(

@@ -54,6 +54,30 @@ export const userGroup = pgTable(
 );
 export type UserGroup = typeof userGroup.$inferSelect;
 
+export const groupPermission = pgTable(
+  "group_permissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => group.id, { onDelete: "cascade" }),
+    resource: text("resource").notNull(),
+    action: text("action").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueGroupPermission: unique("unique_group_permission").on(
+      table.groupId,
+      table.resource,
+      table.action,
+    ),
+    groupIdIdx: index("idx_group_permission_group_id").on(table.groupId),
+    resourceIdx: index("idx_group_permission_resource").on(table.resource),
+  }),
+);
+export type GroupPermission = typeof groupPermission.$inferSelect;
+
 export const authUser = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

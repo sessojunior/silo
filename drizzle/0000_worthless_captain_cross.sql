@@ -95,6 +95,16 @@ CREATE TABLE "group" (
 	CONSTRAINT "group_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
+CREATE TABLE "group_permissions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"group_id" text NOT NULL,
+	"resource" text NOT NULL,
+	"action" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "unique_group_permission" UNIQUE("group_id","resource","action")
+);
+--> statement-breakpoint
 CREATE TABLE "help" (
 	"id" text PRIMARY KEY NOT NULL,
 	"description" text DEFAULT '',
@@ -326,6 +336,7 @@ ALTER TABLE "chat_message" ADD CONSTRAINT "chat_message_sender_user_id_user_id_f
 ALTER TABLE "chat_message" ADD CONSTRAINT "chat_message_receiver_group_id_group_id_fk" FOREIGN KEY ("receiver_group_id") REFERENCES "public"."group"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "chat_message" ADD CONSTRAINT "chat_message_receiver_user_id_user_id_fk" FOREIGN KEY ("receiver_user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "chat_user_presence" ADD CONSTRAINT "chat_user_presence_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "group_permissions" ADD CONSTRAINT "group_permissions_group_id_group_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."group"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_activity" ADD CONSTRAINT "product_activity_product_id_product_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."product"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_activity" ADD CONSTRAINT "product_activity_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_activity" ADD CONSTRAINT "product_activity_problem_category_id_product_problem_category_id_fk" FOREIGN KEY ("problem_category_id") REFERENCES "public"."product_problem_category"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -359,6 +370,8 @@ CREATE INDEX "idx_chat_message_group" ON "chat_message" USING btree ("receiver_g
 CREATE INDEX "idx_chat_message_user" ON "chat_message" USING btree ("receiver_user_id","sender_user_id","created_at");--> statement-breakpoint
 CREATE INDEX "idx_chat_message_unread_user" ON "chat_message" USING btree ("receiver_user_id","read_at");--> statement-breakpoint
 CREATE INDEX "idx_chat_message_sender" ON "chat_message" USING btree ("sender_user_id");--> statement-breakpoint
+CREATE INDEX "idx_group_permission_group_id" ON "group_permissions" USING btree ("group_id");--> statement-breakpoint
+CREATE INDEX "idx_group_permission_resource" ON "group_permissions" USING btree ("resource");--> statement-breakpoint
 CREATE INDEX "idx_product_activity_product_date" ON "product_activity" USING btree ("product_id","date");--> statement-breakpoint
 CREATE INDEX "idx_product_activity_product_turn" ON "product_activity" USING btree ("product_id","turn");--> statement-breakpoint
 CREATE INDEX "idx_product_activity_user_id" ON "product_activity" USING btree ("user_id");--> statement-breakpoint

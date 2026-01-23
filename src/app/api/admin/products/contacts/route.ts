@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { eq, and } from "drizzle-orm";
@@ -9,7 +9,7 @@ import { productContact, contact } from "@/lib/db/schema";
 // GET - Listar contatos associados ao produto
 export async function GET(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("contacts", "list");
     if (!authResult.ok) return authResult.response;
 
     const { searchParams } = new URL(req.url);
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 // POST - Associar contatos ao produto
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("contacts", "create");
     if (!authResult.ok) return authResult.response;
 
     const { productId, contactIds } = await req.json();
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 // DELETE - Remover associação específica
 export async function DELETE(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("contacts", "delete");
     if (!authResult.ok) return authResult.response;
 
     const { associationId } = await req.json();

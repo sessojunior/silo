@@ -37,6 +37,85 @@ export interface DependencyItem {
   children?: DependencyItem[];
 }
 
+type GroupPermissionSeed = {
+  resource: string;
+  action: string;
+};
+
+const defaultGroupPermissions: GroupPermissionSeed[] = [
+  { resource: "dashboard", action: "view" },
+  { resource: "projects", action: "list" },
+  { resource: "products", action: "list" },
+  { resource: "help", action: "view" },
+];
+
+const allGroupPermissions: GroupPermissionSeed[] = [
+  { resource: "users", action: "list" },
+  { resource: "users", action: "create" },
+  { resource: "users", action: "update" },
+  { resource: "users", action: "delete" },
+  { resource: "groups", action: "list" },
+  { resource: "groups", action: "create" },
+  { resource: "groups", action: "update" },
+  { resource: "groups", action: "delete" },
+  { resource: "projects", action: "list" },
+  { resource: "projects", action: "create" },
+  { resource: "projects", action: "update" },
+  { resource: "projects", action: "delete" },
+  { resource: "projectActivities", action: "list" },
+  { resource: "projectActivities", action: "create" },
+  { resource: "projectActivities", action: "update" },
+  { resource: "projectActivities", action: "delete" },
+  { resource: "projectTasks", action: "list" },
+  { resource: "projectTasks", action: "create" },
+  { resource: "projectTasks", action: "update" },
+  { resource: "projectTasks", action: "delete" },
+  { resource: "projectTasks", action: "assign" },
+  { resource: "projectTasks", action: "history" },
+  { resource: "products", action: "list" },
+  { resource: "products", action: "create" },
+  { resource: "products", action: "update" },
+  { resource: "products", action: "delete" },
+  { resource: "productActivities", action: "list" },
+  { resource: "productActivities", action: "create" },
+  { resource: "productActivities", action: "update" },
+  { resource: "productActivities", action: "delete" },
+  { resource: "productProblems", action: "list" },
+  { resource: "productProblems", action: "create" },
+  { resource: "productProblems", action: "update" },
+  { resource: "productProblems", action: "delete" },
+  { resource: "productSolutions", action: "list" },
+  { resource: "productSolutions", action: "create" },
+  { resource: "productSolutions", action: "update" },
+  { resource: "productSolutions", action: "delete" },
+  { resource: "productDependencies", action: "list" },
+  { resource: "productDependencies", action: "create" },
+  { resource: "productDependencies", action: "update" },
+  { resource: "productDependencies", action: "delete" },
+  { resource: "productDependencies", action: "reorder" },
+  { resource: "productManual", action: "view" },
+  { resource: "productManual", action: "update" },
+  { resource: "contacts", action: "list" },
+  { resource: "contacts", action: "create" },
+  { resource: "contacts", action: "update" },
+  { resource: "contacts", action: "delete" },
+  { resource: "incidents", action: "list" },
+  { resource: "incidents", action: "create" },
+  { resource: "incidents", action: "update" },
+  { resource: "incidents", action: "delete" },
+  { resource: "dashboard", action: "view" },
+  { resource: "dashboard", action: "update" },
+  { resource: "dashboard", action: "delete" },
+  { resource: "reports", action: "view" },
+  { resource: "help", action: "view" },
+  { resource: "help", action: "update" },
+  { resource: "chat", action: "view_private" },
+  { resource: "chat", action: "view_group" },
+  { resource: "chat", action: "send_private" },
+  { resource: "chat", action: "send_group_all" },
+  { resource: "chat", action: "presence" },
+];
+
 // === FUNÇÕES AUXILIARES ===
 async function insertDependencies(
   productId: string,
@@ -322,6 +401,44 @@ async function seed() {
       console.log("⚠️ Grupos já existem, pulando...");
       insertedGroups = await db.select().from(schema.group);
       defaultGroup = insertedGroups.find((g) => g.isDefault) || null;
+    }
+
+    for (const groupItem of insertedGroups) {
+      const targetPermissions =
+        groupItem.role === "admin"
+          ? allGroupPermissions
+          : defaultGroupPermissions;
+
+      const existingPermissions = await db
+        .select({
+          resource: schema.groupPermission.resource,
+          action: schema.groupPermission.action,
+        })
+        .from(schema.groupPermission)
+        .where(eq(schema.groupPermission.groupId, groupItem.id));
+
+      const existingSet = new Set(
+        existingPermissions.map(
+          (permission) => `${permission.resource}:${permission.action}`,
+        ),
+      );
+
+      const missingPermissions = targetPermissions.filter(
+        (permission) =>
+          !existingSet.has(`${permission.resource}:${permission.action}`),
+      );
+
+      if (missingPermissions.length > 0) {
+        await db.insert(schema.groupPermission).values(
+          missingPermissions.map((permission) => ({
+            groupId: groupItem.id,
+            resource: permission.resource,
+            action: permission.action,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })),
+        );
+      }
     }
 
     // === 2. CRIAR USUÁRIO PRINCIPAL ===

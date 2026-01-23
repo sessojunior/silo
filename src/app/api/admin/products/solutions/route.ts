@@ -8,11 +8,14 @@ import {
 } from "@/lib/db/schema";
 import { eq, inArray, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function GET(req: NextRequest) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser(
+    "productSolutions",
+    "list",
+  );
   if (!authResult.ok) return authResult.response;
 
   const { searchParams } = new URL(req.url);
@@ -93,7 +96,10 @@ export async function GET(req: NextRequest) {
 
 // Criar solução
 export async function POST(req: NextRequest) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser(
+    "productSolutions",
+    "create",
+  );
   if (!authResult.ok) return authResult.response;
   const user = authResult.user;
 
@@ -143,7 +149,10 @@ export async function POST(req: NextRequest) {
 
 // Editar solução
 export async function PUT(req: NextRequest) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser(
+    "productSolutions",
+    "update",
+  );
   if (!authResult.ok) return authResult.response;
   const user = authResult.user;
 
@@ -218,7 +227,10 @@ export async function PUT(req: NextRequest) {
 
 // Excluir solução
 export async function DELETE(req: NextRequest) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser(
+    "productSolutions",
+    "delete",
+  );
   if (!authResult.ok) return authResult.response;
   const user = authResult.user;
 

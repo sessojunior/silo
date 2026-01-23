@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { group, userGroup, chatMessage } from "@/lib/db/schema";
+import { group, userGroup, chatMessage, groupPermission } from "@/lib/db/schema";
 import { eq, desc, ilike, and, sql, not, inArray, count } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser, DEFAULT_GROUP_PERMISSIONS } from "@/lib/permissions";
 import {
   parseRequestJson,
   parseRequestQuery,
@@ -34,7 +34,7 @@ const UpdateGroupSchema = CreateGroupSchema.extend({
 // GET - Listar grupos com busca e filtros
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("groups", "list");
     if (!authResult.ok) return authResult.response;
 
     const parsedQuery = parseRequestQuery(request, ListGroupsQuerySchema);
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 // POST - Criar novo grupo
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("groups", "create");
     if (!authResult.ok) return authResult.response;
 
     const parsedBody = await parseRequestJson(request, CreateGroupSchema);
@@ -149,7 +149,21 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     };
 
-    await db.insert(group).values(newGroup);
+    await db.transaction(async (tx) => {
+      await tx.insert(group).values(newGroup);
+
+      if (DEFAULT_GROUP_PERMISSIONS.length > 0) {
+        await tx.insert(groupPermission).values(
+          DEFAULT_GROUP_PERMISSIONS.map((permission) => ({
+            groupId: newGroup.id,
+            resource: permission.resource,
+            action: permission.action,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })),
+        );
+      }
+    });
 
     return successResponse(newGroup, "Grupo criado com sucesso.", 201);
   } catch (error) {
@@ -161,7 +175,7 @@ export async function POST(request: NextRequest) {
 // PUT - Atualizar grupo
 export async function PUT(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("groups", "update");
     if (!authResult.ok) return authResult.response;
 
     const parsedBody = await parseRequestJson(request, UpdateGroupSchema);
@@ -331,7 +345,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Excluir grupo
 export async function DELETE(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("groups", "delete");
     if (!authResult.ok) return authResult.response;
 
     const { searchParams } = new URL(request.url);

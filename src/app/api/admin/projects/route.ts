@@ -10,7 +10,7 @@ import {
   projectTaskHistory,
   projectTaskUser,
 } from "@/lib/db/schema";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { asc, eq, ilike, or, and, inArray } from "drizzle-orm";
 import {
   parseRequestJson,
@@ -54,7 +54,7 @@ const DeleteProjectQuerySchema = z.object({
 // GET - Listar projetos com filtros e busca
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("projects", "list");
     if (!authResult.ok) return authResult.response;
 
     const parsedQuery = parseRequestQuery(request, ListProjectsQuerySchema);
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
 // POST - Criar novo projeto
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("projects", "create");
     if (!authResult.ok) return authResult.response;
 
     const parsedBody = await parseRequestJson(request, ProjectSchema);
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
 // PUT - Atualizar projeto
 export async function PUT(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("projects", "update");
     if (!authResult.ok) return authResult.response;
 
     const parsedBody = await parseRequestJson(request, UpdateProjectSchema);
@@ -191,7 +191,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Excluir projeto
 export async function DELETE(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("projects", "delete");
     if (!authResult.ok) return authResult.response;
 
     const parsedQuery = parseRequestQuery(request, DeleteProjectQuerySchema);

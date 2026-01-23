@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -11,7 +11,10 @@ export async function GET(
   { params }: { params: Promise<{ productId: string }> },
 ) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productActivities",
+      "list",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { productId } = await params;

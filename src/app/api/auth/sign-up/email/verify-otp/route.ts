@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 import { z } from "zod";
@@ -11,8 +11,9 @@ import {
   AUTH_OTP_MAX_ATTEMPTS,
 } from "@/lib/auth/rate-limits";
 import { auth } from "@/lib/auth/server";
+import { addUserToDefaultGroup } from "@/lib/auth/user-groups";
 import { db } from "@/lib/db";
-import { authUser, authVerification, group, userGroup } from "@/lib/db/schema";
+import { authUser, authVerification } from "@/lib/db/schema";
 import {
   clearRateLimitForEmail,
   getRateLimitStatus,
@@ -300,31 +301,12 @@ export async function POST(req: NextRequest) {
         })
         .where(eq(authUser.id, user.id));
 
-      const adminGroup = await db.query.group.findFirst({
-        where: eq(group.role, "admin"),
-      });
-
-      if (!adminGroup) {
+      const addedToDefaultGroup = await addUserToDefaultGroup(user.id);
+      if (!addedToDefaultGroup) {
         return errorResponse(
-          'Grupo "Administradores" não configurado no sistema.',
+          "Grupo padrão não configurado no sistema.",
           500,
         );
-      }
-
-      const isAlreadyAdmin = await db.query.userGroup.findFirst({
-        where: and(
-          eq(userGroup.userId, user.id),
-          eq(userGroup.groupId, adminGroup.id),
-        ),
-      });
-
-      if (!isAlreadyAdmin) {
-        await db.insert(userGroup).values({
-          id: randomUUID(),
-          userId: user.id,
-          groupId: adminGroup.id,
-          joinedAt: new Date(),
-        });
       }
     }
 

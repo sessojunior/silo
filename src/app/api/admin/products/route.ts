@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import {
   product,
@@ -23,7 +23,7 @@ export const runtime = "nodejs";
 
 // Listar produtos com paginação e filtro por nome ou buscar por slug
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser("products", "list");
   if (!authResult.ok) return authResult.response;
 
   const { searchParams } = new URL(request.url);
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
 
 // Criar produto
 export async function POST(request: Request) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser("products", "create");
   if (!authResult.ok) return authResult.response;
 
   const body = await request.json();
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
 
 // Atualizar produto
 export async function PUT(request: Request) {
-  const authResult = await requireAdminAuthUser();
+  const authResult = await requirePermissionAuthUser("products", "update");
   if (!authResult.ok) return authResult.response;
 
   const body = await request.json();
@@ -186,7 +186,7 @@ export async function PUT(request: Request) {
 // Excluir produto com exclusão em cascata completa
 export async function DELETE(request: Request) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("products", "delete");
     if (!authResult.ok) return authResult.response;
 
     const { searchParams } = new URL(request.url);

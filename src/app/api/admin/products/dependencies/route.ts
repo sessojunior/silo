@@ -4,7 +4,7 @@ import { eq, isNull, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
 import { productDependency } from "@/lib/db/schema";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 
 // Utilitários para campos híbridos
 function calculateTreePath(
@@ -28,7 +28,10 @@ function calculateTreeDepth(parentDepth: number | null): number {
 
 export async function GET(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productDependencies",
+      "list",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { searchParams } = new URL(req.url);
@@ -72,7 +75,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productDependencies",
+      "create",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { productId, name, icon, description, parentId } = await req.json();
@@ -148,7 +154,10 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productDependencies",
+      "update",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { id, name, icon, description, parentId, newPosition } =
@@ -239,7 +248,10 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productDependencies",
+      "delete",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { id } = await req.json();

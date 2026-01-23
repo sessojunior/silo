@@ -48,6 +48,16 @@ O **Silo** centraliza e estrutura operações críticas em uma única plataforma
 - Contatos vinculados a produtos
 - Configurações personalizadas
 
+#### 🛡️ Permissões e Grupos
+
+- Permissões definidas por recurso/ação, somadas por todos os grupos do usuário
+- Permissões padrão imutáveis para todos os grupos:
+  - Dashboard (view)
+  - Projetos (list)
+  - Produtos (list)
+  - Ajuda (view)
+- Grupos administrativos possuem acesso completo
+
 ---
 
 ## 🚀 **Início Rápido**

@@ -3,13 +3,16 @@ import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
 import { productProblemCategory } from "@/lib/db/schema";
 import { eq, ilike, and, not } from "drizzle-orm";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 // GET  /api/admin/products/problems/categories?search=text
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productProblems",
+      "list",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { searchParams } = new URL(request.url);
@@ -36,7 +39,10 @@ export async function GET(request: NextRequest) {
 // POST  criar categoria
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productProblems",
+      "create",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { name, color } = await request.json();
@@ -76,7 +82,10 @@ export async function POST(request: NextRequest) {
 // PUT atualizar categoria
 export async function PUT(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productProblems",
+      "update",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { id, name, color } = await request.json();
@@ -122,7 +131,10 @@ export async function PUT(request: NextRequest) {
 // DELETE  /api/admin/products/problems/categories?id=uuid
 export async function DELETE(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productProblems",
+      "delete",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { searchParams } = new URL(request.url);

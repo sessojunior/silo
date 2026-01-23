@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { projectActivity, project } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import {
   parseRequestJson,
   parseRequestQuery,
@@ -49,7 +49,10 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "projectActivities",
+      "list",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { projectId } = await params;
@@ -87,7 +90,10 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "projectActivities",
+      "create",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { projectId } = await params;
@@ -150,7 +156,10 @@ export async function PUT(
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "projectActivities",
+      "update",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { projectId } = await params;
@@ -223,7 +232,10 @@ export async function DELETE(
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "projectActivities",
+      "delete",
+    );
     if (!authResult.ok) return authResult.response;
 
     const { projectId } = await params;

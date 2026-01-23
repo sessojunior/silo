@@ -88,8 +88,8 @@ export default function Switch({
           <span
             className={twMerge(
               "absolute inset-0 rounded-full transition-colors duration-200 ease-in-out",
-              "bg-gray-200 peer-checked:bg-blue-600 peer-disabled:pointer-events-none peer-disabled:opacity-50",
-              "dark:bg-zinc-700 dark:peer-checked:bg-blue-500",
+              "bg-gray-200 peer-checked:bg-blue-600 peer-disabled:pointer-events-none peer-disabled:opacity-60 peer-disabled:peer-checked:bg-blue-300",
+              "dark:bg-zinc-700 dark:peer-checked:bg-blue-500 dark:peer-disabled:peer-checked:bg-blue-400",
             )}
           />
 

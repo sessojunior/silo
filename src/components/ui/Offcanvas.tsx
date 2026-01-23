@@ -1,4 +1,7 @@
-import React, { useEffect, useRef } from "react";
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 const WIDTH_MAP = {
   sm: "320px",
@@ -28,6 +31,7 @@ export default function Offcanvas({
 }: OffcanvasProps) {
   const ref = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Fecha ao pressionar ESC
   useEffect(() => {
@@ -39,13 +43,17 @@ export default function Offcanvas({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  if (!open) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!open || !mounted) return null;
 
   // Calcula largura
   let panelWidth = WIDTH_MAP[width as keyof typeof WIDTH_MAP] || width;
   if (!panelWidth) panelWidth = "480px";
 
-  return (
+  const content = (
     <div
       ref={ref}
       className="fixed inset-0 flex"
@@ -116,4 +124,6 @@ export default function Offcanvas({
       `}</style>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

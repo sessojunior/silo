@@ -7,10 +7,10 @@ import {
 } from "@/lib/api-response";
 import { db } from "@/lib/db";
 import { authUser, group, userGroup, authAccount } from "@/lib/db/schema";
-import { eq, desc, ilike, and, inArray } from "drizzle-orm";
+import { eq, desc, ilike, and, inArray, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { isValidEmail, isValidDomain } from "@/lib/auth/validate";
 import { auth } from "@/lib/auth/server";
 import { z } from "zod";
@@ -44,6 +44,22 @@ const CreateUserSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+const UpdateUserSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(2, "Nome é obrigatório e deve ter pelo menos 2 caracteres."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email()
+    .refine(isValidEmail, "Email inválido.")
+    .refine(isValidDomain, "Apenas e-mails do domínio @inpe.br são permitidos."),
+  emailVerified: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  groups: z.array(UserGroupInputSchema).optional(),
+  groupId: z.string().uuid().optional(),
+});
+
 // Interface para grupos de usuário
 interface UserGroupInput {
   groupId: string;
@@ -52,7 +68,7 @@ interface UserGroupInput {
 // GET - Listar usuários com busca e filtros
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("users", "list");
     if (!authResult.ok) return authResult.response;
 
     const parsedQuery = parseRequestQuery(request, ListUsersQuerySchema);
@@ -166,7 +182,7 @@ export async function GET(request: NextRequest) {
 // POST - Criar novo usuário
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("users", "create");
     if (!authResult.ok) return authResult.response;
 
     const parsedBody = await parseRequestJson(request, CreateUserSchema);
@@ -291,5 +307,121 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("❌ [API_USERS] Erro ao criar usuário:", { error });
     return errorResponse("Erro ao criar usuário", 500);
+  }
+}
+
+// PUT - Atualizar usuário
+export async function PUT(request: NextRequest) {
+  try {
+    const authResult = await requirePermissionAuthUser("users", "update");
+    if (!authResult.ok) return authResult.response;
+
+    const parsedBody = await parseRequestJson(request, UpdateUserSchema);
+    if (!parsedBody.ok) return parsedBody.response;
+    const {
+      id,
+      name,
+      email,
+      emailVerified,
+      isActive,
+      groups,
+      groupId,
+    } = parsedBody.data;
+
+    const existingUser = await db
+      .select()
+      .from(authUser)
+      .where(eq(authUser.id, id))
+      .limit(1);
+
+    if (existingUser.length === 0) {
+      return errorResponse("Usuário não encontrado.", 404);
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const emailAlreadyUsed = await db
+      .select({ id: authUser.id })
+      .from(authUser)
+      .where(and(eq(authUser.email, normalizedEmail), ne(authUser.id, id)))
+      .limit(1);
+
+    if (emailAlreadyUsed.length > 0) {
+      return errorResponse("Já existe um usuário com este email.", 400, {
+        field: "email",
+      });
+    }
+
+    const userGroups: UserGroupInput[] =
+      groups || (groupId ? [{ groupId }] : []);
+
+    if (!userGroups || userGroups.length === 0) {
+      return errorResponse("Pelo menos um grupo é obrigatório.", 400, {
+        field: "groups",
+      });
+    }
+
+    const groupIds = userGroups.map((ug: UserGroupInput) => ug.groupId);
+    const existingGroups = await db
+      .select()
+      .from(group)
+      .where(inArray(group.id, groupIds));
+
+    if (existingGroups.length !== groupIds.length) {
+      const foundGroupIds = existingGroups.map((g) => g.id);
+      const missingGroups = groupIds.filter(
+        (groupIdValue: string) => !foundGroupIds.includes(groupIdValue),
+      );
+
+      return errorResponse(
+        `Grupos não encontrados: ${missingGroups.join(", ")}`,
+        400,
+        { field: "groups" },
+      );
+    }
+
+    const updateData: {
+      name: string;
+      email: string;
+      updatedAt: Date;
+      emailVerified?: boolean;
+      isActive?: boolean;
+    } = {
+      name: name.trim(),
+      email: normalizedEmail,
+      updatedAt: new Date(),
+    };
+
+    if (emailVerified !== undefined) {
+      updateData.emailVerified = emailVerified;
+    }
+    if (isActive !== undefined) {
+      updateData.isActive = isActive;
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(authUser)
+        .set(updateData)
+        .where(eq(authUser.id, id));
+
+      await tx.delete(userGroup).where(eq(userGroup.userId, id));
+
+      const newUserGroupEntries = userGroups.map((ug: UserGroupInput) => ({
+        userId: id,
+        groupId: ug.groupId,
+      }));
+
+      if (newUserGroupEntries.length > 0) {
+        await tx.insert(userGroup).values(newUserGroupEntries);
+      }
+    });
+
+    return successResponse(
+      { id, name: updateData.name, email: updateData.email },
+      "Usuário atualizado com sucesso.",
+    );
+  } catch (error) {
+    console.error("❌ [API_USERS] Erro ao atualizar usuário:", { error });
+    return errorResponse("Erro ao atualizar usuário", 500);
   }
 }

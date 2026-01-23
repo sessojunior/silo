@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { productActivity } from "@/lib/db/schema";
 import { randomUUID } from "crypto";
@@ -10,7 +10,10 @@ import { recordProductActivityHistory } from "@/lib/productActivityHistory";
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productActivities",
+      "create",
+    );
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -83,7 +86,10 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productActivities",
+      "update",
+    );
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 

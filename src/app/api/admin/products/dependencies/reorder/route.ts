@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { productDependency } from "@/lib/db/schema";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 interface ReorderItem {
@@ -15,7 +15,10 @@ interface ReorderItem {
 
 export async function PUT(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser(
+      "productDependencies",
+      "reorder",
+    );
     if (!authResult.ok) return authResult.response;
 
     const body = await req.json();

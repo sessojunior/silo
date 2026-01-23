@@ -32,7 +32,10 @@ export function useAdminCheck(): AdminCheckResult {
       );
 
       // Fazer uma chamada para a API específica de verificação de administrador
-      const response = await fetch(config.getApiUrl("/api/admin/check-admin"));
+      const response = await fetch(config.getApiUrl("/api/admin/check-admin"), {
+        credentials: "include",
+        cache: "no-store",
+      });
 
       if (response.ok) {
         const data = await response.json();
