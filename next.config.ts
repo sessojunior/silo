@@ -27,6 +27,17 @@ const appOrigin = parseAppOrigin();
 
 const nextConfig: NextConfig = {
   ...(normalizedBasePath ? { basePath: normalizedBasePath } : {}),
+  async redirects() {
+    const destination = `${normalizedBasePath || ""}/images/logo.png`;
+    return [
+      {
+        source: "/favicon.ico",
+        destination: destination.startsWith("/") ? destination : `/${destination}`,
+        permanent: false,
+        basePath: false,
+      },
+    ];
+  },
   images: {
     localPatterns: [
       {

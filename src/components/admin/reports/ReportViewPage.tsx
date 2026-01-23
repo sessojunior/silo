@@ -7,6 +7,8 @@ import Avatar from "@/components/ui/Avatar";
 import { formatDate, formatDateBR } from "@/lib/dateUtils";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { config } from "@/lib/config";
+import Button from "@/components/ui/Button";
+import Offcanvas from "@/components/ui/Offcanvas";
 
 interface ReportViewPageProps {
   reportId: string;
@@ -105,14 +107,97 @@ type ReportDataStructure =
   | PerformanceReportData
   | ProjectsReportData;
 
+type ReportType = "availability" | "problems" | "performance" | "projects";
+
 interface ReportData {
   id: string;
   title: string;
   description: string;
-  type: "availability" | "problems" | "performance" | "projects";
+  type: ReportType;
   data: ReportDataStructure;
   filters: ReportFilters;
 }
+
+type SmartCriterion = {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  details: string[];
+};
+
+const smartCriteria: SmartCriterion[] = [
+  {
+    id: "specific",
+    title: "Específico",
+    description: "O que exatamente você quer alcançar?",
+    icon: "icon-[lucide--target]",
+    details: [
+      "Descreva o resultado esperado com clareza, evitando termos genéricos como “melhorar” ou “otimizar” sem contexto. Use o relatório para apontar um ponto exato do processo ou produto.",
+      "Defina o alvo como uma situação observável, por exemplo: reduzir falhas críticas em um conjunto específico de produtos. Isso ajuda a equipe a enxergar o que precisa mudar.",
+      "Verifique se o objetivo pode ser entendido da mesma forma por qualquer pessoa que leia o relatório, garantindo alinhamento imediato.",
+    ],
+  },
+  {
+    id: "measurable",
+    title: "Mensurável",
+    description: "Quanto falta para atingir a meta?",
+    icon: "icon-[lucide--ruler]",
+    details: [
+      "Transforme a meta em números claros, como porcentagens, volumes ou tempos. O relatório já fornece métricas que podem servir como base.",
+      "Defina o ponto de partida e o ponto de chegada desejado, assim a evolução fica objetiva. Isso torna a análise de progresso rápida e transparente.",
+      "Escolha um indicador principal para acompanhar, evitando excesso de métricas que confundem a priorização.",
+    ],
+  },
+  {
+    id: "achievable",
+    title: "Atingível",
+    description: "A meta é realista com os recursos atuais?",
+    icon: "icon-[lucide--check-circle-2]",
+    details: [
+      "Considere capacidade da equipe, disponibilidade de dados e tempo de resposta atual. O relatório revela limites reais que devem ser respeitados.",
+      "Metas realistas permitem ajustes graduais e sustentáveis. Um passo viável bem executado costuma gerar mais impacto do que metas inalcançáveis.",
+      "Valide se a meta depende de fatores externos e ajuste o escopo para manter o controle sobre o resultado.",
+    ],
+  },
+  {
+    id: "relevant",
+    title: "Relevante",
+    description: "Por que esta meta é importante agora?",
+    icon: "icon-[lucide--sparkles]",
+    details: [
+      "Conecte a meta ao objetivo estratégico do relatório, como estabilidade do serviço ou eficiência de projetos. Isso evita esforços desconectados.",
+      "Priorize aquilo que gera maior impacto para usuários internos e externos. O relatório ajuda a identificar onde o impacto é mais alto.",
+      "Explique o benefício esperado para a operação, facilitando a comunicação com outras áreas e patrocinadores.",
+    ],
+  },
+  {
+    id: "timebound",
+    title: "Temporizável",
+    description: "Em quanto tempo a meta deve ser atingida?",
+    icon: "icon-[lucide--clock-3]",
+    details: [
+      "Estabeleça um prazo objetivo que possa ser acompanhado nos ciclos de análise. O relatório permite comparar períodos e validar ritmo.",
+      "Defina marcos intermediários para acompanhar tendências, evitando descobrir atrasos apenas no fim do prazo.",
+      "Alinhe o tempo com o nível de complexidade da meta, garantindo que o prazo seja desafiador, mas possível.",
+    ],
+  },
+] as const;
+
+const getSmartIntro = (reportType: ReportType): string => {
+  switch (reportType) {
+    case "availability":
+      return "Direcione as metas para disponibilidade, estabilidade e continuidade operacional dos produtos.";
+    case "problems":
+      return "Defina metas para reduzir recorrência, acelerar resolução e melhorar a qualidade das soluções.";
+    case "performance":
+      return "Estabeleça metas para equilíbrio entre produtividade, colaboração e impacto em projetos.";
+    case "projects":
+      return "Oriente as metas para entregas, progresso sustentável e alocação eficiente de tarefas.";
+    default:
+      return "Estruture metas claras para orientar decisões e priorizações do relatório.";
+  }
+};
 
 export function ReportViewPage({ reportId }: ReportViewPageProps) {
   const [report, setReport] = useState<ReportData | null>(null);
@@ -122,6 +207,8 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
   const [filters, setFilters] = useState<ReportFilters>({
     dateRange: "30d",
   });
+  const [isSmartOpen, setIsSmartOpen] = useState(false);
+  const [openSmartId, setOpenSmartId] = useState<string | null>("specific");
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -301,7 +388,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
       {/* Header */}
       <div className="bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
         <div className="mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center">
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
@@ -312,9 +399,114 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
                 </p>
               </div>
             </div>
+            <Button
+              style="bordered"
+              className="w-full sm:w-auto"
+              icon="icon-[lucide--target]"
+              onClick={() => setIsSmartOpen(true)}
+            >
+              Metas
+            </Button>
           </div>
         </div>
       </div>
+
+      <Offcanvas
+        open={isSmartOpen}
+        onClose={() => setIsSmartOpen(false)}
+        title={
+          <div className="flex items-center gap-3">
+            <span className="icon-[lucide--target] size-5 text-blue-600" />
+            <div>
+              <h2 className="text-lg font-semibold">Metas SMART</h2>
+              <p className="text-sm font-normal text-zinc-500 dark:text-zinc-400">
+                {report.title}
+              </p>
+            </div>
+          </div>
+        }
+        width="lg"
+      >
+        <div className="flex flex-col gap-6">
+          <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-700/50 dark:bg-blue-950/20">
+            <div className="flex items-start gap-3">
+              <span className="icon-[lucide--sparkles] size-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  Guia de metas aplicado ao relatório atual
+                </p>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  {getSmartIntro(report.type)}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            {smartCriteria.map((item) => {
+              const isOpen = openSmartId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/40"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenSmartId((prev) =>
+                        prev === item.id ? null : item.id,
+                      )
+                    }
+                    className="w-full px-4 py-4 text-left"
+                    aria-expanded={isOpen}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={`${item.icon} size-5 text-zinc-600 dark:text-zinc-300 mt-0.5`}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between gap-4">
+                          <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                            {item.title}
+                          </p>
+                          <span
+                            className={`size-4 text-zinc-500 dark:text-zinc-400 ${isOpen ? "icon-[lucide--chevron-up]" : "icon-[lucide--chevron-down]"}`}
+                          />
+                        </div>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-4">
+                      <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
+                        {item.details.map((detail) => (
+                          <p key={detail}>{detail}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-700/50 dark:bg-emerald-950/20">
+            <div className="flex items-start gap-3">
+              <span className="icon-[lucide--badge-check] size-5 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                  Como usar no dia a dia
+                </p>
+                <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                  Utilize estes critérios para orientar análises, comparar
+                  períodos e priorizar ações do relatório.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Offcanvas>
 
       {/* Filtros do Relatório - AQUI ESTÃO OS FILTROS EM CADA PÁGINA ESPECÍFICA */}
 

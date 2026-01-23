@@ -300,10 +300,18 @@ export const auth = betterAuth({
 
 // Helper to get authenticated user in server components / API routes
 export async function getAuthUser() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  return session?.user || null;
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+    return session?.user || null;
+  } catch (error) {
+    if (error instanceof APIError) {
+      return null;
+    }
+    console.error("❌ [AUTH_SESSION] Falha ao obter sessão:", { error });
+    return null;
+  }
 }
 
 export type AuthUser = NonNullable<Awaited<ReturnType<typeof getAuthUser>>>;
