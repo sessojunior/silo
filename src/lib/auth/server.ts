@@ -23,6 +23,10 @@ import {
   uploadProfileImageFromUrl,
 } from '@/lib/profileImage';
 import { addUserToDefaultGroup } from '@/lib/auth/user-groups';
+import {
+  AUTH_SESSION_DURATION_SECONDS,
+  AUTH_SESSION_UPDATE_AGE_SECONDS,
+} from '@/lib/auth/rate-limits';
 
 const extractOrigin = (value: string): string | null => {
   try {
@@ -69,6 +73,10 @@ const authBasePath = config.getPublicPath(authApiPath);
 export const auth = betterAuth({
   ...(authBaseURL ? { baseURL: authBaseURL } : {}),
   basePath: authBasePath,
+  session: {
+    expiresIn: AUTH_SESSION_DURATION_SECONDS,
+    updateAge: AUTH_SESSION_UPDATE_AGE_SECONDS,
+  },
   account: {
     storeStateStrategy: 'cookie',
     accountLinking: {
