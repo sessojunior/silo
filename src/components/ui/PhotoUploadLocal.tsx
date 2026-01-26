@@ -45,6 +45,12 @@ export default function PhotoUploadLocal({
     if (normalized.startsWith("http://") || normalized.startsWith("https://"))
       return normalized;
     if (
+      normalized.startsWith("/images/") &&
+      !normalized.startsWith(`${config.publicBasePath}/images/`)
+    ) {
+      return config.getPublicPath(normalized);
+    }
+    if (
       normalized.startsWith("/uploads/") &&
       !normalized.startsWith(`${config.publicBasePath}/uploads/`)
     ) {
@@ -56,13 +62,7 @@ export default function PhotoUploadLocal({
   // Carrega imagem inicial (caso exista)
   useEffect(() => {
     if (image) {
-      const normalized = normalizeUploadsSrc(image);
-      const displaySrc =
-        normalized.startsWith("/uploads/") &&
-        !normalized.startsWith(`${config.publicBasePath}/uploads/`)
-          ? config.getPublicPath(normalized)
-          : normalized;
-      setPreviewUrl(displaySrc);
+      setPreviewUrl(toDisplayUploadsSrc(image));
     }
   }, [image]);
 
