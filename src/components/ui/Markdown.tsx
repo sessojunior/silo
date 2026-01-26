@@ -246,7 +246,7 @@ export default function Markdown({
 		.md-editor-custom .w-md-editor-text {
 			border-color: ${theme === "dark" ? "rgb(63 63 70)" : "rgb(228 228 231)"};
 			background-color: transparent;
-			font-size: 0.875rem;
+			font-size: 1rem;
 			line-height: 1.25rem;
 		}
 

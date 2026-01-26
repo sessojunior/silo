@@ -73,7 +73,7 @@ export default function ManualSectionFormOffcanvas({
               id="form-description"
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
-              className="block w-full rounded-lg border-zinc-200 px-4 py-3 sm:text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:placeholder-zinc-500 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-lg border-zinc-200 px-4 py-3 text-base dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:placeholder-zinc-500 focus:border-blue-500 focus:ring-blue-500"
               rows={3}
               placeholder="Breve descrição sobre esta seção..."
             />

@@ -67,6 +67,64 @@ const resolveTrustedOrigins = (): string[] => {
   return Array.from(new Set(origins));
 };
 
+const isDevEnvironment = config.nodeEnv !== 'production';
+
+const normalizeIsoDate = (value: unknown): string | null => {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toISOString();
+  }
+  return null;
+};
+
+const sessionDebugCache = new Map<
+  string,
+  { expiresAt: string | null; updatedAt: string | null }
+>();
+
+const logSessionSnapshot = (params: {
+  sessionId: string;
+  userId: string | null;
+  expiresAt: string | null;
+  updatedAt: string | null;
+  createdAt: string | null;
+  previousExpiresAt?: string | null;
+  previousUpdatedAt?: string | null;
+}): void => {
+  const {
+    sessionId,
+    userId,
+    expiresAt,
+    updatedAt,
+    createdAt,
+    previousExpiresAt,
+    previousUpdatedAt,
+  } = params;
+
+  if (previousExpiresAt || previousUpdatedAt) {
+    console.log('ℹ️ [AUTH_SESSION_DEV] Sessão atualizada', {
+      sessionId,
+      userId,
+      expiresAtAnterior: previousExpiresAt ?? null,
+      expiresAtAtual: expiresAt,
+      updatedAtAnterior: previousUpdatedAt ?? null,
+      updatedAtAtual: updatedAt,
+      createdAt,
+    });
+    return;
+  }
+
+  console.log('ℹ️ [AUTH_SESSION_DEV] Sessão observada', {
+    sessionId,
+    userId,
+    expiresAt,
+    updatedAt,
+    createdAt,
+  });
+};
+
 const authBaseURL = getAuthServerBaseURL();
 const authBasePath = config.getPublicPath(authApiPath);
 
@@ -76,6 +134,10 @@ export const auth = betterAuth({
   session: {
     expiresIn: AUTH_SESSION_DURATION_SECONDS,
     updateAge: AUTH_SESSION_UPDATE_AGE_SECONDS,
+    cookieCache: {
+      enabled: true,
+      maxAge: AUTH_SESSION_UPDATE_AGE_SECONDS,
+    },
   },
   account: {
     storeStateStrategy: 'cookie',
@@ -312,6 +374,30 @@ export async function getAuthUser() {
     const session = await auth.api.getSession({
       headers: await headers(),
     });
+    if (isDevEnvironment && session?.session?.id) {
+      const sessionId = session.session.id;
+      const expiresAt = normalizeIsoDate(session.session.expiresAt);
+      const updatedAt = normalizeIsoDate(session.session.updatedAt);
+      const createdAt = normalizeIsoDate(session.session.createdAt);
+      const previous = sessionDebugCache.get(sessionId);
+      const shouldLog =
+        !previous ||
+        previous.expiresAt !== expiresAt ||
+        previous.updatedAt !== updatedAt;
+
+      if (shouldLog) {
+        sessionDebugCache.set(sessionId, { expiresAt, updatedAt });
+        logSessionSnapshot({
+          sessionId,
+          userId: session.user?.id ?? null,
+          expiresAt,
+          updatedAt,
+          createdAt,
+          previousExpiresAt: previous?.expiresAt,
+          previousUpdatedAt: previous?.updatedAt,
+        });
+      }
+    }
     return session?.user || null;
   } catch (error) {
     if (error instanceof APIError) {

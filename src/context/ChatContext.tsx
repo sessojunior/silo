@@ -149,6 +149,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const isPollingActive = useRef(false);
   const sidebarRequestInFlight = useRef(false);
   const heartbeatInFlight = useRef(false);
+  const hasUnauthorizedRedirected = useRef(false);
+
+  const handleUnauthorized = useCallback((status: number): boolean => {
+    if (status !== 401) return false;
+    if (hasUnauthorizedRedirected.current) return true;
+    hasUnauthorizedRedirected.current = true;
+    window.location.href = config.getApiUrl("/api/logout");
+    return true;
+  }, []);
 
   // === FUNÇÕES PRINCIPAIS ===
 
@@ -188,6 +197,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             break;
           }
 
+          if (handleUnauthorized(response.status)) return;
+
           const shouldRetry = response.status >= 500 && attempt < maxAttempts;
           if (shouldRetry) {
             await delay(250 * attempt);
@@ -215,7 +226,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       sidebarRequestInFlight.current = false;
     }
-  }, []);
+  }, [handleUnauthorized]);
 
   const loadMessages = useCallback(
     async (targetId: string, type: "group" | "user") => {
@@ -853,16 +864,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setCurrentPresence(status);
 
       // Atualizar na API
-      await fetch(config.getApiUrl("/api/admin/chat/presence"), {
+      const response = await fetch(config.getApiUrl("/api/admin/chat/presence"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ status }),
       });
+      handleUnauthorized(response.status);
     } catch (error) {
       console.error("❌ [CONTEXT_CHAT] Erro ao atualizar presença:", { error });
     }
-  }, []);
+  }, [handleUnauthorized]);
 
   const sendHeartbeat = useCallback(async () => {
     if (heartbeatInFlight.current) return;
@@ -870,12 +882,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     try {
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 10000);
-      await fetch(config.getApiUrl("/api/admin/chat/presence"), {
+      const response = await fetch(config.getApiUrl("/api/admin/chat/presence"), {
         method: "PATCH",
         signal: controller.signal,
         credentials: "include",
         keepalive: true,
       }).finally(() => window.clearTimeout(timeoutId));
+      handleUnauthorized(response.status);
     } catch (error) {
       console.error("❌ [CONTEXT_CHAT] Erro no heartbeat de presença:", {
         error,
@@ -883,7 +896,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } finally {
       heartbeatInFlight.current = false;
     }
-  }, []);
+  }, [handleUnauthorized]);
 
   // === POLLING ===
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth/server";
+import { config } from "@/lib/config";
 import { ChatProvider } from "@/context/ChatContext";
 import { UserProvider } from "@/context/UserContext";
 
@@ -28,7 +29,7 @@ export default async function AdminLayout({
   // Se o usuário não estiver autenticado, redireciona para a tela de login
   const currentUser = await getAuthUser();
   if (!currentUser) {
-    redirect("/login");
+    redirect(config.getPublicPath("/login"));
   }
 
   // Sessão válida - o UserContext fará a busca dos dados completos
