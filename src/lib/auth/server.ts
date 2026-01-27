@@ -131,6 +131,11 @@ const authBasePath = config.getPublicPath(authApiPath);
 export const auth = betterAuth({
   ...(authBaseURL ? { baseURL: authBaseURL } : {}),
   basePath: authBasePath,
+  advanced: {
+    defaultCookieAttributes: {
+      path: config.publicBasePath || "/",
+    },
+  },
   session: {
     expiresIn: AUTH_SESSION_DURATION_SECONDS,
     updateAge: AUTH_SESSION_UPDATE_AGE_SECONDS,

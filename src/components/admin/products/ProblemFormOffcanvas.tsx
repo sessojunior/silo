@@ -5,7 +5,7 @@ import Input from "@/components/ui/Input";
 import Label from "@/components/ui/Label";
 import Dialog from "@/components/ui/Dialog";
 import Lightbox from "@/components/ui/Lightbox";
-import Markdown from "@/components/ui/Markdown";
+import MarkdownEditor from "@/components/ui/MarkdownEditor";
 import { toast } from "@/lib/toast";
 import UploadButtonLocal from "@/components/ui/UploadButtonLocal";
 import Image from "next/image";
@@ -154,11 +154,9 @@ export default function ProblemFormOffcanvas({
               Descrição detalhada
             </Label>
             <div className="mt-2">
-              <Markdown
+              <MarkdownEditor
                 value={formDescription}
                 onChange={setFormDescription}
-                height={300}
-                compact
               />
             </div>
           </div>

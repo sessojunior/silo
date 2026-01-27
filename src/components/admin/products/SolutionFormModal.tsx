@@ -3,7 +3,7 @@
 import Modal from "@/components/ui/Modal";
 import Label from "@/components/ui/Label";
 import Button from "@/components/ui/Button";
-import Markdown from "@/components/ui/Markdown";
+import MarkdownEditor from "@/components/ui/MarkdownEditor";
 import Dialog from "@/components/ui/Dialog";
 import Lightbox from "@/components/ui/Lightbox";
 import { toast } from "@/lib/toast";
@@ -136,12 +136,9 @@ export default function SolutionFormModal({
             Descrição da solução
           </Label>
           <div className="mt-2">
-            <Markdown
+            <MarkdownEditor
               value={solutionDescription}
               onChange={setSolutionDescription}
-              height={200}
-              preview="edit"
-              compact
             />
           </div>
         </div>

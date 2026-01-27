@@ -1,13 +1,8 @@
-import dynamic from "next/dynamic";
 import Button from "@/components/ui/Button";
 import Offcanvas from "@/components/ui/Offcanvas";
 import Label from "@/components/ui/Label";
 import Input from "@/components/ui/Input";
-
-// Importação dinâmica do Markdown para evitar problemas de SSR
-const Markdown = dynamic(() => import("@/components/ui/Markdown"), {
-  ssr: false,
-});
+import MarkdownEditor from "@/components/ui/MarkdownEditor";
 
 interface ManualSectionFormOffcanvasProps {
   open: boolean;
@@ -21,7 +16,6 @@ interface ManualSectionFormOffcanvasProps {
   setFormContent: (content: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   formLoading: boolean;
-  isDarkMode: boolean;
 }
 
 export default function ManualSectionFormOffcanvas({
@@ -36,7 +30,6 @@ export default function ManualSectionFormOffcanvas({
   setFormContent,
   onSubmit,
   formLoading,
-  isDarkMode,
 }: ManualSectionFormOffcanvasProps) {
   return (
     <Offcanvas
@@ -86,11 +79,9 @@ export default function ManualSectionFormOffcanvas({
               Conteúdo do capítulo
             </Label>
             <div className="flex-1 min-h-[300px] max-h-[60vh]">
-              <Markdown
+              <MarkdownEditor
                 value={formContent}
                 onChange={(val) => setFormContent(val || "")}
-                preview="edit"
-                data-color-mode={isDarkMode ? "dark" : "light"}
                 className="flex-1 h-full"
               />
             </div>

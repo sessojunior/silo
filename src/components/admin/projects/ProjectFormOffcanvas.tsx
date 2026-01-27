@@ -8,7 +8,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Label from "@/components/ui/Label";
-import Markdown from "@/components/ui/Markdown";
+import MarkdownEditor from "@/components/ui/MarkdownEditor";
 import { toast } from "@/lib/toast";
 
 interface ProjectFormOffcanvasProps {
@@ -249,11 +249,9 @@ export default function ProjectFormOffcanvas({
         <div>
           <Label htmlFor="description">Descrição Completa</Label>
           <div className="mt-2">
-            <Markdown
+            <MarkdownEditor
               value={formData.description}
               onChange={(value) => handleFieldChange("description", value)}
-              height={250}
-              compact
             />
           </div>
         </div>

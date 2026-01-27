@@ -3,7 +3,7 @@ import Offcanvas from "@/components/ui/Offcanvas";
 import Label from "@/components/ui/Label";
 import Select, { SelectOption } from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
-import Markdown from "@/components/ui/Markdown";
+import MarkdownEditor from "@/components/ui/MarkdownEditor";
 import { toast } from "@/lib/toast";
 import { formatDateBR } from "@/lib/dateUtils";
 import { NO_INCIDENTS_CATEGORY_ID, isRealIncident } from "@/lib/constants";
@@ -377,47 +377,11 @@ export default function ProductActivityOffcanvas({
             <Label required>Descrição de incidentes</Label>
 
             {/* Dicas de formatação Markdown */}
-            <div className="mt-2 mb-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <div className="flex items-start gap-3">
-                <span className="icon-[lucide--info] size-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-700 dark:text-blue-300">
-                  <p className="font-medium mb-1">Dicas de formatação:</p>
-                  <ul className="text-sm">
-                    <li>
-                      Use{" "}
-                      <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">
-                        **negrito**
-                      </code>{" "}
-                      para destacar informações importantes e{" "}
-                      <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">
-                        *itálico*
-                      </code>{" "}
-                      para ênfase
-                    </li>
-                    <li>
-                      Use{" "}
-                      <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">
-                        - lista
-                      </code>{" "}
-                      para criar listas e{" "}
-                      <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">
-                        `código`
-                      </code>{" "}
-                      para comandos ou erros
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
             <div className="mt-2">
-              <Markdown
+              <MarkdownEditor
                 value={description}
                 onChange={(value) => setDescription(value || "")}
-                preview="edit"
                 className="h-full w-full"
-                height={250}
-                compact
               />
             </div>
           </div>

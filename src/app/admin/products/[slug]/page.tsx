@@ -130,7 +130,6 @@ export default function ProductsPage() {
   const slug = params.slug as string;
 
   const [productId, setProductId] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [dependencies, setDependencies] = useState<ProductDependency[]>([]);
   const [contacts, setContacts] = useState<ProductContact[]>([]);
   const [manual, setManual] = useState<ProductManual | null>(null);
@@ -217,26 +216,6 @@ export default function ProductsPage() {
         : [],
     }));
   };
-
-  // Detecta tema dark/light
-  useEffect(() => {
-    const checkTheme = () => {
-      const isDark = document.documentElement.classList.contains("dark");
-      setIsDarkMode(isDark);
-    };
-
-    // Verifica tema inicial
-    checkTheme();
-
-    // Observer para mudanças no tema
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-
-    return () => observer.disconnect();
-  }, []);
 
   // Detecta mobile para desabilitar drag & drop
   useEffect(() => {
@@ -1016,7 +995,6 @@ export default function ProductsPage() {
         setFormContent={setFormContent}
         onSubmit={handleSubmitManual}
         formLoading={formLoading}
-        isDarkMode={isDarkMode}
       />
 
       {/* Dialog de confirmação de exclusão */}
