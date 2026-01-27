@@ -299,47 +299,52 @@ export default function SolutionFormModal({
             Excluir imagem
           </div>
         }
-        description="Tem certeza que deseja excluir esta imagem? Esta ação não poderá ser desfeita."
       >
-        <div className="flex gap-2 justify-end mt-6">
-          <Button
-            type="button"
-            style="bordered"
-            onClick={() => setDeleteImageId(null)}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            className="bg-red-600 text-white hover:bg-red-700"
-            disabled={deleteImageLoading}
-            onClick={async () => {
-              if (!deleteImageId) return;
-              if (!editingSolution) return;
-              const res = await fetch(
-                config.getApiUrl("/api/admin/products/solutions/images"),
-                {
-                  method: "DELETE",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ id: deleteImageId }),
-                },
-              );
-              setDeleteImageId(null);
-              if (res.ok) {
-                toast({ type: "success", title: "Imagem excluída" });
-                // Atualiza lista de imagens no modal
-                await onSolutionImagesUpdate();
-                // Recarrega a lista principal de soluções
-                if (problemId) {
-                  await onUpdateSolutions(problemId);
+        <div className="p-6">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+            Tem certeza que deseja excluir esta imagem? Esta ação não poderá ser
+            desfeita.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <Button
+              type="button"
+              style="bordered"
+              onClick={() => setDeleteImageId(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deleteImageLoading}
+              onClick={async () => {
+                if (!deleteImageId) return;
+                if (!editingSolution) return;
+                const res = await fetch(
+                  config.getApiUrl("/api/admin/products/solutions/images"),
+                  {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: deleteImageId }),
+                  },
+                );
+                setDeleteImageId(null);
+                if (res.ok) {
+                  toast({ type: "success", title: "Imagem excluída" });
+                  // Atualiza lista de imagens no modal
+                  await onSolutionImagesUpdate();
+                  // Recarrega a lista principal de soluções
+                  if (problemId) {
+                    await onUpdateSolutions(problemId);
+                  }
+                } else {
+                  toast({ type: "error", title: "Erro ao excluir imagem" });
                 }
-              } else {
-                toast({ type: "error", title: "Erro ao excluir imagem" });
-              }
-            }}
-          >
-            {deleteImageLoading ? "Excluindo..." : "Excluir"}
-          </Button>
+              }}
+            >
+              {deleteImageLoading ? "Excluindo..." : "Excluir"}
+            </Button>
+          </div>
         </div>
       </Dialog>
 

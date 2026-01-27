@@ -1,0 +1,72 @@
+import { NextRequest } from "next/server";
+import { storeImageAsWebp } from "@/lib/localUploads";
+import { successResponse, errorResponse } from "@/lib/api-response";
+
+export const runtime = "nodejs";
+
+type UploadResponse = {
+  key: string;
+  name: string;
+  size: number;
+  url: string;
+  id: string;
+  status: "uploaded";
+  optimized: boolean;
+};
+
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData();
+    const all = formData.getAll("files");
+    const files = all.filter((item): item is File => item instanceof File);
+
+    if (files.length === 0) {
+      return errorResponse("Nenhum arquivo enviado", 400);
+    }
+
+    if (files.length > 6) {
+      return errorResponse("Máximo de 6 arquivos por upload.", 400);
+    }
+
+    const uploaded: UploadResponse[] = [];
+    for (const file of files) {
+      const stored = await storeImageAsWebp({
+        file,
+        kind: "manual",
+        requestUrl: request.url,
+        options: {
+          mode: "inside",
+          maxWidth: 1920,
+          maxHeight: 1080,
+          quality: 90,
+        },
+      });
+
+      if ("error" in stored) continue;
+
+      uploaded.push({
+        key: stored.filename,
+        name: stored.originalName,
+        size: stored.size,
+        url: stored.url,
+        id: stored.filename,
+        status: "uploaded",
+        optimized: true,
+      });
+    }
+
+    if (uploaded.length === 0) {
+      return errorResponse("Tipo de arquivo não permitido.", 400);
+    }
+
+    return successResponse(
+      uploaded,
+      `${uploaded.length} arquivo(s) do manual enviado(s) com sucesso!`,
+    );
+  } catch (error) {
+    console.error("❌ [API_UPLOAD_MANUAL] Erro no upload de manual:", {
+      error,
+    });
+    return errorResponse("Erro interno do servidor", 500);
+  }
+}

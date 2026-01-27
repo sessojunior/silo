@@ -6,6 +6,7 @@ interface DialogProps {
   title?: React.ReactNode;
   description?: string;
   children?: React.ReactNode;
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
 // Componente de modal genérico
@@ -15,6 +16,7 @@ export default function Dialog({
   title,
   description,
   children,
+  size = "sm",
 }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -39,6 +41,14 @@ export default function Dialog({
 
   if (!open) return null;
 
+  const WIDTH_MAP: Record<NonNullable<DialogProps["size"]>, string> = {
+    sm: "400px",
+    md: "640px",
+    lg: "800px",
+    xl: "960px",
+  };
+  const panelWidth = WIDTH_MAP[size] ?? WIDTH_MAP.sm;
+
   return (
     <div
       ref={dialogRef}
@@ -50,26 +60,31 @@ export default function Dialog({
     >
       <div
         ref={contentRef}
-        className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg max-w-full w-[90vw] sm:w-[400px] p-6 animate-fade-in relative flex flex-col"
+        className="bg-white dark:bg-zinc-800 rounded-lg shadow-lg max-w-full w-[90vw] animate-fade-in relative flex flex-col"
+        style={{ maxWidth: panelWidth }}
       >
-        {/* Botão de fechar */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors"
-          aria-label="Fechar"
-        >
-          <span className="icon-[lucide--x] size-4" />
-        </button>
-
-        {title && (
-          <h2 className="text-lg font-semibold mb-2 text-zinc-900 dark:text-zinc-100 pr-8">
-            {title}
-          </h2>
-        )}
-        {description && (
-          <p className="text-zinc-600 dark:text-zinc-400 mb-4">{description}</p>
-        )}
-        <div className="text-zinc-900 dark:text-zinc-100 flex-1 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-700">
+          <div className="min-w-0">
+            {title && (
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                {title}
+              </h2>
+            )}
+            {description && (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                {description}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+            aria-label="Fechar"
+          >
+            <span className="icon-[lucide--x] size-4" />
+          </button>
+        </div>
+        <div className="text-zinc-900 dark:text-zinc-100 flex-1 overflow-hidden max-h-[75vh]">
           {children}
         </div>
       </div>

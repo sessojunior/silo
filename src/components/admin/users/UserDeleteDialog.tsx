@@ -84,9 +84,11 @@ export default function UserDeleteDialog({
       open={isOpen}
       onClose={onClose}
       title="Excluir Usuário"
-      description={`Tem certeza que deseja excluir o usuário "${user.name}"?`}
     >
-      <div className="space-y-4">
+      <div className="p-6 space-y-4">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Tem certeza que deseja excluir o usuário &quot;{user.name}&quot;?
+        </p>
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <span className="icon-[lucide--alert-triangle] size-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />

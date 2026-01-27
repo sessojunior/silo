@@ -26,20 +26,25 @@ export default function DeleteSolutionDialog({
           Excluir solução
         </div>
       }
-      description="Tem certeza que deseja excluir esta solução? Esta ação não poderá ser desfeita."
     >
-      <div className="flex gap-2 justify-end mt-6">
-        <Button type="button" style="bordered" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button
-          type="button"
-          className="bg-red-600 text-white hover:bg-red-700"
-          disabled={deleteSolutionLoading}
-          onClick={onConfirmDelete}
-        >
-          {deleteSolutionLoading ? "Excluindo..." : "Excluir"}
-        </Button>
+      <div className="p-6">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+          Tem certeza que deseja excluir esta solução? Esta ação não poderá ser
+          desfeita.
+        </p>
+        <div className="flex gap-2 justify-end">
+          <Button type="button" style="bordered" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            className="bg-red-600 text-white hover:bg-red-700"
+            disabled={deleteSolutionLoading}
+            onClick={onConfirmDelete}
+          >
+            {deleteSolutionLoading ? "Excluindo..." : "Excluir"}
+          </Button>
+        </div>
       </div>
     </Dialog>
   );

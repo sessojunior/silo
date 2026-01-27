@@ -70,35 +70,40 @@ export default function ContactDeleteDialog({
       open={isOpen}
       onClose={onClose}
       title="Confirmar exclusão"
-      description={`Tem certeza que deseja excluir o contato ${contact?.name}? Esta ação não pode ser desfeita.`}
     >
-      <div className="flex gap-3 justify-end mt-6">
-        <Button
-          type="button"
-          style="bordered"
-          onClick={onClose}
-          disabled={loading}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="button"
-          onClick={handleDelete}
-          disabled={loading}
-          className="bg-red-600 hover:bg-red-700 focus:bg-red-700"
-        >
-          {loading ? (
-            <>
-              <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
-              Excluindo...
-            </>
-          ) : (
-            <>
-              <span className="icon-[lucide--trash] size-4 mr-2" />
-              Excluir contato
-            </>
-          )}
-        </Button>
+      <div className="p-6">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+          Tem certeza que deseja excluir o contato {contact?.name}? Esta ação não
+          pode ser desfeita.
+        </p>
+        <div className="flex gap-3 justify-end">
+          <Button
+            type="button"
+            style="bordered"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={handleDelete}
+            disabled={loading}
+            className="bg-red-600 hover:bg-red-700 focus:bg-red-700"
+          >
+            {loading ? (
+              <>
+                <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
+                Excluindo...
+              </>
+            ) : (
+              <>
+                <span className="icon-[lucide--trash] size-4" />
+                Excluir contato
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </Dialog>
   );

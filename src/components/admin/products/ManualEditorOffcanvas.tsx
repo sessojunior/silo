@@ -2,6 +2,7 @@ import Button from "@/components/ui/Button";
 import Offcanvas from "@/components/ui/Offcanvas";
 import Label from "@/components/ui/Label";
 import MarkdownEditor from "@/components/ui/MarkdownEditor";
+import { useMemo } from "react";
 
 interface ManualEditorOffcanvasProps {
   open: boolean;
@@ -20,6 +21,20 @@ export default function ManualEditorOffcanvas({
   onSubmit,
   formLoading,
 }: ManualEditorOffcanvasProps) {
+  const uploadConfig = useMemo(
+    () => ({
+      enabled: true,
+      showButton: true,
+      uploadEndpoint: "manualImageUploader" as const,
+      listEndpoint: "/api/admin/products/manual/images",
+      deleteEndpoint: "/api/admin/products/manual/images",
+      directory: "/uploads/manual",
+      title: "Inserir imagem da galeria",
+      description: "Envie imagens para usar no manual",
+    }),
+    [],
+  );
+
   return (
     <Offcanvas
       open={open}
@@ -47,6 +62,7 @@ export default function ManualEditorOffcanvas({
               value={formContent}
               onChange={(val) => setFormContent(val || "")}
               className="flex-1 h-full"
+              uploadConfig={uploadConfig}
             />
           </div>
         </div>

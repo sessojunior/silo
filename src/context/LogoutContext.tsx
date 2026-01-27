@@ -26,26 +26,30 @@ export function LogoutProvider({ children }: { children: ReactNode }) {
         open={showLogoutDialog}
         onClose={() => setShowLogoutDialog(false)}
         title="Confirmar saída"
-        description="Tem certeza que deseja sair do sistema?"
       >
-        <div className="flex gap-3 justify-end mt-6">
-          <Button
-            type="button"
-            style="bordered"
-            onClick={() => setShowLogoutDialog(false)}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              window.location.href = config.getApiUrl("/api/logout");
-            }}
-            className="bg-red-600 hover:bg-red-700 focus:bg-red-700"
-          >
-            <span className="icon-[lucide--log-out] size-4 mr-2" />
-            Sair
-          </Button>
+        <div className="p-6">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+            Tem certeza que deseja sair do sistema?
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button
+              type="button"
+              style="bordered"
+              onClick={() => setShowLogoutDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                window.location.href = config.getApiUrl("/api/logout");
+              }}
+              className="bg-red-600 hover:bg-red-700 focus:bg-red-700"
+            >
+              <span className="icon-[lucide--log-out] size-4 mr-2" />
+              Sair
+            </Button>
+          </div>
         </div>
       </Dialog>
     </LogoutContext.Provider>

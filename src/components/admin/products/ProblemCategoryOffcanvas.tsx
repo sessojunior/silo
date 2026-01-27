@@ -224,22 +224,27 @@ export default function ProblemCategoryOffcanvas({ open, onClose }: Props) {
         open={deleteDialog.open}
         onClose={() => setDeleteDialog({ open: false, cat: null })}
         title="Excluir categoria"
-        description={`Tem certeza que deseja excluir "${deleteDialog.cat?.name}"? Essa ação não pode ser desfeita.`}
       >
-        <div className="flex justify-end gap-2">
-          <Button
-            style="bordered"
-            onClick={() => setDeleteDialog({ open: false, cat: null })}
-          >
-            Cancelar
-          </Button>
-          <Button
-            style="filled"
-            className="bg-red-600 hover:bg-red-700"
-            onClick={confirmDelete}
-          >
-            Excluir
-          </Button>
+        <div className="p-6">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+            Tem certeza que deseja excluir &quot;{deleteDialog.cat?.name}&quot;?
+            Essa ação não pode ser desfeita.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              style="bordered"
+              onClick={() => setDeleteDialog({ open: false, cat: null })}
+            >
+              Cancelar
+            </Button>
+            <Button
+              style="filled"
+              className="bg-red-600 hover:bg-red-700"
+              onClick={confirmDelete}
+            >
+              Excluir
+            </Button>
+          </div>
         </div>
       </Dialog>
 

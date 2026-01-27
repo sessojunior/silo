@@ -333,24 +333,29 @@ export default function ProblemFormOffcanvas({
               Excluir problema
             </div>
           }
-          description="Tem certeza que deseja excluir este problema? Todas as soluções, imagens e dados relacionados serão removidos permanentemente."
         >
-          <div className="flex gap-2 justify-end mt-6">
-            <Button
-              type="button"
-              style="bordered"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              className="bg-red-600 text-white hover:bg-red-700"
-              disabled={deleteLoading}
-              onClick={onDeleteProblem}
-            >
-              {deleteLoading ? "Excluindo..." : "Excluir"}
-            </Button>
+          <div className="p-6">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+              Tem certeza que deseja excluir este problema? Todas as soluções,
+              imagens e dados relacionados serão removidos permanentemente.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                style="bordered"
+                onClick={() => setDeleteDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                className="bg-red-600 text-white hover:bg-red-700"
+                disabled={deleteLoading}
+                onClick={onDeleteProblem}
+              >
+                {deleteLoading ? "Excluindo..." : "Excluir"}
+              </Button>
+            </div>
           </div>
         </Dialog>
 
@@ -364,43 +369,47 @@ export default function ProblemFormOffcanvas({
               Excluir imagem
             </div>
           }
-          description="Tem certeza que deseja excluir esta imagem? Esta ação não poderá ser desfeita."
         >
-          <div className="flex gap-2 justify-end mt-6">
-            <Button
-              type="button"
-              style="bordered"
-              onClick={() => setDeleteImageId(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              className="bg-red-600 text-white hover:bg-red-700"
-              disabled={deleteImageLoading}
-              onClick={async () => {
-                if (!deleteImageId) return;
-                if (!editing) return;
-                const res = await fetch(
-                  config.getApiUrl("/api/admin/products/images"),
-                  {
-                    method: "DELETE",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id: deleteImageId }),
-                  },
-                );
-                setDeleteImageId(null);
-                if (res.ok) {
-                  toast({ type: "success", title: "Imagem excluída" });
-                  // Atualiza lista de imagens na página parent
-                  await onImagesUpdate();
-                } else {
-                  toast({ type: "error", title: "Erro ao excluir imagem" });
-                }
-              }}
-            >
-              {deleteImageLoading ? "Excluindo..." : "Excluir"}
-            </Button>
+          <div className="p-6">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+              Tem certeza que deseja excluir esta imagem? Esta ação não poderá
+              ser desfeita.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                style="bordered"
+                onClick={() => setDeleteImageId(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                className="bg-red-600 text-white hover:bg-red-700"
+                disabled={deleteImageLoading}
+                onClick={async () => {
+                  if (!deleteImageId) return;
+                  if (!editing) return;
+                  const res = await fetch(
+                    config.getApiUrl("/api/admin/products/images"),
+                    {
+                      method: "DELETE",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ id: deleteImageId }),
+                    },
+                  );
+                  setDeleteImageId(null);
+                  if (res.ok) {
+                    toast({ type: "success", title: "Imagem excluída" });
+                    await onImagesUpdate();
+                  } else {
+                    toast({ type: "error", title: "Erro ao excluir imagem" });
+                  }
+                }}
+              >
+                {deleteImageLoading ? "Excluindo..." : "Excluir"}
+              </Button>
+            </div>
           </div>
         </Dialog>
       </Offcanvas>

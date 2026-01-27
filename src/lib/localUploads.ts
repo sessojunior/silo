@@ -8,7 +8,10 @@ export type UploadKind =
   | "avatars"
   | "contacts"
   | "problems"
-  | "solutions";
+  | "solutions"
+  | "manual"
+  | "help"
+  | "projects";
 
 const uploadKinds: ReadonlyArray<UploadKind> = [
   "general",
@@ -16,6 +19,9 @@ const uploadKinds: ReadonlyArray<UploadKind> = [
   "contacts",
   "problems",
   "solutions",
+  "manual",
+  "help",
+  "projects",
 ];
 
 export const isUploadKind = (value: string): value is UploadKind =>

@@ -148,7 +148,7 @@ export default function IncidentFormModal({
           </div>
         )}
 
-        <div className="flex gap-2 justify-end mt-6">
+        <div className="flex gap-2 justify-end m-4">
           <Button
             type="button"
             style="bordered"

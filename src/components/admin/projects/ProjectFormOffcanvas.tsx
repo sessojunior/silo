@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Project, ProjectFormData } from "@/types/projects";
 import Offcanvas from "@/components/ui/Offcanvas";
 import Input from "@/components/ui/Input";
@@ -36,6 +36,19 @@ export default function ProjectFormOffcanvas({
     status: "active",
   });
   const [saving, setSaving] = useState(false);
+  const uploadConfig = useMemo(
+    () => ({
+      enabled: true,
+      showButton: true,
+      uploadEndpoint: "projectImageUploader" as const,
+      listEndpoint: "/api/admin/projects/images",
+      deleteEndpoint: "/api/admin/projects/images",
+      directory: "/uploads/projects",
+      title: "Inserir imagem do projeto",
+      description: "Imagens para a descrição do projeto",
+    }),
+    [],
+  );
 
   // Opções de status
   const statusOptions = [
@@ -252,6 +265,7 @@ export default function ProjectFormOffcanvas({
             <MarkdownEditor
               value={formData.description}
               onChange={(value) => handleFieldChange("description", value)}
+              uploadConfig={uploadConfig}
             />
           </div>
         </div>
@@ -267,7 +281,7 @@ export default function ProjectFormOffcanvas({
                 className="bg-red-600 hover:bg-red-700 text-white"
                 disabled={saving}
               >
-                <span className="icon-[lucide--trash] size-4 mr-2" />
+                <span className="icon-[lucide--trash] size-4" />
                 Excluir
               </Button>
             )}

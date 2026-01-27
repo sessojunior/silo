@@ -532,36 +532,41 @@ export default function SettingsProductsPage() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         title="Confirmar exclusão"
-        description={`Tem certeza que deseja excluir o produto "${deleting?.name}"? Esta ação não pode ser desfeita.`}
       >
-        <div className="flex gap-3 justify-end mt-6">
-          <Button
-            type="button"
-            style="bordered"
-            onClick={() => setDialogOpen(false)}
-            disabled={formLoading}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={handleDelete}
-            disabled={formLoading}
-            className="bg-red-600 hover:bg-red-700 focus:bg-red-700"
-          >
-            {formLoading ? (
-              <LoadingSpinner
-                text="Excluindo..."
-                size="xs"
-                variant="horizontal"
-              />
-            ) : (
-              <>
-                <span className="icon-[lucide--trash] size-4 mr-2" />
-                Excluir produto
-              </>
-            )}
-          </Button>
+        <div className="p-6">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+            Tem certeza que deseja excluir o produto &quot;{deleting?.name}
+            &quot;? Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button
+              type="button"
+              style="bordered"
+              onClick={() => setDialogOpen(false)}
+              disabled={formLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDelete}
+              disabled={formLoading}
+              className="bg-red-600 hover:bg-red-700 focus:bg-red-700"
+            >
+              {formLoading ? (
+                <LoadingSpinner
+                  text="Excluindo..."
+                  size="xs"
+                  variant="horizontal"
+                />
+              ) : (
+                <>
+                  <span className="icon-[lucide--trash] size-4" />
+                  Excluir produto
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </Dialog>
     </div>

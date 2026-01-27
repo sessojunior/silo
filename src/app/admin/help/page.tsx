@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "@/lib/toast";
 import { config } from "@/lib/config";
 import Button from "@/components/ui/Button";
@@ -24,6 +24,19 @@ export default function HelpPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [formContent, setFormContent] = useState("");
   const [formLoading, setFormLoading] = useState(false);
+  const uploadConfig = useMemo(
+    () => ({
+      enabled: true,
+      showButton: true,
+      uploadEndpoint: "helpImageUploader" as const,
+      listEndpoint: "/api/admin/help/images",
+      deleteEndpoint: "/api/admin/help/images",
+      directory: "/uploads/help",
+      title: "Inserir imagem da ajuda",
+      description: "Imagens para a documentação de ajuda",
+    }),
+    [],
+  );
 
   // Carregar documentação
   const fetchHelpDoc = async () => {
@@ -273,6 +286,7 @@ export default function HelpPage() {
                 value={formContent}
                 onChange={(val: string) => setFormContent(val || "")}
                 className="flex-1 h-full"
+                uploadConfig={uploadConfig}
               />
             </div>
           </div>

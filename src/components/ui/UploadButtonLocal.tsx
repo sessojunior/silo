@@ -10,7 +10,10 @@ interface UploadButtonLocalProps {
     | "avatarUploader"
     | "contactImageUploader"
     | "problemImageUploader"
-    | "solutionImageUploader";
+    | "solutionImageUploader"
+    | "manualImageUploader"
+    | "helpImageUploader"
+    | "projectImageUploader";
   onClientUploadComplete?: (
     res:
       | { url: string; key?: string; name?: string; size?: number }
@@ -80,6 +83,12 @@ export default function UploadButtonLocal({
         uploadEndpoint = config.getApiUrl("/api/upload/problem");
       } else if (endpoint === "solutionImageUploader") {
         uploadEndpoint = config.getApiUrl("/api/upload/solution");
+      } else if (endpoint === "manualImageUploader") {
+        uploadEndpoint = config.getApiUrl("/api/upload/manual");
+      } else if (endpoint === "helpImageUploader") {
+        uploadEndpoint = config.getApiUrl("/api/upload/help");
+      } else if (endpoint === "projectImageUploader") {
+        uploadEndpoint = config.getApiUrl("/api/upload/projects");
       }
 
       const formData = new FormData();
@@ -87,7 +96,10 @@ export default function UploadButtonLocal({
       // Para problemas e soluções, enviar todos os arquivos de uma vez
       if (
         endpoint === "problemImageUploader" ||
-        endpoint === "solutionImageUploader"
+        endpoint === "solutionImageUploader" ||
+        endpoint === "manualImageUploader" ||
+        endpoint === "helpImageUploader" ||
+        endpoint === "projectImageUploader"
       ) {
         fileArray.forEach((file) => {
           formData.append("files", file);
@@ -133,6 +145,15 @@ export default function UploadButtonLocal({
         ) {
           // Endpoints /api/upload/problem e /api/upload/solution retornam { success: true, data: [...] }
           onClientUploadComplete(result.data);
+        } else if (endpoint === "manualImageUploader" && result.success) {
+          // Endpoint /api/upload/manual retorna { success: true, data: [...] }
+          onClientUploadComplete(result.data);
+        } else if (
+          (endpoint === "helpImageUploader" ||
+            endpoint === "projectImageUploader") &&
+          result.success
+        ) {
+          onClientUploadComplete(result.data);
         } else {
           // Endpoint genérico /api/upload retorna { url, key, name, size }
           onClientUploadComplete({
@@ -176,7 +197,10 @@ export default function UploadButtonLocal({
         accept="image/*"
         multiple={
           endpoint === "problemImageUploader" ||
-          endpoint === "solutionImageUploader"
+          endpoint === "solutionImageUploader" ||
+          endpoint === "manualImageUploader" ||
+          endpoint === "helpImageUploader" ||
+          endpoint === "projectImageUploader"
         }
         onChange={handleFileSelect}
         className="hidden"

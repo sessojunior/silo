@@ -99,95 +99,93 @@ export default function GroupDeleteDialog({
       open={isOpen}
       onClose={onClose}
       title="Confirmar exclusão"
-      description={getDialogMessage()}
     >
-      {/* Aviso especial para grupo padrão */}
-      {group?.isDefault && (
-        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-          <div className="flex items-start gap-3">
-            <span className="icon-[lucide--info] size-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div>
-              <h4 className="font-medium text-amber-900 dark:text-amber-100 mb-1">
-                Grupo Padrão
-              </h4>
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                Este é o grupo padrão do sistema. Para excluí-lo, primeiro
-                defina outro grupo como padrão nas configurações.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Preview do grupo */}
-      {group && (
-        <div className="mt-4 p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
-          <div className="flex items-center gap-3">
-            <div
-              className="size-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: group.color }}
-            >
-              <span className={`${group.icon} size-5 text-white`} />
-            </div>
-            <div>
-              <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                {group.name}
-              </p>
-              {group.description && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {group.description}
+      <div className="p-6 space-y-4">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          {getDialogMessage()}
+        </p>
+        {group?.isDefault && (
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <div className="flex items-start gap-3">
+              <span className="icon-[lucide--info] size-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-amber-900 dark:text-amber-100 mb-1">
+                  Grupo Padrão
+                </h4>
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  Este é o grupo padrão do sistema. Para excluí-lo, primeiro
+                  defina outro grupo como padrão nas configurações.
                 </p>
-              )}
-              <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                <span
-                  className={
-                    group.active
-                      ? "text-green-600 dark:text-green-500"
-                      : "text-red-600 dark:text-red-500"
-                  }
-                >
-                  {group.active ? "● Ativo" : "● Inativo"}
-                </span>
-                {group.isDefault && (
-                  <span className="text-blue-600 dark:text-blue-500">
-                    🌟 Padrão
-                  </span>
-                )}
               </div>
             </div>
           </div>
+        )}
+        {group && (
+          <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <div className="flex items-center gap-3">
+              <div
+                className="size-8 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: group.color }}
+              >
+                <span className={`${group.icon} size-5 text-white`} />
+              </div>
+              <div>
+                <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {group.name}
+                </p>
+                {group.description && (
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {group.description}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                  <span
+                    className={
+                      group.active
+                        ? "text-green-600 dark:text-green-500"
+                        : "text-red-600 dark:text-red-500"
+                    }
+                  >
+                    {group.active ? "● Ativo" : "● Inativo"}
+                  </span>
+                  {group.isDefault && (
+                    <span className="text-blue-600 dark:text-blue-500">
+                      🌟 Padrão
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="flex gap-3 justify-end">
+          <Button
+            type="button"
+            style="bordered"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={handleDelete}
+            disabled={loading || group?.isDefault}
+            className="bg-red-600 hover:bg-red-700 focus:bg-red-700 disabled:bg-zinc-400"
+          >
+            {loading ? (
+              <>
+                <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
+                Excluindo...
+              </>
+            ) : (
+              <>
+                <span className="icon-[lucide--trash] size-4" />
+                {group?.isDefault ? "Não é possível excluir" : "Excluir grupo"}
+              </>
+            )}
+          </Button>
         </div>
-      )}
-
-      <div className="flex gap-3 justify-end mt-6">
-        <Button
-          type="button"
-          style="bordered"
-          onClick={onClose}
-          disabled={loading}
-        >
-          Cancelar
-        </Button>
-
-        {/* Botão de exclusão - desabilitado para grupo padrão */}
-        <Button
-          type="button"
-          onClick={handleDelete}
-          disabled={loading || group?.isDefault}
-          className="bg-red-600 hover:bg-red-700 focus:bg-red-700 disabled:bg-zinc-400"
-        >
-          {loading ? (
-            <>
-              <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
-              Excluindo...
-            </>
-          ) : (
-            <>
-              <span className="icon-[lucide--trash] size-4 mr-2" />
-              {group?.isDefault ? "Não é possível excluir" : "Excluir grupo"}
-            </>
-          )}
-        </Button>
       </div>
     </Dialog>
   );
