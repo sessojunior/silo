@@ -138,7 +138,7 @@ export function MessagesList({
                 Nenhuma mensagem ainda
               </h3>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm">
-                Esta conversa está vazia. Envie a primeira mensagem para
+                Sem conversas. Envie a primeira mensagem para
                 começar!
               </p>
             </div>

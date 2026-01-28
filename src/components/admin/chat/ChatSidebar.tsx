@@ -280,7 +280,7 @@ export default function ChatSidebar({
             />
           </div>
         ) : (
-          <div className="py-2">
+          <div>
             {filteredUsers.length === 0 ? (
               <div className="p-6 text-center text-zinc-500 dark:text-zinc-400">
                 <span className="icon-[lucide--user] w-8 h-8 mx-auto mb-2 opacity-50" />

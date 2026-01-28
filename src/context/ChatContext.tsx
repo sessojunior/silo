@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { config } from "@/lib/config";
+import type { ApiResponse } from "@/lib/api-response";
 
 // === TIPOS ULTRA SIMPLIFICADOS ===
 
@@ -184,15 +185,40 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           ).finally(() => window.clearTimeout(timeoutId));
 
           if (response.ok) {
-            const data = (await response.json()) as {
-              groups?: ChatGroup[];
-              users?: ChatUser[];
-              totalUnread?: number;
-            };
+            const raw = (await response.json()) as unknown;
+            const payload = (() => {
+              if (!raw || typeof raw !== "object") return null;
+              const root = raw as Record<string, unknown>;
+              if ("success" in root) {
+                const api = root as ApiResponse<unknown>;
+                if (!api.success) {
+                  console.error("❌ [CONTEXT_CHAT] Erro ao carregar sidebar:", {
+                    error: api.error,
+                  });
+                  return null;
+                }
+                if (!api.data || typeof api.data !== "object") return null;
+                return api.data as Record<string, unknown>;
+              }
+              return root;
+            })();
 
-            setGroups(data.groups || []);
-            setUsers(data.users || []);
-            setTotalUnread(data.totalUnread || 0);
+            const groupsPayload = payload?.["groups"];
+            const usersPayload = payload?.["users"];
+            const totalUnreadPayload = payload?.["totalUnread"];
+
+            const nextGroups = Array.isArray(groupsPayload)
+              ? (groupsPayload as ChatGroup[])
+              : [];
+            const nextUsers = Array.isArray(usersPayload)
+              ? (usersPayload as ChatUser[])
+              : [];
+            const nextTotalUnread =
+              typeof totalUnreadPayload === "number" ? totalUnreadPayload : 0;
+
+            setGroups(nextGroups);
+            setUsers(nextUsers);
+            setTotalUnread(nextTotalUnread);
             setLastSync(new Date().toISOString());
             break;
           }
