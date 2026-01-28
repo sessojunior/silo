@@ -347,8 +347,29 @@ export default function ProductsPage() {
     "icon-[lucide--bookmark]",
     "icon-[lucide--tag]",
 
-    // ✅ QUALIDADE E TESTES
-    // (seção vazia - todos os ícones removidos)
+    // OUTROS
+    "icon-[lucide--users]",
+    "icon-[lucide--users-round]",
+    "icon-[lucide--user]",
+    "icon-[lucide--user-round]",
+    "icon-[lucide--user-plus]",
+    "icon-[lucide--user-x]",
+    "icon-[lucide--user-check]",
+    "icon-[lucide--messages-square]",
+    "icon-[lucide--search]",
+    "icon-[lucide--search-x]",
+    "icon-[lucide--circle-dot]",
+    "icon-[lucide--trash-2]",
+    "icon-[lucide--book-check]",
+    "icon-[lucide--clock-4]",
+    "icon-[lucide--bar-chart-3]",
+    "icon-[lucide--trophy]",
+    "icon-[lucide--cloud-sun]",
+    "icon-[lucide--microscope]",
+    "icon-[lucide--monitor-speaker]",
+    "icon-[lucide--briefcase]",
+    "icon-[lucide--loader-circle]",
+    "icon-[lucide--calendar]",
   ];
 
   // Busca o ID do produto pelo slug
