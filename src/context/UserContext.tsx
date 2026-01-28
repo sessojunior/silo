@@ -85,7 +85,9 @@ type ApiFetchResult<T> = {
 };
 
 const fetchApiResponse = async <T,>(path: string): Promise<ApiFetchResult<T>> => {
-  const response = await fetch(config.getApiUrl(path));
+  const response = await fetch(config.getApiUrl(path), {
+    credentials: "include",
+  });
   const status = response.status;
 
   let payload: unknown = null;

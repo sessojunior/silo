@@ -22,6 +22,7 @@ export function useChatPresence() {
     try {
       const response = await fetch(
         config.getApiUrl("/api/admin/chat/presence"),
+        { credentials: "include" },
       );
       if (response.ok) {
         const data = await response.json();

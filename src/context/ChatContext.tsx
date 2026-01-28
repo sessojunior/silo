@@ -155,7 +155,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (status !== 401) return false;
     if (hasUnauthorizedRedirected.current) return true;
     hasUnauthorizedRedirected.current = true;
-    window.location.href = config.getApiUrl("/api/logout");
+    window.location.href = config.getPublicPath("/login");
     return true;
   }, []);
 
@@ -244,6 +244,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const response = await fetch(
           config.getApiUrl(`/api/admin/chat/messages?${params}`),
+          { credentials: "include" },
         );
 
         if (response.ok) {
@@ -308,6 +309,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const response = await fetch(
           config.getApiUrl(`/api/admin/chat/messages?${params}`),
+          { credentials: "include" },
         );
 
         if (response.ok) {
@@ -379,6 +381,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const response = await fetch(
           config.getApiUrl(`/api/admin/chat/messages?${params}`),
+          { credentials: "include" },
         );
 
         if (response.ok) {
@@ -439,6 +442,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const response = await fetch(
           config.getApiUrl(`/api/admin/chat/messages/count?${params}`),
+          { credentials: "include" },
         );
 
         if (response.ok) {
@@ -475,6 +479,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const response = await fetch(
           config.getApiUrl(`/api/admin/chat/unread-messages?${params}`),
+          { credentials: "include" },
         );
 
         if (response.ok) {
@@ -520,6 +525,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const response = await fetch(
           config.getApiUrl(`/api/admin/chat/messages?${params}`),
+          { credentials: "include" },
         );
 
         if (response.ok) {
@@ -590,6 +596,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
         const response = await fetch(
           config.getApiUrl(`/api/admin/chat/messages?${params}`),
+          { credentials: "include" },
         );
 
         if (response.ok) {
@@ -650,6 +657,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({
               content,
               receiverGroupId,
@@ -705,6 +713,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           config.getApiUrl(`/api/admin/chat/messages/${messageId}/read`),
           {
             method: "POST",
+            credentials: "include",
           },
         );
 
@@ -742,6 +751,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         config.getApiUrl(`/api/admin/chat/messages/${messageId}`),
         {
           method: "DELETE",
+          credentials: "include",
         },
       );
 
@@ -778,6 +788,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({ targetId, type }),
           },
         );
