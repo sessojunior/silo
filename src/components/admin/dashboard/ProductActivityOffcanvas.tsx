@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Offcanvas from "@/components/ui/Offcanvas";
 import Label from "@/components/ui/Label";
 import Select, { SelectOption } from "@/components/ui/Select";
@@ -62,6 +62,18 @@ export default function ProductActivityOffcanvas({
   const [allIncidents, setAllIncidents] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [incidentManagementOpen, setIncidentManagementOpen] = useState(false);
+  const uploadConfig = useMemo(
+    () => ({
+      enabled: true,
+      showButton: true,
+      uploadEndpoint: "incidentImageUploader" as const,
+      listEndpoint: "/api/admin/incidents/images",
+      deleteEndpoint: "/api/admin/incidents/images",
+      directory: "/uploads/incidents",
+      title: "Inserir imagem do incidente",
+    }),
+    [],
+  );
 
   useEffect(() => {
     if (open) {
@@ -382,6 +394,7 @@ export default function ProductActivityOffcanvas({
                 value={description}
                 onChange={(value) => setDescription(value || "")}
                 className="h-full w-full"
+                uploadConfig={uploadConfig}
               />
             </div>
           </div>

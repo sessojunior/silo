@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import type { ApiResponse } from "@/lib/api-response";
 import { config } from "@/lib/config";
 import { toast } from "@/lib/toast";
 import TruncatedDescription from "@/components/ui/TruncatedDescription";
@@ -57,13 +58,15 @@ export default function ProductStatusHistory({
           `/api/admin/products/${productId}/history?date=${date}&turn=${turn}`,
         ),
       );
-      const data = await response.json();
+      const data = (await response.json()) as ApiResponse<{
+        history: StatusHistoryEntry[];
+      }>;
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Erro ao carregar histórico");
       }
 
-      setHistory(data.history || []);
+      setHistory(Array.isArray(data.data?.history) ? data.data.history : []);
     } catch (error) {
       console.error(
         "❌ [COMPONENT_PRODUCT_STATUS_HISTORY] Erro ao carregar histórico:",

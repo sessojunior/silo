@@ -4,6 +4,7 @@ import { requirePermissionAuthUser } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { formatDate } from "@/lib/dateUtils";
 
 // GET - Buscar histórico de status de um produto específico
 export async function GET(
@@ -19,11 +20,17 @@ export async function GET(
 
     const { productId } = await params;
     const { searchParams } = new URL(request.url);
-    const date = searchParams.get("date");
-    const turn = searchParams.get("turn");
+    const rawDate = searchParams.get("date");
+    const rawTurn = searchParams.get("turn");
 
-    if (!date || !turn) {
+    if (!rawDate || !rawTurn) {
       return errorResponse("Data e turno são obrigatórios", 400);
+    }
+
+    const date = formatDate(rawDate);
+    const turn = Number(rawTurn);
+    if (!Number.isFinite(turn)) {
+      return errorResponse("Turno inválido", 400);
     }
 
     // Buscar atividade atual do produto para a data e turno específicos
@@ -36,7 +43,7 @@ export async function GET(
         and(
           eq(schema.productActivity.productId, productId),
           eq(schema.productActivity.date, date),
-          eq(schema.productActivity.turn, parseInt(turn)),
+          eq(schema.productActivity.turn, turn),
         ),
       )
       .limit(1);

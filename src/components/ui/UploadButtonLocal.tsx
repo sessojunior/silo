@@ -9,6 +9,7 @@ interface UploadButtonLocalProps {
     | "general"
     | "avatarUploader"
     | "contactImageUploader"
+    | "incidentImageUploader"
     | "problemImageUploader"
     | "solutionImageUploader"
     | "manualImageUploader"
@@ -52,26 +53,40 @@ export default function UploadButtonLocal({
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    const fileArray = Array.from(files);
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ];
+    const validateFiles = (items: File[]): string | null => {
+      for (const file of items) {
+        if (!allowedTypes.includes(file.type)) {
+          return `Tipo de arquivo não permitido: ${file.name}`;
+        }
+        if (file.size > 4 * 1024 * 1024) {
+          return `Arquivo muito grande: ${file.name}`;
+        }
+      }
+      return null;
+    };
+    const validationError = validateFiles(fileArray);
+    if (validationError) {
+      if (onUploadError) {
+        onUploadError({ message: validationError });
+      } else {
+        toast({ type: "error", title: validationError });
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     setIsUploading(true);
 
     try {
-      // Validar todos os arquivos primeiro
-      const fileArray = Array.from(files);
-      const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-      ];
-
-      for (const file of fileArray) {
-        if (!allowedTypes.includes(file.type)) {
-          throw new Error(`Tipo de arquivo não permitido: ${file.name}`);
-        }
-        if (file.size > 4 * 1024 * 1024) {
-          throw new Error(`Arquivo muito grande: ${file.name}`);
-        }
-      }
 
       // Determinar endpoint baseado no tipo
       let uploadEndpoint = config.getApiUrl("/api/upload");
@@ -79,6 +94,8 @@ export default function UploadButtonLocal({
         uploadEndpoint = config.getApiUrl("/api/upload/avatar");
       } else if (endpoint === "contactImageUploader") {
         uploadEndpoint = config.getApiUrl("/api/upload/contact");
+      } else if (endpoint === "incidentImageUploader") {
+        uploadEndpoint = config.getApiUrl("/api/upload/incidents");
       } else if (endpoint === "problemImageUploader") {
         uploadEndpoint = config.getApiUrl("/api/upload/problem");
       } else if (endpoint === "solutionImageUploader") {
@@ -96,6 +113,7 @@ export default function UploadButtonLocal({
       // Para problemas e soluções, enviar todos os arquivos de uma vez
       if (
         endpoint === "problemImageUploader" ||
+        endpoint === "incidentImageUploader" ||
         endpoint === "solutionImageUploader" ||
         endpoint === "manualImageUploader" ||
         endpoint === "helpImageUploader" ||
@@ -140,6 +158,7 @@ export default function UploadButtonLocal({
           });
         } else if (
           (endpoint === "problemImageUploader" ||
+            endpoint === "incidentImageUploader" ||
             endpoint === "solutionImageUploader") &&
           result.success
         ) {
@@ -165,10 +184,18 @@ export default function UploadButtonLocal({
         }
       }
     } catch (error) {
-      console.error("❌ [COMPONENT_UPLOAD_BUTTON] Erro no upload:", { error });
-      const errorMessage =
-        error instanceof Error ? error.message : "Erro no upload";
-
+      let errorMessage = "Erro no upload";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      } else if (error && typeof error === "object") {
+        const maybeMessage = (error as Record<string, unknown>).message;
+        if (typeof maybeMessage === "string" && maybeMessage.trim().length > 0) {
+          errorMessage = maybeMessage;
+        }
+      }
+      console.error("❌ [COMPONENT_UPLOAD_BUTTON] Erro no upload:", errorMessage);
       if (onUploadError) {
         onUploadError({ message: errorMessage });
       } else {
@@ -197,6 +224,7 @@ export default function UploadButtonLocal({
         accept="image/*"
         multiple={
           endpoint === "problemImageUploader" ||
+          endpoint === "incidentImageUploader" ||
           endpoint === "solutionImageUploader" ||
           endpoint === "manualImageUploader" ||
           endpoint === "helpImageUploader" ||

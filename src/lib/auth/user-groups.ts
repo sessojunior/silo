@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { group, userGroup, authUser } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 /**
@@ -13,6 +13,7 @@ export async function addUserToDefaultGroup(userId: string): Promise<boolean> {
     // Busca o grupo padrão (isDefault: true)
     const defaultGroup = await db.query.group.findFirst({
       where: eq(group.isDefault, true),
+      orderBy: [desc(group.updatedAt)],
     });
 
     if (!defaultGroup) {

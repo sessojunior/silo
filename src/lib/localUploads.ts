@@ -7,6 +7,7 @@ export type UploadKind =
   | "general"
   | "avatars"
   | "contacts"
+  | "incidents"
   | "problems"
   | "solutions"
   | "manual"
@@ -17,6 +18,7 @@ const uploadKinds: ReadonlyArray<UploadKind> = [
   "general",
   "avatars",
   "contacts",
+  "incidents",
   "problems",
   "solutions",
   "manual",

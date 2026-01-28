@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 
@@ -16,30 +16,38 @@ export default function TruncatedDescription({
   className = "",
 }: TruncatedDescriptionProps) {
   const [showModal, setShowModal] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const textRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const element = textRef.current;
+    if (!element) return;
+    const checkTruncation = () => {
+      const shouldTruncate = element.scrollHeight > element.clientHeight + 1;
+      setIsTruncated(shouldTruncate);
+    };
+    const raf = window.requestAnimationFrame(checkTruncation);
+    return () => window.cancelAnimationFrame(raf);
+  }, [description, maxLines]);
 
   if (!description) return null;
-
-  // Função para verificar se a descrição é longa
-  const isLongDescription = (text: string): boolean => {
-    const lines = text.split("\n").length;
-    return lines > maxLines;
-  };
-
-  // Função para truncar texto
-  const truncateText = (text: string): string => {
-    const lines = text.split("\n");
-    if (lines.length <= maxLines) return text;
-    return lines.slice(0, maxLines).join("\n") + "...";
-  };
-
-  const shouldTruncate = isLongDescription(description);
-  const displayText = shouldTruncate ? truncateText(description) : description;
 
   return (
     <>
       <div className={className}>
-        {displayText}
-        {shouldTruncate && (
+        <div
+          ref={textRef}
+          className="whitespace-pre-wrap"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: maxLines,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {description}
+        </div>
+        {isTruncated && (
           <button
             onClick={() => setShowModal(true)}
             className="ml-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium underline"

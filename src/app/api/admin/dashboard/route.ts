@@ -2,7 +2,7 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 import { db } from "@/lib/db";
 import { product, productActivity } from "@/lib/db/schema";
 import { eq, gte } from "drizzle-orm";
-import { getMonthsAgo, getDaysAgo } from "@/lib/dateUtils";
+import { formatDate, getMonthsAgo, getDaysAgo } from "@/lib/dateUtils";
 import { INCIDENT_STATUS } from "@/lib/productStatus";
 import { requireAdminAuthUser } from "@/lib/auth/server";
 
@@ -118,7 +118,7 @@ export async function GET() {
       const g = grouped.get(row.productId);
       if (!g) continue;
 
-      const dateStr = row.date; // YYYY-MM-DD
+      const dateStr = formatDate(row.date);
 
       g.dates.push({
         id: row.id,

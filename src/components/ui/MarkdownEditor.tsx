@@ -65,6 +65,7 @@ type UploadEndpoint =
   | "general"
   | "avatarUploader"
   | "contactImageUploader"
+  | "incidentImageUploader"
   | "problemImageUploader"
   | "solutionImageUploader"
   | "manualImageUploader"

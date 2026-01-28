@@ -386,6 +386,7 @@ export async function DELETE(request: NextRequest) {
         .select()
         .from(group)
         .where(eq(group.isDefault, true))
+        .orderBy(desc(group.updatedAt))
         .limit(1);
 
       if (defaultGroup.length === 0) {
