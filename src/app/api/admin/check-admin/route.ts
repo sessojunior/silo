@@ -1,6 +1,6 @@
 import { requireAuthUser } from "@/lib/auth/server";
 import { isUserAdmin } from "@/lib/auth/admin";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { errorResponse, successResponse } from "@/lib/api-response";
 
 // GET - Verificar se o usuário atual é administrador
 export async function GET() {

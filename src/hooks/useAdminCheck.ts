@@ -40,7 +40,7 @@ export function useAdminCheck(): AdminCheckResult {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setIsAdmin(data.isAdmin);
+          setIsAdmin(Boolean(data.data?.isAdmin));
         } else {
           setIsAdmin(false);
           setError(data.error || "Erro ao verificar permissões");

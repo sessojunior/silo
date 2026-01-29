@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Switch from "@/components/ui/Switch";
+import Select from "@/components/ui/Select";
 import { toast } from "@/lib/toast";
 
 interface ProductFormProps {
@@ -9,6 +10,8 @@ interface ProductFormProps {
     slug: string;
     available: boolean;
     turns: string[];
+    priority: "low" | "normal" | "high" | "urgent";
+    description: string | null;
   };
   onSubmit: (data: {
     id?: string;
@@ -16,6 +19,8 @@ interface ProductFormProps {
     slug: string;
     available: boolean;
     turns: string[];
+    priority: "low" | "normal" | "high" | "urgent";
+    description: string | null;
   }) => Promise<void>;
   onCancel: () => void;
   loading: boolean;
@@ -33,6 +38,12 @@ export default function ProductForm({
   const [turns, setTurns] = useState<string[]>(
     initialData?.turns || ["0", "6", "12", "18"],
   );
+  const [priority, setPriority] = useState<
+    "low" | "normal" | "high" | "urgent"
+  >(initialData?.priority ?? "normal");
+  const [description, setDescription] = useState(
+    initialData?.description ?? "",
+  );
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -43,12 +54,15 @@ export default function ProductForm({
     }
     setError(null);
     try {
+      const trimmedDescription = description.trim();
       await onSubmit({
         id: initialData?.id,
         name: name.trim(),
         slug: slug.trim(),
         available,
         turns,
+        priority,
+        description: trimmedDescription.length > 0 ? trimmedDescription : null,
       });
       toast({
         type: "success",
@@ -97,6 +111,46 @@ export default function ProductForm({
           onChange={(e) => setSlug(e.target.value)}
           minLength={2}
           required
+          disabled={loading}
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="product-priority"
+          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200 mb-1"
+        >
+          Prioridade
+        </label>
+        <Select
+          id="product-priority"
+          name="priority"
+          selected={priority}
+          onChange={(value) =>
+            setPriority(value as "low" | "normal" | "high" | "urgent")
+          }
+          options={[
+            { value: "low", label: "Baixa" },
+            { value: "normal", label: "Normal" },
+            { value: "high", label: "Alta" },
+            { value: "urgent", label: "Urgente" },
+          ]}
+          placeholder="Selecionar prioridade"
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="product-description"
+          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200 mb-1"
+        >
+          Descrição
+        </label>
+        <textarea
+          id="product-description"
+          className="block w-full rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={4}
+          maxLength={2000}
           disabled={loading}
         />
       </div>

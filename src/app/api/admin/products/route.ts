@@ -1,5 +1,9 @@
 import { NextRequest } from "next/server";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import {
+  successResponse,
+  errorResponse,
+  parseRequestJson,
+} from "@/lib/api-response";
 import { requirePermissionAuthUser } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import {
@@ -18,6 +22,10 @@ import {
 import { eq, like, asc, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { formatSlug } from "@/lib/utils";
+import {
+  productCreateSchema,
+  productUpdateSchema,
+} from "@/lib/validation";
 
 export const runtime = "nodejs";
 
@@ -95,16 +103,25 @@ export async function POST(request: Request) {
   const authResult = await requirePermissionAuthUser("products", "create");
   if (!authResult.ok) return authResult.response;
 
-  const body = await request.json();
-  const name = (body.name || "").trim();
-  const slug = formatSlug(body.slug) || "";
-  const available =
-    typeof body.available === "boolean" ? body.available : false;
-  const turns = Array.isArray(body.turns) ? body.turns : ["0", "6", "12", "18"];
+  const parsed = await parseRequestJson(request, productCreateSchema);
+  if (!parsed.ok) return parsed.response;
+
+  const name = parsed.data.name.trim();
+  const slug = formatSlug(parsed.data.slug || name);
+  const available = parsed.data.available;
+  const priority = parsed.data.priority;
+  const turns = parsed.data.turns;
+  const description = parsed.data.description ?? null;
 
   if (name.length < 2) {
     return errorResponse("O nome deve possuir ao menos dois caracteres.", 400, {
       field: "name",
+    });
+  }
+
+  if (!slug) {
+    return errorResponse("O slug do produto é obrigatório.", 400, {
+      field: "slug",
     });
   }
 
@@ -126,7 +143,9 @@ export async function POST(request: Request) {
       name,
       slug,
       available,
+      priority,
       turns,
+      description,
     });
     return successResponse(null, "Produto criado com sucesso", 201);
   } catch {
@@ -139,13 +158,16 @@ export async function PUT(request: Request) {
   const authResult = await requirePermissionAuthUser("products", "update");
   if (!authResult.ok) return authResult.response;
 
-  const body = await request.json();
-  const id = (body.id || "").trim();
-  const name = (body.name || "").trim();
-  const slug = formatSlug(body.slug) || "";
-  const available =
-    typeof body.available === "boolean" ? body.available : false;
-  const turns = Array.isArray(body.turns) ? body.turns : ["0", "6", "12", "18"];
+  const parsed = await parseRequestJson(request, productUpdateSchema);
+  if (!parsed.ok) return parsed.response;
+
+  const id = parsed.data.id.trim();
+  const name = parsed.data.name.trim();
+  const slug = formatSlug(parsed.data.slug || name);
+  const available = parsed.data.available;
+  const priority = parsed.data.priority;
+  const turns = parsed.data.turns;
+  const description = parsed.data.description ?? null;
 
   if (!id) {
     return errorResponse("ID do produto é obrigatório.", 400);
@@ -153,6 +175,10 @@ export async function PUT(request: Request) {
 
   if (name.length < 2) {
     return errorResponse("O nome deve possuir ao menos dois caracteres.", 400);
+  }
+
+  if (!slug) {
+    return errorResponse("O slug do produto é obrigatório.", 400);
   }
 
   // Verifica duplicidade
@@ -172,7 +198,7 @@ export async function PUT(request: Request) {
   try {
     const result = await db
       .update(product)
-      .set({ name, slug, available, turns })
+      .set({ name, slug, available, priority, turns, description })
       .where(eq(product.id, id));
     if (!result.rowCount) {
       return errorResponse("Produto não encontrado.", 404);

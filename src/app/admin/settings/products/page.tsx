@@ -127,8 +127,11 @@ export default function SettingsProductsPage() {
   async function handleFormSubmit(data: {
     id?: string;
     name: string;
+    slug: string;
     available: boolean;
     turns: string[];
+    priority: "low" | "normal" | "high" | "urgent";
+    description: string | null;
   }) {
     setFormLoading(true);
     try {
@@ -217,6 +220,8 @@ export default function SettingsProductsPage() {
           slug: product.slug,
           available: !product.available,
           turns: product.turns,
+          priority: product.priority,
+          description: product.description ?? null,
         }),
       });
 
@@ -515,6 +520,14 @@ export default function SettingsProductsPage() {
                   turns: Array.isArray(editing.turns)
                     ? editing.turns
                     : ["0", "6", "12", "18"],
+                  priority:
+                    editing.priority === "low" ||
+                    editing.priority === "normal" ||
+                    editing.priority === "high" ||
+                    editing.priority === "urgent"
+                      ? editing.priority
+                      : "normal",
+                  description: editing.description ?? null,
                 }
               : undefined
           }

@@ -258,7 +258,7 @@ export const requirePermissionAuthUser = async (
     user: authResult.user,
     groups,
     permissions,
-    isAdmin: false,
+    isAdmin,
   };
 };
 

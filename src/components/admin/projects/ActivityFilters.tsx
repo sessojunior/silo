@@ -37,8 +37,7 @@ export default function ActivityFilters({
   const statusOptions = [
     { value: "all", label: "Todos os status" },
     { value: "todo", label: "📋 À fazer" },
-    { value: "in_progress", label: "🔄 Em progresso" },
-    { value: "review", label: "👀 Em revisão" },
+    { value: "progress", label: "🔄 Em progresso" },
     { value: "done", label: "✅ Concluído" },
     { value: "blocked", label: "🚫 Bloqueado" },
   ];

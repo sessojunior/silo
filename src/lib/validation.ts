@@ -2,19 +2,20 @@ import { z } from "zod";
 
 // === SCHEMAS DE VALIDAÇÃO COM ZOD ===
 
-const priorityEnumValues = ["low", "medium", "high", "critical"] as const;
+const priorityEnumValues = ["low", "medium", "high", "urgent"] as const;
+const productPriorityEnumValues = ["low", "normal", "high", "urgent"] as const;
+const productTurnEnumValues = ["0", "6", "12", "18"] as const;
 const projectStatusEnumValues = [
-  "planning",
   "active",
-  "on_hold",
   "completed",
+  "paused",
   "cancelled",
 ] as const;
 const projectActivityStatusEnumValues = [
-  "pending",
-  "in_progress",
-  "completed",
-  "cancelled",
+  "todo",
+  "progress",
+  "done",
+  "blocked",
 ] as const;
 const problemStatusEnumValues = [
   "open",
@@ -65,7 +66,7 @@ export const problemSchema = z.object({
 
   priority: z.enum(priorityEnumValues, {
     error: () => ({
-      message: "Prioridade deve ser: low, medium, high ou critical",
+      message: "Prioridade deve ser: low, medium, high ou urgent",
     }),
   }),
 
@@ -99,16 +100,17 @@ export const solutionSchema = z.object({
 });
 
 // Schema para produtos
-export const productSchema = z.object({
+const productBaseSchema = z.object({
   name: z
     .string()
-    .min(3, "Nome deve ter pelo menos 3 caracteres")
+    .min(2, "Nome deve ter pelo menos 2 caracteres")
     .max(100, "Nome deve ter no máximo 100 caracteres"),
 
   description: z
     .string()
-    .min(10, "Descrição deve ter pelo menos 10 caracteres")
-    .max(2000, "Descrição deve ter no máximo 2000 caracteres"),
+    .max(2000, "Descrição deve ter no máximo 2000 caracteres")
+    .nullable()
+    .optional(),
 
   slug: z
     .string()
@@ -117,18 +119,30 @@ export const productSchema = z.object({
     .regex(
       /^[a-z0-9-]+$/,
       "Slug deve conter apenas letras minúsculas, números e hífens",
-    ),
+    )
+    .optional(),
 
-  status: z.enum(["active", "inactive", "maintenance"] as const, {
-    error: () => ({
-      message: "Status deve ser: active, inactive ou maintenance",
-    }),
-  }),
+  available: z.boolean().optional().default(true),
 
-  category: z
-    .string()
-    .min(2, "Categoria deve ter pelo menos 2 caracteres")
-    .max(50, "Categoria deve ter no máximo 50 caracteres"),
+  priority: z
+    .enum(productPriorityEnumValues, {
+      error: () => ({
+        message: "Prioridade deve ser: low, normal, high ou urgent",
+      }),
+    })
+    .optional()
+    .default("normal"),
+
+  turns: z
+    .array(z.enum(productTurnEnumValues))
+    .min(1, "Deve selecionar ao menos um turno")
+    .default(["0", "6", "12", "18"]),
+});
+
+export const productSchema = productBaseSchema;
+export const productCreateSchema = productBaseSchema;
+export const productUpdateSchema = productBaseSchema.extend({
+  id: z.string().min(1, "ID do produto é obrigatório"),
 });
 
 // Schema para grupos
@@ -170,13 +184,13 @@ export const projectSchema = z.object({
   status: z.enum(projectStatusEnumValues, {
     error: () => ({
       message:
-        "Status deve ser: planning, active, on_hold, completed ou cancelled",
+        "Status deve ser: active, completed, paused ou cancelled",
     }),
   }),
 
   priority: z.enum(priorityEnumValues, {
     error: () => ({
-      message: "Prioridade deve ser: low, medium, high ou critical",
+      message: "Prioridade deve ser: low, medium, high ou urgent",
     }),
   }),
 
@@ -203,13 +217,13 @@ export const projectActivitySchema = z.object({
 
   status: z.enum(projectActivityStatusEnumValues, {
     error: () => ({
-      message: "Status deve ser: pending, in_progress, completed ou cancelled",
+      message: "Status deve ser: todo, progress, done ou blocked",
     }),
   }),
 
   priority: z.enum(priorityEnumValues, {
     error: () => ({
-      message: "Prioridade deve ser: low, medium, high ou critical",
+      message: "Prioridade deve ser: low, medium, high ou urgent",
     }),
   }),
 

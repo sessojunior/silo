@@ -344,7 +344,7 @@ export default function DashboardPage() {
                           turns={p.turns}
                           progress={p.percent_completed}
                           priority={
-                            p.priority === "high" ? "normal" : p.priority
+                            p.priority
                           }
                           date={
                             p.last_run ? formatDateTimeShortBR(p.last_run) : ""
