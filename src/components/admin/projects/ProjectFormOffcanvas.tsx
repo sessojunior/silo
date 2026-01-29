@@ -45,7 +45,6 @@ export default function ProjectFormOffcanvas({
       deleteEndpoint: "/api/admin/projects/images",
       directory: "/uploads/projects",
       title: "Inserir imagem do projeto",
-      description: "Imagens para a descrição do projeto",
     }),
     [],
   );

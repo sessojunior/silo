@@ -30,7 +30,6 @@ export default function ManualEditorOffcanvas({
       deleteEndpoint: "/api/admin/products/manual/images",
       directory: "/uploads/manual",
       title: "Inserir imagem da galeria",
-      description: "Envie imagens para usar no manual",
     }),
     [],
   );

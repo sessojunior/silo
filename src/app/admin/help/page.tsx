@@ -33,7 +33,6 @@ export default function HelpPage() {
       deleteEndpoint: "/api/admin/help/images",
       directory: "/uploads/help",
       title: "Inserir imagem da ajuda",
-      description: "Imagens para a documentação de ajuda",
     }),
     [],
   );
