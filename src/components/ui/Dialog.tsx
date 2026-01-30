@@ -78,7 +78,7 @@ export default function Dialog({
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+            className="rounded-full flex items-center justify-center size-8 -mr-2 text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-700 transition-colors"
             aria-label="Fechar"
           >
             <span className="icon-[lucide--x] size-4" />

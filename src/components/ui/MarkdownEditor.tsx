@@ -481,7 +481,7 @@ export default function MarkdownEditor({
         }
       >
         <div className="px-6 pb-6 pt-4">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-base text-zinc-600 dark:text-zinc-400">
             Tem certeza que deseja excluir esta imagem? Esta ação não poderá ser
             desfeita.
           </p>

@@ -335,7 +335,7 @@ export default function ProblemFormOffcanvas({
           }
         >
           <div className="p-6">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+            <p className="text-base text-zinc-600 dark:text-zinc-400 mb-6">
               Tem certeza que deseja excluir este problema? Todas as soluções,
               imagens e dados relacionados serão removidos permanentemente.
             </p>
@@ -371,7 +371,7 @@ export default function ProblemFormOffcanvas({
           }
         >
           <div className="p-6">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+            <p className="text-base text-zinc-600 dark:text-zinc-400 mb-6">
               Tem certeza que deseja excluir esta imagem? Esta ação não poderá
               ser desfeita.
             </p>

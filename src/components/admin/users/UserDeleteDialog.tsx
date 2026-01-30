@@ -86,7 +86,7 @@ export default function UserDeleteDialog({
       title="Excluir Usuário"
     >
       <div className="p-6 space-y-4">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-base text-zinc-600 dark:text-zinc-400">
           Tem certeza que deseja excluir o usuário &quot;{user.name}&quot;?
         </p>
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">

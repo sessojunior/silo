@@ -665,7 +665,7 @@ export default function TaskFormOffcanvas({
         title="Confirmar exclusão"
       >
         <div className="p-6">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+          <p className="text-base text-zinc-600 dark:text-zinc-400 mb-6">
             Tem certeza que deseja excluir a tarefa &quot;{task?.name}&quot;?
             Esta ação não pode ser desfeita.
           </p>

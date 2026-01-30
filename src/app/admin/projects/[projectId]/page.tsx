@@ -59,6 +59,16 @@ interface ActivitySubmissionData {
   estimatedHours?: string; // Manter compatibilidade com ActivityFormOffcanvas
 }
 
+const isValidActivity = (
+  activity: ProjectActivity | null | undefined,
+): activity is ProjectActivity =>
+  Boolean(
+    activity &&
+      typeof activity.id === "string" &&
+      activity.id.length > 0 &&
+      typeof activity.name === "string",
+  );
+
 export default function ProjectDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -296,7 +306,7 @@ export default function ProjectDetailsPage() {
       const items = Array.isArray(data.data?.activities)
         ? data.data.activities
         : [];
-      setActivities(items);
+      setActivities(items.filter(isValidActivity));
     } catch (error) {
       console.error("❌ [PAGE_PROJECT_DETAILS] Erro ao carregar atividades:", {
         error,
@@ -331,14 +341,18 @@ export default function ProjectDetailsPage() {
 
   // Filtrar atividades
   const filteredActivities = useMemo(() => {
-    let filtered = Array.isArray(activities) ? activities : [];
+    let filtered = Array.isArray(activities)
+      ? activities.filter(isValidActivity)
+      : [];
 
     // Filtro de busca
     if (search) {
       filtered = filtered.filter(
         (activity) =>
           activity.name.toLowerCase().includes(search.toLowerCase()) ||
-          activity.description.toLowerCase().includes(search.toLowerCase()),
+          (activity.description ?? "")
+            .toLowerCase()
+            .includes(search.toLowerCase()),
       );
     }
 
@@ -491,10 +505,13 @@ export default function ProjectDetailsPage() {
           throw new Error(data.error || "Erro ao atualizar atividade");
         }
 
-        // Atualizar lista de atividades
-        setActivities((prev) =>
-          prev.map((a) => (a.id === editingActivity.id ? data.activity : a)),
-        );
+        if (isValidActivity(data.activity)) {
+          setActivities((prev) =>
+            prev.map((a) => (a.id === editingActivity.id ? data.activity : a)),
+          );
+        } else {
+          await fetchActivities();
+        }
 
         toast({
           type: "success",
@@ -538,8 +555,11 @@ export default function ProjectDetailsPage() {
           throw new Error(data.error || "Erro ao criar atividade");
         }
 
-        // Adicionar à lista de atividades
-        setActivities((prev) => [data.activity, ...prev]);
+        if (isValidActivity(data.activity)) {
+          setActivities((prev) => [data.activity, ...prev]);
+        } else {
+          await fetchActivities();
+        }
 
         toast({
           type: "success",

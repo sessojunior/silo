@@ -71,9 +71,9 @@ export default function TreeView({
         onClose={() => setDialogNode(null)}
         title={dialogNode?.name}
       >
-        <div className="space-y-4">
+        <div className="space-y-4 p-6">
           {dialogNode?.data?.description ? (
-            <div className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+            <div className="text-base text-zinc-700 dark:text-zinc-300 leading-relaxed">
               {dialogNode.data.description}
             </div>
           ) : (
@@ -201,14 +201,14 @@ function TreeItem({
               className="size-6 flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
               title="Editar dependência"
             >
-              <span className="icon-[lucide--edit-2] size-4" />
+              <span className="icon-[lucide--edit-2] size-3" />
             </button>
             <button
               onClick={handleDelete}
               className="size-6 flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full text-zinc-500 hover:text-red-600 dark:hover:text-red-400"
               title="Excluir dependência"
             >
-              <span className="icon-[lucide--trash-2] size-4" />
+              <span className="icon-[lucide--trash-2] size-3" />
             </button>
           </div>
         )}

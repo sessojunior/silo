@@ -293,7 +293,7 @@ export default function IncidentManagementOffcanvas({
         }
       >
         <div className="p-6">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+          <p className="text-base text-zinc-600 dark:text-zinc-400 mb-6">
             Tem certeza que deseja excluir o incidente &quot;
             {deletingIncident?.name}&quot;? Esta ação não poderá ser desfeita.
           </p>

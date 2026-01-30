@@ -89,7 +89,7 @@ export default function TaskHistoryModal({
       <div className="space-y-4">
         <div className="p-6">
           {/* Cabeçalho da tarefa */}
-          <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg pb-6">
+          <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4">
             <div className="flex items-center gap-2">
               <span className="icon-[lucide--file-text] size-4 text-zinc-500 dark:text-zinc-400" />
               <h3 className="font-medium text-zinc-900 dark:text-zinc-100 truncate">
