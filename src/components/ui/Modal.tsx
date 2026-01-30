@@ -10,6 +10,8 @@ interface ModalProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
   children: React.ReactNode;
   showFooter?: boolean;
+  panelClassName?: string;
+  bodyClassName?: string;
 }
 
 export default function Modal({
@@ -19,6 +21,8 @@ export default function Modal({
   children,
   className,
   showFooter = false,
+  panelClassName,
+  bodyClassName,
   ...props
 }: ModalProps) {
   const [visible, setVisible] = useState(false);
@@ -86,9 +90,10 @@ export default function Modal({
       <div
         className={twMerge(
           clsx(
-            "relative z-10 m-4 w-full max-w-4xl transform rounded-xl border border-zinc-200 bg-white shadow-sm transition-all duration-500 ease-in-out",
+            "relative z-10 m-4 flex w-full max-w-4xl transform flex-col rounded-xl border border-zinc-200 bg-white shadow-sm transition-all duration-500 ease-in-out",
             "dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-zinc-800/70",
             shouldAnimateIn ? "opacity-100 scale-100" : "opacity-0 scale-50",
+            panelClassName,
           ),
         )}
       >
@@ -113,7 +118,14 @@ export default function Modal({
         </div>
 
         {/* Conteúdo */}
-        <div className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700">
+        <div
+          className={twMerge(
+            clsx(
+              "flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700",
+              bodyClassName,
+            ),
+          )}
+        >
           {children}
         </div>
 

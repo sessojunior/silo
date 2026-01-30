@@ -182,13 +182,9 @@ export default function Sidebar() {
           updatedAt: Date;
         }
 
-        // Converter dados do banco para formato da interface e filtrar apenas projetos ativos e importantes
+        // Converter dados do banco para formato da interface e filtrar apenas projetos ativos
         const formattedProjects: Project[] = rawProjects
-          .filter(
-            (project) =>
-              project.status === "active" &&
-              (project.priority === "high" || project.priority === "urgent"),
-          )
+          .filter((project) => project.status === "active")
           .map((project) => ({
             id: project.id,
             name: project.name,

@@ -46,7 +46,7 @@ export function ReportsPage() {
   return (
     <div className="w-full h-full flex flex-col">
       {/* Cabeçalho fixo */}
-      <div className="w-full p-6 border-b border-zinc-200 dark:border-zinc-700">
+      <div className="w-full p-6 bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
           Relatórios
         </h1>

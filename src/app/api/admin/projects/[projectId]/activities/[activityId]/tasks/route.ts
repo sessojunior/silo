@@ -544,6 +544,11 @@ export async function PUT(
     if (oldTask.description !== description)
       changedFields.push("description");
     if (oldTask.category !== (category ?? null)) changedFields.push("category");
+    if (oldTask.estimatedDays !== (estimatedDays ?? 1))
+      changedFields.push("estimatedDays");
+    if (oldTask.startDate !== (startDate || null))
+      changedFields.push("startDate");
+    if (oldTask.endDate !== (endDate || null)) changedFields.push("endDate");
     if (oldTask.priority !== priority)
       changedFields.push("priority");
     if (oldTask.status !== newStatus) changedFields.push("status");
@@ -560,11 +565,21 @@ export async function PUT(
         changedFields,
         oldValues: {
           name: oldTask.name,
+          description: oldTask.description,
+          category: oldTask.category,
+          estimatedDays: oldTask.estimatedDays,
+          startDate: oldTask.startDate,
+          endDate: oldTask.endDate,
           status: oldTask.status,
           priority: oldTask.priority,
         },
         newValues: {
           name,
+          description,
+          category: category ?? null,
+          estimatedDays: estimatedDays ?? 1,
+          startDate: startDate || null,
+          endDate: endDate || null,
           status: newStatus,
           priority,
         },

@@ -117,7 +117,7 @@ export default function ProductStatusHistory({
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 px-3">
       {history.length === 0 ? (
         <div className="text-center py-8">
           <span className="icon-[lucide--history] size-12 text-zinc-300 dark:text-zinc-600 mx-auto block mb-3" />
