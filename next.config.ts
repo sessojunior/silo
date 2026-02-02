@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { config } from "./src/lib/config";
 
 const parseAppOrigin = (): {
   protocol: "http" | "https";
@@ -25,16 +26,36 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "/silo";
 const normalizedBasePath = basePath === "/" ? "" : basePath.replace(/\/$/, "");
 const appOrigin = parseAppOrigin();
 
+const getRootRedirectDestination = (): string | null => {
+  if (!normalizedBasePath) return null;
+  try {
+    return config.getRootRedirectUrl();
+  } catch {
+    return null;
+  }
+};
+
 const nextConfig: NextConfig = {
   ...(normalizedBasePath ? { basePath: normalizedBasePath } : {}),
   async redirects() {
     const destination = `${normalizedBasePath || ""}/images/logo.png`;
+    const rootDestination = getRootRedirectDestination();
     return [
+      ...(rootDestination
+        ? [
+            {
+              source: "/",
+              destination: rootDestination,
+              permanent: false,
+              basePath: false as const,
+            },
+          ]
+        : []),
       {
         source: "/favicon.ico",
         destination: destination.startsWith("/") ? destination : `/${destination}`,
         permanent: false,
-        basePath: false,
+        basePath: false as const,
       },
     ];
   },

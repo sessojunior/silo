@@ -55,10 +55,17 @@ export function ReportsPage() {
         </p>
       </div>
 
-      {/* Conteúdo com scroll natural */}
       <div className="p-6 flex-1">
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Cards de Relatórios Disponíveis */}
+          <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+            <span className="icon-[lucide--flask-conical] size-6 text-amber-700 dark:text-amber-300" />
+            <div>
+              <div className="text-lg font-semibold">Funcionalidade experimental</div>
+              <div className="text-sm">
+                Os relatórios estão em desenvolvimento e em testes de uso e podem apresentar resultados e informações estranhas.
+              </div>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {reports.map((report) => (
               <ReportCard key={report.id} report={report} />

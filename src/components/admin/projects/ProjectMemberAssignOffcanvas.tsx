@@ -238,7 +238,7 @@ export default function ProjectMemberAssignOffcanvas({
       title="Atribuir Membros ao Projeto"
       width="xl"
     >
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         {/* Informações do Projeto */}
         <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg p-4">
           <div className="flex items-center gap-3">

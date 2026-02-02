@@ -216,13 +216,14 @@ export default function UserFormOffcanvas({
       onClose={onClose}
       title={isEditing ? "Editar Usuário" : "Novo Usuário"}
     >
-      <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
-        {isEditing
-          ? "Edite as informações do usuário abaixo."
-          : "Preencha as informações do novo usuário."}
-      </p>
+      <div className="flex flex-col gap-6 p-6">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          {isEditing
+            ? "Edite as informações do usuário abaixo."
+            : "Preencha as informações do novo usuário."}
+        </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             Nome <span className="text-red-500">*</span>
@@ -447,7 +448,8 @@ export default function UserFormOffcanvas({
             )}
           </Button>
         </div>
-      </form>
+        </form>
+      </div>
     </Offcanvas>
   );
 }

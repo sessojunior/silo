@@ -275,12 +275,12 @@ export default function HelpPage() {
         title="Editor da Documentação"
         width="xl"
       >
-        <form className="flex flex-col gap-6 min-h-0" onSubmit={handleSubmit}>
-          <div className="flex-1 flex flex-col min-h-0">
+        <form className="flex flex-col h-full" onSubmit={handleSubmit}>
+          <div className="flex-1 min-h-0 overflow-y-auto p-6">
             <Label htmlFor="content" required>
               Conteúdo da Documentação (Markdown)
             </Label>
-            <div className="flex-1 min-h-[400px] max-h-[70vh]">
+            <div className="flex-1 min-h-[400px]">
               <MarkdownEditor
                 value={formContent}
                 onChange={(val: string) => setFormContent(val || "")}
@@ -290,7 +290,7 @@ export default function HelpPage() {
             </div>
           </div>
 
-          <div className="mt-auto flex gap-2 justify-end pt-4 border-t border-zinc-200 dark:border-zinc-700">
+          <div className="flex gap-2 justify-end px-6 py-4 border-t border-zinc-200 dark:border-zinc-700">
             <Button
               type="button"
               style="bordered"

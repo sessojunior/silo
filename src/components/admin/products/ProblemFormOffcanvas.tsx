@@ -117,7 +117,7 @@ export default function ProblemFormOffcanvas({
         title={editing ? "Editar problema" : "Adicionar problema"}
         width="xl"
       >
-        <form onSubmit={onSubmit} className="flex flex-col gap-6">
+        <form onSubmit={onSubmit} className="flex flex-col gap-6 p-6">
           <div>
             <Label htmlFor="problem-title" required>
               Título do problema

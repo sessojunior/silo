@@ -45,7 +45,7 @@ export default function DependencyItemFormOffcanvas({
       title={isAddingNewItem ? "Adicionar Dependência" : "Editar Dependência"}
       width="lg"
     >
-      <form className="flex flex-col gap-6" onSubmit={onSubmit}>
+      <form className="flex flex-col gap-6 p-6" onSubmit={onSubmit}>
         {/* Nome */}
         <div>
           <Label htmlFor="item-name" required>

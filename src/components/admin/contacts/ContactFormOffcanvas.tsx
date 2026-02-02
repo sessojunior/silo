@@ -285,7 +285,7 @@ export default function ContactFormOffcanvas({
       onClose={handleClose}
       title={contact ? "Editar Contato" : "Novo Contato"}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col h-full -m-6">
+      <form onSubmit={handleSubmit} className="flex flex-col h-full">
         <div className="flex-1 space-y-6 p-6">
           {/* Upload de Imagem */}
           <div>

@@ -68,6 +68,27 @@ export const config = {
     return `${origin}${this.publicBasePath}`;
   },
 
+  getRootRedirectUrl(): string {
+    const isProd = this.nodeEnv === "production";
+    const basePath = this.publicBasePath;
+    const raw = isProd ? process.env.APP_URL_PROD : process.env.APP_URL_DEV;
+    const envKey = isProd ? "APP_URL_PROD" : "APP_URL_DEV";
+    const trimmed = (raw || "").trim();
+    if (!trimmed) {
+      throw new Error(`${envKey} deve ser configurada para redirecionamento`);
+    }
+
+    let origin: string;
+    try {
+      origin = new URL(trimmed).origin;
+    } catch {
+      throw new Error(`${envKey} deve ser uma URL válida`);
+    }
+
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    return basePath.length > 0 ? `${normalizedOrigin}${basePath}` : normalizedOrigin;
+  },
+
   /**
    * Constrói URL para chamadas de API respeitando o basePath da aplicação.
    *

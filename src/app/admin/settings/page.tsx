@@ -915,7 +915,7 @@ export default function SettingsPage() {
       {/* Security Info */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <span className="icon-[lucide--shield-check] size-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+          <span className="icon-[lucide--shield-check] size-6 text-blue-600 dark:text-blue-400 mt-0.5" />
           <div>
             <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-1">
               Informações de Segurança

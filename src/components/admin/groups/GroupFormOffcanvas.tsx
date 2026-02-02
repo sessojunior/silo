@@ -192,7 +192,7 @@ export default function GroupFormOffcanvas({
       title={group ? "Editar Grupo" : "Novo Grupo"}
       width="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 p-6">
         {/* Nome do Grupo */}
         <div>
           <Label htmlFor="name" required>

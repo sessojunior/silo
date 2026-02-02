@@ -228,7 +228,7 @@ export default function ContactSelectorOffcanvas({
       title="Selecionar Contatos"
       width="lg"
     >
-      <div className="flex flex-col h-full -m-6">
+      <div className="flex flex-col h-full">
         <div className="flex-1 overflow-hidden">
           {/* Header com busca */}
           <div className="p-6 border-b border-zinc-200 dark:border-zinc-700">

@@ -463,7 +463,7 @@ export default function TaskFormOffcanvas({
         title={task ? "Editar Tarefa" : "Nova Tarefa"}
         width="xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 p-6">
           {/* Nome da Tarefa */}
           <div>
             <Label htmlFor="name">Nome da Tarefa *</Label>

@@ -92,7 +92,7 @@ export default function Offcanvas({
             <span className="icon-[lucide--x] size-5 text-zinc-500 dark:text-zinc-400" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6 text-zinc-900 dark:text-zinc-100">
+        <div className="flex-1 overflow-y-auto text-zinc-900 dark:text-zinc-100">
           {children}
         </div>
       </div>

@@ -200,14 +200,14 @@ export default function ChatSidebar({
         <div className="flex mb-3 bg-white dark:bg-zinc-700 rounded-lg p-1 m-4">
           <button
             onClick={() => handleTabChange("groups")}
-            className={`flex-1 py-2 px-3 text-xs font-medium rounded-md transition-colors ${activeTab === "groups" ? "bg-blue-500 text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-600"}`}
+            className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${activeTab === "groups" ? "bg-blue-500 text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-600"}`}
           >
             <span className="icon-[lucide--users] w-3 h-3 inline mr-1" />
             Grupos ({groups.length})
           </button>
           <button
             onClick={() => handleTabChange("users")}
-            className={`flex-1 py-2 px-3 text-xs font-medium rounded-md transition-colors ${activeTab === "users" ? "bg-blue-500 text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-600"}`}
+            className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${activeTab === "users" ? "bg-blue-500 text-white" : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-600"}`}
           >
             <span className="icon-[lucide--user] w-3 h-3 inline mr-1" />
             Usuários ({users.length})

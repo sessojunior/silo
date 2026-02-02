@@ -38,7 +38,7 @@ export default function ManualSectionFormOffcanvas({
       title={formMode === "section" ? "Adicionar seção" : "Editar capítulo"}
       width="xl"
     >
-      <form className="flex flex-col gap-6 h-full" onSubmit={onSubmit}>
+      <form className="flex flex-col gap-6 h-full p-6" onSubmit={onSubmit}>
         <div>
           <Label htmlFor="form-title" required>
             {formMode === "section" ? "Título da seção" : "Título do capítulo"}

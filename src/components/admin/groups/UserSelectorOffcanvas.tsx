@@ -268,7 +268,7 @@ export default function UserSelectorOffcanvas({
       }
       width="md"
     >
-      <div className="flex flex-col gap-6 h-full">
+      <div className="flex flex-col gap-6 h-full p-6">
         <div className="flex-shrink-0">
           <div className="relative">
             <Input

@@ -390,7 +390,7 @@ const GroupUsersSection = forwardRef<
         onClose={() => setPermissionsOpen(false)}
         title={
           <div className="flex items-center gap-3">
-            <span className="icon-[lucide--shield-check] size-5 text-blue-600" />
+            <span className="icon-[lucide--shield-check] size-6 text-blue-600" />
             <div>
               <h2 className="text-lg font-semibold">Permissões do grupo</h2>
               <p className="text-sm font-normal text-zinc-500 dark:text-zinc-400">
@@ -401,7 +401,16 @@ const GroupUsersSection = forwardRef<
         }
         width="lg"
       >
-        <div className="flex flex-col gap-6 h-full">
+        <div className="flex flex-col gap-6 h-full p-6">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+            <span className="icon-[lucide--flask-conical] size-5 mt-0.5 text-amber-700 dark:text-amber-300" />
+            <div>
+              <div className="text-base font-semibold">Funcionalidade experimental</div>
+              <div className="text-sm">
+                As permissões estão em testes. Qualquer irregularidade ou mau funcionamento deve ser comunicada para correção.
+              </div>
+            </div>
+          </div>
           {group.role === "admin" && (
             <div className="text-sm text-zinc-500 dark:text-zinc-400">
               Grupo administrador possui todas as permissões do sistema.
@@ -470,8 +479,8 @@ const GroupUsersSection = forwardRef<
             </div>
           )}
 
-          <div className="mt-auto border-t border-zinc-200 dark:border-zinc-700 p-6">
-            <div className="flex items-center justify-between gap-4">
+          <div className="mt-auto border-t border-zinc-200 dark:border-zinc-700 py-6">
+            <div className="flex items-center justify-end gap-4">
               <div className="flex gap-3">
                 <Button
                   style="bordered"

@@ -51,7 +51,7 @@ export default function ManualEditorOffcanvas({
       }
       width="xl"
     >
-      <form className="flex flex-col gap-6 h-full" onSubmit={onSubmit}>
+      <form className="flex flex-col gap-6 h-full p-6" onSubmit={onSubmit}>
         <div className="flex-1 flex flex-col min-h-0">
           <Label htmlFor="form-content" required>
             Conteúdo do Manual (Markdown)

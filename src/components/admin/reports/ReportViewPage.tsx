@@ -427,7 +427,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
         }
         width="lg"
       >
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 p-6">
           <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-700/50 dark:bg-blue-950/20">
             <div className="flex items-start gap-3">
               <span className="icon-[lucide--sparkles] size-5 text-blue-600 dark:text-blue-400 mt-0.5" />

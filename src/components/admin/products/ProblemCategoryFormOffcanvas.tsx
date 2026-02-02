@@ -88,7 +88,7 @@ export default function ProblemCategoryFormOffcanvas({
       width="md"
       zIndex={90}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">Nome</label>
           <Input

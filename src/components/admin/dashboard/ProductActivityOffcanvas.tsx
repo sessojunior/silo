@@ -312,112 +312,114 @@ export default function ProductActivityOffcanvas({
       width="xl"
       zIndex={80}
     >
-      {/* Bloco de contexto mais elegante */}
-      <div className="mb-6 flex items-center gap-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-700/50 dark:bg-blue-950/20">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-800 dark:text-blue-300">
-          <span className="icon-[lucide--calendar-clock] size-6"></span>
-        </div>
-        <div className="flex flex-col flex-1">
-          <span className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-            {productName}
-          </span>
-          <div className="flex items-center gap-3 text-sm text-blue-700 dark:text-blue-300">
-            <span className="flex items-center gap-1">
-              <span className="icon-[lucide--calendar-days] size-4"></span>
-              {formatDateBR(date)}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="icon-[lucide--clock] size-4"></span>
-              {turn}h
-            </span>
+      <div className="flex flex-col gap-6 p-6 h-full">
+        {/* Bloco de contexto mais elegante */}
+        <div className="flex items-center gap-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-700/50 dark:bg-blue-950/20">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-800 dark:text-blue-300">
+            <span className="icon-[lucide--calendar-clock] size-6"></span>
           </div>
+          <div className="flex flex-col flex-1">
+            <span className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+              {productName}
+            </span>
+            <div className="flex items-center gap-3 text-sm text-blue-700 dark:text-blue-300">
+              <span className="flex items-center gap-1">
+                <span className="icon-[lucide--calendar-days] size-4"></span>
+                {formatDateBR(date)}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="icon-[lucide--clock] size-4"></span>
+                {turn}h
+              </span>
+            </div>
+          </div>
+          {/* Botão de histórico */}
+          {onViewHistory && (
+            <Button
+              icon="icon-[lucide--history]"
+              style="bordered"
+              onClick={onViewHistory}
+              className="px-3 py-2"
+              title="Ver histórico de status"
+            >
+              Histórico
+            </Button>
+          )}
         </div>
-        {/* Botão de histórico */}
-        {onViewHistory && (
-          <Button
-            icon="icon-[lucide--history]"
-            style="bordered"
-            onClick={onViewHistory}
-            className="px-3 py-2"
-            title="Ver histórico de status"
-          >
-            Histórico
-          </Button>
-        )}
-      </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Status e Incidentes na mesma linha */}
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <Label required>Status</Label>
-            <Select
-              name="status"
-              options={STATUS_OPTIONS}
-              selected={status}
-              onChange={setStatus}
-              placeholder="Selecione o status"
-              required
-            />
-          </div>
-          <div className="flex-1">
-            <Label required={requireIncident}>Incidentes</Label>
-            <div className="flex items-center gap-2">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Status e Incidentes na mesma linha */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Label required>Status</Label>
               <Select
-                name="incident"
-                options={incidents}
-                selected={incidentId ?? undefined}
-                onChange={setIncidentId}
-                placeholder="Selecione o incidente"
-                required={requireIncident}
-                clearable={!requireIncident}
-                onClear={() => setIncidentId(null)}
-              />
-              <Button
-                icon="icon-[lucide--settings]"
-                type="button"
-                style="bordered"
-                onClick={() => setIncidentManagementOpen(true)}
-                className="px-3 py-3 h-12"
-                title="Gerenciar incidentes"
-              ></Button>
-            </div>
-          </div>
-        </div>
-        {hasRealIncident && (
-          <div>
-            <Label required>Descrição de incidentes</Label>
-
-            {/* Dicas de formatação Markdown */}
-            <div className="mt-2">
-              <MarkdownEditor
-                value={description}
-                onChange={(value) => setDescription(value || "")}
-                className="h-full w-full"
-                uploadConfig={uploadConfig}
+                name="status"
+                options={STATUS_OPTIONS}
+                selected={status}
+                onChange={setStatus}
+                placeholder="Selecione o status"
+                required
               />
             </div>
+            <div className="flex-1">
+              <Label required={requireIncident}>Incidentes</Label>
+              <div className="flex items-center gap-2">
+                <Select
+                  name="incident"
+                  options={incidents}
+                  selected={incidentId ?? undefined}
+                  onChange={setIncidentId}
+                  placeholder="Selecione o incidente"
+                  required={requireIncident}
+                  clearable={!requireIncident}
+                  onClear={() => setIncidentId(null)}
+                />
+                <Button
+                  icon="icon-[lucide--settings]"
+                  type="button"
+                  style="bordered"
+                  onClick={() => setIncidentManagementOpen(true)}
+                  className="px-3 py-3 h-12"
+                  title="Gerenciar incidentes"
+                ></Button>
+              </div>
+            </div>
           </div>
-        )}
-        <div className="flex justify-end gap-2">
-          <Button style="bordered" type="button" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? "Salvando..." : "Salvar"}
-          </Button>
-        </div>
-      </form>
+          {hasRealIncident && (
+            <div>
+              <Label required>Descrição de incidentes</Label>
 
-      {/* Offcanvas de gerenciamento de incidentes */}
-      <IncidentManagementOffcanvas
-        open={incidentManagementOpen}
-        onClose={() => setIncidentManagementOpen(false)}
-        onIncidentUpdated={() => {
-          loadIncidents();
-          onSaved?.();
-        }}
-      />
+              {/* Dicas de formatação Markdown */}
+              <div className="mt-2">
+                <MarkdownEditor
+                  value={description}
+                  onChange={(value) => setDescription(value || "")}
+                  className="h-full w-full"
+                  uploadConfig={uploadConfig}
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button style="bordered" type="button" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
+        </form>
+
+        {/* Offcanvas de gerenciamento de incidentes */}
+        <IncidentManagementOffcanvas
+          open={incidentManagementOpen}
+          onClose={() => setIncidentManagementOpen(false)}
+          onIncidentUpdated={() => {
+            loadIncidents();
+            onSaved?.();
+          }}
+        />
+      </div>
     </Offcanvas>
   );
 }

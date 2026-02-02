@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Switch from "@/components/ui/Switch";
 import Select from "@/components/ui/Select";
+import Button from "@/components/ui/Button";
 import { toast } from "@/lib/toast";
 
 interface ProductFormProps {
@@ -76,7 +77,7 @@ export default function ProductForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 p-6">
       <div>
         <label
           htmlFor="product-name"
@@ -235,27 +236,24 @@ export default function ProductForm({
         </div>
       </div>
       <div className="flex gap-2 justify-end">
-        <button
+        <Button
           type="button"
+          style="bordered"
           onClick={onCancel}
-          className="px-4 py-2 rounded bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 transition"
           disabled={loading}
         >
           Cancelar
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60"
-          disabled={loading}
-        >
-          {loading
-            ? initialData
-              ? "Salvando..."
-              : "Criando..."
-            : initialData
-              ? "Salvar"
-              : "Criar"}
-        </button>
+        </Button>
+        <Button type="submit" disabled={loading}>
+          {loading ? (
+            <>
+              <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
+              {initialData ? "Salvando..." : "Criando..."}
+            </>
+          ) : (
+            <>{initialData ? "Salvar" : "Criar"}</>
+          )}
+        </Button>
       </div>
     </form>
   );

@@ -166,7 +166,7 @@ export default function ProjectFormOffcanvas({
       title={project ? "Editar Projeto" : "Novo Projeto"}
       width="xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 p-6">
         {/* Nome do Projeto */}
         <div>
           <Label htmlFor="name">Nome do Projeto *</Label>
