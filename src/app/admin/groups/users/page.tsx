@@ -497,7 +497,7 @@ export default function UsersPage() {
                             ) : canUpdateUsers ? (
                               <Button
                                 onClick={() => toggleUserStatus(user)}
-                                className={`size-8 p-0 rounded-md bg-transparent ${user.isActive ? "hover:bg-red-50 dark:hover:bg-red-900/20" : "hover:bg-green-50 dark:hover:bg-green-900/20"}`}
+                                className={`size-8 p-0 rounded-md bg-transparent ${user.isActive ? "hover:bg-red-50 focus:bg-red-50 dark:hover:bg-red-900/20 dark:focus:bg-red-900/20" : "hover:bg-green-50 focus:bg-green-50 dark:hover:bg-green-900/20 dark:focus:bg-green-900/20"}`}
                                 title={
                                   user.isActive
                                     ? "Desativar usuário"
@@ -514,7 +514,7 @@ export default function UsersPage() {
                             {canUpdateUsers && (
                               <Button
                                 onClick={() => openEditForm(user)}
-                                className="size-8 p-0 rounded-md bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                className="size-8 p-0 rounded-md bg-transparent hover:bg-blue-50 focus:bg-blue-50 dark:hover:bg-blue-900/20 dark:focus:bg-blue-900/20"
                               >
                                 <span className="icon-[lucide--edit] size-4 text-blue-600 dark:text-blue-400" />
                               </Button>
@@ -533,7 +533,7 @@ export default function UsersPage() {
                             ) : canDeleteUsers ? (
                               <Button
                                 onClick={() => openDeleteDialog(user)}
-                                className="size-8 p-0 rounded-md bg-transparent hover:bg-red-50 dark:hover:bg-red-900/20"
+                                className="size-8 p-0 rounded-md bg-transparent hover:bg-red-50 focus:bg-red-50 dark:hover:bg-red-900/20 dark:focus:bg-red-900/20"
                               >
                                 <span className="icon-[lucide--trash] size-4 text-red-600 dark:text-red-400" />
                               </Button>

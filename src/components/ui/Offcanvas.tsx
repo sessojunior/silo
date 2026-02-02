@@ -1,14 +1,18 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { clsx } from "clsx";
+import Button from "@/components/ui/Button";
 
-const WIDTH_MAP = {
-  sm: "320px",
-  md: "480px",
-  lg: "640px",
-  xl: "800px",
+const WIDTH_CLASS_MAP: Record<string, string> = {
+  sm: "md:w-[320px]",
+  md: "md:w-[480px]",
+  lg: "md:w-[640px]",
+  xl: "md:w-[800px]",
 };
+
+type OffcanvasStatus = "idle" | "loading" | "success" | "error";
 
 interface OffcanvasProps {
   open: boolean;
@@ -18,7 +22,32 @@ interface OffcanvasProps {
   side?: "right" | "left";
   width?: "sm" | "md" | "lg" | "xl" | string;
   zIndex?: number;
+  status?: OffcanvasStatus;
+  onEdit?: () => void;
+  onAdd?: () => void;
+  editLabel?: string;
+  addLabel?: string;
+  headerActions?: React.ReactNode;
+  footerActions?: React.ReactNode;
+  contentClassName?: string;
 }
+
+const FOCUSABLE_SELECTOR =
+  'a[href],button,textarea,input,select,[tabindex]:not([tabindex="-1"])';
+
+let openCount = 0;
+let bodyOverflowBackup: string | null = null;
+
+const getFocusableElements = (container: HTMLElement): HTMLElement[] => {
+  const nodes = Array.from(
+    container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  );
+  return nodes.filter(
+    (node) =>
+      !node.hasAttribute("disabled") &&
+      node.getAttribute("aria-hidden") !== "true",
+  );
+};
 
 export default function Offcanvas({
   open,
@@ -28,100 +57,248 @@ export default function Offcanvas({
   side = "right",
   width = "md",
   zIndex = 70,
+  status = "idle",
+  onEdit,
+  onAdd,
+  editLabel = "Editar",
+  addLabel = "Adicionar",
+  headerActions,
+  footerActions,
+  contentClassName,
 }: OffcanvasProps) {
-  const ref = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
   const [mounted, setMounted] = useState(false);
-
-  // Fecha ao pressionar ESC
-  useEffect(() => {
-    if (!open) return;
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  const [rendered, setRendered] = useState(false);
+  const [active, setActive] = useState(false);
+  const titleId = useId();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!open || !mounted) return null;
+  useEffect(() => {
+    if (open) {
+      lastFocusedRef.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      setRendered(true);
+      requestAnimationFrame(() => setActive(true));
+      return;
+    }
+    setActive(false);
+    const timeout = window.setTimeout(() => setRendered(false), 220);
+    return () => window.clearTimeout(timeout);
+  }, [open]);
 
-  // Calcula largura
-  let panelWidth = WIDTH_MAP[width as keyof typeof WIDTH_MAP] || width;
-  if (!panelWidth) panelWidth = "480px";
+  useEffect(() => {
+    if (!open) return;
+    openCount += 1;
+    if (openCount === 1) {
+      bodyOverflowBackup = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      openCount -= 1;
+      if (openCount <= 0) {
+        document.body.style.overflow = bodyOverflowBackup || "";
+        bodyOverflowBackup = null;
+        openCount = 0;
+      }
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusables = getFocusableElements(panel);
+      if (focusables.length === 0) {
+        panel.focus();
+        event.preventDefault();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const activeElement = document.activeElement;
+      if (event.shiftKey) {
+        if (activeElement === first || activeElement === panel) {
+          event.preventDefault();
+          last.focus();
+        }
+        return;
+      }
+      if (activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (open && panelRef.current) {
+      const focusables = getFocusableElements(panelRef.current);
+      if (focusables.length > 0) {
+        focusables[0].focus();
+        return;
+      }
+      panelRef.current.focus();
+    }
+    if (!open && lastFocusedRef.current) {
+      lastFocusedRef.current.focus();
+    }
+  }, [open]);
+
+  if (!mounted || !rendered) return null;
+
+  const widthClass =
+    WIDTH_CLASS_MAP[width as keyof typeof WIDTH_CLASS_MAP] || width || "md:w-[480px]";
+
+  const panelTranslateClass =
+    side === "right"
+      ? active
+        ? "translate-x-0"
+        : "translate-x-full"
+      : active
+        ? "translate-x-0"
+        : "-translate-x-full";
+
+  const statusConfig =
+    status === "loading"
+      ? {
+          label: "Carregando",
+          icon: "icon-[lucide--loader-2] animate-spin",
+          className: "text-blue-600",
+        }
+      : status === "success"
+        ? {
+            label: "Concluído",
+            icon: "icon-[lucide--check-circle]",
+            className: "text-emerald-600",
+          }
+        : status === "error"
+          ? {
+              label: "Erro",
+              icon: "icon-[lucide--x-circle]",
+              className: "text-red-600",
+            }
+          : null;
+
+  const footerContent =
+    footerActions ?? (
+      <div className="flex w-full flex-wrap items-center justify-end gap-2">
+        <Button style="bordered" type="button" onClick={onClose}>
+          Cancelar
+        </Button>
+      </div>
+    );
 
   const content = (
     <div
-      ref={ref}
-      className="fixed inset-0 flex"
-      style={{
-        justifyContent: side === "right" ? "flex-end" : "flex-start",
-        zIndex,
-      }}
-      aria-modal="true"
-      role="dialog"
-      tabIndex={-1}
+      className={clsx(
+        "fixed inset-0 flex items-stretch",
+        side === "right" ? "justify-end" : "justify-start",
+      )}
+      style={{ zIndex }}
     >
       <div
+        ref={overlayRef}
+        onClick={onClose}
+        className={clsx(
+          "absolute inset-0 bg-black/40 transition-opacity duration-200",
+          active ? "opacity-100" : "opacity-0",
+        )}
+      />
+      <div
         ref={panelRef}
-        className={
-          `h-full bg-white shadow-xl flex flex-col transition-transform duration-300 ease-in-out dark:bg-zinc-800 ` +
-          (side === "right"
-            ? "animate-slide-in-right"
-            : "animate-slide-in-left")
-        }
-        style={{
-          width: panelWidth,
-          maxWidth: "100vw",
-        }}
+        tabIndex={-1}
+        className={clsx(
+          "relative z-10 flex h-dvh w-full max-w-full flex-col bg-white shadow-xl outline-none transition-transform duration-300 ease-out dark:bg-zinc-800",
+          widthClass,
+          panelTranslateClass,
+        )}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
       >
-        <div className="flex items-center justify-between p-6 border-b border-zinc-200 dark:border-zinc-700">
-          {title && (
-            <div className="font-semibold text-lg text-zinc-900 dark:text-zinc-100">
-              {title}
-            </div>
-          )}
-          <button
-            onClick={onClose}
-            className="flex items-center justify-center size-8 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            aria-label="Fechar painel"
-          >
-            <span className="icon-[lucide--x] size-5 text-zinc-500 dark:text-zinc-400" />
-          </button>
+        <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800 sm:p-6">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            {title ? (
+              <div
+                id={titleId}
+                className="text-lg font-semibold text-zinc-900 dark:text-zinc-100"
+              >
+                {title}
+              </div>
+            ) : null}
+            {statusConfig ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className={clsx(
+                  "flex items-center gap-2 text-sm",
+                  statusConfig.className,
+                )}
+              >
+                <span className={clsx(statusConfig.icon, "size-4")} />
+                <span>{statusConfig.label}</span>
+              </div>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-2">
+            {headerActions}
+            {onEdit ? (
+              <button
+                type="button"
+                onClick={onEdit}
+                aria-label={editLabel}
+                className="flex items-center justify-center size-9 rounded-full border border-zinc-200 text-zinc-600 transition hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                <span className="icon-[lucide--pencil] size-4" />
+              </button>
+            ) : null}
+            {onAdd ? (
+              <button
+                type="button"
+                onClick={onAdd}
+                aria-label={addLabel}
+                className="flex items-center justify-center size-9 rounded-full border border-zinc-200 text-zinc-600 transition hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                <span className="icon-[lucide--plus] size-4" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar painel"
+              className="flex items-center justify-center size-9 rounded-full border border-zinc-200 text-zinc-600 transition hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            >
+              <span className="icon-[lucide--x] size-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto text-zinc-900 dark:text-zinc-100">
+        <div
+          className={clsx(
+            "flex-1 min-h-0 overflow-y-auto text-zinc-900 dark:text-zinc-100 p-4 sm:p-6 space-y-4",
+            contentClassName,
+          )}
+        >
           {children}
         </div>
+        <div className="flex items-center border-t border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800 sm:p-6 p-4 gap-4">
+          {footerContent}
+        </div>
       </div>
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-black/40 -z-10"></div>
-      <style>{`
-        @media (max-width: 768px) {
-          .h-full.bg-white.shadow-xl.flex.flex-col {
-            width: 100vw !important;
-            min-width: 0 !important;
-            max-width: 100vw !important;
-          }
-        }
-        @keyframes slide-in-right {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-        @keyframes slide-in-left {
-          from { transform: translateX(-100%); }
-          to { transform: translateX(0); }
-        }
-        .animate-slide-in-right { animation: slide-in-right 0.3s cubic-bezier(.4,0,.2,1); }
-        .animate-slide-in-left { animation: slide-in-left 0.3s cubic-bezier(.4,0,.2,1); }
-        .animate-fade-in { animation: fade-in 0.2s cubic-bezier(.4,0,.2,1); }
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 

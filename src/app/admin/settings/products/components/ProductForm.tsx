@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import Switch from "@/components/ui/Switch";
 import Select from "@/components/ui/Select";
-import Button from "@/components/ui/Button";
 import { toast } from "@/lib/toast";
 
 interface ProductFormProps {
@@ -23,15 +22,15 @@ interface ProductFormProps {
     priority: "low" | "normal" | "high" | "urgent";
     description: string | null;
   }) => Promise<void>;
-  onCancel: () => void;
   loading: boolean;
+  formId: string;
 }
 
 export default function ProductForm({
   initialData,
   onSubmit,
-  onCancel,
   loading,
+  formId,
 }: ProductFormProps) {
   const [name, setName] = useState(initialData?.name || "");
   const [slug, setSlug] = useState(initialData?.slug || "");
@@ -77,11 +76,11 @@ export default function ProductForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-6">
+    <form id={formId} onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label
           htmlFor="product-name"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200 mb-1"
+          className="block text-base font-medium text-zinc-700 dark:text-zinc-200 mb-1"
         >
           Nome
         </label>
@@ -100,7 +99,7 @@ export default function ProductForm({
       <div>
         <label
           htmlFor="product-slug"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200 mb-1"
+          className="block text-base font-medium text-zinc-700 dark:text-zinc-200 mb-1"
         >
           Slug
         </label>
@@ -118,7 +117,7 @@ export default function ProductForm({
       <div>
         <label
           htmlFor="product-priority"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200 mb-1"
+          className="block text-base font-medium text-zinc-700 dark:text-zinc-200 mb-1"
         >
           Prioridade
         </label>
@@ -141,7 +140,7 @@ export default function ProductForm({
       <div>
         <label
           htmlFor="product-description"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200 mb-1"
+          className="block text-base font-medium text-zinc-700 dark:text-zinc-200 mb-1"
         >
           Descrição
         </label>
@@ -156,7 +155,7 @@ export default function ProductForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-200">
+        <label className="block text-base font-medium text-zinc-700 dark:text-zinc-200">
           Turnos de Execução
         </label>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
@@ -234,26 +233,6 @@ export default function ProductForm({
             size="md"
           />
         </div>
-      </div>
-      <div className="flex gap-2 justify-end">
-        <Button
-          type="button"
-          style="bordered"
-          onClick={onCancel}
-          disabled={loading}
-        >
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={loading}>
-          {loading ? (
-            <>
-              <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
-              {initialData ? "Salvando..." : "Criando..."}
-            </>
-          ) : (
-            <>{initialData ? "Salvar" : "Criar"}</>
-          )}
-        </Button>
       </div>
     </form>
   );

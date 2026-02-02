@@ -30,7 +30,7 @@ export default function ProductStatusHistoryOffcanvas({
       width="lg"
       zIndex={90}
     >
-      <div className="flex flex-col gap-6 p-6 h-full">
+      <div className="flex flex-col gap-6">
         {/* Bloco de contexto */}
         <div className="flex items-center gap-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-700/50 dark:bg-blue-950/20">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-800 dark:text-blue-300">

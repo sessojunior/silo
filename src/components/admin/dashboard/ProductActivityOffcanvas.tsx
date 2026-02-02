@@ -311,8 +311,18 @@ export default function ProductActivityOffcanvas({
       side="right"
       width="xl"
       zIndex={80}
+      footerActions={
+        <>
+          <Button style="bordered" type="button" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="product-activity-form" disabled={loading}>
+            {loading ? "Salvando..." : "Salvar"}
+          </Button>
+        </>
+      }
     >
-      <div className="flex flex-col gap-6 p-6 h-full">
+      <div className="flex flex-col gap-6">
         {/* Bloco de contexto mais elegante */}
         <div className="flex items-center gap-4 rounded-lg border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-700/50 dark:bg-blue-950/20">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-800 dark:text-blue-300">
@@ -347,7 +357,11 @@ export default function ProductActivityOffcanvas({
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form
+          id="product-activity-form"
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4"
+        >
           {/* Status e Incidentes na mesma linha */}
           <div className="flex gap-4">
             <div className="flex-1">
@@ -400,14 +414,6 @@ export default function ProductActivityOffcanvas({
               </div>
             </div>
           )}
-          <div className="flex justify-end gap-2">
-            <Button style="bordered" type="button" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Salvando..." : "Salvar"}
-            </Button>
-          </div>
         </form>
 
         {/* Offcanvas de gerenciamento de incidentes */}

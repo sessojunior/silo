@@ -116,8 +116,46 @@ export default function ProblemFormOffcanvas({
         onClose={handleCloseOffcanvas}
         title={editing ? "Editar problema" : "Adicionar problema"}
         width="xl"
+        footerActions={
+          <div className="flex w-full items-center justify-between gap-2">
+            {editing ? (
+              <Button
+                type="button"
+                style="bordered"
+                className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                Excluir problema
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                style="bordered"
+                onClick={handleCloseOffcanvas}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" form="problem-form" disabled={formLoading}>
+                {formLoading
+                  ? editing
+                    ? "Salvando..."
+                    : "Adicionando..."
+                  : editing
+                    ? "Salvar"
+                    : "Adicionar"}
+              </Button>
+            </div>
+          </div>
+        }
       >
-        <form onSubmit={onSubmit} className="flex flex-col gap-6 p-6">
+        <form
+          onSubmit={onSubmit}
+          className="flex flex-col gap-6"
+          id="problem-form"
+        >
           <div>
             <Label htmlFor="problem-title" required>
               Título do problema
@@ -291,36 +329,6 @@ export default function ProblemFormOffcanvas({
             </div>
           )}
           {formError && <div className="text-red-600 text-sm">{formError}</div>}
-          <div className="flex justify-between gap-2">
-            {editing && (
-              <Button
-                type="button"
-                style="bordered"
-                className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                Excluir problema
-              </Button>
-            )}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                style="bordered"
-                onClick={handleCloseOffcanvas}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={formLoading}>
-                {formLoading
-                  ? editing
-                    ? "Salvando..."
-                    : "Adicionando..."
-                  : editing
-                    ? "Salvar"
-                    : "Adicionar"}
-              </Button>
-            </div>
-          </div>
         </form>
 
         {/* Dialog de confirmação de exclusão */}

@@ -267,9 +267,33 @@ export default function UserSelectorOffcanvas({
         </div>
       }
       width="md"
+      footerActions={
+        <>
+          <Button onClick={onClose} style="bordered">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleAddUsers}
+            disabled={saving}
+            className="flex items-center gap-2"
+          >
+            {saving ? (
+              <>
+                <span className="icon-[lucide--loader-circle] size-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <span className="icon-[lucide--save] size-4" />
+                Salvar Alterações
+              </>
+            )}
+          </Button>
+        </>
+      }
     >
-      <div className="flex flex-col gap-6 h-full p-6">
-        <div className="flex-shrink-0">
+      <div className="flex flex-1 flex-col h-full -mx-6">
+        <div className="shrink-0 border-b px-6 pb-6 border-zinc-200 dark:border-zinc-700">
           <div className="relative">
             <Input
               type="text"
@@ -282,9 +306,9 @@ export default function UserSelectorOffcanvas({
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto pl-6 pr-3 py-6 -mb-6">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center">
               <LoadingSpinner
                 text="Carregando usuários..."
                 size="sm"
@@ -356,32 +380,6 @@ export default function UserSelectorOffcanvas({
           )}
         </div>
 
-        <div className="mt-auto border-t border-zinc-200 dark:border-zinc-700 pt-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex gap-3">
-              <Button onClick={onClose} style="bordered">
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleAddUsers}
-                disabled={saving}
-                className="flex items-center gap-2"
-              >
-                {saving ? (
-                  <>
-                    <span className="icon-[lucide--loader-circle] size-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <span className="icon-[lucide--save] size-4" />
-                    Salvar Alterações
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
       </div>
     </Offcanvas>
   );

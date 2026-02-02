@@ -130,8 +130,13 @@ export default function ProblemCategoryOffcanvas({ open, onClose }: Props) {
         onClose={onClose}
         side="right"
         width="lg"
+        footerActions={
+          <Button style="bordered" onClick={onClose}>
+            Fechar
+          </Button>
+        }
       >
-        <div className="p-6">
+        <div>
           {/* Botão cadastrar quando já existem itens */}
           {categories.length > 0 && (
             <div className="flex items-center pb-4 mb-4 border-b border-dashed border-zinc-200 dark:border-zinc-700">

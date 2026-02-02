@@ -462,8 +462,53 @@ export default function TaskFormOffcanvas({
         onClose={onClose}
         title={task ? "Editar Tarefa" : "Nova Tarefa"}
         width="xl"
+        footerActions={
+          <div className="flex w-full items-center justify-between gap-3">
+            <div>
+              {task && onDelete && (
+                <Button
+                  type="button"
+                  onClick={handleDelete}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  disabled={saving}
+                >
+                  <span className="icon-[lucide--trash] size-4" />
+                  Excluir
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                onClick={onClose}
+                className="bg-zinc-500 hover:bg-zinc-600 text-white"
+                disabled={saving}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="task-form"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <span className="icon-[lucide--loader-circle] size-4 animate-spin mr-2" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <span className="icon-[lucide--save] size-4 mr-2" />
+                    {task ? "Salvar tarefa" : "Criar tarefa"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-6 p-6">
+        <form onSubmit={handleSubmit} className="space-y-6" id="task-form">
           {/* Nome da Tarefa */}
           <div>
             <Label htmlFor="name">Nome da Tarefa *</Label>
@@ -609,52 +654,6 @@ export default function TaskFormOffcanvas({
             </div>
           </div>
 
-          {/* Botões - Excluir à esquerda, Cancelar/Salvar à direita */}
-          <div className="flex justify-between pt-6 border-t border-zinc-200 dark:border-zinc-700">
-            {/* Botão Excluir (esquerda) */}
-            <div>
-              {task && onDelete && (
-                <Button
-                  type="button"
-                  onClick={handleDelete}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                  disabled={saving}
-                >
-                  <span className="icon-[lucide--trash] size-4" />
-                  Excluir
-                </Button>
-              )}
-            </div>
-
-            {/* Botões Cancelar/Salvar (direita) */}
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                onClick={onClose}
-                className="bg-zinc-500 hover:bg-zinc-600 text-white"
-                disabled={saving}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={saving}
-              >
-                {saving ? (
-                  <>
-                    <span className="icon-[lucide--loader-circle] size-4 animate-spin mr-2" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <span className="icon-[lucide--save] size-4 mr-2" />
-                    {task ? "Salvar tarefa" : "Criar tarefa"}
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
         </form>
       </Offcanvas>
 

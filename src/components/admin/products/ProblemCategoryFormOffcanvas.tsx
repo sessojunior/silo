@@ -87,8 +87,27 @@ export default function ProblemCategoryFormOffcanvas({
       side="right"
       width="md"
       zIndex={90}
+      footerActions={
+        <>
+          <Button
+            style="bordered"
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" form="problem-category-form" disabled={loading}>
+            {category ? "Salvar" : "Cadastrar"}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
+      <form
+        id="problem-category-form"
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-4"
+      >
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">Nome</label>
           <Input
@@ -108,19 +127,6 @@ export default function ProblemCategoryFormOffcanvas({
             onChange={(e) => setColor(e.target.value)}
             className="h-10 w-24 rounded border border-zinc-200 dark:border-zinc-700"
           />
-        </div>
-        <div className="flex justify-end gap-2 pt-4">
-          <Button
-            style="bordered"
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {category ? "Salvar" : "Cadastrar"}
-          </Button>
         </div>
       </form>
     </Offcanvas>

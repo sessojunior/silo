@@ -203,8 +203,35 @@ export default function ActivityFormOffcanvas({
       onClose={onClose}
       title={activity ? "Editar Atividade" : "Nova Atividade"}
       width="lg"
+      footerActions={
+        <>
+          <Button
+            type="button"
+            onClick={onClose}
+            style="bordered"
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" form="activity-form" disabled={saving}>
+            {saving ? (
+              <>
+                <span className="icon-[lucide--loader-circle] size-4 animate-spin mr-2" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <span
+                  className={`icon-[lucide--${activity ? "edit" : "plus"}] size-4 mr-2`}
+                />
+                Salvar atividade
+              </>
+            )}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-6 p-6">
+      <form onSubmit={handleSubmit} className="space-y-6" id="activity-form">
         {/* Informações do Projeto */}
         <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700">
           <div className="flex items-center gap-3">
@@ -331,32 +358,6 @@ export default function ActivityFormOffcanvas({
           </div>
         </div>
 
-        {/* Botões - Layout: Cancelar e Salvar centralizados */}
-        <div className="flex justify-end gap-3 pt-6 border-t border-zinc-200 dark:border-zinc-700">
-          <Button
-            type="button"
-            onClick={onClose}
-            style="bordered"
-            disabled={saving}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={saving}>
-            {saving ? (
-              <>
-                <span className="icon-[lucide--loader-circle] size-4 animate-spin mr-2" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <span
-                  className={`icon-[lucide--${activity ? "edit" : "plus"}] size-4 mr-2`}
-                />
-                Salvar atividade
-              </>
-            )}
-          </Button>
-        </div>
       </form>
     </Offcanvas>
   );

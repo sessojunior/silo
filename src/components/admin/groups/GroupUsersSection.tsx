@@ -400,8 +400,37 @@ const GroupUsersSection = forwardRef<
           </div>
         }
         width="lg"
+        footerActions={
+          <>
+            <Button
+              style="bordered"
+              type="button"
+              onClick={() => setPermissionsOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setPermissionsOpen(false)}
+              disabled={permissionsLoading || savingPermission !== null}
+              className="flex items-center gap-2"
+            >
+              {permissionsLoading || savingPermission !== null ? (
+                <>
+                  <span className="icon-[lucide--loader-circle] size-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <span className="icon-[lucide--save] size-4" />
+                  Salvar Alterações
+                </>
+              )}
+            </Button>
+          </>
+        }
       >
-        <div className="flex flex-col gap-6 h-full p-6">
+        <div className="flex flex-col gap-6 h-full">
           <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
             <span className="icon-[lucide--flask-conical] size-5 mt-0.5 text-amber-700 dark:text-amber-300" />
             <div>
@@ -426,7 +455,7 @@ const GroupUsersSection = forwardRef<
               />
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 pb-6">
               {PERMISSION_CATALOG.map((section) => (
                 <div
                   key={section.resource}
@@ -478,38 +507,6 @@ const GroupUsersSection = forwardRef<
               ))}
             </div>
           )}
-
-          <div className="mt-auto border-t border-zinc-200 dark:border-zinc-700 py-6">
-            <div className="flex items-center justify-end gap-4">
-              <div className="flex gap-3">
-                <Button
-                  style="bordered"
-                  type="button"
-                  onClick={() => setPermissionsOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setPermissionsOpen(false)}
-                  disabled={permissionsLoading || savingPermission !== null}
-                  className="flex items-center gap-2"
-                >
-                  {permissionsLoading || savingPermission !== null ? (
-                    <>
-                      <span className="icon-[lucide--loader-circle] size-4 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <span className="icon-[lucide--save] size-4" />
-                      Salvar Alterações
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
         </div>
       </Offcanvas>
 

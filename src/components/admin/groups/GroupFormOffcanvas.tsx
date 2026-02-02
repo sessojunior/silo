@@ -191,8 +191,33 @@ export default function GroupFormOffcanvas({
       onClose={handleClose}
       title={group ? "Editar Grupo" : "Novo Grupo"}
       width="lg"
+      footerActions={
+        <>
+          <Button
+            type="button"
+            onClick={handleClose}
+            disabled={loading}
+            style="bordered"
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" form="group-form" disabled={loading}>
+            {loading ? (
+              <>
+                <span className="icon-[lucide--loader-circle] animate-spin size-4" />
+                {group ? "Atualizando..." : "Criando..."}
+              </>
+            ) : (
+              <>
+                <span className="icon-[lucide--save] size-4" />
+                {group ? "Atualizar Grupo" : "Criar Grupo"}
+              </>
+            )}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-6 p-6">
+      <form onSubmit={handleSubmit} className="space-y-6" id="group-form">
         {/* Nome do Grupo */}
         <div>
           <Label htmlFor="name" required>
@@ -371,30 +396,6 @@ export default function GroupFormOffcanvas({
           </div>
         )}
 
-        {/* Botões */}
-        <div className="flex justify-end gap-3 pt-6 border-t border-zinc-200 dark:border-zinc-700">
-          <Button
-            type="button"
-            onClick={handleClose}
-            disabled={loading}
-            style="bordered"
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <span className="icon-[lucide--loader-circle] animate-spin size-4" />
-                {group ? "Atualizando..." : "Criando..."}
-              </>
-            ) : (
-              <>
-                <span className="icon-[lucide--save] size-4" />
-                {group ? "Atualizar Grupo" : "Criar Grupo"}
-              </>
-            )}
-          </Button>
-        </div>
       </form>
     </Offcanvas>
   );

@@ -426,14 +426,14 @@ export default function GroupsPage() {
                                 {/* Botão Gerenciar Usuários */}
                                 <Button
                                   onClick={() => openUserSelector(group.id)}
-                                  className="size-8 p-0 rounded-md bg-transparent hover:bg-green-50 dark:hover:bg-green-900/20"
+                                  className="size-8 p-0 rounded-md bg-transparent hover:bg-green-50 focus:bg-green-50 dark:hover:bg-green-900/20 dark:focus:bg-green-900/20"
                                   title="Gerenciar Usuários"
                                 >
                                   <span className="icon-[lucide--users] size-4 text-green-600 dark:text-green-400" />
                                 </Button>
                                 <Button
                                   onClick={() => openGroupPermissions(group.id)}
-                                  className="size-8 p-0 rounded-md bg-transparent hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                  className="size-8 p-0 rounded-md bg-transparent hover:bg-amber-50 focus:bg-amber-50 dark:hover:bg-amber-900/20 dark:focus:bg-amber-900/20"
                                   title="Permissões do Grupo"
                                 >
                                   <span className="icon-[lucide--shield-check] size-4 text-amber-600 dark:text-amber-400" />
@@ -442,7 +442,7 @@ export default function GroupsPage() {
                                 {/* Botões de Edição e Exclusão */}
                                 <Button
                                   onClick={() => openEditForm(group)}
-                                  className="size-8 p-0 rounded-md bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                  className="size-8 p-0 rounded-md bg-transparent hover:bg-blue-50 focus:bg-blue-50 dark:hover:bg-blue-900/20 dark:focus:bg-blue-900/20"
                                   title="Editar Grupo"
                                 >
                                   <span className="icon-[lucide--edit] size-4 text-blue-600 dark:text-blue-400" />
@@ -451,7 +451,7 @@ export default function GroupsPage() {
                                 {group.role !== "admin" && (
                                   <Button
                                     onClick={() => openDeleteDialog(group)}
-                                    className="size-8 p-0 rounded-md bg-transparent hover:bg-red-50 dark:hover:bg-red-900/20"
+                                    className="size-8 p-0 rounded-md bg-transparent hover:bg-red-50 focus:bg-red-50 dark:hover:bg-red-900/20 dark:focus:bg-red-900/20"
                                     title="Excluir Grupo"
                                   >
                                     <span className="icon-[lucide--trash] size-4 text-red-600 dark:text-red-400" />

@@ -44,8 +44,26 @@ export default function DependencyItemFormOffcanvas({
       onClose={onClose}
       title={isAddingNewItem ? "Adicionar Dependência" : "Editar Dependência"}
       width="lg"
+      footerActions={
+        <>
+          <Button type="button" style="bordered" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="dependency-item-form"
+            disabled={formLoading}
+          >
+            {formLoading ? "Salvando..." : "Salvar"}
+          </Button>
+        </>
+      }
     >
-      <form className="flex flex-col gap-6 p-6" onSubmit={onSubmit}>
+      <form
+        id="dependency-item-form"
+        className="flex flex-col gap-6"
+        onSubmit={onSubmit}
+      >
         {/* Nome */}
         <div>
           <Label htmlFor="item-name" required>
@@ -118,15 +136,6 @@ export default function DependencyItemFormOffcanvas({
           />
         </div>
 
-        {/* Botões de ação */}
-        <div className="flex gap-2 justify-end">
-          <Button type="button" style="bordered" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={formLoading}>
-            {formLoading ? "Salvando..." : "Salvar"}
-          </Button>
-        </div>
       </form>
     </Offcanvas>
   );

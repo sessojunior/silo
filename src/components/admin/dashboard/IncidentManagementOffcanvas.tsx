@@ -175,7 +175,7 @@ export default function IncidentManagementOffcanvas({
         width="md"
         zIndex={90}
       >
-        <div className="flex flex-col gap-4 p-6">
+        <div className="flex flex-col gap-4">
           {/* Header com botão de adicionar */}
           <div className="flex justify-between items-center">
             <div>

@@ -284,9 +284,35 @@ export default function ContactFormOffcanvas({
       open={isOpen}
       onClose={handleClose}
       title={contact ? "Editar Contato" : "Novo Contato"}
+      footerActions={
+        <>
+          <Button
+            type="button"
+            style="bordered"
+            onClick={handleClose}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" form="contact-form" disabled={loading}>
+            {loading ? (
+              <>
+                <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
+                Salvando...
+              </>
+            ) : (
+              <>{contact ? "Atualizar" : "Criar"} contato</>
+            )}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col h-full">
-        <div className="flex-1 space-y-6 p-6">
+      <form
+        id="contact-form"
+        onSubmit={handleSubmit}
+        className="flex flex-col h-full"
+      >
+        <div className="flex-1 space-y-6">
           {/* Upload de Imagem */}
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
@@ -520,27 +546,6 @@ export default function ContactFormOffcanvas({
           </div>
         </div>
 
-        {/* Footer com botões */}
-        <div className="border-t border-zinc-200 dark:border-zinc-700 p-6 flex gap-3 justify-end">
-          <Button
-            type="button"
-            style="bordered"
-            onClick={handleClose}
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
-                Salvando...
-              </>
-            ) : (
-              <>{contact ? "Atualizar" : "Criar"} contato</>
-            )}
-          </Button>
-        </div>
       </form>
     </Offcanvas>
   );

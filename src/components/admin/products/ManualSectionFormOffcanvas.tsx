@@ -37,8 +37,22 @@ export default function ManualSectionFormOffcanvas({
       onClose={onClose}
       title={formMode === "section" ? "Adicionar seção" : "Editar capítulo"}
       width="xl"
+      footerActions={
+        <>
+          <Button type="button" style="bordered" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="manual-section-form" disabled={formLoading}>
+            {formLoading ? "Salvando..." : "Salvar"}
+          </Button>
+        </>
+      }
     >
-      <form className="flex flex-col gap-6 h-full p-6" onSubmit={onSubmit}>
+      <form
+        id="manual-section-form"
+        className="flex flex-col gap-6 h-full"
+        onSubmit={onSubmit}
+      >
         <div>
           <Label htmlFor="form-title" required>
             {formMode === "section" ? "Título da seção" : "Título do capítulo"}
@@ -88,14 +102,6 @@ export default function ManualSectionFormOffcanvas({
           </div>
         )}
 
-        <div className="flex gap-2 justify-end">
-          <Button type="button" style="bordered" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={formLoading}>
-            {formLoading ? "Salvando..." : "Salvar"}
-          </Button>
-        </div>
       </form>
     </Offcanvas>
   );

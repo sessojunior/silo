@@ -58,6 +58,8 @@ const markdownEditorStyles = `
 .dark .EasyMDEContainer .editor-preview-side pre{background-color:rgb(39 39 42)}
 .dark .EasyMDEContainer .editor-preview code,
 .dark .EasyMDEContainer .editor-preview-side code{background-color:rgb(39 39 42)}
+.EasyMDEContainer .editor-toolbar{position:sticky;top:0;z-index:10;background-color:rgb(255 255 255);border-bottom:1px solid rgb(228 228 231)}
+.dark .EasyMDEContainer .editor-toolbar{background-color:rgb(39 39 42);border-bottom-color:rgb(63 63 70)}
 .EasyMDEContainer .editor-toolbar a.markdown-gallery{display:inline-flex;align-items:center;justify-content:center}
 `;
 

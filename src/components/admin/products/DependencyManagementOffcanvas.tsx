@@ -75,8 +75,13 @@ export default function DependencyManagementOffcanvas({
         </div>
       }
       width="xl"
+      footerActions={
+        <Button style="bordered" onClick={onClose}>
+          Fechar
+        </Button>
+      }
     >
-      <div className="flex flex-col gap-6 h-full p-6">
+      <div className="flex flex-col gap-6 h-full">
         {/* Cabeçalho com estatísticas */}
         <div className="flex flex-col gap-4 pb-4 border-b border-dashed border-zinc-200 dark:border-zinc-700">
           <div className="flex items-center justify-between">

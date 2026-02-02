@@ -50,8 +50,22 @@ export default function ManualEditorOffcanvas({
         </div>
       }
       width="xl"
+      footerActions={
+        <>
+          <Button type="button" style="bordered" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="manual-editor-form" disabled={formLoading}>
+            {formLoading ? "Salvando..." : "Salvar Manual"}
+          </Button>
+        </>
+      }
     >
-      <form className="flex flex-col gap-6 h-full p-6" onSubmit={onSubmit}>
+      <form
+        id="manual-editor-form"
+        className="flex flex-col gap-6 h-full"
+        onSubmit={onSubmit}
+      >
         <div className="flex-1 flex flex-col min-h-0">
           <Label htmlFor="form-content" required>
             Conteúdo do Manual (Markdown)
@@ -64,15 +78,6 @@ export default function ManualEditorOffcanvas({
               uploadConfig={uploadConfig}
             />
           </div>
-        </div>
-
-        <div className="flex gap-2 justify-end pt-4 border-t border-zinc-200 dark:border-zinc-700">
-          <Button type="button" style="bordered" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={formLoading}>
-            {formLoading ? "Salvando..." : "Salvar Manual"}
-          </Button>
         </div>
       </form>
     </Offcanvas>

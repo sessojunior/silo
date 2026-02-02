@@ -215,15 +215,42 @@ export default function UserFormOffcanvas({
       open={isOpen}
       onClose={onClose}
       title={isEditing ? "Editar Usuário" : "Novo Usuário"}
+      footerActions={
+        <>
+          <Button
+            type="button"
+            style="bordered"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" form="user-form" disabled={loading}>
+            {loading ? (
+              <>
+                <span className="icon-[lucide--loader-circle] size-4 animate-spin" />
+                {isEditing ? "Atualizando..." : "Criando..."}
+              </>
+            ) : (
+              <>
+                <span
+                  className={`icon-[lucide--${isEditing ? "save" : "plus"}] size-4`}
+                />
+                {isEditing ? "Atualizar" : "Criar"} usuário
+              </>
+            )}
+          </Button>
+        </>
+      }
     >
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6">
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {isEditing
             ? "Edite as informações do usuário abaixo."
             : "Preencha as informações do novo usuário."}
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form id="user-form" onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             Nome <span className="text-red-500">*</span>
@@ -399,7 +426,7 @@ export default function UserFormOffcanvas({
                     type="button"
                     onClick={handleResendPasswordSetup}
                     disabled={resendingEmail || loading}
-                    className="bg-amber-600 hover:bg-amber-700 text-white px-6"
+                    className="bg-amber-600 hover:bg-amber-700 text-sm text-white px-4 py-2 gap-2"
                   >
                     {resendingEmail ? (
                       <>
@@ -419,35 +446,6 @@ export default function UserFormOffcanvas({
           </div>
         )}
 
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="flex-1 bg-zinc-500 hover:bg-zinc-600"
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <span className="icon-[lucide--loader-circle] size-4 animate-spin" />
-                {isEditing ? "Atualizando..." : "Criando..."}
-              </>
-            ) : (
-              <>
-                <span
-                  className={`icon-[lucide--${isEditing ? "save" : "plus"}] size-4`}
-                />
-                {isEditing ? "Atualizar" : "Criar"} usuário
-              </>
-            )}
-          </Button>
-        </div>
         </form>
       </div>
     </Offcanvas>

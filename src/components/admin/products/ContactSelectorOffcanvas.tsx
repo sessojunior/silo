@@ -227,11 +227,40 @@ export default function ContactSelectorOffcanvas({
       onClose={handleClose}
       title="Selecionar Contatos"
       width="lg"
+      footerActions={
+        <>
+          <Button
+            type="button"
+            style="bordered"
+            onClick={handleClose}
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+          >
+            {saving ? (
+              <>
+                <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <span className="icon-[lucide--check] size-4 mr-2" />
+                Salvar ({selectedContactIds.length})
+              </>
+            )}
+          </Button>
+        </>
+      }
     >
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-hidden">
           {/* Header com busca */}
-          <div className="p-6 border-b border-zinc-200 dark:border-zinc-700">
+          <div className="border-b border-zinc-200 dark:border-zinc-700 pb-4">
             <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
               Selecione os contatos responsáveis por este produto. Apenas
               contatos ativos são mostrados.
@@ -272,7 +301,7 @@ export default function ContactSelectorOffcanvas({
           </div>
 
           {/* Lista de contatos */}
-          <div className="flex-1 overflow-y-auto p-6 scrollbar max-h-[calc(100vh-400px)]">
+          <div className="flex-1 overflow-y-auto scrollbar max-h-[calc(100vh-400px)] pt-4">
             {loading ? (
               <div className="text-center py-8">
                 <LoadingSpinner
@@ -339,35 +368,6 @@ export default function ContactSelectorOffcanvas({
               </div>
             )}
           </div>
-        </div>
-
-        {/* Footer com botões */}
-        <div className="border-t border-zinc-200 dark:border-zinc-700 p-6 flex gap-3 justify-end">
-          <Button
-            type="button"
-            style="bordered"
-            onClick={handleClose}
-            disabled={saving}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !hasChanges}
-          >
-            {saving ? (
-              <>
-                <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <span className="icon-[lucide--check] size-4 mr-2" />
-                Salvar ({selectedContactIds.length})
-              </>
-            )}
-          </Button>
         </div>
       </div>
     </Offcanvas>

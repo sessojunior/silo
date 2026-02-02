@@ -508,8 +508,34 @@ export default function SettingsProductsPage() {
         }}
         title={editing ? "Editar Produto" : "Novo Produto"}
         width="md"
+        footerActions={
+          <>
+            <Button
+              type="button"
+              style="bordered"
+              onClick={() => {
+                setOffcanvasOpen(false);
+                setEditing(null);
+              }}
+              disabled={formLoading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" form="product-form" disabled={formLoading}>
+              {formLoading ? (
+                <>
+                  <span className="icon-[lucide--loader-2] size-4 animate-spin mr-2" />
+                  {editing ? "Salvando..." : "Criando..."}
+                </>
+              ) : (
+                <>{editing ? "Salvar" : "Criar"}</>
+              )}
+            </Button>
+          </>
+        }
       >
         <ProductForm
+          formId="product-form"
           initialData={
             editing
               ? {
@@ -532,10 +558,6 @@ export default function SettingsProductsPage() {
               : undefined
           }
           onSubmit={handleFormSubmit}
-          onCancel={() => {
-            setOffcanvasOpen(false);
-            setEditing(null);
-          }}
           loading={formLoading}
         />
       </Offcanvas>

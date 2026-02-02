@@ -274,23 +274,9 @@ export default function HelpPage() {
         onClose={() => setEditorOpen(false)}
         title="Editor da Documentação"
         width="xl"
-      >
-        <form className="flex flex-col h-full" onSubmit={handleSubmit}>
-          <div className="flex-1 min-h-0 overflow-y-auto p-6">
-            <Label htmlFor="content" required>
-              Conteúdo da Documentação (Markdown)
-            </Label>
-            <div className="flex-1 min-h-[400px]">
-              <MarkdownEditor
-                value={formContent}
-                onChange={(val: string) => setFormContent(val || "")}
-                className="flex-1 h-full"
-                uploadConfig={uploadConfig}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-2 justify-end px-6 py-4 border-t border-zinc-200 dark:border-zinc-700">
+        contentClassName="p-0"
+        footerActions={
+          <>
             <Button
               type="button"
               style="bordered"
@@ -298,9 +284,31 @@ export default function HelpPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={formLoading}>
+            <Button type="submit" form="help-editor-form" disabled={formLoading}>
               {formLoading ? "Salvando..." : "Salvar Documentação"}
             </Button>
+          </>
+        }
+      >
+        <form
+          id="help-editor-form"
+          className="flex flex-col h-full"
+          onSubmit={handleSubmit}
+        >
+          <div className="flex-1 min-h-0 overflow-y-auto -m-6">
+            <div className="flex flex-col gap-4 p-6">
+              <Label htmlFor="content" required>
+                Conteúdo da Documentação (Markdown)
+              </Label>
+              <div className="flex-1 min-h-[400px]">
+                <MarkdownEditor
+                  value={formContent}
+                  onChange={(val: string) => setFormContent(val || "")}
+                  className="flex-1 h-full"
+                  uploadConfig={uploadConfig}
+                />
+              </div>
+            </div>
           </div>
         </form>
       </Offcanvas>
