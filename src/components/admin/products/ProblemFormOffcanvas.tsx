@@ -202,9 +202,13 @@ export default function ProblemFormOffcanvas({
             <div className="text-red-600 text-sm">{form.message}</div>
           )}
           {!editing && (
-            <div className="text-sm text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/30 rounded-lg">
-              Imagens poderão ser adicionadas após o cadastro do problema, na
-              tela de edição.
+            <div className='rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200'>
+              <div className='flex items-start gap-2'>
+                <span className='icon-[lucide--triangle-alert] size-5 shrink-0 text-amber-600 dark:text-amber-300' />
+                <p className='text-sm'>
+                  Imagens poderão ser adicionadas após o cadastro do problema, na tela de edição.
+                </p>
+              </div>
             </div>
           )}
           {editing && (

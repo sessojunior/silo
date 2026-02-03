@@ -109,6 +109,26 @@ export default function ProblemsPage() {
     return [];
   };
 
+  const fetchProductId = useCallback(async (): Promise<string | null> => {
+    if (!slug) return null;
+    try {
+      const res = await fetch(
+        config.getApiUrl(`/api/admin/products?slug=${slug}`),
+      );
+      const data = (await res.json()) as {
+        data?: { products?: Array<{ id: string }> };
+      };
+      const id = data?.data?.products?.[0]?.id ?? null;
+      if (id) setProductId(id);
+      return id;
+    } catch (error) {
+      console.error("❌ [PAGE_PRODUCT_PROBLEMS] Erro ao buscar produto:", {
+        error,
+      });
+      return null;
+    }
+  }, [slug]);
+
   // 🚀 FUNÇÃO HELPER OTIMIZADA: Busca contagem de soluções para múltiplos problemas
   const fetchSolutionsCount = useCallback(
     async (
@@ -189,6 +209,10 @@ export default function ProblemsPage() {
     },
     [currentUser?.id],
   );
+
+  useEffect(() => {
+    fetchProductId();
+  }, [fetchProductId]);
 
   useEffect(() => {
     const fetchProblems = async () => {
@@ -341,7 +365,8 @@ export default function ProblemsPage() {
         }
       } else {
         // Cadastrar
-        if (!productId) {
+        const ensuredProductId = productId || (await fetchProductId());
+        if (!ensuredProductId) {
           setFormError(
             "Produto não encontrado. Recarregue a página ou tente novamente.",
           );
@@ -352,7 +377,7 @@ export default function ProblemsPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            productId,
+            productId: ensuredProductId,
             title: formTitle,
             description: formDescription,
             problemCategoryId: formCategoryId,
