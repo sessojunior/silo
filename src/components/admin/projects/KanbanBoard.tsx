@@ -134,8 +134,8 @@ const columnTheme = {
 // NOVA DEFINIÇÃO DE COLUNAS
 const columns: Column[] = [
   { id: "todo", title: "A fazer", ...columnTheme.todo },
-  { id: "in_progress", title: "Em progresso", ...columnTheme.in_progress },
   { id: "blocked", title: "Bloqueado", ...columnTheme.blocked },
+  { id: "in_progress", title: "Em progresso", ...columnTheme.in_progress },
   { id: "review", title: "Em revisão", ...columnTheme.review },
   { id: "done", title: "Concluído", ...columnTheme.done },
 ];

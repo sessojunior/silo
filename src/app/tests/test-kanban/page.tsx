@@ -164,16 +164,16 @@ const columns: Column[] = [
     color: "bg-gray-100 border-gray-300",
   },
   {
-    id: "in_progress",
-    title: "Em Progresso",
-    icon: "icon-[lucide--clock]",
-    color: "bg-blue-100 border-blue-300",
-  },
-  {
     id: "blocked",
     title: "Bloqueado",
     icon: "icon-[lucide--pause]",
     color: "bg-red-100 border-red-300",
+  },
+  {
+    id: "in_progress",
+    title: "Em Progresso",
+    icon: "icon-[lucide--clock]",
+    color: "bg-blue-100 border-blue-300",
   },
   {
     id: "review",
