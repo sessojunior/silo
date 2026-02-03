@@ -71,7 +71,7 @@ cp env.example .env
 # Edite o arquivo .env com suas configurações
 
 # 2. Executar containers
-docker-compose up -d --build
+docker compose up -d --build
 
 # (Opcional) Subir Postgres junto via Docker Compose:
 # docker compose --profile db up -d --build
@@ -131,7 +131,7 @@ npm run dev
 ### **Estrutura**
 
 ```text
-silo-frontend/
+silo/
 ├── src/
 │   ├── app/            # App Router (rotas e APIs)
 │   ├── components/    # Componentes React
@@ -182,7 +182,7 @@ npm install
 npm run dev              # Frontend
 
 # Executar com Docker
-docker-compose up -d --build
+docker compose up -d --build
 
 # Banco de dados
 npm run db:generate      # Gerar migração
@@ -206,28 +206,28 @@ npm run lint
 # .env
 
 # Ambiente
-NODE_ENV='development' # development ou production
+NODE_ENV='production' # development ou production
 
 # Banco de Dados
-DATABASE_URL_DEV='postgresql://usuario:senha@localhost:5432/silo'
-DATABASE_URL_PROD='postgresql://usuario:senha@localhost:5432/silo'
+DATABASE_URL_DEV=postgresql://usuario:senha@localhost:5432/silo
+DATABASE_URL_PROD=postgresql://usuario:senha@localhost:5432/silo
 
 # URL da aplicação
-NEXT_PUBLIC_BASE_PATH='/silo' # sem barra final; use '/' para rodar na raiz
-APP_URL_DEV='http://localhost:3000' # sem subdiretório
-APP_URL_PROD='https://fortuna.cptec.inpe.br' # sem subdiretório
-BETTER_AUTH_SECRET='your_secret_key_here'
+NEXT_PUBLIC_BASE_PATH=/silo # sem barra final; use '/' para rodar na raiz
+APP_URL_DEV=http://localhost:3000 # sem subdiretório
+APP_URL_PROD=https://fortuna.cptec.inpe.br # sem subdiretório
+BETTER_AUTH_SECRET=your_secret_key_here
 
 # Google OAuth (opcional)
-GOOGLE_CLIENT_ID=''
-GOOGLE_CLIENT_SECRET=''
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 
 # Email (SMTP)
-SMTP_HOST='smtp.exemplo.com'
-SMTP_PORT='587'
+SMTP_HOST=smtp.exemplo.com
+SMTP_PORT=587
 SMTP_SECURE=false # Defina como true se usar SSL (porta 465)
-SMTP_USERNAME='usuario@exemplo.com'
-SMTP_PASSWORD='senha'
+SMTP_USERNAME=usuario@exemplo.com
+SMTP_PASSWORD=senha
 
 ```
 

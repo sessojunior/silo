@@ -273,12 +273,11 @@ O Vercel fará deploy automaticamente apenas do frontend Next.js.
 
 - **Porta**: 3000 (mapeada para localhost:3000)
 - **Função**: Aplicação frontend e APIs
-- **Volume**: `./.next` (cache do Next.js persiste entre rebuilds)
+- **Volume**: `./uploads` (arquivos persistidos no host)
 - **Restart**: Automático (`unless-stopped`)
 
 ### **Persistência de Dados**
 
-- ✅ Cache do Next.js (`.next/`) persiste entre rebuilds para melhor performance
 - ✅ Arquivos de upload são salvos em `./uploads` (não perdem ao parar containers)
 - ⚠️ Banco de dados precisa ser externo (PostgreSQL separado)
 
@@ -286,14 +285,14 @@ O Vercel fará deploy automaticamente apenas do frontend Next.js.
 
 ```bash
 # Caminho base da aplicação (sem barra final). Exemplos: '/silo' ou '/'
-NEXT_PUBLIC_BASE_PATH='/silo'
+NEXT_PUBLIC_BASE_PATH=/silo
 
 # Desenvolvimento
-APP_URL_DEV='http://localhost:3000'
+APP_URL_DEV=http://localhost:3000
 
 # Produção
-APP_URL_PROD='https://fortuna.cptec.inpe.br'
-BETTER_AUTH_SECRET='your_secret_key_here'
+APP_URL_PROD=https://fortuna.cptec.inpe.br
+BETTER_AUTH_SECRET=your_secret_key_here
 ```
 
 **⚠️ Importante para Produção:**

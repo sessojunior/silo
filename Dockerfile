@@ -42,10 +42,12 @@ ENV NODE_ENV=production
 # Isso gera a pasta .next necessária para o next start
 # ------------------------------------------------------
 RUN npm run build
+RUN npm prune --omit=dev
 
 # ------------------------------------------------------
 # Expõe a porta padrão do Next.js
 # ------------------------------------------------------
+RUN mkdir -p uploads
 EXPOSE 3000
 
 # ------------------------------------------------------

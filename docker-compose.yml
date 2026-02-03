@@ -18,7 +18,7 @@ services:
       - "3000:3000"
     environment:
       # Ambiente e banco
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL_DEV: ${DATABASE_URL_DEV:-postgresql://silo:silo@db:5432/silo}
       DATABASE_URL_PROD: ${DATABASE_URL_PROD:-postgresql://silo:silo@db:5432/silo}
 
@@ -26,6 +26,7 @@ services:
       APP_URL_DEV: ${APP_URL_DEV:-http://localhost:3000}
       APP_URL_PROD: ${APP_URL_PROD:-https://fortuna.cptec.inpe.br}
       NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
 
       # Google OAuth
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
@@ -38,8 +39,6 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
     volumes:
-      # Cache do Next.js - persiste entre rebuilds para melhor performance
-      - ./.next:/app/.next
       - ./uploads:/app/uploads
     restart: unless-stopped
 
