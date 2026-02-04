@@ -3,6 +3,14 @@ set -e
 
 echo "\n🚀 Iniciando entrypoint do Silo..."
 
+echo -e "\n📂 Verificando diretório de uploads..."
+if [ -d "/app/uploads" ]; then
+    echo "✅ Diretório /app/uploads existe."
+else
+    echo "⚠️ Diretório /app/uploads não encontrado. Criando..."
+    mkdir -p /app/uploads
+fi
+
 # 1. Executar migrações do banco de dados
 echo -e "\n📦 [1/3] Executando migrações do banco de dados..."
 # Tenta rodar a migração. Se falhar (ex: banco indisponível), o container reinicia e tenta de novo.
