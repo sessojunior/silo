@@ -1375,7 +1375,7 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
           `✅ ${taskUsersToCreate.length} associações tarefa-usuário criadas!`,
         );
         console.log(
-          `✅ REQUISITO ATENDIDO: Todas as ${allTasks.length} tarefas têm pelo menos um usuário associado`,
+          `✅ Todas as ${allTasks.length} tarefas têm pelo menos um usuário associado`,
         );
       }
     } else {
@@ -1384,8 +1384,7 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
       );
     }
 
-    // 🆕 SEÇÃO 8: HISTÓRICO DE TAREFAS (project_task_history)
-    console.log("\n📋 SEÇÃO 8: HISTÓRICO DE TAREFAS");
+    // 🆕 HISTÓRICO DE TAREFAS (project_task_history)
     console.log("🔄 Criando histórico simulado para tarefas existentes...");
 
     // Remover histórico existente
@@ -1494,7 +1493,7 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
           `✅ ${historyEntries.length} entradas de histórico criadas!`,
         );
         console.log(
-          `✅ FUNCIONALIDADE IMPLEMENTADA: Todas as ${existingTasks.length} tarefas têm histórico de movimentação`,
+          `✅ Todas as ${existingTasks.length} tarefas têm histórico de movimentação`,
         );
       }
     } else {

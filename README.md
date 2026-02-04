@@ -64,16 +64,19 @@ O **Silo** centraliza e estrutura operações críticas em uma única plataforma
 
 ### **Opção 1: Docker (Recomendado)**
 
+Para um guia passo a passo detalhado, consulte [**docs/DEPLOY.md**](./docs/DEPLOY.md).
+
 ```bash
 # 1. Configurar variáveis de ambiente
 cp env.example .env
 
 # Edite o arquivo .env com suas configurações
 
-# 2. Executar containers
-docker compose up -d --build
+# 2. Executar Deploy (Funciona em Windows e Linux)
+# O comando `npm run deploy` internamente executa `docker compose --profile db up -d --build`
+npm run deploy
 
-# (Opcional) Subir Postgres junto via Docker Compose:
+# Ou execute manualmente:
 # docker compose --profile db up -d --build
 
 # ✅ Acesse:
@@ -139,11 +142,23 @@ silo/
 │   ├── hooks/         # Hooks customizados
 │   ├── lib/           # DB, auth, utils, config
 │   └── types/          # Tipos TypeScript
-├── uploads/            # Arquivos enviados (persistidos no Docker)
 ├── public/            # Arquivos estáticos
+├── uploads/           # (Runtime) Volume Docker gerenciado
 ├── drizzle/           # Migrações do banco
 └── docs/              # Documentação completa
 ```
+
+### **Container Next.js (`app`)**
+
+- **Porta**: 3000 (mapeada para localhost:3000)
+- **Função**: Aplicação frontend e APIs
+- **Volume**: `uploads_data` (Volume Docker gerenciado)
+- **Restart**: Automático (`unless-stopped`)
+
+### **Persistência de Dados**
+
+- ✅ Arquivos de upload são salvos no volume `uploads_data` (persistência garantida e isolada)
+- ✅ Banco de dados é persistido no volume `postgres_data`
 
 ---
 

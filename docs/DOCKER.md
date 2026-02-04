@@ -123,23 +123,28 @@ npm run dev
 
 ### **Opção 2: Usando Docker**
 
+Para um guia passo a passo detalhado, consulte [**DEPLOY.md**](./DEPLOY.md).
+
 Recomendado para testar ou usar o sistema sem configurar o ambiente:
 
 ```bash
 # 1. Copiar arquivo de exemplo
-Copy-Item env.example .env
+cp env.example .env
 
 # 2. Editar .env com suas configurações
-# Use um editor de texto (VSCode, Notepad++, etc.)
+# Use um editor de texto (VSCode, Notepad, etc.)
 
-# 3. Construir e executar containers
-docker compose up --build
+# 3. Construir e executar containers (Aplicação + Banco)
+npm run deploy
+
+# Ou manualmente:
+# docker compose --profile db up -d --build
 
 # Isso vai:
-# 1. Baixar as imagens necessárias (primeira vez demora mais)
-# 2. Construir os containers do Silo
-# 3. Iniciar a aplicação (porta 3000)
-# 4. Mostrar logs em tempo real
+# 1. Baixar as imagens necessárias
+# 2. Construir os containers do Silo e do Banco
+# 3. Rodar migrações e seed automaticamente (entrypoint.sh)
+# 4. Iniciar a aplicação
 
 # ✅ Aguarde a mensagem: "ready - started server on..."
 # ✅ Acesse: http://localhost:3000<BASE_PATH>
@@ -148,7 +153,7 @@ docker compose up --build
 **Executar em segundo plano:**
 
 ```bash
-docker compose up -d --build
+docker compose --profile db up -d --build
 
 # Ver logs depois:
 docker compose logs -f
@@ -156,7 +161,7 @@ docker compose logs -f
 
 ### **Subir Postgres junto (profile db)**
 
-Se você quer subir o PostgreSQL no mesmo `docker-compose.yml`, use o profile `db`:
+O comando padrão já inclui o profile `db` para garantir que o banco suba junto:
 
 ```bash
 docker compose --profile db up -d --build
@@ -220,6 +225,29 @@ O projeto **Silo** é uma aplicação Next.js (frontend + APIs) com uploads loca
 
 ---
 
+## 🤖 **AUTOMAÇÃO E ENTRYPOINT**
+
+O container do Silo utiliza um script de inicialização (`entrypoint.sh`) que automatiza tarefas essenciais antes de subir a aplicação.
+
+### **Fluxo de Inicialização**
+
+1.  **Migrações (`npm run db:migrate`)**: Verifica e aplica alterações pendentes no esquema do banco de dados.
+2.  **Seed (`npm run db:seed`)**: Popula o banco com dados iniciais (usuário admin) se estiver vazio.
+3.  **Start (`npm run start`)**: Inicia o servidor Next.js em modo de produção.
+
+### **Dependências de Produção**
+
+Para que essa automação funcione dentro do container (onde `devDependencies` são removidas para otimização), as seguintes ferramentas devem ser mantidas em **`dependencies`** no `package.json`:
+
+- **`drizzle-kit`**: Responsável por aplicar as migrações.
+- **`tsx`**: Responsável por executar o script de seed (TypeScript).
+- **`dotenv`**: Responsável por carregar variáveis de ambiente.
+- **`typescript`**: Necessário para que o Next.js carregue o arquivo `next.config.ts` em tempo de execução sem reinstalar pacotes.
+
+> ⚠️ **Atenção:** Não mova esses pacotes para `devDependencies`, ou o container falhará ao iniciar com erros como `command not found` ou `module not found`.
+
+---
+
 ## 🏭 **PRODUÇÃO (POSTGRES)**
 
 ### **Opção recomendada: Postgres gerenciado**
@@ -273,13 +301,17 @@ O Vercel fará deploy automaticamente apenas do frontend Next.js.
 
 - **Porta**: 3000 (mapeada para localhost:3000)
 - **Função**: Aplicação frontend e APIs
-- **Volume**: `./uploads` (arquivos persistidos no host)
+- **Volume**: `uploads_data` (Volume Docker gerenciado)
 - **Restart**: Automático (`unless-stopped`)
 
 ### **Persistência de Dados**
 
-- ✅ Arquivos de upload são salvos em `./uploads` (não perdem ao parar containers)
-- ⚠️ Banco de dados precisa ser externo (PostgreSQL separado)
+- ✅ Arquivos de upload são salvos no volume `uploads_data` (persistência garantida e isolada)
+- ✅ Banco de dados é persistido no volume `postgres_data`
+- ✅ **Inicialização Automática (`entrypoint.sh`)**:
+  - Toda vez que o container sobe, ele tenta rodar as migrações.
+  - Depois, roda o seed (que verifica se os dados já existem antes de criar).
+  - Isso garante que o banco sempre esteja atualizado e com os dados iniciais, sem duplicar ou apagar informações.
 
 ### **Configurações de Produção**
 

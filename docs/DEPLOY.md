@@ -1,43 +1,44 @@
-# 🚀 Deploy com Docker (Silo)
+# 🚀 Deploy do Silo com Docker
 
 Este guia explica, de forma bem simples, como fazer deploy do Silo usando Docker.
 
 ---
 
-## ⭐ Tutorial de Deploy (o mais importante)
+## ⭐ Tutorial de Deploy
 
 Siga exatamente na ordem:
 
-### 1) Ligar o Docker Desktop
+### 1) Ligar o Docker Desktop (Windows)
 
-- Abra o Docker Desktop
+- Abra o Docker Desktop (Windows)
 - Espere ele ficar “verde” (rodando)
 
 ### 2) Abrir o terminal na pasta do projeto
 
-No Windows, abra o PowerShell dentro da pasta, por exemplo:
+No Linux, abra o terminal dentro do diretório, por exemplo:
 
-```
-C:\INPE\silo
+```bash
+cd C:\INPE\silo
 ```
 
 ### 3) Criar o arquivo .env
 
 Ele é o arquivo que contém as variáveis de ambiente.
 
-```powershell
-Copy-Item env.example .env
+```bash
+cp env.example .env
 ```
 
 ### 4) Editar o .env
 
 Abra o arquivo `.env` e ajuste conforme os dados de usuário, banco de dados e senha reais:
 
-- `BETTER_AUTH_SECRET` com um texto longo e secreto
-- Se for usar o banco dentro do Docker, use:
+- `BETTER_AUTH_SECRET` com um texto longo e secreto ou gerar o secret com um destes: `npx @better-auth/cli secret` ou `openssl rand -base64 32`.
+- Se for usar o banco de dados dentro do Docker, use as seguintes configurações, adaptando os valores das variáveis conforme necessário:
 
 ```env
-DATABASE_URL_DEV=postgresql://silo:silo@db:5432/silo
+NODE_ENV=production
+
 DATABASE_URL_PROD=postgresql://silo:silo@db:5432/silo
 POSTGRES_DB=silo
 POSTGRES_USER=silo
@@ -51,23 +52,31 @@ POSTGRES_PORT=5432
 
 ### 5) Subir tudo com banco e volumes
 
-Esse comando liga a aplicação e o banco, com dados persistindo:
+Execute o script de deploy automatizado (funciona em Windows, Linux e Mac):
 
-```powershell
+```bash
+npm run deploy
+```
+
+Ou, se preferir o comando manual:
+
+```bash
 docker compose --profile db up -d --build
 ```
 
 O que acontece aqui:
 
-- Baixa imagens necessárias
-- Monta o app com o Dockerfile
-- Cria o banco PostgreSQL
-- Cria volume para não perder dados
-- Cria pasta de uploads no seu computador
+1.  **Build**: Monta o container do Silo.
+2.  **Start**: O container inicia e executa automaticamente:
+    - `npm run db:migrate` (Cria as tabelas se não existirem)
+    - `npm run db:seed` (Cria o usuário admin `Mario Junior` se o banco estiver vazio)
+    - `npm run start` (Inicia o servidor Next.js)
+
+Tudo isso acontece de forma automática graças ao script `entrypoint.sh`. Esse arquivo executa migrações, seed e inicia a aplicação.
 
 ### 6) Ver se está rodando
 
-```powershell
+```bash
 docker compose ps
 ```
 
@@ -86,7 +95,7 @@ Pense no volume como um baú que guarda tudo do banco.
 
 ### Ver todos os volumes
 
-```powershell
+```bash
 docker volume ls
 ```
 
@@ -94,13 +103,13 @@ Procure por um volume parecido com `silo_postgres_data`.
 
 ### Ver detalhes do volume
 
-```powershell
+```bash
 docker volume inspect silo_postgres_data
 ```
 
 ### Ver arquivos do banco dentro do container
 
-```powershell
+```bash
 docker compose exec db sh -c "ls -la /var/lib/postgresql/data"
 ```
 
@@ -108,14 +117,14 @@ docker compose exec db sh -c "ls -la /var/lib/postgresql/data"
 
 ## 📦 Como verificar uploads
 
-Uploads são arquivos que ficam no seu computador:
+Uploads são arquivos persistidos em um volume do Docker:
 
-- Pasta local: `./uploads`
+- Volume: `uploads_data` (Gerenciado pelo Docker)
 - Dentro do container: `/app/uploads`
 
 Para conferir dentro do container:
 
-```powershell
+```bash
 docker compose exec app sh -c "ls -la /app/uploads"
 ```
 
@@ -123,7 +132,7 @@ docker compose exec app sh -c "ls -la /app/uploads"
 
 ## 🧰 Comandos úteis (o que está rodando)
 
-```powershell
+```bash
 docker compose ps
 docker compose logs -f
 docker compose logs -f app
@@ -136,25 +145,25 @@ docker stats
 
 ## 💤 Rodar em segundo plano
 
-```powershell
+```bash
 docker compose up -d --build
 ```
 
 Ver logs depois:
 
-```powershell
+```bash
 docker compose logs -f
 ```
 
 Parar tudo:
 
-```powershell
+```bash
 docker compose down
 ```
 
 Parar e apagar volumes:
 
-```powershell
+```bash
 docker compose down -v
 ```
 
@@ -162,7 +171,7 @@ docker compose down -v
 
 ## 🧠 O que é Docker Compose
 
-Docker Compose é como um “maestro” que liga várias caixas mágicas juntas.
+Docker Compose é um “maestro” que, a partir de uma única receita (o arquivo docker-compose.yml), sabe ligar, conectar e manter vários programas (containers) trabalhando juntos sem que você precise abrir uma tela de configuração para cada um.
 
 No Silo:
 
@@ -175,7 +184,7 @@ O `--profile db` liga o banco junto.
 
 ## 🧩 O que é o Dockerfile
 
-O Dockerfile é uma receita que diz como montar a “caixa” da aplicação:
+O Dockerfile é um arquivo de texto que lista, passo a passo, todos os ingredientes e configurações necessários para “embalar” sua aplicação dentro de uma imagem Docker — como se fosse a fórmula exata para que o Docker saiba exatamente como montar e preparar o ambiente onde seu código vai rodar.
 
 1. Pega uma base com Node.js
 2. Instala dependências
@@ -189,61 +198,28 @@ O Dockerfile é uma receita que diz como montar a “caixa” da aplicação:
 
 Ver imagens:
 
-```powershell
-docker image ls
+```bash
+docker images
 ```
 
-Remover uma imagem:
+Remover tudo que não está sendo usado (cuidado):
 
-```powershell
-docker image rm <ID_DA_IMAGEM>
-```
-
-Limpar tudo que não está sendo usado:
-
-```powershell
+```bash
 docker system prune -a
 ```
 
 ---
 
-## 🚚 Como rodar um container manualmente
+## 🔧 Troubleshooting
 
-### Banco PostgreSQL sozinho
+### Container reiniciando ou falha no Entrypoint
 
-```powershell
-docker run -d --name silo-postgres `
-  -e POSTGRES_DB=silo `
-  -e POSTGRES_USER=silo `
-  -e POSTGRES_PASSWORD=silo `
-  -p 5432:5432 `
-  -v postgres_data:/var/lib/postgresql/data `
-  postgres:17-alpine
+Se o container do `app` ficar reiniciando ou falhar logo após o build, verifique os logs:
+
+```bash
+docker compose logs app
 ```
 
-### Aplicação sozinha
+Se o erro for relacionado a **módulos não encontrados** (`drizzle-kit not found`, `tsx not found`, `dotenv not found`) ou **reinstalação do TypeScript** a cada boot, verifique o `package.json`.
 
-```powershell
-docker build -t silo-app .
-docker run -d --name silo-app `
-  -p 3000:3000 `
-  -e NODE_ENV=production `
-  -e DATABASE_URL_DEV=postgresql://silo:silo@db:5432/silo `
-  -e DATABASE_URL_PROD=postgresql://silo:silo@db:5432/silo `
-  -e NEXT_PUBLIC_BASE_PATH=/silo `
-  -e APP_URL_DEV=http://localhost:3000 `
-  -e APP_URL_PROD=https://fortuna.cptec.inpe.br `
-  -e BETTER_AUTH_SECRET=seu_secret_aqui `
-  -v ${PWD}\uploads:/app/uploads `
-  silo-app
-```
-
----
-
-## ✅ Checklist rápido
-
-- Docker Desktop está rodando
-- `.env` criado e editado
-- `BETTER_AUTH_SECRET` preenchido
-- `docker compose --profile db up -d --build` executado
-- Site abre no navegador com o caminho correto
+As ferramentas de migração, seed e configuração (`drizzle-kit`, `tsx`, `dotenv`, `typescript`) devem estar listadas em **`dependencies`** (e não `devDependencies`), pois o Dockerfile remove dependências de desenvolvimento em produção.

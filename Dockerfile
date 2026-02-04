@@ -51,6 +51,16 @@ RUN mkdir -p uploads
 EXPOSE 3000
 
 # ------------------------------------------------------
+# Configura o Entrypoint para Migrations/Seed automáticos
+# ------------------------------------------------------
+COPY entrypoint.sh .
+# Converte quebras de linha Windows (CRLF) para Linux (LF) e dá permissão de execução
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
+
+# Executa migrações, seed e inicia a aplicação
+ENTRYPOINT ["./entrypoint.sh"]
+
+# ------------------------------------------------------
 # Comando de inicialização do container
 # Usa o servidor de produção do Next.js
 # ------------------------------------------------------
