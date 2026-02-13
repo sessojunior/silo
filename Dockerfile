@@ -36,6 +36,7 @@ COPY . .
 # Evita warnings e comportamentos inconsistentes do Next.js
 # ------------------------------------------------------
 ENV NODE_ENV=production
+ENV DRIZZLE_TELEMETRY_DISABLED=1
 
 # ------------------------------------------------------
 # Executa o build da aplicação Next.js

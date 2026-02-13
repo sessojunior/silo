@@ -37,5 +37,5 @@ console.log('⚠️  Pressione Ctrl+C para sair dos logs (a aplicação continua
 console.log('\n------------------------------------------------------------------------');
 
 // 3. Exibir logs do container app para acompanhar o entrypoint
-// Equivalente a: docker compose logs -f app
-run('docker', ['compose', 'logs', '-f', 'app']);
+// Equivalente a: docker compose logs -f silo
+run('docker', ['compose', 'logs', '-f', 'silo']);

@@ -15,11 +15,20 @@ Siga exatamente na ordem:
 
 ### 2) Abrir o terminal na pasta do projeto
 
-No Linux, abra o terminal dentro do diretório, por exemplo:
-
 ```bash
 cd C:\INPE\silo
 ```
+
+### 2.1) Criar a rede Docker (Frontend)
+
+O projeto exige uma rede externa chamada `frontend` para comunicação com proxies e outros serviços. No seu terminal, execute:
+
+```bash
+docker network create frontend
+```
+
+> [!IMPORTANT]
+> Este passo é obrigatório uma única vez na máquina. Sem isso, o comando de deploy falhará informando que a rede não foi encontrada.
 
 ### 3) Criar o arquivo .env
 
@@ -47,8 +56,8 @@ POSTGRES_PORT=5432
 ```
 
 - `NEXT_PUBLIC_BASE_PATH` define o caminho do site:
-  - `/silo` → http://localhost:3000/silo
-  - `/` → http://localhost:3000
+  - `/silo` → <http://localhost:3000/silo>
+  - `/` → <http://localhost:3000>
 
 ### 5) Subir tudo com banco e volumes
 
@@ -66,11 +75,11 @@ docker compose --profile db up -d --build
 
 O que acontece aqui:
 
-1.  **Build**: Monta o container do Silo.
-2.  **Start**: O container inicia e executa automaticamente:
-    - `npm run db:migrate` (Cria as tabelas se não existirem)
-    - `npm run db:seed` (Cria o usuário admin `Mario Junior` se o banco estiver vazio)
-    - `npm run start` (Inicia o servidor Next.js)
+1. **Build**: Monta o container do Silo.
+2. **Start**: O container inicia e executa automaticamente:
+   - `npm run db:migrate` (Cria as tabelas se não existirem)
+   - `npm run db:seed` (Cria o usuário admin `Mario Junior` se o banco estiver vazio)
+   - `npm run start` (Inicia o servidor Next.js)
 
 Tudo isso acontece de forma automática graças ao script `entrypoint.sh`. Esse arquivo executa migrações, seed e inicia a aplicação.
 
@@ -83,9 +92,9 @@ docker compose ps
 ### 7) Abrir no navegador
 
 - Se `NEXT_PUBLIC_BASE_PATH=/silo`:
-  - http://localhost:3000/silo
+  - <http://localhost:3000/silo>
 - Se `NEXT_PUBLIC_BASE_PATH=/`:
-  - http://localhost:3000
+  - <http://localhost:3000>
 
 ---
 
@@ -125,7 +134,7 @@ Uploads são arquivos persistidos em um volume do Docker:
 Para conferir dentro do container:
 
 ```bash
-docker compose exec app sh -c "ls -la /app/uploads"
+docker compose exec silo sh -c "ls -la /app/uploads"
 ```
 
 ---
@@ -135,7 +144,7 @@ docker compose exec app sh -c "ls -la /app/uploads"
 ```bash
 docker compose ps
 docker compose logs -f
-docker compose logs -f app
+docker compose logs -f silo
 docker compose logs -f db
 docker ps
 docker stats
@@ -217,7 +226,7 @@ docker system prune -a
 Se o container do `app` ficar reiniciando ou falhar logo após o build, verifique os logs:
 
 ```bash
-docker compose logs app
+docker compose logs silo
 ```
 
 Se o erro for relacionado a **módulos não encontrados** (`drizzle-kit not found`, `tsx not found`, `dotenv not found`) ou **reinstalação do TypeScript** a cada boot, verifique o `package.json`.

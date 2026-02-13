@@ -33,7 +33,7 @@ Docker é uma ferramenta que "empacota" aplicações em **containers** - ambient
 
 O **Silo** usa **1 container** (e opcionalmente um Postgres):
 
-1. **`app`** (porta 3000) - Aplicação Next.js (frontend + APIs + uploads locais)
+1. **`silo`** (porta 3000) - Aplicação Next.js (frontend + APIs + uploads locais)
 2. **`db`** (opcional) - PostgreSQL (via Docker Compose, recomendado apenas quando você não usa Postgres gerenciado)
 
 ---
@@ -43,11 +43,19 @@ O **Silo** usa **1 container** (e opcionalmente um Postgres):
 ### **Pré-requisitos**
 
 1. **Docker Desktop** (Windows/Mac) ou **Docker Engine** (Linux)
-   - Download: https://www.docker.com/products/docker-desktop
+   - Download: <https://www.docker.com/products/docker-desktop>
    - Após instalar, verifique: `docker --version`
 
 2. **Docker Compose** (geralmente já vem com o Docker Desktop)
    - Verifique: `docker compose version`
+
+3. **Rede Docker (Frontend)**
+   - O projeto utiliza uma rede externa chamada `frontend`.
+   - Crie-a manualmente antes de iniciar os containers:
+   ```bash
+   docker network create frontend
+   ```
+   - Isso é necessário para manter a coerência com os servidores de produção e permitir a integração com proxies reversos.
 
 ### **Variáveis de Ambiente**
 
@@ -193,7 +201,7 @@ docker compose ps
 docker compose logs -f
 
 # Ver logs de um container específico
-docker compose logs -f app
+docker compose logs -f silo
 
 # Parar todos os containers
 docker compose down
@@ -205,14 +213,14 @@ docker compose down -v
 docker compose restart
 
 # Reconstruir apenas um container
-docker compose up --build app
+docker compose up --build silo
 ```
 
 ### **Acessar o Sistema**
 
 Após iniciar os containers:
 
-- **Frontend**: http://localhost:3000<BASE_PATH>
+- **Frontend**: <http://localhost:3000/silo> (ou conforme `BASE_PATH`)
 - **Uploads**: `GET <BASE_PATH>/uploads/<type>/<filename>`
 
 ---
@@ -231,9 +239,9 @@ O container do Silo utiliza um script de inicialização (`entrypoint.sh`) que a
 
 ### **Fluxo de Inicialização**
 
-1.  **Migrações (`npm run db:migrate`)**: Verifica e aplica alterações pendentes no esquema do banco de dados.
-2.  **Seed (`npm run db:seed`)**: Popula o banco com dados iniciais (usuário admin) se estiver vazio.
-3.  **Start (`npm run start`)**: Inicia o servidor Next.js em modo de produção.
+1. **Migrações (`npm run db:migrate`)**: Verifica e aplica alterações pendentes no esquema do banco de dados.
+2. **Seed (`npm run db:seed`)**: Popula o banco com dados iniciais (usuário admin) se estiver vazio.
+3. **Start (`npm run start`)**: Inicia o servidor Next.js em modo de produção.
 
 ### **Dependências de Produção**
 
@@ -297,7 +305,7 @@ O Vercel fará deploy automaticamente apenas do frontend Next.js.
 
 ## 🏭 **PRODUÇÃO**
 
-### **Container Next.js (`app`)**
+### **Container Next.js (`silo`)**
 
 - **Porta**: 3000 (mapeada para localhost:3000)
 - **Função**: Aplicação frontend e APIs
@@ -365,13 +373,13 @@ taskkill /PID <PID> /F
 
 ```bash
 # Ver logs detalhados
-docker compose logs app
+docker compose logs silo
 
 # Verificar variáveis de ambiente
 docker compose config
 
 # Verificar permissões dos volumes
-docker compose exec app ls -la uploads/
+docker compose exec silo ls -la uploads/
 ```
 
 ### **Limpar tudo e recomeçar**
@@ -391,7 +399,7 @@ docker compose up --build
 
 ```bash
 # Entrar dentro do container Next.js
-docker compose exec app sh
+docker compose exec silo sh
 
 # Ver configuração completa gerada
 docker compose config
@@ -400,7 +408,7 @@ docker compose config
 docker stats
 
 # Verificar logs de erro específicos
-docker compose logs app | findstr ERROR
+docker compose logs silo | findstr ERROR
 ```
 
 ---

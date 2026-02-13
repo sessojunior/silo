@@ -12,10 +12,12 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  app:
+  silo:
     build: .
+    image: silo-img
+    container_name: silo-app
     ports:
-      - "3000:3000"
+      - "8084:3000"
     environment:
       # Ambiente e banco
       NODE_ENV: ${NODE_ENV:-production}
@@ -41,7 +43,15 @@ services:
     volumes:
       - uploads_data:/app/uploads
     restart: unless-stopped
+    networks:
+      - frontend
+      - default
 
 volumes:
   postgres_data:
   uploads_data:
+
+networks:
+  frontend:
+    external: true
+    name: frontend

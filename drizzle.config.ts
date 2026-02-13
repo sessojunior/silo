@@ -23,4 +23,9 @@ export default defineConfig({
   dbCredentials: {
     url: databaseUrl || process.env.DATABASE_URL_PROD || process.env.DATABASE_URL_DEV!,
   },
+  // Força o uso do schema public para gerenciar migrações, evitando tentativas de criar schemas extras
+  migrations: {
+    schema: "public",
+    table: "__drizzle_migrations",
+  },
 });

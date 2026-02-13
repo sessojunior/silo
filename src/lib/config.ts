@@ -9,7 +9,7 @@
  *
  * Variáveis principais:
  * - NEXT_PUBLIC_BASE_PATH: basePath do Next.js (ex.: /silo)
- * - APP_URL_DEV / APP_URL_PROD: URL base da aplicação, sempre incluindo o basePath
+ * - APP_URL_DEV / APP_URL_PROD: URL base da aplicação (origem), SEM o basePath
  * - DATABASE_URL_DEV / DATABASE_URL_PROD: URLs do banco PostgreSQL
  *
  * Para chamadas HTTP internas, use sempre config.getApiUrl('/api/...').

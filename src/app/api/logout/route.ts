@@ -28,12 +28,12 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.redirect(
-      new URL(appConfig.getPublicPath("/login"), req.url),
+      new URL(appConfig.getApiUrl("/login")),
     );
   } catch (error) {
     console.error("❌ [API_LOGOUT] Erro ao fazer logout:", { error });
     return NextResponse.redirect(
-      new URL(appConfig.getPublicPath("/login"), req.url),
+      new URL(appConfig.getApiUrl("/login")),
     );
   }
 }
