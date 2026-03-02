@@ -4,7 +4,11 @@ import { db } from "@/lib/db";
 import { authUser, authVerification } from "@/lib/db/schema";
 import { requireAuthUser } from "@/lib/auth/server";
 import { isValidEmail, isValidDomain } from "@/lib/auth/validate";
-import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
+import {
+  errorResponse,
+  parseRequestJson,
+  successResponse,
+} from "@/lib/api-response";
 import { isRateLimited, recordRateLimit } from "@/lib/rateLimit";
 import { sendEmail } from "@/lib/sendEmail";
 import type { EmailTemplateData } from "@/lib/email/types";
@@ -52,7 +56,10 @@ const emailInputSchema = z
   .toLowerCase()
   .superRefine((value, ctx) => {
     if (!isValidEmail(value)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "O e-mail é inválido." });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "O e-mail é inválido.",
+      });
       return;
     }
     if (!isValidDomain(value)) {
@@ -125,7 +132,9 @@ export async function POST(req: NextRequest) {
     const identifier = buildEmailChangeIdentifier(user.id, newEmail);
     const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000);
 
-    await db.delete(authVerification).where(eq(authVerification.identifier, identifier));
+    await db
+      .delete(authVerification)
+      .where(eq(authVerification.identifier, identifier));
     await db.insert(authVerification).values({
       id: randomUUID(),
       identifier,
@@ -158,7 +167,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return successResponse({}, "Código de verificação enviado para o novo e-mail.");
+    return successResponse(
+      {},
+      "Código de verificação enviado para o novo e-mail.",
+    );
   } catch (error) {
     console.error(
       "❌ [API_USER_EMAIL_CHANGE] Erro ao solicitar alteração de e-mail:",
@@ -222,11 +234,9 @@ export async function PUT(req: NextRequest) {
       await db
         .delete(authVerification)
         .where(eq(authVerification.id, verificationRow.id));
-      return errorResponse(
-        "Muitas tentativas. Solicite um novo código.",
-        429,
-        { field: "code" },
-      );
+      return errorResponse("Muitas tentativas. Solicite um novo código.", 429, {
+        field: "code",
+      });
     }
 
     if (code !== parsed.otp) {

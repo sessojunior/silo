@@ -1,4 +1,13 @@
-import { count, eq, and, inArray, isNotNull, isNull, ne, desc } from "drizzle-orm";
+import {
+  count,
+  eq,
+  and,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  desc,
+} from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { successResponse, errorResponse } from "@/lib/api-response";
@@ -53,26 +62,20 @@ export async function GET() {
       return errorResponse("Permissão insuficiente.", 403);
     }
 
-    // 1. BUSCAR CHATGROUPS onde usuário participa
-    const userGroups = await db
+    // 1. BUSCAR TODOS OS CHATGROUPS ATIVOS
+    const activeGroups = await db
       .select({
-        groupId: schema.userGroup.groupId,
+        groupId: schema.group.id,
         groupName: schema.group.name,
         groupDescription: schema.group.description,
         groupIcon: schema.group.icon,
         groupColor: schema.group.color,
         groupActive: schema.group.active,
       })
-      .from(schema.userGroup)
-      .innerJoin(schema.group, eq(schema.userGroup.groupId, schema.group.id))
-      .where(
-        and(
-          eq(schema.userGroup.userId, user.id),
-          eq(schema.group.active, true),
-        ),
-      );
+      .from(schema.group)
+      .where(eq(schema.group.active, true));
 
-    const groupIds = userGroups.map((g) => g.groupId);
+    const groupIds = activeGroups.map((g) => g.groupId);
 
     const groupUnreadCountsRaw = groupIds.length
       ? await db
@@ -98,14 +101,11 @@ export async function GET() {
 
     const groupLastMessagesRaw = groupIds.length
       ? await db
-          .selectDistinctOn(
-            [schema.chatMessage.receiverGroupId],
-            {
-              receiverGroupId: schema.chatMessage.receiverGroupId,
-              content: schema.chatMessage.content,
-              createdAt: schema.chatMessage.createdAt,
-            },
-          )
+          .selectDistinctOn([schema.chatMessage.receiverGroupId], {
+            receiverGroupId: schema.chatMessage.receiverGroupId,
+            content: schema.chatMessage.content,
+            createdAt: schema.chatMessage.createdAt,
+          })
           .from(schema.chatMessage)
           .where(
             and(
@@ -129,7 +129,7 @@ export async function GET() {
     );
 
     // Mapear chatGroups com contagem real de não lidas e última mensagem
-    const chatGroups: ChatGroup[] = userGroups.map((g) => {
+    const chatGroups: ChatGroup[] = activeGroups.map((g) => {
       const lastMessageData = groupLastMessageMap.get(g.groupId);
       return {
         id: g.groupId,
@@ -144,7 +144,7 @@ export async function GET() {
       };
     });
 
-    // 2. BUSCAR TODOS USUARIOS ATIVOS (exceto atual)
+    // 2. BUSCAR TODOS USUARIOS ATIVOS
     const allActiveUsers = await db
       .select({
         id: schema.authUser.id,
@@ -153,12 +153,7 @@ export async function GET() {
         isActive: schema.authUser.isActive,
       })
       .from(schema.authUser)
-      .where(
-        and(
-          ne(schema.authUser.id, user.id),
-          eq(schema.authUser.isActive, true),
-        ),
-      );
+      .where(eq(schema.authUser.isActive, true));
 
     const activeUserIds = allActiveUsers.map((u) => u.id);
 
@@ -201,14 +196,11 @@ export async function GET() {
     );
 
     const sentLastMessagesRaw = await db
-      .selectDistinctOn(
-        [schema.chatMessage.receiverUserId],
-        {
-          otherUserId: schema.chatMessage.receiverUserId,
-          content: schema.chatMessage.content,
-          createdAt: schema.chatMessage.createdAt,
-        },
-      )
+      .selectDistinctOn([schema.chatMessage.receiverUserId], {
+        otherUserId: schema.chatMessage.receiverUserId,
+        content: schema.chatMessage.content,
+        createdAt: schema.chatMessage.createdAt,
+      })
       .from(schema.chatMessage)
       .where(
         and(
@@ -223,14 +215,11 @@ export async function GET() {
       );
 
     const receivedLastMessagesRaw = await db
-      .selectDistinctOn(
-        [schema.chatMessage.senderUserId],
-        {
-          otherUserId: schema.chatMessage.senderUserId,
-          content: schema.chatMessage.content,
-          createdAt: schema.chatMessage.createdAt,
-        },
-      )
+      .selectDistinctOn([schema.chatMessage.senderUserId], {
+        otherUserId: schema.chatMessage.senderUserId,
+        content: schema.chatMessage.content,
+        createdAt: schema.chatMessage.createdAt,
+      })
       .from(schema.chatMessage)
       .where(
         and(
@@ -243,7 +232,10 @@ export async function GET() {
         desc(schema.chatMessage.createdAt),
       );
 
-    const lastMessageMap = new Map<string, { content: string; createdAt: Date }>();
+    const lastMessageMap = new Map<
+      string,
+      { content: string; createdAt: Date }
+    >();
     for (const msg of [...sentLastMessagesRaw, ...receivedLastMessagesRaw]) {
       if (!msg.otherUserId) continue;
       const prev = lastMessageMap.get(msg.otherUserId);

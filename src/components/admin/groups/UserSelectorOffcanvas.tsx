@@ -379,7 +379,6 @@ export default function UserSelectorOffcanvas({
             </div>
           )}
         </div>
-
       </div>
     </Offcanvas>
   );

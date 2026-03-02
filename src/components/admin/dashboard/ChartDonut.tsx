@@ -39,9 +39,9 @@ export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
             setData(null);
           }
         } else {
-          const json = (await res.json().catch(() => null)) as
-            | HttpResponse<unknown>
-            | null;
+          const json = (await res
+            .json()
+            .catch(() => null)) as HttpResponse<unknown> | null;
           console.error("❌ [COMPONENT_CHART_DONUT] Erro ao carregar chart:", {
             status: res.status,
             message: json?.message ?? json?.error ?? null,

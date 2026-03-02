@@ -2,7 +2,11 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
+import {
+  errorResponse,
+  parseRequestJson,
+  successResponse,
+} from "@/lib/api-response";
 import { translateAuthError } from "@/lib/auth/i18n";
 import {
   AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
@@ -68,7 +72,9 @@ const getBetterAuthErrorCode = (error: unknown): string | null => {
 const isOtpInvalidOrExpired = (error: unknown): boolean => {
   const code = getBetterAuthErrorCode(error);
   if (!code) return false;
-  return code === "INVALID_OTP" || code === "EXPIRED_OTP" || code === "OTP_EXPIRED";
+  return (
+    code === "INVALID_OTP" || code === "EXPIRED_OTP" || code === "OTP_EXPIRED"
+  );
 };
 
 const isOtpTooManyAttempts = (error: unknown): boolean =>
@@ -148,7 +154,10 @@ export async function POST(req: NextRequest) {
         return errorResponse(
           "Aguarde para tentar novamente.",
           429,
-          { field: "email", retryAfterSeconds: invalidEmailStatus.retryAfterSeconds },
+          {
+            field: "email",
+            retryAfterSeconds: invalidEmailStatus.retryAfterSeconds,
+          },
           { "Retry-After": String(invalidEmailStatus.retryAfterSeconds) },
         );
       }
@@ -191,7 +200,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const verification = await (async (): Promise<{ success: boolean } | Response> => {
+    const verification = await (async (): Promise<
+      { success: boolean } | Response
+    > => {
       try {
         const result = await auth.api.checkVerificationOTP({
           body: {
@@ -277,7 +288,9 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return errorResponse("Código inválido ou expirado.", 400, { field: "code" });
+      return errorResponse("Código inválido ou expirado.", 400, {
+        field: "code",
+      });
     }
 
     if (attemptsRow) {
@@ -303,10 +316,7 @@ export async function POST(req: NextRequest) {
 
       const addedToDefaultGroup = await addUserToDefaultGroup(user.id);
       if (!addedToDefaultGroup) {
-        return errorResponse(
-          "Grupo padrão não configurado no sistema.",
-          500,
-        );
+        return errorResponse("Grupo padrão não configurado no sistema.", 500);
       }
     }
 

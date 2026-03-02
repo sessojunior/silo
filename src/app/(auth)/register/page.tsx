@@ -31,7 +31,9 @@ import InputPasswordHints from "@/components/ui/InputPasswordHints";
 import Pin from "@/components/ui/Pin";
 
 const signUpCooldown = createSessionResendCooldown("sign-up-email");
-const verificationCooldown = createSessionResendCooldown("register-email-verification");
+const verificationCooldown = createSessionResendCooldown(
+  "register-email-verification",
+);
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -54,9 +56,10 @@ export default function RegisterPage() {
     const error = searchParams.get("error");
     const errorDescription = searchParams.get("error_description");
     const message = searchParams.get("message");
-    const normalized = `${error ?? ""}|${errorDescription ?? ""}|${message ?? ""}`
-      .trim()
-      .toLowerCase();
+    const normalized =
+      `${error ?? ""}|${errorDescription ?? ""}|${message ?? ""}`
+        .trim()
+        .toLowerCase();
     if (!normalized.includes("unauthorized")) return;
 
     window.setTimeout(() => {
@@ -88,7 +91,10 @@ export default function RegisterPage() {
   const handleGoogleRegister = async () => {
     try {
       const endpoint = config.getApiUrl("/api/auth/login-google?from=register");
-      const res = await fetch(endpoint, { method: "GET", credentials: "include" });
+      const res = await fetch(endpoint, {
+        method: "GET",
+        credentials: "include",
+      });
       const raw = (await res.json().catch(() => null)) as unknown;
 
       const redirectUrl = (() => {
@@ -97,7 +103,8 @@ export default function RegisterPage() {
           if (typeof candidate === "string" && candidate.length > 0)
             return candidate;
         }
-        const header = res.headers.get("location") ?? res.headers.get("Location");
+        const header =
+          res.headers.get("location") ?? res.headers.get("Location");
         if (typeof header === "string" && header.length > 0) return header;
         return null;
       })();
@@ -265,7 +272,8 @@ export default function RegisterPage() {
         const cooldownSeconds = (() => {
           if (typeof data.data !== "object" || data.data === null) return null;
           if (!("cooldownSeconds" in data.data)) return null;
-          const raw = (data.data as { cooldownSeconds?: unknown }).cooldownSeconds;
+          const raw = (data.data as { cooldownSeconds?: unknown })
+            .cooldownSeconds;
           if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
             return null;
           return Math.ceil(raw);
@@ -329,11 +337,13 @@ export default function RegisterPage() {
         );
 
         const data = (await res.json()) as ApiResponse<unknown>;
-        const message = data.message || data.error || "Erro ao verificar código.";
+        const message =
+          data.message || data.error || "Erro ao verificar código.";
 
         if (!res.ok) {
           const retryAfterSeconds = (() => {
-            if (typeof data.data !== "object" || data.data === null) return null;
+            if (typeof data.data !== "object" || data.data === null)
+              return null;
             if (!("retryAfterSeconds" in data.data)) return null;
             const raw = (data.data as { retryAfterSeconds?: unknown })
               .retryAfterSeconds;
@@ -352,7 +362,10 @@ export default function RegisterPage() {
 
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            verificationCooldown.writeUnlockAtMsFromSeconds(formatEmail, retryAfter);
+            verificationCooldown.writeUnlockAtMsFromSeconds(
+              formatEmail,
+              retryAfter,
+            );
             setMustResendVerificationCode(true);
             setCode("");
             setFieldError("code", "Aguarde para reenviar o código.");
@@ -365,9 +378,7 @@ export default function RegisterPage() {
             return;
           }
 
-          if (
-            shouldResetFlow(data.data)
-          ) {
+          if (shouldResetFlow(data.data)) {
             setCode("");
             setFieldError("code", message);
             toast({ type: "error", title: message });
@@ -413,14 +424,18 @@ export default function RegisterPage() {
       clearFieldError();
 
       try {
-        const res = await fetch(config.getApiUrl("/api/auth/sign-up/email/send-otp"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: normalizedEmail, resend: true }),
-        });
+        const res = await fetch(
+          config.getApiUrl("/api/auth/sign-up/email/send-otp"),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalizedEmail, resend: true }),
+          },
+        );
 
         const data = (await res.json()) as ApiResponse<unknown>;
-        const message = data.message || data.error || "Erro ao reenviar código.";
+        const message =
+          data.message || data.error || "Erro ao reenviar código.";
 
         const retryAfterSeconds = (() => {
           if (typeof data.data !== "object" || data.data === null) return null;
@@ -463,7 +478,8 @@ export default function RegisterPage() {
         const cooldownSeconds = (() => {
           if (typeof data.data !== "object" || data.data === null) return null;
           if (!("cooldownSeconds" in data.data)) return null;
-          const raw = (data.data as { cooldownSeconds?: unknown }).cooldownSeconds;
+          const raw = (data.data as { cooldownSeconds?: unknown })
+            .cooldownSeconds;
           if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
             return null;
           return Math.ceil(raw);
@@ -477,7 +493,9 @@ export default function RegisterPage() {
         setMustResendVerificationCode(false);
         toast({ type: "info", title: message });
       } catch (err) {
-        console.error("❌ [PAGE_REGISTER] Erro ao reenviar código:", { error: err });
+        console.error("❌ [PAGE_REGISTER] Erro ao reenviar código:", {
+          error: err,
+        });
         toast({ type: "error", title: "Erro ao reenviar código." });
         setFieldError(null, "Erro ao reenviar código.");
       }

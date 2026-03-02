@@ -95,11 +95,7 @@ export default function GroupDeleteDialog({
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={onClose}
-      title="Confirmar exclusão"
-    >
+    <Dialog open={isOpen} onClose={onClose} title="Confirmar exclusão">
       <div className="p-6 space-y-4">
         <p className="text-base text-zinc-600 dark:text-zinc-400">
           {getDialogMessage()}

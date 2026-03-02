@@ -12,7 +12,8 @@ import Image from "next/image";
 
 const toPublicUploadsSrc = (input: string): string => {
   const normalized = normalizeUploadsSrc(input);
-  if (normalized.startsWith("/uploads/")) return config.getPublicPath(normalized);
+  if (normalized.startsWith("/uploads/"))
+    return config.getPublicPath(normalized);
   return normalized;
 };
 

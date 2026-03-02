@@ -4,7 +4,11 @@ import { db } from "@/lib/db";
 import { authUser } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { normalizeUploadsSrc } from "@/lib/utils";
-import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
 import { z } from "zod";
 
 const UpdateUserProfileImageSchema = z.object({
@@ -18,7 +22,10 @@ export async function POST(req: NextRequest) {
     if (!authResult.ok) return authResult.response;
     const { user } = authResult;
 
-    const parsedBody = await parseRequestJson(req, UpdateUserProfileImageSchema);
+    const parsedBody = await parseRequestJson(
+      req,
+      UpdateUserProfileImageSchema,
+    );
     if (!parsedBody.ok) return parsedBody.response;
     const { imageUrl } = parsedBody.data;
 

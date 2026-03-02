@@ -30,7 +30,9 @@ type PermissionCheckOptions = {
   scopeGroupId?: string | null;
 };
 
-export const getUserGroups = async (userId: string): Promise<UserGroupInfo[]> => {
+export const getUserGroups = async (
+  userId: string,
+): Promise<UserGroupInfo[]> => {
   const groups = await db
     .select({
       id: group.id,

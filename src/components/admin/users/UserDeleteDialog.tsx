@@ -80,11 +80,7 @@ export default function UserDeleteDialog({
   if (!user) return null;
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={onClose}
-      title="Excluir Usuário"
-    >
+    <Dialog open={isOpen} onClose={onClose} title="Excluir Usuário">
       <div className="p-6 space-y-4">
         <p className="text-base text-zinc-600 dark:text-zinc-400">
           Tem certeza que deseja excluir o usuário &quot;{user.name}&quot;?

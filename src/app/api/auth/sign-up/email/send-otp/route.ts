@@ -2,7 +2,11 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
+import {
+  errorResponse,
+  parseRequestJson,
+  successResponse,
+} from "@/lib/api-response";
 import {
   AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
   AUTH_INVALID_EMAIL_WINDOW_SECONDS,
@@ -56,7 +60,10 @@ export async function POST(req: NextRequest) {
         return errorResponse(
           "Aguarde para tentar novamente.",
           429,
-          { field: "email", retryAfterSeconds: invalidEmailStatus.retryAfterSeconds },
+          {
+            field: "email",
+            retryAfterSeconds: invalidEmailStatus.retryAfterSeconds,
+          },
           { "Retry-After": String(invalidEmailStatus.retryAfterSeconds) },
         );
       }
@@ -113,10 +120,14 @@ export async function POST(req: NextRequest) {
 
     return successResponse<SendOtpResponse>(
       { cooldownSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS },
-      resend ? "Código reenviado para seu e-mail." : "Código enviado para seu e-mail.",
+      resend
+        ? "Código reenviado para seu e-mail."
+        : "Código enviado para seu e-mail.",
     );
   } catch (error) {
-    console.error("❌ [API_SIGN_UP_EMAIL_SEND_OTP] Erro ao enviar OTP:", { error });
+    console.error("❌ [API_SIGN_UP_EMAIL_SEND_OTP] Erro ao enviar OTP:", {
+      error,
+    });
     return errorResponse("Erro ao enviar código.", 500);
   }
 }

@@ -5,7 +5,11 @@ import * as schema from "@/lib/db/schema";
 import { requirePermissionAuthUser } from "@/lib/permissions";
 import { recordBulkTaskHistory, recordTaskHistory } from "@/lib/taskHistory";
 import { syncActivityStatus } from "@/lib/db/activityStatusSync";
-import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
 import { z } from "zod";
 
 const KanbanMoveTaskSchema = z.object({
@@ -22,11 +26,18 @@ const KanbanMoveSchema = z.object({
 const EstimatedDaysSchema = z.preprocess((value) => {
   if (value === null || value === undefined) return undefined;
   if (typeof value === "number") return value;
-  if (typeof value === "string" && value.trim().length > 0) return Number(value);
+  if (typeof value === "string" && value.trim().length > 0)
+    return Number(value);
   return undefined;
 }, z.number().int().nonnegative().optional());
 
-const TaskStatusSchema = z.enum(["todo", "in_progress", "blocked", "review", "done"]);
+const TaskStatusSchema = z.enum([
+  "todo",
+  "in_progress",
+  "blocked",
+  "review",
+  "done",
+]);
 
 const TaskPrioritySchema = z.enum(["low", "medium", "high", "urgent"]);
 
@@ -421,8 +432,16 @@ export async function POST(
     const { projectId, activityId } = await params;
     const parsedBody = await parseRequestJson(request, CreateTaskSchema);
     if (!parsedBody.ok) return parsedBody.response;
-    const { name, description, category, estimatedDays, startDate, endDate, priority, status } =
-      parsedBody.data;
+    const {
+      name,
+      description,
+      category,
+      estimatedDays,
+      startDate,
+      endDate,
+      priority,
+      status,
+    } = parsedBody.data;
 
     // Buscar o próximo sort para a coluna
     const existingTasks = await db
@@ -499,8 +518,17 @@ export async function PUT(
     const { projectId, activityId } = await params;
     const parsedBody = await parseRequestJson(request, UpdateTaskSchema);
     if (!parsedBody.ok) return parsedBody.response;
-    const { id, name, description, category, estimatedDays, startDate, endDate, priority, status } =
-      parsedBody.data;
+    const {
+      id,
+      name,
+      description,
+      category,
+      estimatedDays,
+      startDate,
+      endDate,
+      priority,
+      status,
+    } = parsedBody.data;
 
     // Verificar se a tarefa existe e pertence ao projeto/atividade
     const existingTask = await db
@@ -541,16 +569,14 @@ export async function PUT(
     // Registrar histórico de edição
     const changedFields = [];
     if (oldTask.name !== name) changedFields.push("name");
-    if (oldTask.description !== description)
-      changedFields.push("description");
+    if (oldTask.description !== description) changedFields.push("description");
     if (oldTask.category !== (category ?? null)) changedFields.push("category");
     if (oldTask.estimatedDays !== (estimatedDays ?? 1))
       changedFields.push("estimatedDays");
     if (oldTask.startDate !== (startDate || null))
       changedFields.push("startDate");
     if (oldTask.endDate !== (endDate || null)) changedFields.push("endDate");
-    if (oldTask.priority !== priority)
-      changedFields.push("priority");
+    if (oldTask.priority !== priority) changedFields.push("priority");
     if (oldTask.status !== newStatus) changedFields.push("status");
 
     await recordTaskHistory({

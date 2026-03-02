@@ -395,7 +395,6 @@ export default function GroupFormOffcanvas({
             </div>
           </div>
         )}
-
       </form>
     </Offcanvas>
   );

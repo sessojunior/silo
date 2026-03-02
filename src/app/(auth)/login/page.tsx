@@ -25,7 +25,9 @@ import InputPassword from "@/components/ui/InputPassword";
 import Pin from "@/components/ui/Pin";
 
 const loginCooldown = createSessionResendCooldown("login-password");
-const emailVerificationCooldown = createSessionResendCooldown("login-email-verification");
+const emailVerificationCooldown = createSessionResendCooldown(
+  "login-email-verification",
+);
 const LOGIN_PASSWORD_WAIT_MESSAGE = "Aguarde para tentar novamente.";
 const EMAIL_VERIFICATION_WAIT_MESSAGE = "Aguarde para reenviar o código.";
 
@@ -50,9 +52,10 @@ export default function LoginPage() {
     const error = searchParams.get("error");
     const errorDescription = searchParams.get("error_description");
     const message = searchParams.get("message");
-    const normalized = `${error ?? ""}|${errorDescription ?? ""}|${message ?? ""}`
-      .trim()
-      .toLowerCase();
+    const normalized =
+      `${error ?? ""}|${errorDescription ?? ""}|${message ?? ""}`
+        .trim()
+        .toLowerCase();
     if (!normalized.includes("unauthorized")) return;
 
     window.setTimeout(() => {
@@ -84,7 +87,10 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       const endpoint = config.getApiUrl("/api/auth/login-google?from=login");
-      const res = await fetch(endpoint, { method: "GET", credentials: "include" });
+      const res = await fetch(endpoint, {
+        method: "GET",
+        credentials: "include",
+      });
       const raw = (await res.json().catch(() => null)) as unknown;
 
       const redirectUrl = (() => {
@@ -93,7 +99,8 @@ export default function LoginPage() {
           if (typeof candidate === "string" && candidate.length > 0)
             return candidate;
         }
-        const header = res.headers.get("location") ?? res.headers.get("Location");
+        const header =
+          res.headers.get("location") ?? res.headers.get("Location");
         if (typeof header === "string" && header.length > 0) return header;
         return null;
       })();
@@ -144,7 +151,8 @@ export default function LoginPage() {
     if (step !== 2) return;
     const update = () => {
       const normalizedEmail = email.trim().toLowerCase();
-      const unlockAtMs = emailVerificationCooldown.readUnlockAtMs(normalizedEmail);
+      const unlockAtMs =
+        emailVerificationCooldown.readUnlockAtMs(normalizedEmail);
       setEmailVerificationSecondsLeft(
         unlockAtMs ? computeSecondsLeftFromUnlockAtMs(unlockAtMs) : 0,
       );
@@ -191,7 +199,8 @@ export default function LoginPage() {
         );
 
         const data = (await res.json()) as ApiResponse<unknown>;
-        const message = data.message || data.error || "Erro ao reenviar código.";
+        const message =
+          data.message || data.error || "Erro ao reenviar código.";
 
         const retryAfterSeconds = (() => {
           if (typeof data.data !== "object" || data.data === null) return null;
@@ -234,7 +243,8 @@ export default function LoginPage() {
         const cooldownSeconds = (() => {
           if (typeof data.data !== "object" || data.data === null) return null;
           if (!("cooldownSeconds" in data.data)) return null;
-          const raw = (data.data as { cooldownSeconds?: unknown }).cooldownSeconds;
+          const raw = (data.data as { cooldownSeconds?: unknown })
+            .cooldownSeconds;
           if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
             return null;
           return Math.ceil(raw);
@@ -248,7 +258,9 @@ export default function LoginPage() {
         setMustResendEmailVerificationCode(false);
         toast({ type: "info", title: message });
       } catch (err) {
-        console.error("❌ [PAGE_LOGIN] Erro ao reenviar código:", { error: err });
+        console.error("❌ [PAGE_LOGIN] Erro ao reenviar código:", {
+          error: err,
+        });
         toast({ type: "error", title: "Erro ao reenviar código." });
         setFieldError(null, "Erro ao reenviar código.");
       }
@@ -312,7 +324,10 @@ export default function LoginPage() {
         if (!res.ok) {
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            loginCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            loginCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
             setFieldError("email", LOGIN_PASSWORD_WAIT_MESSAGE);
             toast({
               type: "info",
@@ -323,7 +338,8 @@ export default function LoginPage() {
           }
 
           const isInactiveUser =
-            res.status === 403 && message.toLowerCase().includes("usuário inativo");
+            res.status === 403 &&
+            message.toLowerCase().includes("usuário inativo");
 
           if (isInactiveUser) {
             const otpRes = await fetch(
@@ -359,7 +375,8 @@ export default function LoginPage() {
             })();
 
             if (!otpRes.ok) {
-              const retryAfter = otpRetryAfterSeconds ?? otpRetryAfterFromHeader;
+              const retryAfter =
+                otpRetryAfterSeconds ?? otpRetryAfterFromHeader;
               if (otpRes.status === 429 && retryAfter) {
                 emailVerificationCooldown.writeUnlockAtMsFromSeconds(
                   normalizedEmail,
@@ -453,11 +470,13 @@ export default function LoginPage() {
         );
 
         const data = (await res.json()) as ApiResponse<unknown>;
-        const message = data.message || data.error || "Erro ao verificar código.";
+        const message =
+          data.message || data.error || "Erro ao verificar código.";
 
         if (!res.ok) {
           const retryAfterSeconds = (() => {
-            if (typeof data.data !== "object" || data.data === null) return null;
+            if (typeof data.data !== "object" || data.data === null)
+              return null;
             if (!("retryAfterSeconds" in data.data)) return null;
             const raw = (data.data as { retryAfterSeconds?: unknown })
               .retryAfterSeconds;
@@ -497,14 +516,18 @@ export default function LoginPage() {
           return;
         }
 
-        const signInRes = await fetch(config.getApiUrl("/api/auth/login/password"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: normalizedEmail, password }),
-        });
+        const signInRes = await fetch(
+          config.getApiUrl("/api/auth/login/password"),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalizedEmail, password }),
+          },
+        );
 
         const signInData = (await signInRes.json()) as ApiResponse<unknown>;
-        const signInMessage = signInData.message || signInData.error || "Erro ao entrar.";
+        const signInMessage =
+          signInData.message || signInData.error || "Erro ao entrar.";
 
         const retryAfterSeconds = (() => {
           if (typeof signInData.data !== "object" || signInData.data === null)
@@ -528,7 +551,10 @@ export default function LoginPage() {
         if (!signInRes.ok) {
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (signInRes.status === 429 && retryAfter) {
-            loginCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            loginCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
             setStep(1);
             setFieldError("email", LOGIN_PASSWORD_WAIT_MESSAGE);
             toast({

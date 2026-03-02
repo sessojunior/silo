@@ -2,7 +2,11 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
+import {
+  errorResponse,
+  parseRequestJson,
+  successResponse,
+} from "@/lib/api-response";
 import { auth } from "@/lib/auth/server";
 import {
   AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
@@ -55,7 +59,10 @@ export async function POST(req: NextRequest) {
         return errorResponse(
           "Aguarde para tentar novamente.",
           429,
-          { field: "email", retryAfterSeconds: invalidEmailStatus.retryAfterSeconds },
+          {
+            field: "email",
+            retryAfterSeconds: invalidEmailStatus.retryAfterSeconds,
+          },
           { "Retry-After": String(invalidEmailStatus.retryAfterSeconds) },
         );
       }
@@ -116,11 +123,12 @@ export async function POST(req: NextRequest) {
         email,
         cooldownSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS,
       },
-      resend ? "Código reenviado para seu e-mail." : "Código enviado para seu e-mail.",
+      resend
+        ? "Código reenviado para seu e-mail."
+        : "Código enviado para seu e-mail.",
     );
   } catch (error) {
     console.error("❌ [API_FORGET_PASSWORD] Erro ao enviar código:", { error });
     return errorResponse("Erro ao enviar código.", 500);
   }
 }
-

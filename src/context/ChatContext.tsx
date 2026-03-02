@@ -896,22 +896,30 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   );
 
   // Sistema de presença
-  const updatePresence = useCallback(async (status: PresenceStatus) => {
-    try {
-      setCurrentPresence(status);
+  const updatePresence = useCallback(
+    async (status: PresenceStatus) => {
+      try {
+        setCurrentPresence(status);
 
-      // Atualizar na API
-      const response = await fetch(config.getApiUrl("/api/admin/chat/presence"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ status }),
-      });
-      handleUnauthorized(response.status);
-    } catch (error) {
-      console.error("❌ [CONTEXT_CHAT] Erro ao atualizar presença:", { error });
-    }
-  }, [handleUnauthorized]);
+        // Atualizar na API
+        const response = await fetch(
+          config.getApiUrl("/api/admin/chat/presence"),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ status }),
+          },
+        );
+        handleUnauthorized(response.status);
+      } catch (error) {
+        console.error("❌ [CONTEXT_CHAT] Erro ao atualizar presença:", {
+          error,
+        });
+      }
+    },
+    [handleUnauthorized],
+  );
 
   const sendHeartbeat = useCallback(async () => {
     if (heartbeatInFlight.current) return;
@@ -919,12 +927,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     try {
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 10000);
-      const response = await fetch(config.getApiUrl("/api/admin/chat/presence"), {
-        method: "PATCH",
-        signal: controller.signal,
-        credentials: "include",
-        keepalive: true,
-      }).finally(() => window.clearTimeout(timeoutId));
+      const response = await fetch(
+        config.getApiUrl("/api/admin/chat/presence"),
+        {
+          method: "PATCH",
+          signal: controller.signal,
+          credentials: "include",
+          keepalive: true,
+        },
+      ).finally(() => window.clearTimeout(timeoutId));
       handleUnauthorized(response.status);
     } catch (error) {
       console.error("❌ [CONTEXT_CHAT] Erro no heartbeat de presença:", {

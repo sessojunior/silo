@@ -117,7 +117,9 @@ export function errorResponse(
   );
 }
 
-type ParsedRequest<T> = { ok: true; data: T } | { ok: false; response: Response };
+type ParsedRequest<T> =
+  | { ok: true; data: T }
+  | { ok: false; response: Response };
 
 const toFieldFromPath = (path: readonly PropertyKey[]): string | undefined => {
   const first = path[0];
@@ -132,7 +134,10 @@ const toZodFirstIssue = (
   const issue = error.issues[0];
   if (!issue) return { message: "Dados inválidos." };
   const field = toFieldFromPath(issue.path);
-  return { message: issue.message || "Dados inválidos.", ...(field ? { field } : {}) };
+  return {
+    message: issue.message || "Dados inválidos.",
+    ...(field ? { field } : {}),
+  };
 };
 
 export async function parseRequestJson<TSchema extends z.ZodTypeAny>(
@@ -151,7 +156,11 @@ export async function parseRequestJson<TSchema extends z.ZodTypeAny>(
     const issue = toZodFirstIssue(parsed.error);
     return {
       ok: false,
-      response: errorResponse(issue.message, 400, issue.field ? { field: issue.field } : undefined),
+      response: errorResponse(
+        issue.message,
+        400,
+        issue.field ? { field: issue.field } : undefined,
+      ),
     };
   }
 
@@ -176,7 +185,11 @@ export function parseRequestQuery<TSchema extends z.ZodTypeAny>(
     const issue = toZodFirstIssue(parsed.error);
     return {
       ok: false,
-      response: errorResponse(issue.message, 400, issue.field ? { field: issue.field } : undefined),
+      response: errorResponse(
+        issue.message,
+        400,
+        issue.field ? { field: issue.field } : undefined,
+      ),
     };
   }
 

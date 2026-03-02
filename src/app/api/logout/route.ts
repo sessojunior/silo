@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies, headers } from "next/headers";
 import { auth } from "@/lib/auth/server";
 import { config as appConfig } from "@/lib/config";
 
 // Faz logout do usuário
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const cookieStore = await cookies();
     await auth.api.signOut({
@@ -27,13 +27,9 @@ export async function GET(req: NextRequest) {
       if (cookieStore.get(name)) cookieStore.delete(name);
     }
 
-    return NextResponse.redirect(
-      new URL(appConfig.getApiUrl("/login")),
-    );
+    return NextResponse.redirect(new URL(appConfig.getApiUrl("/login")));
   } catch (error) {
     console.error("❌ [API_LOGOUT] Erro ao fazer logout:", { error });
-    return NextResponse.redirect(
-      new URL(appConfig.getApiUrl("/login")),
-    );
+    return NextResponse.redirect(new URL(appConfig.getApiUrl("/login")));
   }
 }

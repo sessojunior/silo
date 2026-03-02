@@ -12,7 +12,7 @@ interface ReportFiltersType {
 interface ReportFiltersProps {
   filters: ReportFiltersType;
   onFiltersChange: (filters: ReportFiltersType) => void;
-  reportType: "availability" | "problems" | "performance" | "projects";
+  reportType: "availability" | "problems" | "projects";
 }
 
 export function ReportFilters({
@@ -44,8 +44,7 @@ export function ReportFilters({
         return "Disponibilidade";
       case "problems":
         return "Problemas";
-      case "performance":
-        return "Performance";
+
       case "projects":
         return "Projetos";
       default:

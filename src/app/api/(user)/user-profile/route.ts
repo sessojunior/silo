@@ -7,15 +7,16 @@ import { isValidName } from "@/lib/auth/validate";
 import { randomUUID } from "crypto";
 import { getGoogleIdFromUserId } from "@/lib/auth/social-utils";
 import { normalizeUploadsSrc } from "@/lib/utils";
-import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
 import { z } from "zod";
 import { getUserPermissionsSummary } from "@/lib/permissions";
 
 const createRequiredTrimmedStringSchema = (label: string) =>
-  z
-    .string()
-    .trim()
-    .min(1, `${label} é obrigatório.`);
+  z.string().trim().min(1, `${label} é obrigatório.`);
 
 const UpdateUserProfileSchema = z.object({
   name: z
@@ -93,7 +94,8 @@ export async function PUT(req: NextRequest) {
     const parsedBody = await parseRequestJson(req, UpdateUserProfileSchema);
     if (!parsedBody.ok) return parsedBody.response;
 
-    const { name, phone, company, genre, role, location, team } = parsedBody.data;
+    const { name, phone, company, genre, role, location, team } =
+      parsedBody.data;
 
     // Atualiza o nome do usuário no banco de dados
     const [updateUser] = await db

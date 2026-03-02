@@ -66,15 +66,11 @@ export default function ContactDeleteDialog({
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={onClose}
-      title="Confirmar exclusão"
-    >
+    <Dialog open={isOpen} onClose={onClose} title="Confirmar exclusão">
       <div className="p-6">
         <p className="text-base text-zinc-600 dark:text-zinc-400 mb-6">
-          Tem certeza que deseja excluir o contato {contact?.name}? Esta ação não
-          pode ser desfeita.
+          Tem certeza que deseja excluir o contato {contact?.name}? Esta ação
+          não pode ser desfeita.
         </p>
         <div className="flex gap-3 justify-end">
           <Button

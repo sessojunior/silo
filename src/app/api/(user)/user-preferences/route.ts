@@ -4,7 +4,11 @@ import { db } from "@/lib/db";
 import { userPreferences } from "@/lib/db/schema";
 import { requireAuthUser } from "@/lib/auth/server";
 import { randomUUID } from "crypto";
-import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
 import { z } from "zod";
 
 const UpdateUserPreferencesSchema = z.object({

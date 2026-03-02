@@ -38,14 +38,22 @@ export async function GET() {
 
     const items = stats
       .filter(
-        (s): s is { filename: string; url: string; size: number; mtime: number } =>
-          s !== null,
+        (
+          s,
+        ): s is {
+          filename: string;
+          url: string;
+          size: number;
+          mtime: number;
+        } => s !== null,
       )
       .sort((a, b) => b.mtime - a.mtime);
 
     return successResponse({ items });
   } catch (error) {
-    console.error("❌ [API_INCIDENT_IMAGES] Erro ao listar imagens:", { error });
+    console.error("❌ [API_INCIDENT_IMAGES] Erro ao listar imagens:", {
+      error,
+    });
     return errorResponse("Erro ao listar imagens.", 500);
   }
 }
@@ -66,7 +74,9 @@ export async function DELETE(req: NextRequest) {
     }
     return successResponse(null, "Imagem excluída com sucesso");
   } catch (error) {
-    console.error("❌ [API_INCIDENT_IMAGES] Erro ao excluir imagem:", { error });
+    console.error("❌ [API_INCIDENT_IMAGES] Erro ao excluir imagem:", {
+      error,
+    });
     return errorResponse("Erro ao excluir imagem.", 500);
   }
 }

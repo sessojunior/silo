@@ -21,19 +21,6 @@ export function ReportsPage() {
       metrics: ["Top 10 Problemas", "Frequência", "Tempo de Resolução"],
     },
     {
-      id: "performance",
-      title: "Performance da Equipe",
-      description:
-        "Sistema justo que reconhece problemas, soluções e participação em projetos",
-      icon: "🏆",
-      color: "green",
-      metrics: [
-        "Sistema de Pontuação",
-        "Participação em Projetos",
-        "Taxa de Conclusão",
-      ],
-    },
-    {
       id: "projects",
       title: "Projetos e Atividades",
       description: "Análise de projetos, progresso e distribuição de tarefas",
@@ -60,13 +47,16 @@ export function ReportsPage() {
           <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
             <span className="icon-[lucide--flask-conical] size-6 text-amber-700 dark:text-amber-300" />
             <div>
-              <div className="text-lg font-semibold">Funcionalidade experimental</div>
+              <div className="text-lg font-semibold">
+                Funcionalidade experimental
+              </div>
               <div className="text-sm">
-                Os relatórios estão em desenvolvimento e em testes de uso e podem apresentar resultados e informações estranhas.
+                Os relatórios estão em desenvolvimento e em testes de uso e
+                podem apresentar resultados e informações estranhas.
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {reports.map((report) => (
               <ReportCard key={report.id} report={report} />
             ))}

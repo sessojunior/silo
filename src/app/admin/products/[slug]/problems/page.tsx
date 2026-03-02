@@ -765,9 +765,9 @@ export default function ProblemsPage() {
     const solutionItems =
       getItemsFromApiResponse<SolutionWithDetails>(solutionsData);
     const solutionsWithIsMine = solutionItems.map((sol) => ({
-        ...sol,
-        isMine: sol.user?.id === currentUser?.id,
-      }));
+      ...sol,
+      isMine: sol.user?.id === currentUser?.id,
+    }));
 
     // A API já retorna as soluções ordenadas por data de criação (mais recentes primeiro)
     // Não precisamos ordenar novamente no frontend
@@ -810,10 +810,11 @@ export default function ProblemsPage() {
       );
       const data = await res.json();
       if (res.ok) {
-        const imageItems =
-          getItemsFromApiResponse<{ id: string; image: string; description: string }>(
-            data,
-          );
+        const imageItems = getItemsFromApiResponse<{
+          id: string;
+          image: string;
+          description: string;
+        }>(data);
         setSolutionImages(imageItems);
       }
     } catch (error) {

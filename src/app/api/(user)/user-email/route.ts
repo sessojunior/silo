@@ -5,7 +5,11 @@ import { authUser } from "@/lib/db/schema";
 import { requireAuthUser } from "@/lib/auth/server";
 import { isValidEmail } from "@/lib/auth/validate";
 import { sendEmail } from "@/lib/sendEmail";
-import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
 import { z } from "zod";
 
 const UpdateEmailSchema = z.object({

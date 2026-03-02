@@ -86,7 +86,9 @@ export const config = {
     }
 
     const normalizedOrigin = origin.replace(/\/$/, "");
-    return basePath.length > 0 ? `${normalizedOrigin}${basePath}` : normalizedOrigin;
+    return basePath.length > 0
+      ? `${normalizedOrigin}${basePath}`
+      : normalizedOrigin;
   },
 
   /**

@@ -189,16 +189,6 @@ export interface ProjectProgressReport {
   estimatedCompletion: string | null;
 }
 
-// Relatório de performance de usuário
-export interface UserPerformanceReport {
-  userId: string;
-  userName: string;
-  tasksAssigned: number;
-  tasksCompleted: number;
-  averageCompletionTime: number;
-  productivityScore: number;
-}
-
 // === TIPOS PARA NOTIFICAÇÕES ===
 
 // Notificação de projeto

@@ -42,7 +42,11 @@ export default function ManualSectionFormOffcanvas({
           <Button type="button" style="bordered" onClick={onClose}>
             Cancelar
           </Button>
-          <Button type="submit" form="manual-section-form" disabled={formLoading}>
+          <Button
+            type="submit"
+            form="manual-section-form"
+            disabled={formLoading}
+          >
             {formLoading ? "Salvando..." : "Salvar"}
           </Button>
         </>
@@ -101,7 +105,6 @@ export default function ManualSectionFormOffcanvas({
             </div>
           </div>
         )}
-
       </form>
     </Offcanvas>
   );

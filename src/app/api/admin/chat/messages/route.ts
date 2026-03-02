@@ -26,22 +26,6 @@ async function getTotalMessagesCount(
 ): Promise<number> {
   try {
     if (groupId) {
-      // Verificar se usuário participa do grupo
-      const isMember = await db
-        .select()
-        .from(schema.userGroup)
-        .where(
-          and(
-            eq(schema.userGroup.userId, currentUserId),
-            eq(schema.userGroup.groupId, groupId),
-          ),
-        )
-        .limit(1);
-
-      if (isMember.length === 0) {
-        return 0;
-      }
-
       // Contar mensagens do grupo
       const result = await db
         .select({ count: schema.chatMessage.id })
@@ -129,22 +113,6 @@ export async function GET(request: NextRequest) {
     let messages: MessageWithSender[] = [];
 
     if (groupId) {
-      // BUSCAR groupMessage - verificar se usuário participa do grupo
-      const isMember = await db
-        .select()
-        .from(schema.userGroup)
-        .where(
-          and(
-            eq(schema.userGroup.userId, user.id),
-            eq(schema.userGroup.groupId, groupId),
-          ),
-        )
-        .limit(1);
-
-      if (isMember.length === 0) {
-        return errorResponse("Usuário não participa deste grupo", 403);
-      }
-
       // Buscar mensagens do grupo
       const whereConditions = [
         eq(schema.chatMessage.receiverGroupId, groupId),
@@ -312,22 +280,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validação específica para groupMessage
+    // Não verificar associação a groupMessage
     if (receiverGroupId) {
-      const isMember = await db
-        .select()
-        .from(schema.userGroup)
-        .where(
-          and(
-            eq(schema.userGroup.userId, user.id),
-            eq(schema.userGroup.groupId, receiverGroupId),
-          ),
-        )
-        .limit(1);
-
-      if (isMember.length === 0) {
-        return errorResponse("Usuário não participa deste grupo", 403);
-      }
     }
 
     // Validação específica para userMessage

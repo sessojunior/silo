@@ -89,11 +89,14 @@ export default function LoginEmailPage() {
       clearFieldError();
 
       try {
-        const res = await fetch(config.getApiUrl("/api/auth/login-email/send-otp"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: normalizedEmail }),
-        });
+        const res = await fetch(
+          config.getApiUrl("/api/auth/login-email/send-otp"),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalizedEmail }),
+          },
+        );
 
         const data = (await res.json()) as ApiResponse<unknown>;
         const message = data.message || data.error || "Erro ao enviar código.";
@@ -119,7 +122,10 @@ export default function LoginEmailPage() {
         if (!res.ok) {
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            resendCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
             setFieldError("email", "Aguarde para reenviar o código.");
             toast({
               type: "info",
@@ -137,7 +143,8 @@ export default function LoginEmailPage() {
         const cooldownSeconds = (() => {
           if (typeof data.data !== "object" || data.data === null) return null;
           if (!("cooldownSeconds" in data.data)) return null;
-          const raw = (data.data as { cooldownSeconds?: unknown }).cooldownSeconds;
+          const raw = (data.data as { cooldownSeconds?: unknown })
+            .cooldownSeconds;
           if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
             return null;
           return Math.ceil(raw);
@@ -177,14 +184,18 @@ export default function LoginEmailPage() {
       clearFieldError();
 
       try {
-        const res = await fetch(config.getApiUrl("/api/auth/login-email/send-otp"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: normalizedEmail, resend: true }),
-        });
+        const res = await fetch(
+          config.getApiUrl("/api/auth/login-email/send-otp"),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalizedEmail, resend: true }),
+          },
+        );
 
         const data = (await res.json()) as ApiResponse<unknown>;
-        const message = data.message || data.error || "Erro ao reenviar código.";
+        const message =
+          data.message || data.error || "Erro ao reenviar código.";
 
         const retryAfterSeconds = (() => {
           if (typeof data.data !== "object" || data.data === null) return null;
@@ -207,7 +218,10 @@ export default function LoginEmailPage() {
         if (!res.ok) {
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            resendCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
             toast({
               type: "info",
               title: message,
@@ -224,7 +238,8 @@ export default function LoginEmailPage() {
         const cooldownSeconds = (() => {
           if (typeof data.data !== "object" || data.data === null) return null;
           if (!("cooldownSeconds" in data.data)) return null;
-          const raw = (data.data as { cooldownSeconds?: unknown }).cooldownSeconds;
+          const raw = (data.data as { cooldownSeconds?: unknown })
+            .cooldownSeconds;
           if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0)
             return null;
           return Math.ceil(raw);
@@ -264,18 +279,23 @@ export default function LoginEmailPage() {
       clearFieldError();
 
       try {
-        const res = await fetch(config.getApiUrl("/api/auth/login-email/verify-otp"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: normalizedEmail, code }),
-        });
+        const res = await fetch(
+          config.getApiUrl("/api/auth/login-email/verify-otp"),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalizedEmail, code }),
+          },
+        );
 
         const data = (await res.json()) as ApiResponse<unknown>;
-        const message = data.message || data.error || "Erro ao verificar código.";
+        const message =
+          data.message || data.error || "Erro ao verificar código.";
 
         if (!res.ok) {
           const retryAfterSeconds = (() => {
-            if (typeof data.data !== "object" || data.data === null) return null;
+            if (typeof data.data !== "object" || data.data === null)
+              return null;
             if (!("retryAfterSeconds" in data.data)) return null;
             const raw = (data.data as { retryAfterSeconds?: unknown })
               .retryAfterSeconds;
@@ -294,7 +314,10 @@ export default function LoginEmailPage() {
 
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            resendCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
             setCode("");
             setFieldError("email", "Aguarde para reenviar o código.");
             setStep(1);
@@ -367,7 +390,9 @@ export default function LoginEmailPage() {
               value={email}
               setValue={setEmail}
               isInvalid={form.field === "email"}
-              invalidMessage={form.field === "email" ? emailInvalidMessage : undefined}
+              invalidMessage={
+                form.field === "email" ? emailInvalidMessage : undefined
+              }
               disabled={loading}
               required
             />
@@ -393,7 +418,9 @@ export default function LoginEmailPage() {
               setValue={setCode}
               disabled={loading}
               isInvalid={form.field === "code"}
-              invalidMessage={form.field === "code" ? codeInvalidMessage : undefined}
+              invalidMessage={
+                form.field === "code" ? codeInvalidMessage : undefined
+              }
             />
           </div>
 

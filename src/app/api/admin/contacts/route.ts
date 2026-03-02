@@ -64,13 +64,13 @@ const ContactBaseFormSchema = z.object({
       if (typeof v !== "string") return v;
       return v.trim().toLowerCase();
     },
-    z
-      .string()
-      .email("Email inválido")
-      .refine(isValidEmail, "Email inválido"),
+    z.string().email("Email inválido").refine(isValidEmail, "Email inválido"),
   ),
   phone: z.preprocess((v) => toTrimmedStringOrNull(v), z.string().nullable()),
-  imageUrl: z.preprocess((v) => toTrimmedStringOrNull(v), z.string().nullable()),
+  imageUrl: z.preprocess(
+    (v) => toTrimmedStringOrNull(v),
+    z.string().nullable(),
+  ),
   active: z.preprocess((v) => toBoolean(v), z.boolean()),
 });
 
@@ -139,7 +139,8 @@ export async function POST(req: NextRequest) {
 
     const parsedBody = await parseRequestFormData(req, CreateContactFormSchema);
     if (!parsedBody.ok) return parsedBody.response;
-    const { name, role, team, email, phone, imageUrl, active } = parsedBody.data;
+    const { name, role, team, email, phone, imageUrl, active } =
+      parsedBody.data;
 
     // Verificar email único
     const existingContact = await db
@@ -147,7 +148,9 @@ export async function POST(req: NextRequest) {
       .from(contact)
       .where(eq(contact.email, email));
     if (existingContact.length > 0) {
-      return errorResponse("Este email já está em uso", 400, { field: "email" });
+      return errorResponse("Este email já está em uso", 400, {
+        field: "email",
+      });
     }
 
     let imagePath: string | null = null;
@@ -189,8 +192,17 @@ export async function PUT(req: NextRequest) {
 
     const parsedBody = await parseRequestFormData(req, UpdateContactFormSchema);
     if (!parsedBody.ok) return parsedBody.response;
-    const { id, name, role, team, email, phone, imageUrl, active, removeImage } =
-      parsedBody.data;
+    const {
+      id,
+      name,
+      role,
+      team,
+      email,
+      phone,
+      imageUrl,
+      active,
+      removeImage,
+    } = parsedBody.data;
 
     // Verificar se contato existe
     const existingContacts = await db
@@ -224,7 +236,9 @@ export async function PUT(req: NextRequest) {
         .from(contact)
         .where(eq(contact.email, email));
       if (emailCheck.length > 0) {
-        return errorResponse("Este email já está em uso", 400, { field: "email" });
+        return errorResponse("Este email já está em uso", 400, {
+          field: "email",
+        });
       }
     }
 

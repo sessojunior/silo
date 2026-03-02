@@ -12,11 +12,13 @@ import Image from "next/image";
 import UploadButtonLocal from "@/components/ui/UploadButtonLocal";
 import { config } from "@/lib/config";
 
-const toStoredUploadsSrc = (input: string): string => normalizeUploadsSrc(input);
+const toStoredUploadsSrc = (input: string): string =>
+  normalizeUploadsSrc(input);
 
 const toPublicUploadsSrc = (input: string): string => {
   const normalized = normalizeUploadsSrc(input);
-  if (normalized.startsWith("/uploads/")) return config.getPublicPath(normalized);
+  if (normalized.startsWith("/uploads/"))
+    return config.getPublicPath(normalized);
   return normalized;
 };
 

@@ -193,9 +193,7 @@ const getEntryDetails = (entry: TaskHistoryEntry) => {
     const oldEstimatedDays = formatEstimatedDays(oldValues?.estimatedDays);
     const newEstimatedDays = formatEstimatedDays(newValues?.estimatedDays);
     if (oldEstimatedDays !== newEstimatedDays) {
-      changes.push(
-        `Estimativa: ${oldEstimatedDays} → ${newEstimatedDays}`,
-      );
+      changes.push(`Estimativa: ${oldEstimatedDays} → ${newEstimatedDays}`);
     }
     const oldStartDate = formatDateValue(oldValues?.startDate);
     const newStartDate = formatDateValue(newValues?.startDate);
@@ -348,41 +346,44 @@ export default function TaskHistoryModal({
                           key={entry.id}
                           className="relative flex items-start gap-3"
                         >
-                        {/* Ícone da ação com fundo branco para sobrepor a linha */}
-                        <div className="relative z-10 flex-shrink-0 size-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center border-2 border-white dark:border-zinc-800">
-                          <span className="icon-[lucide--history] size-4 text-blue-600 dark:text-blue-400" />
-                        </div>
+                          {/* Ícone da ação com fundo branco para sobrepor a linha */}
+                          <div className="relative z-10 flex-shrink-0 size-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center border-2 border-white dark:border-zinc-800">
+                            <span className="icon-[lucide--history] size-4 text-blue-600 dark:text-blue-400" />
+                          </div>
 
-                        {/* Conteúdo */}
-                        <div className="flex-1 min-w-0 py-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                              {entry.user.name}
-                            </span>
-                            <span className="px-2 py-0.5 text-xs font-medium bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-full">
-                              {translateAction(entry.action)}
-                            </span>
-                          </div>
-                          <div className="text-sm text-zinc-800 dark:text-zinc-200">
-                            {getEntryTitle(entry, taskName)}
-                          </div>
-                          {details.length > 0 && (
-                            <div className="mt-1 space-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                              {details.map((detail) => (
-                                <div key={detail}>{detail}</div>
-                              ))}
+                          {/* Conteúdo */}
+                          <div className="flex-1 min-w-0 py-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                                {entry.user.name}
+                              </span>
+                              <span className="px-2 py-0.5 text-xs font-medium bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-full">
+                                {translateAction(entry.action)}
+                              </span>
                             </div>
-                          )}
-                          <div className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-                            {new Date(entry.createdAt).toLocaleString("pt-BR", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            <div className="text-sm text-zinc-800 dark:text-zinc-200">
+                              {getEntryTitle(entry, taskName)}
+                            </div>
+                            {details.length > 0 && (
+                              <div className="mt-1 space-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                {details.map((detail) => (
+                                  <div key={detail}>{detail}</div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
+                              {new Date(entry.createdAt).toLocaleString(
+                                "pt-BR",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
+                            </div>
                           </div>
-                        </div>
                         </div>
                       );
                     })}

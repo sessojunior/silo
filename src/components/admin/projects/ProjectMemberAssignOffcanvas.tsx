@@ -426,7 +426,6 @@ export default function ProjectMemberAssignOffcanvas({
           </div>
         )}
       </div>
-
     </Offcanvas>
   );
 }

@@ -53,16 +53,11 @@ export async function GET(request: NextRequest) {
           schema.authUser,
           eq(schema.chatMessage.senderUserId, schema.authUser.id),
         )
-        .innerJoin(
-          schema.userGroup,
-          eq(schema.userGroup.groupId, schema.chatMessage.receiverGroupId),
-        )
         .where(
           and(
             isNull(schema.chatMessage.deletedAt),
             isNull(schema.chatMessage.readAt), // Apenas mensagens não lidas
             ne(schema.chatMessage.senderUserId, user.id), // Não incluir próprias mensagens
-            eq(schema.userGroup.userId, user.id), // Apenas grupos que o usuário participa
           ),
         )
         .orderBy(desc(schema.chatMessage.createdAt))
@@ -176,22 +171,6 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     if (groupId) {
-      // Verificar se usuário participa do grupo
-      const isMember = await db
-        .select()
-        .from(schema.userGroup)
-        .where(
-          and(
-            eq(schema.userGroup.userId, user.id),
-            eq(schema.userGroup.groupId, groupId),
-          ),
-        )
-        .limit(1);
-
-      if (isMember.length === 0) {
-        return errorResponse("Usuário não participa deste grupo", 403);
-      }
-
       // Buscar mensagens não lidas do grupo (readAt é null e não são próprias mensagens)
       const messages = await db
         .select({

@@ -53,7 +53,9 @@ const nextConfig: NextConfig = {
         : []),
       {
         source: "/favicon.ico",
-        destination: destination.startsWith("/") ? destination : `/${destination}`,
+        destination: destination.startsWith("/")
+          ? destination
+          : `/${destination}`,
         permanent: false,
         basePath: false as const,
       },

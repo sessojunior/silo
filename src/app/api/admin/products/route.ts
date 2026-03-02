@@ -22,10 +22,7 @@ import {
 import { eq, like, asc, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { formatSlug } from "@/lib/utils";
-import {
-  productCreateSchema,
-  productUpdateSchema,
-} from "@/lib/validation";
+import { productCreateSchema, productUpdateSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 

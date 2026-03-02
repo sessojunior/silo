@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { desc, gt, and, or, exists, isNull, eq, ne } from "drizzle-orm";
+import { desc, gt, and, or, isNotNull, isNull, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { requireAdminAuthUser } from "@/lib/auth/server";
@@ -66,21 +66,8 @@ export async function GET(request: NextRequest) {
           gt(schema.chatMessage.createdAt, sinceDate),
           isNull(schema.chatMessage.deletedAt),
           or(
-            // groupMessage: mensagens para grupos onde usuário participa
-            exists(
-              db
-                .select()
-                .from(schema.userGroup)
-                .where(
-                  and(
-                    eq(schema.userGroup.userId, user.id),
-                    eq(
-                      schema.userGroup.groupId,
-                      schema.chatMessage.receiverGroupId!,
-                    ),
-                  ),
-                ),
-            ),
+            // groupMessage: todas as mensagens de grupos
+            isNotNull(schema.chatMessage.receiverGroupId),
             // userMessage: mensagens recebidas pelo usuário
             eq(schema.chatMessage.receiverUserId, user.id),
           ),
@@ -148,13 +135,9 @@ export async function GET(request: NextRequest) {
         receiverGroupId: schema.chatMessage.receiverGroupId,
       })
       .from(schema.chatMessage)
-      .innerJoin(
-        schema.userGroup,
-        eq(schema.userGroup.groupId, schema.chatMessage.receiverGroupId),
-      )
       .where(
         and(
-          eq(schema.userGroup.userId, user.id), // Usuário é membro do grupo
+          isNotNull(schema.chatMessage.receiverGroupId),
           ne(schema.chatMessage.senderUserId, user.id), // Mensagens de OUTROS usuários
           isNull(schema.chatMessage.readAt), // Não lida
           isNull(schema.chatMessage.deletedAt), // Não excluída
@@ -168,13 +151,8 @@ export async function GET(request: NextRequest) {
         const unreadByGroup = await db
           .select({ id: schema.chatMessage.id })
           .from(schema.chatMessage)
-          .innerJoin(
-            schema.userGroup,
-            eq(schema.userGroup.groupId, schema.chatMessage.receiverGroupId),
-          )
           .where(
             and(
-              eq(schema.userGroup.userId, user.id),
               eq(schema.chatMessage.receiverGroupId, msgCount.receiverGroupId),
               ne(schema.chatMessage.senderUserId, user.id),
               isNull(schema.chatMessage.readAt),

@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { isValidCode, isValidEmail, isValidPassword } from "@/lib/auth/validate";
+import {
+  isValidCode,
+  isValidEmail,
+  isValidPassword,
+} from "@/lib/auth/validate";
 import { config } from "@/lib/config";
 import { toast } from "@/lib/toast";
 import type { ApiResponse } from "@/lib/api-response";

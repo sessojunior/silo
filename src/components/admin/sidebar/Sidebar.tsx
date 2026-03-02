@@ -39,7 +39,8 @@ export default function Sidebar() {
   const canSeeProducts = hasPermission("products", "list");
   const canSeeProjects = hasPermission("projects", "list");
   const canSeeReports = hasPermission("reports", "view");
-  const canSeeGroups = hasPermission("groups", "list") || hasPermission("users", "list");
+  const canSeeGroups =
+    hasPermission("groups", "list") || hasPermission("users", "list");
   const canSeeChat = hasAnyPermission("chat", ["view_private", "view_group"]);
   const canSeeContacts = hasPermission("contacts", "list");
 
@@ -112,9 +113,9 @@ export default function Sidebar() {
       try {
         const response = await fetch(config.getApiUrl("/api/admin/products"));
         if (!response.ok) {
-          const json = (await response.json().catch(() => null)) as
-            | ApiResponse<unknown>
-            | null;
+          const json = (await response
+            .json()
+            .catch(() => null)) as ApiResponse<unknown> | null;
           console.error(
             "❌ [COMPONENT_SIDEBAR] Erro ao buscar produtos para sidebar",
             { status: response.status, message: json?.message ?? null },
@@ -126,9 +127,7 @@ export default function Sidebar() {
           items: Product[];
         }>;
         const items = data.data?.items ?? [];
-        const availableProducts = items.filter(
-          (product) => product.available,
-        );
+        const availableProducts = items.filter((product) => product.available);
         setProducts(availableProducts);
       } catch (error) {
         console.error(
@@ -153,9 +152,9 @@ export default function Sidebar() {
       try {
         const response = await fetch(config.getApiUrl("/api/admin/projects"));
         if (!response.ok) {
-          const json = (await response.json().catch(() => null)) as
-            | ApiResponse<unknown>
-            | null;
+          const json = (await response
+            .json()
+            .catch(() => null)) as ApiResponse<unknown> | null;
           console.error(
             "❌ [COMPONENT_SIDEBAR] Erro ao buscar projetos para sidebar",
             { status: response.status, message: json?.message ?? null },
@@ -163,7 +162,9 @@ export default function Sidebar() {
           setProjects([]);
           return;
         }
-        const projectsData = (await response.json()) as ApiResponse<ProjectDB[]>;
+        const projectsData = (await response.json()) as ApiResponse<
+          ProjectDB[]
+        >;
         const rawProjects = Array.isArray(projectsData.data)
           ? projectsData.data
           : [];

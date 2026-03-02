@@ -84,7 +84,9 @@ type ApiFetchResult<T> = {
   api: ApiResponse<T> | null;
 };
 
-const fetchApiResponse = async <T,>(path: string): Promise<ApiFetchResult<T>> => {
+const fetchApiResponse = async <T,>(
+  path: string,
+): Promise<ApiFetchResult<T>> => {
   const response = await fetch(config.getApiUrl(path), {
     credentials: "include",
   });
@@ -185,7 +187,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         if (status === 401) return null;
 
-        const preferencesFromApi = api?.success ? api.data?.userPreferences : null;
+        const preferencesFromApi = api?.success
+          ? api.data?.userPreferences
+          : null;
         return preferencesFromApi ?? null;
       } catch (err) {
         console.error("❌ [CONTEXT_USER] Erro ao buscar preferências:", {

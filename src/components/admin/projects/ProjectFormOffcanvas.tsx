@@ -211,11 +211,7 @@ export default function ProjectFormOffcanvas({
         </div>
       }
     >
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6"
-        id="project-form"
-      >
+      <form onSubmit={handleSubmit} className="space-y-6" id="project-form">
         {/* Nome do Projeto */}
         <div>
           <Label htmlFor="name">Nome do Projeto *</Label>
@@ -317,7 +313,6 @@ export default function ProjectFormOffcanvas({
             />
           </div>
         </div>
-
       </form>
     </Offcanvas>
   );

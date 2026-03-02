@@ -6,18 +6,23 @@ import { requireAuthUser } from "@/lib/auth/server";
 import { hashPassword } from "@/lib/auth/hash";
 import { isValidPassword } from "@/lib/auth/validate";
 import { sendEmail } from "@/lib/sendEmail";
-import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
+import {
+  errorResponse,
+  parseRequestJson,
+  successResponse,
+} from "@/lib/api-response";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 
 const updatePasswordSchema = z.object({
-  password: z
-    .string()
-    .superRefine((value, ctx) => {
-      if (!isValidPassword(value)) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "A senha é inválida." });
-      }
-    }),
+  password: z.string().superRefine((value, ctx) => {
+    if (!isValidPassword(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A senha é inválida.",
+      });
+    }
+  }),
 });
 
 // Altera os dados do perfil do usuário logado

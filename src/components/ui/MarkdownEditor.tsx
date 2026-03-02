@@ -57,9 +57,25 @@ const markdownEditorStyles = `
 .dark .EasyMDEContainer .editor-preview pre,
 .dark .EasyMDEContainer .editor-preview-side pre{background-color:rgb(39 39 42)}
 .dark .EasyMDEContainer .editor-preview code,
-.dark .EasyMDEContainer .editor-preview-side code{background-color:rgb(39 39 42)}
+.dark .EasyMDEContainer .editor-preview-side code{background-color:rgb(24 24 27)}
 .EasyMDEContainer .editor-toolbar{position:sticky;top:0;z-index:10;background-color:rgb(255 255 255);border-bottom:1px solid rgb(228 228 231)}
-.dark .EasyMDEContainer .editor-toolbar{background-color:rgb(39 39 42);border-bottom-color:rgb(63 63 70)}
+.dark .EasyMDEContainer .CodeMirror{background-color:rgb(24 24 27);color:rgb(228 228 231);border-color:rgb(63 63 70)}
+.dark .EasyMDEContainer .CodeMirror-cursor{border-left-color:rgb(228 228 231)}
+.dark .EasyMDEContainer .CodeMirror-selected{background-color:rgb(63 63 70) !important}
+.dark .EasyMDEContainer .CodeMirror-line::selection,
+.dark .EasyMDEContainer .CodeMirror-line > span::selection,
+.dark .EasyMDEContainer .CodeMirror-line > span > span::selection{background-color:rgb(63 63 70) !important}
+.dark .EasyMDEContainer .CodeMirror-line::-moz-selection,
+.dark .EasyMDEContainer .CodeMirror-line > span::-moz-selection,
+.dark .EasyMDEContainer .CodeMirror-line > span > span::-moz-selection{background-color:rgb(63 63 70) !important}
+.dark .EasyMDEContainer .editor-preview,
+.dark .EasyMDEContainer .editor-preview-side{background-color:rgb(24 24 27);color:rgb(228 228 231)}
+.dark .EasyMDEContainer .editor-toolbar{background-color:rgb(24 24 27);border-bottom-color:rgb(63 63 70);border-color:rgb(63 63 70)}
+.dark .EasyMDEContainer .editor-toolbar > button{color:rgb(228 228 231)}
+.dark .EasyMDEContainer .editor-toolbar > button:hover,
+.dark .EasyMDEContainer .editor-toolbar > button.active{background-color:rgb(39 39 42);border-color:rgb(63 63 70)}
+.dark .EasyMDEContainer .editor-toolbar i.separator{border-right-color:rgb(63 63 70);border-left-color:rgb(63 63 70)}
+.dark .EasyMDEContainer .editor-toolbar a.markdown-gallery{color:rgb(228 228 231)}
 .EasyMDEContainer .editor-toolbar a.markdown-gallery{display:inline-flex;align-items:center;justify-content:center}
 `;
 
@@ -118,7 +134,6 @@ type ToolbarButtonName =
   | "horizontal-rule"
   | "preview"
   | "side-by-side"
-  | "fullscreen"
   | "guide";
 
 type ToolbarIcon = {
@@ -158,9 +173,8 @@ const toolbarTitles: Record<string, string> = {
   image: "Imagem",
   preview: "Visualizar",
   "side-by-side": "Lado a lado",
-  fullscreen: "Tela cheia",
-  "guide": "Ajuda",
-  "strikethrough": "Tachado",
+  guide: "Ajuda",
+  strikethrough: "Tachado",
 };
 
 const baseToolbar: ToolbarConfig = [
@@ -179,8 +193,6 @@ const baseToolbar: ToolbarConfig = [
   "image",
   "|",
   "preview",
-  "side-by-side",
-  "fullscreen",
 ];
 
 const getToolbarItemName = (item: ToolbarItem): string | null => {
@@ -199,8 +211,9 @@ const getToolbarConfig = (
   return baseToolbar;
 };
 
-const normalizeToolbar = (toolbar?: SimpleMdeOptions["toolbar"]): ToolbarConfig =>
-  getToolbarConfig(toolbar);
+const normalizeToolbar = (
+  toolbar?: SimpleMdeOptions["toolbar"],
+): ToolbarConfig => getToolbarConfig(toolbar);
 
 const insertGalleryButton = (
   toolbar: ToolbarConfig,
@@ -261,7 +274,8 @@ export default function MarkdownEditor({
 
   const toPublicUploadsSrc = (input: string): string => {
     const normalized = normalizeUploadsSrc(input);
-    if (normalized.startsWith("/uploads/")) return config.getPublicPath(normalized);
+    if (normalized.startsWith("/uploads/"))
+      return config.getPublicPath(normalized);
     return normalized;
   };
 
@@ -313,16 +327,13 @@ export default function MarkdownEditor({
     const applyLocalization = () => {
       const container = document.querySelector(".EasyMDEContainer");
       if (!container) return;
-      const anchors = container.querySelectorAll<HTMLAnchorElement>(
-        ".editor-toolbar a",
-      );
+      const anchors =
+        container.querySelectorAll<HTMLAnchorElement>(".editor-toolbar a");
       anchors.forEach((a) => {
         const name =
           a.getAttribute("aria-label") ||
           a.title ||
-          a.className
-            .split(" ")
-            .find((cls) => cls && !cls.includes("icon-")) ||
+          a.className.split(" ").find((cls) => cls && !cls.includes("icon-")) ||
           "";
         const key = Object.keys(mapTitles).find((k) => name.includes(k));
         if (key && mapTitles[key]) {
@@ -454,7 +465,7 @@ export default function MarkdownEditor({
                         type="button"
                         className="inline-flex items-center justify-center rounded-full h-8 w-8 bg-white/80 text-red-600 text-xs hover:bg-white"
                         onClick={async () => {
-                        setDeleteTarget(img);
+                          setDeleteTarget(img);
                         }}
                       >
                         <span className="icon-[lucide--trash] size-4" />

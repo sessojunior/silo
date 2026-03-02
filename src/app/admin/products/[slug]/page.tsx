@@ -380,7 +380,9 @@ export default function ProductsPage() {
           config.getApiUrl(`/api/admin/products?slug=${slug}`),
         );
         const data = await res.json();
-        const products = data?.data?.products as Array<{ id: string }> | undefined;
+        const products = data?.data?.products as
+          | Array<{ id: string }>
+          | undefined;
         if (products && products.length > 0) {
           setProductId(products[0].id);
         }

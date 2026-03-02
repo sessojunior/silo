@@ -18,22 +18,6 @@ export async function GET(request: NextRequest) {
     let totalCount = 0;
 
     if (groupId) {
-      // Verificar se usuário participa do grupo
-      const isMember = await db
-        .select()
-        .from(schema.userGroup)
-        .where(
-          and(
-            eq(schema.userGroup.userId, user.id),
-            eq(schema.userGroup.groupId, groupId),
-          ),
-        )
-        .limit(1);
-
-      if (isMember.length === 0) {
-        return errorResponse("Usuário não participa deste grupo", 403);
-      }
-
       // Contar mensagens do grupo
       const result = await db
         .select({ count: schema.chatMessage.id })

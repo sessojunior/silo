@@ -109,7 +109,10 @@ export const translateAuthError = (
     if (code.includes("OTP") && code.includes("EXPIRED")) {
       return "Código expirado. Solicite um novo e tente novamente.";
     }
-    if (code.includes("OTP") && (code.includes("INVALID") || code.includes("WRONG"))) {
+    if (
+      code.includes("OTP") &&
+      (code.includes("INVALID") || code.includes("WRONG"))
+    ) {
       return "Código inválido. Verifique e tente novamente.";
     }
     if (code.includes("OTP") && code.includes("TOO_MANY")) {
@@ -156,8 +159,13 @@ export const translateAuthError = (
   return message;
 };
 
-export const translateAuthSuccess = (code: string | null | undefined): string => {
+export const translateAuthSuccess = (
+  code: string | null | undefined,
+): string => {
   const normalizedCode = normalizeCode(code);
   if (!normalizedCode) return "Operação realizada com sucesso.";
-  return authSuccessMessagesByCode[normalizedCode] ?? "Operação realizada com sucesso.";
+  return (
+    authSuccessMessagesByCode[normalizedCode] ??
+    "Operação realizada com sucesso."
+  );
 };

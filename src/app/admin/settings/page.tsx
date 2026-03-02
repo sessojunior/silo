@@ -377,10 +377,7 @@ export default function SettingsPage() {
   const handleConfirmEmailChange = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (
-      !emailVerificationCode ||
-      !emailChangeNewEmail
-    ) {
+    if (!emailVerificationCode || !emailChangeNewEmail) {
       setForm({
         field: "code",
         message: "Código de verificação é obrigatório.",

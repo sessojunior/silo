@@ -135,7 +135,6 @@ export default function DependencyItemFormOffcanvas({
             placeholder="Descrição detalhada sobre esta dependência..."
           />
         </div>
-
       </form>
     </Offcanvas>
   );

@@ -1,9 +1,17 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { group, userGroup, chatMessage, groupPermission } from "@/lib/db/schema";
+import {
+  group,
+  userGroup,
+  chatMessage,
+  groupPermission,
+} from "@/lib/db/schema";
 import { eq, desc, ilike, and, sql, not, inArray, count } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { requirePermissionAuthUser, DEFAULT_GROUP_PERMISSIONS } from "@/lib/permissions";
+import {
+  requirePermissionAuthUser,
+  DEFAULT_GROUP_PERMISSIONS,
+} from "@/lib/permissions";
 import {
   parseRequestJson,
   parseRequestQuery,
@@ -18,7 +26,10 @@ const ListGroupsQuerySchema = z.object({
 });
 
 const CreateGroupSchema = z.object({
-  name: z.string().trim().min(2, "Nome do grupo é obrigatório e deve ter pelo menos 2 caracteres."),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Nome do grupo é obrigatório e deve ter pelo menos 2 caracteres."),
   description: z.string().optional().nullable(),
   icon: z.string().optional().nullable(),
   color: z.string().optional().nullable(),
@@ -231,7 +242,6 @@ export async function PUT(request: NextRequest) {
           );
         }
       }
-
     }
 
     // Proteção específica para o grupo "Administradores" por nome (grupo especial do sistema)
@@ -323,7 +333,9 @@ export async function PUT(request: NextRequest) {
       icon: icon || existingGroup[0].icon,
       color: color || existingGroup[0].color,
       role:
-        typeof role === "string" && role !== "admin" ? role : existingGroup[0].role, // Manter role atual ou 'user', nunca permitir 'admin'
+        typeof role === "string" && role !== "admin"
+          ? role
+          : existingGroup[0].role, // Manter role atual ou 'user', nunca permitir 'admin'
       active: active !== undefined ? active : existingGroup[0].active,
       isDefault:
         isDefault !== undefined ? isDefault : existingGroup[0].isDefault,

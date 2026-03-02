@@ -54,12 +54,7 @@ export default function UploadButtonLocal({
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files);
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-    ];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     const validateFiles = (items: File[]): string | null => {
       for (const file of items) {
         if (!allowedTypes.includes(file.type)) {
@@ -87,7 +82,6 @@ export default function UploadButtonLocal({
     setIsUploading(true);
 
     try {
-
       // Determinar endpoint baseado no tipo
       let uploadEndpoint = config.getApiUrl("/api/upload");
       if (endpoint === "avatarUploader") {
@@ -191,11 +185,17 @@ export default function UploadButtonLocal({
         errorMessage = error;
       } else if (error && typeof error === "object") {
         const maybeMessage = (error as Record<string, unknown>).message;
-        if (typeof maybeMessage === "string" && maybeMessage.trim().length > 0) {
+        if (
+          typeof maybeMessage === "string" &&
+          maybeMessage.trim().length > 0
+        ) {
           errorMessage = maybeMessage;
         }
       }
-      console.error("❌ [COMPONENT_UPLOAD_BUTTON] Erro no upload:", errorMessage);
+      console.error(
+        "❌ [COMPONENT_UPLOAD_BUTTON] Erro no upload:",
+        errorMessage,
+      );
       if (onUploadError) {
         onUploadError({ message: errorMessage });
       } else {

@@ -2,7 +2,11 @@ import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
+import {
+  errorResponse,
+  parseRequestJson,
+  successResponse,
+} from "@/lib/api-response";
 import { translateAuthError } from "@/lib/auth/i18n";
 import {
   AUTH_INVALID_EMAIL_MAX_ATTEMPTS,
@@ -14,7 +18,11 @@ import { auth } from "@/lib/auth/server";
 import { isValidDomain, isValidEmail } from "@/lib/auth/validate";
 import { db } from "@/lib/db";
 import { authUser, authVerification } from "@/lib/db/schema";
-import { clearRateLimitForEmail, getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
+import {
+  clearRateLimitForEmail,
+  getRateLimitStatus,
+  recordRateLimit,
+} from "@/lib/rateLimit";
 
 const emailInputSchema = z
   .string()
@@ -117,7 +125,9 @@ const readBetterAuthErrorPayload = async (
 const isOtpInvalidOrExpired = (error: unknown): boolean => {
   const code = getBetterAuthErrorCode(error);
   if (!code) return false;
-  return code === "INVALID_OTP" || code === "EXPIRED_OTP" || code === "OTP_EXPIRED";
+  return (
+    code === "INVALID_OTP" || code === "EXPIRED_OTP" || code === "OTP_EXPIRED"
+  );
 };
 
 const isOtpTooManyAttempts = (error: unknown): boolean =>
@@ -181,7 +191,10 @@ export async function POST(req: NextRequest) {
         return errorResponse(
           "Aguarde para tentar novamente.",
           429,
-          { field: "email", retryAfterSeconds: invalidEmailStatus.retryAfterSeconds },
+          {
+            field: "email",
+            retryAfterSeconds: invalidEmailStatus.retryAfterSeconds,
+          },
           { "Retry-After": String(invalidEmailStatus.retryAfterSeconds) },
         );
       }
@@ -224,7 +237,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const signInResponse = await (async (): Promise<Response | null | { type: "invalid_otp" } | { type: "too_many" }> => {
+    const signInResponse = await (async (): Promise<
+      Response | null | { type: "invalid_otp" } | { type: "too_many" }
+    > => {
       try {
         const response = await auth.api.signInEmailOTP({
           body: { email, otp: code },
@@ -281,7 +296,8 @@ export async function POST(req: NextRequest) {
       }
     })();
 
-    if (signInResponse === null) return errorResponse("Erro ao verificar código.", 500);
+    if (signInResponse === null)
+      return errorResponse("Erro ao verificar código.", 500);
 
     if (isInternalAuthResult(signInResponse)) {
       if (signInResponse.type === "too_many") {
@@ -327,7 +343,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!isInternalAuthResult(signInResponse) || signInResponse.type !== "invalid_otp") {
+    if (
+      !isInternalAuthResult(signInResponse) ||
+      signInResponse.type !== "invalid_otp"
+    ) {
       return errorResponse("Erro ao verificar código.", 500);
     }
 
@@ -378,7 +397,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return errorResponse("Código inválido ou expirado.", 400, { field: "code" });
+    return errorResponse("Código inválido ou expirado.", 400, {
+      field: "code",
+    });
   } catch (error) {
     console.error("❌ [API_LOGIN_EMAIL_VERIFY_OTP] Erro ao verificar OTP:", {
       error,

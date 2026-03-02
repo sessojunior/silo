@@ -162,7 +162,9 @@ export default function Offcanvas({
   if (!mounted || !rendered) return null;
 
   const widthClass =
-    WIDTH_CLASS_MAP[width as keyof typeof WIDTH_CLASS_MAP] || width || "md:w-[480px]";
+    WIDTH_CLASS_MAP[width as keyof typeof WIDTH_CLASS_MAP] ||
+    width ||
+    "md:w-[480px]";
 
   const panelTranslateClass =
     side === "right"
@@ -194,14 +196,13 @@ export default function Offcanvas({
             }
           : null;
 
-  const footerContent =
-    footerActions ?? (
-      <div className="flex w-full flex-wrap items-center justify-end gap-2">
-        <Button style="bordered" type="button" onClick={onClose}>
-          Cancelar
-        </Button>
-      </div>
-    );
+  const footerContent = footerActions ?? (
+    <div className="flex w-full flex-wrap items-center justify-end gap-2">
+      <Button style="bordered" type="button" onClick={onClose}>
+        Cancelar
+      </Button>
+    </div>
+  );
 
   const content = (
     <div

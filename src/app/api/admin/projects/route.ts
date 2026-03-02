@@ -39,7 +39,9 @@ const ProjectSchema = z.object({
 
 const ListProjectsQuerySchema = z.object({
   search: z.string().optional(),
-  status: z.enum(["all", "active", "completed", "paused", "cancelled"]).optional(),
+  status: z
+    .enum(["all", "active", "completed", "paused", "cancelled"])
+    .optional(),
   priority: z.enum(["all", "low", "medium", "high", "urgent"]).optional(),
 });
 

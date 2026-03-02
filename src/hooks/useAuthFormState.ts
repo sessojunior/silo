@@ -30,7 +30,7 @@ export function useAuthFormState(
   }, []);
 
   const withLoading = useCallback(
-    async <T,>(fn: () => Promise<T>): Promise<T> => {
+    async <T>(fn: () => Promise<T>): Promise<T> => {
       setLoading(true);
       try {
         return await fn();
@@ -51,4 +51,3 @@ export function useAuthFormState(
     withLoading,
   };
 }
-

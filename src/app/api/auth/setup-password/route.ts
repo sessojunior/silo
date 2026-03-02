@@ -4,7 +4,11 @@ import { db } from "@/lib/db";
 import { authAccount, authUser, authVerification } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { hashPassword } from "@/lib/auth/hash";
-import { parseRequestJson, successResponse, errorResponse } from "@/lib/api-response";
+import {
+  parseRequestJson,
+  successResponse,
+  errorResponse,
+} from "@/lib/api-response";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { isValidPassword } from "@/lib/auth/validate";
@@ -46,7 +50,9 @@ const getBetterAuthErrorCode = (error: unknown): string | null => {
 const isOtpInvalidOrExpired = (error: unknown): boolean => {
   const code = getBetterAuthErrorCode(error);
   if (!code) return false;
-  return code === "INVALID_OTP" || code === "EXPIRED_OTP" || code === "OTP_EXPIRED";
+  return (
+    code === "INVALID_OTP" || code === "EXPIRED_OTP" || code === "OTP_EXPIRED"
+  );
 };
 
 const isOtpTooManyAttempts = (error: unknown): boolean =>
@@ -85,16 +91,17 @@ export async function POST(req: NextRequest) {
     } else if (attemptsRow) {
       const attempts = parseAttempts(attemptsRow.value);
       if (attempts >= OTP_MAX_ATTEMPTS) {
-        return errorResponse(
-          OTP_RESET_MESSAGE,
-          429,
-          { field: "code", resetFlow: true },
-        );
+        return errorResponse(OTP_RESET_MESSAGE, 429, {
+          field: "code",
+          resetFlow: true,
+        });
       }
     }
 
     // 1. Verify OTP
-    const verification = await (async (): Promise<{ success: boolean } | Response> => {
+    const verification = await (async (): Promise<
+      { success: boolean } | Response
+    > => {
       try {
         const result = await auth.api.checkVerificationOTP({
           body: {
@@ -157,11 +164,10 @@ export async function POST(req: NextRequest) {
       }
 
       if (nextAttempts >= OTP_MAX_ATTEMPTS) {
-        return errorResponse(
-          OTP_RESET_MESSAGE,
-          429,
-          { field: "code", resetFlow: true },
-        );
+        return errorResponse(OTP_RESET_MESSAGE, 429, {
+          field: "code",
+          resetFlow: true,
+        });
       }
 
       return errorResponse("Código inválido ou expirado.", 400, {

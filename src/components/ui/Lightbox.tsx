@@ -27,7 +27,8 @@ const toPublicUploadsSrc = (input: string): string => {
     return config.getPublicPath(path);
   };
 
-  if (pathname.startsWith("/uploads/")) return `${withBasePath(pathname)}${query}`;
+  if (pathname.startsWith("/uploads/"))
+    return `${withBasePath(pathname)}${query}`;
 
   const uploadsIdx = pathname.indexOf("/uploads/");
   if (uploadsIdx !== -1) {

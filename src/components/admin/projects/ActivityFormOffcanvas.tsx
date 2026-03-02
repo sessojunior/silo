@@ -357,7 +357,6 @@ export default function ActivityFormOffcanvas({
             />
           </div>
         </div>
-
       </form>
     </Offcanvas>
   );

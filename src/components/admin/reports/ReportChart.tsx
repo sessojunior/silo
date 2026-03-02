@@ -9,12 +9,7 @@ const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 interface ReportChartProps {
   type: "line" | "bar" | "donut" | "area";
   data: Record<string, unknown>;
-  reportType?:
-    | "availability"
-    | "problems"
-    | "performance"
-    | "projects"
-    | "executive";
+  reportType?: "availability" | "problems" | "projects" | "executive";
   height?: number;
   className?: string;
 }
@@ -54,8 +49,7 @@ export function ReportChart({
         return "Disponibilidade por Produto";
       case "problems":
         return "Problemas por Categoria";
-      case "performance":
-        return "Performance da Equipe";
+
       case "projects":
         return "Projetos e Atividades";
       case "executive":
@@ -137,56 +131,7 @@ export function ReportChart({
           }
         }
         break;
-      case "performance":
-        if (data.userPerformance && Array.isArray(data.userPerformance)) {
-          // Para gráficos de barra e linha, usar múltiplas séries incluindo pontuação
-          if (type !== "donut") {
-            return [
-              {
-                name: "Pontuação Total",
-                data: data.userPerformance.map(
-                  (user: Record<string, unknown>) => user.totalScore as number,
-                ),
-              },
-              {
-                name: "Problemas Criados",
-                data: data.userPerformance.map(
-                  (user: Record<string, unknown>) =>
-                    user.problemsCreated as number,
-                ),
-              },
-              {
-                name: "Soluções Fornecidas",
-                data: data.userPerformance.map(
-                  (user: Record<string, unknown>) =>
-                    user.solutionsProvided as number,
-                ),
-              },
-              {
-                name: "Tarefas Concluídas",
-                data: data.userPerformance.map(
-                  (user: Record<string, unknown>) =>
-                    user.tasksCompleted as number,
-                ),
-              },
-            ];
-          } else {
-            // Para gráfico donut, usar contagens absolutas
-            const totalTasksAssigned = data.userPerformance.reduce(
-              (sum: number, user: Record<string, unknown>) =>
-                sum + (user.tasksAssigned as number),
-              0,
-            );
-            const totalTasksCompleted = data.userPerformance.reduce(
-              (sum: number, user: Record<string, unknown>) =>
-                sum + (user.tasksCompleted as number),
-              0,
-            );
 
-            return [totalTasksAssigned, totalTasksCompleted];
-          }
-        }
-        break;
       case "projects":
         if (
           data.projectsWithProgress &&
@@ -245,19 +190,7 @@ export function ReportChart({
           );
         }
         break;
-      case "performance":
-        if (data.userPerformance && Array.isArray(data.userPerformance)) {
-          // Para gráficos donut, usar labels específicos para atividades
-          if (type === "donut") {
-            return ["Tarefas Atribuídas", "Tarefas Concluídas"];
-          } else {
-            return data.userPerformance.map(
-              (user: Record<string, unknown>) =>
-                (user.name as string) || "Usuário",
-            );
-          }
-        }
-        break;
+
       case "projects":
         if (
           data.projectsWithProgress &&

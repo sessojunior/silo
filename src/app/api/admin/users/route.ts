@@ -30,15 +30,25 @@ const UserGroupInputSchema = z.object({
 });
 
 const CreateUserSchema = z.object({
-  name: z.string().trim().min(2, "Nome é obrigatório e deve ter pelo menos 2 caracteres."),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Nome é obrigatório e deve ter pelo menos 2 caracteres."),
   email: z
     .string()
     .trim()
     .toLowerCase()
     .email()
     .refine(isValidEmail, "Email inválido.")
-    .refine(isValidDomain, "Apenas e-mails do domínio @inpe.br são permitidos."),
-  password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres.").max(120).optional(),
+    .refine(
+      isValidDomain,
+      "Apenas e-mails do domínio @inpe.br são permitidos.",
+    ),
+  password: z
+    .string()
+    .min(8, "Senha deve ter pelo menos 8 caracteres.")
+    .max(120)
+    .optional(),
   groups: z.array(UserGroupInputSchema).optional(),
   groupId: z.string().uuid().optional(),
   isActive: z.boolean().optional(),
@@ -46,14 +56,20 @@ const CreateUserSchema = z.object({
 
 const UpdateUserSchema = z.object({
   id: z.string().uuid(),
-  name: z.string().trim().min(2, "Nome é obrigatório e deve ter pelo menos 2 caracteres."),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Nome é obrigatório e deve ter pelo menos 2 caracteres."),
   email: z
     .string()
     .trim()
     .toLowerCase()
     .email()
     .refine(isValidEmail, "Email inválido.")
-    .refine(isValidDomain, "Apenas e-mails do domínio @inpe.br são permitidos."),
+    .refine(
+      isValidDomain,
+      "Apenas e-mails do domínio @inpe.br são permitidos.",
+    ),
   emailVerified: z.boolean().optional(),
   isActive: z.boolean().optional(),
   groups: z.array(UserGroupInputSchema).optional(),
@@ -187,7 +203,8 @@ export async function POST(request: NextRequest) {
 
     const parsedBody = await parseRequestJson(request, CreateUserSchema);
     if (!parsedBody.ok) return parsedBody.response;
-    const { name, email, password, groups, groupId, isActive } = parsedBody.data;
+    const { name, email, password, groups, groupId, isActive } =
+      parsedBody.data;
 
     // Determinar grupos usando novo formato ou legado
     const userGroups: UserGroupInput[] =
@@ -318,15 +335,8 @@ export async function PUT(request: NextRequest) {
 
     const parsedBody = await parseRequestJson(request, UpdateUserSchema);
     if (!parsedBody.ok) return parsedBody.response;
-    const {
-      id,
-      name,
-      email,
-      emailVerified,
-      isActive,
-      groups,
-      groupId,
-    } = parsedBody.data;
+    const { id, name, email, emailVerified, isActive, groups, groupId } =
+      parsedBody.data;
 
     const existingUser = await db
       .select()
@@ -399,10 +409,7 @@ export async function PUT(request: NextRequest) {
     }
 
     await db.transaction(async (tx) => {
-      await tx
-        .update(authUser)
-        .set(updateData)
-        .where(eq(authUser.id, id));
+      await tx.update(authUser).set(updateData).where(eq(authUser.id, id));
 
       await tx.delete(userGroup).where(eq(userGroup.userId, id));
 

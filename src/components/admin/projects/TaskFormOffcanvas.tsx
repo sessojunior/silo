@@ -653,7 +653,6 @@ export default function TaskFormOffcanvas({
               />
             </div>
           </div>
-
         </form>
       </Offcanvas>
 

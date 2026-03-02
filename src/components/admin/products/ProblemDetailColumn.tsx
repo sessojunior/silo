@@ -11,7 +11,8 @@ import { config } from "@/lib/config";
 
 const toPublicUploadsSrc = (input: string): string => {
   const normalized = normalizeUploadsSrc(input);
-  if (normalized.startsWith("/uploads/")) return config.getPublicPath(normalized);
+  if (normalized.startsWith("/uploads/"))
+    return config.getPublicPath(normalized);
   return normalized;
 };
 

@@ -1,10 +1,19 @@
 import { NextRequest } from "next/server";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
+import {
+  errorResponse,
+  parseRequestJson,
+  successResponse,
+} from "@/lib/api-response";
 import { translateAuthError } from "@/lib/auth/i18n";
 import { auth } from "@/lib/auth/server";
-import { isValidDomain, isValidEmail, isValidName, isValidPassword } from "@/lib/auth/validate";
+import {
+  isValidDomain,
+  isValidEmail,
+  isValidName,
+  isValidPassword,
+} from "@/lib/auth/validate";
 import { db } from "@/lib/db";
 import { authVerification } from "@/lib/db/schema";
 import { getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";

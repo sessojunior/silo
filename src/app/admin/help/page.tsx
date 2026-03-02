@@ -284,7 +284,11 @@ export default function HelpPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit" form="help-editor-form" disabled={formLoading}>
+            <Button
+              type="submit"
+              form="help-editor-form"
+              disabled={formLoading}
+            >
               {formLoading ? "Salvando..." : "Salvar Documentação"}
             </Button>
           </>

@@ -37,11 +37,7 @@ export default function ProjectDeleteDialog({
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={onClose}
-      title="Confirmar exclusão"
-    >
+    <Dialog open={isOpen} onClose={onClose} title="Confirmar exclusão">
       <div className="p-6">
         <p className="text-base text-zinc-600 dark:text-zinc-400 mb-6">
           Tem certeza que deseja excluir o projeto &quot;{project?.name}&quot;?

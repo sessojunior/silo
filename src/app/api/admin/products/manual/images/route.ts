@@ -38,8 +38,14 @@ export async function GET() {
 
     const items = stats
       .filter(
-        (s): s is { filename: string; url: string; size: number; mtime: number } =>
-          s !== null,
+        (
+          s,
+        ): s is {
+          filename: string;
+          url: string;
+          size: number;
+          mtime: number;
+        } => s !== null,
       )
       .sort((a, b) => b.mtime - a.mtime);
 

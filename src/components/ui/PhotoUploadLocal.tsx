@@ -115,10 +115,13 @@ export default function PhotoUploadLocal({
       const formData = new FormData();
       formData.append("fileToUpload", file);
 
-      const response = await fetch(config.getApiUrl("/api/user-profile-image"), {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        config.getApiUrl("/api/user-profile-image"),
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
 
       let payload: unknown = null;
       try {
@@ -223,8 +226,7 @@ export default function PhotoUploadLocal({
             className={twMerge(
               clsx("block font-semibold", isInvalid && "text-red-500"),
             )}
-          >
-          </div>
+          ></div>
 
           <div className="flex gap-2">
             {/* Input de arquivo oculto */}

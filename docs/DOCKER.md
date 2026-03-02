@@ -55,6 +55,7 @@ O **Silo** usa **1 container** (e opcionalmente um Postgres):
    ```bash
    docker network create frontend
    ```
+
    - Isso é necessário para manter a coerência com os servidores de produção e permitir a integração com proxies reversos.
 
 ### **Variáveis de Ambiente**

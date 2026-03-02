@@ -470,7 +470,7 @@ export default function GroupsPage() {
                           }}
                           group={group}
                           isExpanded={isExpanded}
-                            isAdmin={isAdmin}
+                          isAdmin={isAdmin}
                         />
                       </React.Fragment>
                     );

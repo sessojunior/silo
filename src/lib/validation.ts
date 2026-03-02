@@ -183,8 +183,7 @@ export const projectSchema = z.object({
 
   status: z.enum(projectStatusEnumValues, {
     error: () => ({
-      message:
-        "Status deve ser: active, completed, paused ou cancelled",
+      message: "Status deve ser: active, completed, paused ou cancelled",
     }),
   }),
 

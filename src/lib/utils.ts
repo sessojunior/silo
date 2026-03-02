@@ -150,7 +150,10 @@ export const createSessionResendCooldown = (
     if (!normalizedEmail) return;
     const safeSeconds = Math.max(0, Math.ceil(seconds));
     const unlockAtMs = Date.now() + safeSeconds * 1000;
-    window.sessionStorage.setItem(getStorageKey(normalizedEmail), String(unlockAtMs));
+    window.sessionStorage.setItem(
+      getStorageKey(normalizedEmail),
+      String(unlockAtMs),
+    );
   };
 
   return { readUnlockAtMs, writeUnlockAtMsFromSeconds };

@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { errorResponse, parseRequestJson, successResponse } from "@/lib/api-response";
+import {
+  errorResponse,
+  parseRequestJson,
+  successResponse,
+} from "@/lib/api-response";
 import { translateAuthError } from "@/lib/auth/i18n";
 import {
   AUTH_INVALID_CREDENTIALS_MAX_ATTEMPTS,
@@ -8,7 +12,11 @@ import {
 } from "@/lib/auth/rate-limits";
 import { auth } from "@/lib/auth/server";
 import { isValidEmail } from "@/lib/auth/validate";
-import { clearRateLimitForEmail, getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
+import {
+  clearRateLimitForEmail,
+  getRateLimitStatus,
+  recordRateLimit,
+} from "@/lib/rateLimit";
 
 const getRequestIp = (req: NextRequest): string => {
   const forwardedFor = req.headers.get("x-forwarded-for");
@@ -150,7 +158,9 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        return errorResponse("E-mail ou senha inválidos.", 401, { field: "password" });
+        return errorResponse("E-mail ou senha inválidos.", 401, {
+          field: "password",
+        });
       }
 
       return errorResponse(translated, response.status);

@@ -1,4 +1,10 @@
-import { useMemo, useRef, useState, useEffect, type CSSProperties } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+  type CSSProperties,
+} from "react";
 import MessageBubble from "./MessageBubble";
 import { LoadMessagesButton } from "./LoadMessagesButton";
 import type { ChatMessage } from "@/context/ChatContext";
@@ -138,8 +144,7 @@ export function MessagesList({
                 Nenhuma mensagem ainda
               </h3>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-sm">
-                Sem conversas. Envie a primeira mensagem para
-                começar!
+                Sem conversas. Envie a primeira mensagem para começar!
               </p>
             </div>
           </div>

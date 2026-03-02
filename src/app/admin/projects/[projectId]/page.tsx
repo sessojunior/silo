@@ -64,9 +64,9 @@ const isValidActivity = (
 ): activity is ProjectActivity =>
   Boolean(
     activity &&
-      typeof activity.id === "string" &&
-      activity.id.length > 0 &&
-      typeof activity.name === "string",
+    typeof activity.id === "string" &&
+    activity.id.length > 0 &&
+    typeof activity.name === "string",
   );
 
 export default function ProjectDetailsPage() {
@@ -125,7 +125,10 @@ export default function ProjectDetailsPage() {
           let totalTasks = 0;
           let completedTasks = 0;
 
-          if (typeof groupedTasks === "object" && !Array.isArray(groupedTasks)) {
+          if (
+            typeof groupedTasks === "object" &&
+            !Array.isArray(groupedTasks)
+          ) {
             // Somar tarefas de todos os status e contar as concluídas
             for (const status in groupedTasks) {
               if (Array.isArray(groupedTasks[status])) {
@@ -238,8 +241,9 @@ export default function ProjectDetailsPage() {
         return;
       }
 
-      const projectsResponse =
-        (await response.json()) as ApiResponse<Project[]>;
+      const projectsResponse = (await response.json()) as ApiResponse<
+        Project[]
+      >;
       const projects =
         projectsResponse.success && Array.isArray(projectsResponse.data)
           ? projectsResponse.data

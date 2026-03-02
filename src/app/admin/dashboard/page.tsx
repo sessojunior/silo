@@ -74,7 +74,7 @@ export default function DashboardPage() {
         percentChange: number;
         categories: { name: string; count: number }[];
       }>;
-      setSummary(json.success ? json.data ?? null : null);
+      setSummary(json.success ? (json.data ?? null) : null);
     }
   }, []);
 
@@ -343,9 +343,7 @@ export default function DashboardPage() {
                           name={p.name}
                           turns={p.turns}
                           progress={p.percent_completed}
-                          priority={
-                            p.priority
-                          }
+                          priority={p.priority}
                           date={
                             p.last_run ? formatDateTimeShortBR(p.last_run) : ""
                           }

@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
 import { translateAuthError } from "@/lib/auth/i18n";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
-import { isValidCode, isValidEmail, isValidPassword } from "@/lib/auth/validate";
+import {
+  isValidCode,
+  isValidEmail,
+  isValidPassword,
+} from "@/lib/auth/validate";
 import { AUTH_OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/auth/rate-limits";
 import { config } from "@/lib/config";
 import type { ApiResponse } from "@/lib/api-response";
@@ -109,7 +113,8 @@ export default function ForgetPasswordPage() {
 
         if (!res.ok) {
           const retryAfterSeconds = (() => {
-            if (typeof data.data !== "object" || data.data === null) return null;
+            if (typeof data.data !== "object" || data.data === null)
+              return null;
             if (!("retryAfterSeconds" in data.data)) return null;
             const raw = (data.data as { retryAfterSeconds?: unknown })
               .retryAfterSeconds;
@@ -128,7 +133,10 @@ export default function ForgetPasswordPage() {
 
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            resendCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
             setFieldError("email", "Aguarde para reenviar o código.");
             toast({
               type: "info",
@@ -143,7 +151,11 @@ export default function ForgetPasswordPage() {
           return;
         }
 
-        toast({ type: "info", title: message, description: "Verifique seu e-mail." });
+        toast({
+          type: "info",
+          title: message,
+          description: "Verifique seu e-mail.",
+        });
         setEmail(normalizedEmail);
         setCode("");
         setPassword("");
@@ -194,11 +206,13 @@ export default function ForgetPasswordPage() {
         );
 
         const data = (await res.json()) as ApiResponse<unknown>;
-        const message = data.message || data.error || "Erro ao verificar código.";
+        const message =
+          data.message || data.error || "Erro ao verificar código.";
 
         if (!res.ok) {
           const retryAfterSeconds = (() => {
-            if (typeof data.data !== "object" || data.data === null) return null;
+            if (typeof data.data !== "object" || data.data === null)
+              return null;
             if (!("retryAfterSeconds" in data.data)) return null;
             const raw = (data.data as { retryAfterSeconds?: unknown })
               .retryAfterSeconds;
@@ -217,7 +231,10 @@ export default function ForgetPasswordPage() {
 
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            resendCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
             setCode("");
             setFieldError("email", "Aguarde para reenviar o código.");
             setPassword("");
@@ -296,7 +313,8 @@ export default function ForgetPasswordPage() {
         });
 
         const data = (await res.json()) as ApiResponse<unknown>;
-        const message = data.message || data.error || "Erro ao reenviar código.";
+        const message =
+          data.message || data.error || "Erro ao reenviar código.";
 
         const retryAfterSeconds = (() => {
           if (typeof data.data !== "object" || data.data === null) return null;
@@ -319,7 +337,10 @@ export default function ForgetPasswordPage() {
         if (!res.ok) {
           const retryAfter = retryAfterSeconds ?? retryAfterFromHeader;
           if (res.status === 429 && retryAfter) {
-            resendCooldown.writeUnlockAtMsFromSeconds(normalizedEmail, retryAfter);
+            resendCooldown.writeUnlockAtMsFromSeconds(
+              normalizedEmail,
+              retryAfter,
+            );
             toast({
               type: "info",
               title: message,
@@ -398,7 +419,8 @@ export default function ForgetPasswordPage() {
         const data = (await res.json()) as ApiResponse<{
           signedIn?: unknown;
         }>;
-        const message = data.message || data.error || "Erro ao alterar a senha.";
+        const message =
+          data.message || data.error || "Erro ao alterar a senha.";
 
         if (!res.ok) {
           if (
@@ -606,11 +628,7 @@ export default function ForgetPasswordPage() {
                   />
                 </div>
                 <div>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full"
-                  >
+                  <Button type="submit" disabled={loading} className="w-full">
                     {loading ? (
                       <>
                         <span className="icon-[lucide--loader-circle] animate-spin"></span>{" "}

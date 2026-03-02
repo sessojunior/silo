@@ -1,11 +1,5 @@
+import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
-
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  require("dotenv/config");
-} catch {
-  // Ignora erro silenciosamente
-}
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -21,7 +15,10 @@ export default defineConfig({
   schema: "./src/lib/db/schema.ts",
   dialect: "postgresql",
   dbCredentials: {
-    url: databaseUrl || process.env.DATABASE_URL_PROD || process.env.DATABASE_URL_DEV!,
+    url:
+      databaseUrl ||
+      process.env.DATABASE_URL_PROD ||
+      process.env.DATABASE_URL_DEV!,
   },
   // Força o uso do schema public para gerenciar migrações, evitando tentativas de criar schemas extras
   migrations: {
