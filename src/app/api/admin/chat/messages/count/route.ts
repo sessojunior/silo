@@ -2,12 +2,12 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 import { and, or, isNull, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requireAuthUser();
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -66,3 +66,4 @@ export async function GET(request: NextRequest) {
     return errorResponse("Erro ao contar mensagens.", 500);
   }
 }
+

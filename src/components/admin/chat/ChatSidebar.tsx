@@ -174,7 +174,7 @@ export default function ChatSidebar({
                           status.key as "visible" | "invisible",
                         )
                       }
-                      className={`w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors ${currentPresence === status.key ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
+                      className={`w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors ${currentPresence === status.key ? "bg-blue-50 dark:bg-zinc-700" : ""}`}
                       title={
                         status.key === "invisible"
                           ? "Status usado para férias, licença, aposentado, saiu da empresa, usuário inativo etc."
@@ -349,12 +349,12 @@ function GroupItem({
       className={`
 				w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 
 				transition-colors text-left border-l-4 
-				${isActive ? "bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300" : "border-transparent"}
+				${isActive ? "bg-blue-50 dark:bg-zinc-700 border-blue-500 text-blue-700 dark:text-blue-300" : "border-transparent"}
 			`}
     >
       {/* Ícone do Grupo */}
       <div
-        className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
+        className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium"
         style={{ backgroundColor: groupColor }}
       >
         <span className={`${iconClass} w-5 h-5`} />
@@ -382,7 +382,7 @@ function GroupItem({
       </div>
 
       {/* Badge de ativo */}
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         {isActive && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
       </div>
     </button>
@@ -431,7 +431,7 @@ function UserItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors text-left border-l-4 ${isActive ? "bg-blue-50 dark:bg-blue-900/20 border-blue-500" : "border-transparent"}`}
+      className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors text-left border-l-4 ${isActive ? "bg-blue-50 dark:bg-zinc-700 border-blue-500" : "border-transparent"}`}
     >
       {/* Avatar do Usuário */}
       <Avatar

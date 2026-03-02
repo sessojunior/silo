@@ -2,13 +2,13 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 import { db } from "@/lib/db";
 import { chatMessage } from "@/lib/db/schema";
 import { eq, and, isNull, ne } from "drizzle-orm";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { NextRequest } from "next/server";
 
 // POST: Marcar todas as mensagens de uma conversa como lidas
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requireAuthUser();
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -75,3 +75,4 @@ export async function POST(request: NextRequest) {
     return errorResponse("Erro interno do servidor", 500);
   }
 }
+

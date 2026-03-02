@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 import { db } from "@/lib/db";
 import { chatMessage } from "@/lib/db/schema";
 import { eq, and, isNull, ne } from "drizzle-orm";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 
 // POST: Marcar mensagem como lida
 export async function POST(
@@ -12,7 +12,7 @@ export async function POST(
 ) {
   try {
     const { messageId } = await params;
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requireAuthUser();
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -76,7 +76,7 @@ export async function POST(
 // PUT: Marcar múltiplas mensagens como lidas (para conversas)
 export async function PUT(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requireAuthUser();
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 

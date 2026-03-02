@@ -149,7 +149,7 @@ export default function ProblemCategoryOffcanvas({ open, onClose }: Props) {
           {/* Lista */}
           <div className="flex flex-col gap-2 max-h-full overflow-y-auto pb-2">
             {loading && (
-              <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 py-12">
+              <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400 py-12">
                 <LoadingSpinner
                   text="Carregando categorias..."
                   size="md"
@@ -158,8 +158,8 @@ export default function ProblemCategoryOffcanvas({ open, onClose }: Props) {
               </div>
             )}
             {!loading && categories.length === 0 && (
-              <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 py-12">
-                <span className="icon-[lucide--tag] size-12 text-zinc-300"></span>
+              <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400 py-12">
+                <span className="icon-[lucide--tag] size-12 text-zinc-300 dark:text-zinc-700"></span>
                 <p className="text-center">Nenhuma categoria cadastrada.</p>
                 <Button style="bordered" onClick={openCreate}>
                   Cadastrar
@@ -172,7 +172,7 @@ export default function ProblemCategoryOffcanvas({ open, onClose }: Props) {
                 return (
                   <div
                     key={cat.id}
-                    className="flex items-center justify-between rounded border border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 p-4"
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 dark:bg-zinc-900/50 dark:border-zinc-700 dark:hover:bg-zinc-900 transition-colors p-4"
                   >
                     <div className="flex items-center gap-2">
                       <span
@@ -181,12 +181,12 @@ export default function ProblemCategoryOffcanvas({ open, onClose }: Props) {
                       ></span>
                       <span className="text-base">{cat.name}</span>
                       {cat.isSystem && (
-                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                           Sistema
                         </span>
                       )}
                       {cat.usageCount > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
                           {cat.usageCount} uso{cat.usageCount > 1 ? "s" : ""}
                         </span>
                       )}
@@ -200,7 +200,7 @@ export default function ProblemCategoryOffcanvas({ open, onClose }: Props) {
                         }
                         onClick={() => handleEdit(cat)}
                         disabled={cat.isSystem}
-                        className={`inline-flex items-center justify-center size-8 rounded-full transition ${cat.isSystem ? "text-zinc-300 cursor-not-allowed dark:text-zinc-600" : "text-zinc-500 hover:bg-blue-100 hover:text-blue-700 dark:bg-zinc-800 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-700"}`}
+                        className={`inline-flex items-center justify-center size-8 rounded-full transition-colors ${cat.isSystem ? "text-zinc-300 cursor-not-allowed dark:text-zinc-600" : "text-zinc-500 hover:bg-blue-50 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"}`}
                       >
                         <span className="icon-[lucide--pencil] size-4"></span>
                       </button>
@@ -212,7 +212,7 @@ export default function ProblemCategoryOffcanvas({ open, onClose }: Props) {
                         }
                         onClick={() => setDeleteDialog({ open: true, cat })}
                         disabled={!!isProtected}
-                        className={`inline-flex items-center justify-center size-8 rounded-full transition ${isProtected ? "text-zinc-300 cursor-not-allowed dark:text-zinc-600" : "text-zinc-500 hover:bg-red-100 hover:text-red-700 dark:bg-zinc-800 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-700"}`}
+                        className={`inline-flex items-center justify-center size-8 rounded-full transition-colors ${isProtected ? "text-zinc-300 cursor-not-allowed dark:text-zinc-600" : "text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-900/30 dark:hover:text-red-500"}`}
                       >
                         <span className="icon-[lucide--trash] size-4"></span>
                       </button>

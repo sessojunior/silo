@@ -337,11 +337,11 @@ export default function UserSelectorOffcanvas({
                   <div
                     key={user.id}
                     onClick={() => toggleUserSelection(user.id)}
-                    className={`p-4 rounded-lg border cursor-pointer transition-all ${isSelected ? "border-blue-300 bg-blue-50 dark:border-blue-600 dark:bg-blue-900/20" : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"}`}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all ${isSelected ? "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/30" : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-800/40 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700"}`}
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`size-5 rounded border-2 flex items-center justify-center ${isSelected ? "border-blue-500 bg-blue-500" : "border-zinc-300 dark:border-zinc-600"}`}
+                        className={`size-5 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? "border-blue-600 bg-blue-600 dark:border-blue-500 dark:bg-blue-500" : "border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900"}`}
                       >
                         {isSelected && (
                           <span className="icon-[lucide--check] size-3 text-white" />

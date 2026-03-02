@@ -31,24 +31,7 @@ export const Collapse = memo(function Collapse(props: {
   return (
     <button
       onPointerDown={handleClick}
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "32px",
-        width: "32px",
-        cursor: "pointer",
-        backgroundColor: "transparent",
-        border: "none",
-        borderRadius: "50%",
-        transition: "background-color 0.2s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "#f4f4f5";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "transparent";
-      }}
+      className="flex items-center justify-center size-8 bg-transparent border-none rounded-full cursor-pointer transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-700/50"
       title={props.open ? "Recolher" : "Expandir"}
     >
       {!props.open ? (
@@ -61,6 +44,7 @@ export const Collapse = memo(function Collapse(props: {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="text-zinc-500 dark:text-zinc-400"
         >
           <path d="m6 9 6 6 6-6" />
         </svg>
@@ -74,6 +58,7 @@ export const Collapse = memo(function Collapse(props: {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="text-zinc-500 dark:text-zinc-400"
           style={{ transform: "rotate(180deg)" }}
         >
           <path d="m6 9 6 6 6-6" />
@@ -133,30 +118,13 @@ const RecursiveItem = memo(function RecursiveItem(props: {
   return (
     <>
       <div
+        className="w-full max-w-[414px] h-[42px] mt-1 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg flex items-center px-3 font-medium text-[14px] text-zinc-600 dark:text-zinc-400 select-none"
         style={{
-          width: "100%",
-          maxWidth: "414px",
-          height: "42px",
-          border: "1px solid #e4e4e7",
-          marginTop: "4px",
           marginLeft: `${marginLeft}px`,
-          backgroundColor: "#fafafa",
-          borderRadius: "8px",
-          display: "flex",
-          alignItems: "center",
-          paddingLeft: "12px",
-          paddingRight: "12px",
-          fontWeight: "500",
-          fontSize: "14px",
-          color: "#52525b",
-          userSelect: "none" as const,
-          WebkitUserSelect: "none" as const,
-          MozUserSelect: "none" as const,
-          msUserSelect: "none" as const,
         }}
       >
         <span
-          style={{ marginRight: "8px", color: "#71717a", fontSize: "12px" }}
+          className="mr-2 text-[12px] text-zinc-500 dark:text-zinc-500"
         >
           └
         </span>
@@ -265,45 +233,12 @@ export const TreeItem = memo(
     const treeItemStyle = useMemo(
       () => ({
         ...style,
-        width: "100%",
-        maxWidth: "414px",
         minHeight:
           ghost && indicator && childCount
             ? `${childCount * 46 + (childCount - 1) * 4}px`
             : "44px",
-        position: "relative" as const,
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "12px",
-        backgroundColor: ghost && indicator ? "transparent" : "#ffffff",
-        border: ghost && indicator ? "2px dashed #d4d4d8" : "1px solid #e4e4e7",
-        borderRadius: "8px",
-        color: "#18181b",
-        boxSizing: "border-box" as const,
-        cursor: "grab",
-        opacity: ghost && indicator ? 0.6 : 1,
-        userSelect: "none" as const,
-        WebkitUserSelect: "none" as const,
-        MozUserSelect: "none" as const,
-        msUserSelect: "none" as const,
-        transition: "all 0.2s ease",
-        ...(clone && {
-          paddingRight: "24px",
-          boxShadow:
-            "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-          minWidth: "414px",
-          backgroundColor: "#ffffff",
-          border: "1px solid #e4e4e7",
-        }),
-        ...(!clone &&
-          !ghost && {
-            "&:hover": {
-              backgroundColor: "#f9fafb",
-            },
-          }),
       }),
-      [style, ghost, indicator, childCount, clone],
+      [style, ghost, indicator, childCount],
     );
 
     // Callbacks otimizados
@@ -346,7 +281,11 @@ export const TreeItem = memo(
         >
           <div
             {...handleProps}
-            className="TreeItem"
+            className={`TreeItem flex items-center gap-2 p-3 w-full max-w-[414px] rounded-lg box-border cursor-grab select-none transition-all duration-200 border ${
+              ghost && indicator
+                ? "bg-transparent border-dashed border-2 border-zinc-300 dark:border-zinc-600 opacity-60"
+                : "bg-white dark:bg-zinc-900 border-solid border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100"
+            } ${clone ? "shadow-md pr-6" : ""}`}
             ref={ref}
             style={treeItemStyle}
           >
@@ -360,7 +299,7 @@ export const TreeItem = memo(
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              style={{ color: "#9ca3af", cursor: "grab", flexShrink: 0 }}
+              className="text-zinc-400 dark:text-zinc-500 cursor-grab shrink-0"
             >
               <circle cx="9" cy="12" r="1" />
               <circle cx="9" cy="5" r="1" />
@@ -375,25 +314,12 @@ export const TreeItem = memo(
 
             {/* Item Name */}
             <span
-              style={{
-                flex: 1,
-                fontWeight: "500",
-                fontSize: "14px",
-                color: "#374151",
-                whiteSpace: "nowrap",
-                textOverflow: "ellipsis",
-                overflow: "hidden",
-              }}
+              className="flex-1 font-medium text-[14px] text-zinc-700 dark:text-zinc-200 whitespace-nowrap text-ellipsis overflow-hidden"
             >
               {clone ? `📋 Movendo: ${itemName}` : itemName}
               {clone && childCount && childCount > 1 && (
                 <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: "400",
-                    color: "#6b7280",
-                    marginLeft: "4px",
-                  }}
+                  className="text-[12px] font-normal text-zinc-500 dark:text-zinc-400 ml-1"
                 >
                   ({childCount - 1} filhos)
                 </span>
@@ -426,24 +352,7 @@ export const TreeItem = memo(
               <>
                 <button
                   onClick={handleEdit}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "32px",
-                    height: "32px",
-                    backgroundColor: "transparent",
-                    border: "none",
-                    borderRadius: "50%",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f3f4f6";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }}
+                  className="flex items-center justify-center size-8 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-700 border-none rounded-full cursor-pointer transition-colors"
                   title="Editar"
                 >
                   <svg
@@ -455,7 +364,7 @@ export const TreeItem = memo(
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{ color: "#6b7280" }}
+                    className="text-zinc-500 dark:text-zinc-400"
                   >
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -463,24 +372,7 @@ export const TreeItem = memo(
                 </button>
                 <button
                   onClick={handleDelete}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "32px",
-                    height: "32px",
-                    backgroundColor: "transparent",
-                    border: "none",
-                    borderRadius: "50%",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#fef2f2";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }}
+                  className="flex items-center justify-center size-8 bg-transparent hover:bg-red-50 dark:hover:bg-red-900/30 border-none rounded-full cursor-pointer transition-colors"
                   title="Excluir"
                 >
                   <svg
@@ -492,7 +384,7 @@ export const TreeItem = memo(
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{ color: "#ef4444" }}
+                    className="text-red-500 dark:text-red-400"
                   >
                     <path d="m3 6 3 0" />
                     <path d="m19 6-3 0" />
@@ -546,18 +438,22 @@ export const TreeItem = memo(
         style={wrapperStyle}
       >
         <div
-          className="TreeItem"
+          className={`TreeItem flex items-center gap-2 p-3 w-full max-w-[414px] rounded-lg box-border cursor-grab select-none transition-all duration-200 border ${
+            ghost && indicator
+              ? "bg-transparent border-dashed border-2 border-zinc-300 dark:border-zinc-600 opacity-60"
+              : "bg-white dark:bg-zinc-900 border-solid border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100"
+          } ${clone ? "shadow-md pr-6 bg-white dark:bg-zinc-900" : ""} ${
+            !clone && !ghost && isHovered ? "bg-zinc-50 dark:bg-zinc-800" : ""
+          }`}
           ref={ref}
           style={treeItemStyle}
           onMouseEnter={(e) => {
             if (!clone && !ghost) {
-              e.currentTarget.style.backgroundColor = "#f9fafb";
               setIsHovered(true);
             }
           }}
           onMouseLeave={(e) => {
             if (!clone && !ghost) {
-              e.currentTarget.style.backgroundColor = "#ffffff";
               setIsHovered(false);
             }
           }}
@@ -565,14 +461,7 @@ export const TreeItem = memo(
           {/* Área de Drag - Grip + Conteúdo */}
           <div
             {...handleProps}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              flex: 1,
-              cursor: "grab",
-              minWidth: 0, // Permite que o texto seja truncado
-            }}
+            className="flex items-center gap-2 flex-1 cursor-grab min-w-0"
           >
             {/* Grip Icon */}
             <svg
@@ -599,15 +488,7 @@ export const TreeItem = memo(
 
             {/* Item Name */}
             <span
-              style={{
-                flex: 1,
-                fontWeight: "500",
-                fontSize: "14px",
-                color: "#374151",
-                whiteSpace: "nowrap",
-                textOverflow: "ellipsis",
-                overflow: "hidden",
-              }}
+              className="flex-1 font-medium text-[14px] text-zinc-700 dark:text-zinc-200 whitespace-nowrap text-ellipsis overflow-hidden"
             >
               {clone ? `📋 Movendo: ${itemName}` : itemName}
               {clone && childCount && childCount > 1 && (
@@ -627,12 +508,7 @@ export const TreeItem = memo(
 
           {/* Área de Ações - Isolada do Drag */}
           <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              flexShrink: 0,
-            }}
+            className="flex items-center gap-1 shrink-0"
             onMouseDown={(e) => {
               // Previne que o drag seja iniciado quando clicar nos botões
               e.stopPropagation();
@@ -645,19 +521,7 @@ export const TreeItem = memo(
             {/* Level Badge */}
             {!clone && (
               <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "32px",
-                  height: "32px",
-                  backgroundColor: "#f3f4f6",
-                  borderRadius: "50%",
-                  fontSize: "12px",
-                  fontWeight: "500",
-                  color: "#6b7280",
-                  flexShrink: 0,
-                }}
+                className="flex items-center justify-center size-8 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[12px] font-medium text-zinc-500 dark:text-zinc-400 shrink-0"
               >
                 L{depth + 1}
               </span>
@@ -670,24 +534,7 @@ export const TreeItem = memo(
                   onClick={handleEdit}
                   onMouseDown={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "32px",
-                    height: "32px",
-                    backgroundColor: "transparent",
-                    border: "none",
-                    borderRadius: "50%",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f3f4f6";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }}
+                  className="flex items-center justify-center size-8 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-700 border-none rounded-full cursor-pointer transition-colors"
                   title="Editar"
                 >
                   <svg
@@ -699,7 +546,7 @@ export const TreeItem = memo(
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{ color: "#6b7280" }}
+                    className="text-zinc-500 dark:text-zinc-400"
                   >
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -709,24 +556,7 @@ export const TreeItem = memo(
                   onClick={handleDelete}
                   onMouseDown={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "32px",
-                    height: "32px",
-                    backgroundColor: "transparent",
-                    border: "none",
-                    borderRadius: "50%",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#fef2f2";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }}
+                  className="flex items-center justify-center size-8 bg-transparent hover:bg-red-50 dark:hover:bg-red-900/30 border-none rounded-full cursor-pointer transition-colors"
                   title="Excluir"
                 >
                   <svg
@@ -738,7 +568,7 @@ export const TreeItem = memo(
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    style={{ color: "#ef4444" }}
+                    className="text-red-500 dark:text-red-400"
                   >
                     <path d="m3 6 3 0" />
                     <path d="m19 6-3 0" />
@@ -783,38 +613,18 @@ export const TreeItem = memo(
         {/* Dropdown Content - Informações do Item */}
         {!(props.show === "true") && open && (
           <div
-            style={{
-              width: "100%",
-              maxWidth: "414px",
-              border: "1px solid #e4e4e7",
-              borderTop: "none",
-              borderRadius: "0 0 8px 8px",
-              backgroundColor: "#ffffff",
-              marginTop: "-1px",
-              boxShadow:
-                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-            }}
+            className="w-full max-w-[414px] border border-t-0 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-b-lg shadow-sm -mt-px"
           >
             <div
-              style={{
-                padding: "16px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
+              className="p-4 flex flex-col gap-3"
             >
               {/* Header com ícone e nome */}
               <div
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                className="flex items-center gap-2"
               >
                 {renderItemIcon()}
                 <h4
-                  style={{
-                    margin: 0,
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    color: "#111827",
-                  }}
+                  className="m-0 text-[16px] font-semibold text-zinc-900 dark:text-zinc-100"
                 >
                   {itemName}
                 </h4>
@@ -823,17 +633,7 @@ export const TreeItem = memo(
               {/* Descrição */}
               <div>
                 <p
-                  style={{
-                    margin: 0,
-                    fontSize: "14px",
-                    color: "#6b7280",
-                    lineHeight: "1.5",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 4,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
+                  className="m-0 text-[14px] text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-4"
                 >
                   {itemDescription}
                 </p>
@@ -841,18 +641,12 @@ export const TreeItem = memo(
 
               {/* Informações adicionais */}
               <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingTop: "8px",
-                  borderTop: "1px solid #f3f4f6",
-                }}
+                className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-700"
               >
-                <span style={{ fontSize: "12px", color: "#9ca3af" }}>
+                <span className="text-[12px] text-zinc-400 dark:text-zinc-500">
                   Nível {depth + 1}
                 </span>
-                <span style={{ fontSize: "12px", color: "#9ca3af" }}>
+                <span className="text-[12px] text-zinc-400 dark:text-zinc-500">
                   ID: {value}
                 </span>
               </div>

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { getNowTimestamp } from "@/lib/dateUtils";
 
 /**
@@ -9,7 +9,7 @@ import { getNowTimestamp } from "@/lib/dateUtils";
  */
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requireAuthUser();
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -55,3 +55,4 @@ export async function POST(req: NextRequest) {
     return errorResponse("Erro interno do servidor", 500);
   }
 }
+

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { and, or, isNull, eq, desc, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 // Tipo específico para mensagens não lidas com informações do remetente
@@ -22,7 +22,7 @@ type UnreadMessageWithSender = {
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requireAuthUser();
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -274,3 +274,4 @@ export async function GET(request: NextRequest) {
     return errorResponse("Erro ao buscar mensagens não lidas.", 500);
   }
 }
+

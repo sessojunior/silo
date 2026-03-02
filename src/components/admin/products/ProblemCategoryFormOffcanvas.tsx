@@ -109,7 +109,7 @@ export default function ProblemCategoryFormOffcanvas({
         className="flex flex-col gap-4"
       >
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium">Nome</label>
+          <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Nome</label>
           <Input
             type="text"
             value={name}
@@ -120,12 +120,12 @@ export default function ProblemCategoryFormOffcanvas({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium">Cor</label>
+          <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Cor</label>
           <input
             type="color"
             value={color ?? "#64748B"}
             onChange={(e) => setColor(e.target.value)}
-            className="h-10 w-24 rounded border border-zinc-200 dark:border-zinc-700"
+            className="h-10 w-24 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 cursor-pointer"
           />
         </div>
       </form>

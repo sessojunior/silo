@@ -3,7 +3,7 @@ import { desc, and, or, isNull, eq, lt, gt } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requireAuthUser } from "@/lib/auth/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 // Tipo específico para mensagens com informações do remetente
@@ -94,7 +94,7 @@ interface MessageResponse {
 // GET: Buscar mensagens de uma conversa específica
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requireAuthUser();
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
 // POST: Enviar nova mensagem (groupMessage ou userMessage)
 export async function POST(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requireAuthUser();
     if (!authResult.ok) return authResult.response;
     const user = authResult.user;
 
@@ -352,3 +352,4 @@ export async function POST(request: NextRequest) {
     return errorResponse("Erro ao enviar mensagem.", 500);
   }
 }
+

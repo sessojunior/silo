@@ -327,12 +327,12 @@ export default function UserFormOffcanvas({
                           );
                         }
                       }}
-                      className="h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500"
+                      className={`h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500 ${isSelected ? "dark:border-blue-500" : "dark:border-zinc-500 bg-white dark:bg-zinc-900"}`}
                       disabled={isDisabled}
                     />
-                    <div className="flex items-center">
+                    <div className="flex items-center ml-3 gap-2">
                       <span
-                        className={`icon-[lucide--${group.icon}] size-4`}
+                        className={`${group.icon} size-4`}
                         style={{ color: group.color || "#6b7280" }}
                       />
                       <label

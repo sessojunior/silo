@@ -204,7 +204,7 @@ export default function PhotoUploadLocal({
       <div className="flex w-full gap-4">
         {/* Avatar/Preview */}
         <div className="flex items-center justify-center">
-          <div className="group relative flex size-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-zinc-300 bg-zinc-100 transition duration-200 hover:border-zinc-400 hover:bg-zinc-200 hover:ring-2 hover:ring-zinc-300">
+          <div className="group relative flex size-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 transition duration-200 hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:ring-2 hover:ring-zinc-300 dark:hover:ring-zinc-600">
             {previewUrl ? (
               <Image
                 src={previewUrl}
@@ -252,7 +252,7 @@ export default function PhotoUploadLocal({
             {/* Botão de apagar */}
             <button
               type="button"
-              className="inline-flex items-center gap-x-2 rounded-lg border border-transparent bg-white px-3 py-2 text-xs font-medium text-zinc-600 hover:border-zinc-200 hover:bg-zinc-100"
+              className="inline-flex items-center gap-x-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
               onClick={handleDelete}
             >
               <span className="icon-[lucide--trash] size-4" /> Apagar

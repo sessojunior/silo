@@ -123,7 +123,7 @@ export default function MessageBubble({
     >
       {/* Avatar (apenas para mensagens de outros usuários) */}
       {showAvatar && !isOwnMessageFinal && (
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <div className="w-8 h-8 rounded-full bg-zinc-500 flex items-center justify-center text-white text-sm font-medium">
             {avatarLetter}
           </div>
@@ -132,7 +132,7 @@ export default function MessageBubble({
 
       {/* Espaçador invisível para alinhamento quando não há avatar */}
       {!showAvatar && !isOwnMessageFinal && (
-        <div className="flex-shrink-0 w-8 h-8" />
+        <div className="shrink-0 w-8 h-8" />
       )}
 
       {/* Conteúdo da mensagem */}
@@ -146,13 +146,13 @@ export default function MessageBubble({
           {/* Bubble da mensagem */}
           <div
             className={`
-							px-4 py-2 max-w-full break-words overflow-hidden relative
+							px-4 py-2 max-w-full wrap-break-word overflow-hidden relative
 							${
                 isOwnMessageFinal
-                  ? "bg-blue-500 text-white rounded-b-xl rounded-l-xl"
+                  ? "bg-blue-600 text-white rounded-b-xl rounded-l-xl"
                   : showAvatar
-                    ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-b-xl rounded-r-xl"
-                    : "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl"
+                    ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-b-xl rounded-r-xl"
+                    : "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-xl"
               }
 						`}
           >
@@ -165,7 +165,7 @@ export default function MessageBubble({
 
             {/* Conteúdo da mensagem */}
             {message.content && (
-              <p className="text-sm whitespace-pre-wrap break-words overflow-hidden">
+              <p className="text-sm whitespace-pre-wrap wrap-break-word overflow-hidden">
                 {message.content}
               </p>
             )}
@@ -205,9 +205,9 @@ export default function MessageBubble({
             <div
               className={`
 							absolute w-0 h-0 border-solid
-							border-l-[8px] border-l-transparent 
-							border-r-[8px] border-r-transparent 
-							border-t-[8px] border-t-white dark:border-t-zinc-700
+							border-l-8 border-l-transparent 
+							border-r-8 border-r-transparent 
+							border-t-8 border-t-white dark:border-t-zinc-800
 							left-[-8px] top-0
 						`}
             />
@@ -218,9 +218,9 @@ export default function MessageBubble({
             <div
               className={`
 							absolute w-0 h-0 border-solid
-							border-r-[8px] border-r-transparent 
-							border-l-[8px] border-l-transparent 
-							border-t-[8px] border-t-blue-500
+							border-r-8 border-r-transparent 
+							border-l-8 border-l-transparent 
+							border-t-8 border-t-blue-600
 							right-[-8px] top-0
 						`}
             />

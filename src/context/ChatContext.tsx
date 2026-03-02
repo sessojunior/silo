@@ -693,11 +693,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         );
 
         if (response.ok) {
-          const newMessage = await response.json();
+          const apiResponse = await response.json();
+          const newMessage = apiResponse.data || apiResponse;
 
           // Atualizar estado local imediatamente (optimistic update)
           const targetId = receiverGroupId || receiverUserId;
-          if (targetId) {
+          if (targetId && newMessage && newMessage.id) {
             setMessages((prev) => {
               const existingMessages = prev[targetId] || [];
               // Verificar se a mensagem já existe para evitar duplicatas

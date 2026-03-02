@@ -6,8 +6,8 @@ import {
   errorResponse,
 } from "@/lib/api-response";
 import { db } from "@/lib/db";
-import { authUser, group, userGroup, authAccount } from "@/lib/db/schema";
-import { eq, desc, ilike, and, inArray, ne } from "drizzle-orm";
+import { authUser, group, userGroup, authAccount, authSession, userPreferences, userProfile, chatUserPresence, chatMessage } from "@/lib/db/schema";
+import { eq, desc, ilike, and, inArray, ne, or } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";
 import { requirePermissionAuthUser } from "@/lib/permissions";
@@ -430,5 +430,92 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error("❌ [API_USERS] Erro ao atualizar usuário:", { error });
     return errorResponse("Erro ao atualizar usuário", 500);
+  }
+}
+
+// DELETE - Excluir usuário
+export async function DELETE(request: NextRequest) {
+  try {
+    const authResult = await requirePermissionAuthUser("users", "delete");
+    if (!authResult.ok) return authResult.response;
+
+    const parsedQuery = parseRequestQuery(
+      request,
+      z.object({ id: z.string() })
+    );
+
+    if (!parsedQuery.ok) return parsedQuery.response;
+    const { id } = parsedQuery.data;
+
+    // Verificar se o usuário existe
+    const existingUser = await db
+      .select()
+      .from(authUser)
+      .where(eq(authUser.id, id))
+      .limit(1);
+
+    if (existingUser.length === 0) {
+      return errorResponse("Usuário não encontrado.", 404);
+    }
+
+    // Verificar se o usuário possui papel de admin
+    const userGroupsQuery = await db
+      .select({ role: group.role })
+      .from(userGroup)
+      .innerJoin(group, eq(group.id, userGroup.groupId))
+      .where(eq(userGroup.userId, id));
+
+    const isAdmin = userGroupsQuery.some((g) => g.role === "admin");
+
+    if (isAdmin) {
+      // Verificar se é o último administrador
+      const adminGroups = await db
+        .select({ id: group.id })
+        .from(group)
+        .where(eq(group.role, "admin"));
+
+      const adminGroupIds = adminGroups.map((g) => g.id);
+
+      if (adminGroupIds.length > 0) {
+        const adminUsers = await db
+          .select({ userId: userGroup.userId })
+          .from(userGroup)
+          .where(inArray(userGroup.groupId, adminGroupIds));
+        
+        // Remove duplicates and count
+        const uniqueAdminUsers = new Set(adminUsers.map(u => u.userId));
+
+        if (uniqueAdminUsers.size <= 1) {
+          return errorResponse(
+            "Não é possível excluir o último administrador do sistema.",
+            400
+          );
+        }
+      }
+    }
+
+    // Deletar usuário e seus dados associados
+    // Como algumas tabelas do auth não têm cascade delete, excluímos manualmente
+    await db.transaction(async (tx) => {
+      // Excluir das tabelas filhas primeiro
+
+      // Tabelas custom (pode ter on delete cascade, mas rodamos para evitar problemas soltos)
+      await tx.delete(chatMessage).where(or(eq(chatMessage.senderUserId, id), eq(chatMessage.receiverUserId, id)));
+      await tx.delete(chatUserPresence).where(eq(chatUserPresence.userId, id));
+      await tx.delete(userPreferences).where(eq(userPreferences.userId, id));
+      await tx.delete(userProfile).where(eq(userProfile.userId, id));
+
+      await tx.delete(userGroup).where(eq(userGroup.userId, id));
+      await tx.delete(authAccount).where(eq(authAccount.userId, id));
+      await tx.delete(authSession).where(eq(authSession.userId, id));
+      
+      // Enfim excluímos o usuário base
+      await tx.delete(authUser).where(eq(authUser.id, id));
+    });
+
+    return successResponse(null, "Usuário excluído com sucesso.");
+  } catch (error) {
+    console.error("❌ [API_USERS] Erro ao excluir usuário:", { error });
+    return errorResponse("Erro ao excluir usuário", 500);
   }
 }

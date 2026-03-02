@@ -77,57 +77,57 @@ const columnTheme = {
   todo: {
     icon: "icon-[lucide--list-todo]",
     iconClass: "size-6 text-stone-500 dark:text-stone-400",
-    bg: "bg-stone-50 dark:bg-stone-900",
-    border: "border-stone-100 dark:border-stone-700",
-    header: "bg-stone-100 dark:bg-stone-800",
-    headerHover: "hover:bg-stone-200 dark:hover:bg-stone-700",
-    countBg: "bg-stone-200 dark:bg-stone-700",
+    bg: "bg-stone-50 dark:bg-stone-900/10",
+    border: "border-stone-100 dark:border-stone-800/50",
+    header: "bg-stone-100 dark:bg-stone-800/40",
+    headerHover: "hover:bg-stone-200 dark:hover:bg-stone-800/60",
+    countBg: "bg-stone-200 dark:bg-stone-800",
     countText: "text-stone-600 dark:text-stone-300",
-    button: "text-stone-600 dark:text-stone-300",
+    button: "text-stone-600 dark:text-stone-400",
   },
   in_progress: {
     icon: "icon-[lucide--refresh-cw]",
     iconClass: "size-6 text-blue-500 dark:text-blue-400",
-    bg: "bg-blue-50 dark:bg-blue-950",
-    border: "border-blue-100 dark:border-blue-800",
-    header: "bg-blue-100 dark:bg-blue-900",
-    headerHover: "hover:bg-blue-200 dark:hover:bg-blue-800",
-    countBg: "bg-blue-200 dark:bg-blue-800",
+    bg: "bg-blue-50 dark:bg-blue-900/10",
+    border: "border-blue-100 dark:border-blue-800/30",
+    header: "bg-blue-100 dark:bg-blue-900/30",
+    headerHover: "hover:bg-blue-200 dark:hover:bg-blue-900/50",
+    countBg: "bg-blue-200 dark:bg-blue-900/60",
     countText: "text-blue-600 dark:text-blue-300",
-    button: "text-blue-600 dark:text-blue-300",
+    button: "text-blue-600 dark:text-blue-400",
   },
   blocked: {
     icon: "icon-[lucide--ban]",
     iconClass: "size-6 text-red-500 dark:text-red-400",
-    bg: "bg-red-50 dark:bg-red-950",
-    border: "border-red-100 dark:border-red-800",
-    header: "bg-red-100 dark:bg-red-900",
-    headerHover: "hover:bg-red-200 dark:hover:bg-red-800",
-    countBg: "bg-red-200 dark:bg-red-800",
+    bg: "bg-red-50 dark:bg-red-900/10",
+    border: "border-red-100 dark:border-red-800/30",
+    header: "bg-red-100 dark:bg-red-900/30",
+    headerHover: "hover:bg-red-200 dark:hover:bg-red-900/50",
+    countBg: "bg-red-200 dark:bg-red-900/60",
     countText: "text-red-600 dark:text-red-300",
-    button: "text-red-600 dark:text-red-300",
+    button: "text-red-600 dark:text-red-400",
   },
   review: {
     icon: "icon-[lucide--eye]",
     iconClass: "size-6 text-amber-500 dark:text-amber-400",
-    bg: "bg-amber-50 dark:bg-amber-950",
-    border: "border-amber-100 dark:border-amber-800",
-    header: "bg-amber-100 dark:bg-amber-900",
-    headerHover: "hover:bg-amber-200 dark:hover:bg-amber-800",
-    countBg: "bg-amber-200 dark:bg-amber-800",
+    bg: "bg-amber-50 dark:bg-amber-900/10",
+    border: "border-amber-100 dark:border-amber-800/30",
+    header: "bg-amber-100 dark:bg-amber-900/30",
+    headerHover: "hover:bg-amber-200 dark:hover:bg-amber-900/50",
+    countBg: "bg-amber-200 dark:bg-amber-900/60",
     countText: "text-amber-600 dark:text-amber-300",
-    button: "text-amber-600 dark:text-amber-300",
+    button: "text-amber-600 dark:text-amber-400",
   },
   done: {
     icon: "icon-[lucide--trophy]",
     iconClass: "size-6 text-emerald-500 dark:text-emerald-400",
-    bg: "bg-emerald-50 dark:bg-emerald-950",
-    border: "border-emerald-100 dark:border-emerald-800",
-    header: "bg-emerald-100 dark:bg-emerald-900",
-    headerHover: "hover:bg-emerald-200 dark:hover:bg-emerald-800",
-    countBg: "bg-emerald-200 dark:bg-emerald-800",
+    bg: "bg-emerald-50 dark:bg-emerald-900/10",
+    border: "border-emerald-100 dark:border-emerald-800/30",
+    header: "bg-emerald-100 dark:bg-emerald-900/30",
+    headerHover: "hover:bg-emerald-200 dark:hover:bg-emerald-900/50",
+    countBg: "bg-emerald-200 dark:bg-emerald-900/60",
     countText: "text-emerald-600 dark:text-emerald-300",
-    button: "text-emerald-600 dark:text-emerald-300",
+    button: "text-emerald-600 dark:text-emerald-400",
   },
 };
 
@@ -426,8 +426,8 @@ function DroppableColumn({
             />
           ))}
           {tasks.length === 0 && (
-            <div className="h-24 border-2 border-dashed border-gray-300 dark:border-zinc-600 rounded-lg flex items-center justify-center bg-zinc-50 dark:bg-zinc-800">
-              <span className="text-gray-500 dark:text-zinc-400 text-sm">
+            <div className="h-24 border-2 border-dashed border-gray-300 dark:border-zinc-700/50 rounded-lg flex items-center justify-center bg-zinc-50 dark:bg-zinc-800/40">
+              <span className="text-gray-500 dark:text-zinc-500 text-sm">
                 Arraste e solte aqui
               </span>
             </div>

@@ -94,31 +94,31 @@ export default function ActivityMiniKanban({
     {
       id: "todo",
       title: "A Fazer",
-      color: "bg-stone-100 dark:bg-stone-800",
+      color: "bg-stone-100 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700/50 text-stone-700 dark:text-stone-300",
       tasks: tasksByStatus.todo || [],
     },
     {
       id: "in_progress",
       title: "Progresso",
-      color: "bg-blue-100 dark:bg-blue-900",
+      color: "bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/50 text-blue-700 dark:text-blue-300",
       tasks: tasksByStatus.in_progress || [],
     },
     {
       id: "blocked",
       title: "Bloqueado",
-      color: "bg-red-100 dark:bg-red-900",
+      color: "bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300",
       tasks: tasksByStatus.blocked || [],
     },
     {
       id: "review",
       title: "Revisão",
-      color: "bg-amber-100 dark:bg-amber-900",
+      color: "bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800/50 text-amber-700 dark:text-amber-300",
       tasks: tasksByStatus.review || [],
     },
     {
       id: "done",
       title: "Concluído",
-      color: "bg-emerald-100 dark:bg-emerald-900",
+      color: "bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300",
       tasks: tasksByStatus.done || [],
     },
   ];
@@ -192,9 +192,9 @@ export default function ActivityMiniKanban({
           <div key={column.id} className="space-y-1">
             {/* Header da coluna */}
             <div
-              className={`${column.color} rounded-t-md p-2 border border-zinc-200 dark:border-zinc-600`}
+              className={`${column.color} rounded-t-md p-2 border border-b-0`}
             >
-              <div className="font-medium text-zinc-700 dark:text-zinc-300 text-center">
+              <div className="font-medium text-center">
                 {column.title} ({column.tasks.length})
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function ActivityMiniKanban({
               {column.tasks.map((task) => (
                 <div
                   key={task.id}
-                  className={`bg-white dark:bg-zinc-900 rounded border-l-2 ${getPriorityColor(task.priority)} p-2 shadow-sm hover:shadow-md transition-shadow`}
+                  className={`bg-white dark:bg-zinc-800 rounded border border-zinc-200 dark:border-zinc-700 border-l-2 ${getPriorityColor(task.priority)} p-2 shadow-sm hover:shadow-md transition-shadow`}
                   title={`${task.name} - ${task.description || "Sem descrição"}`}
                 >
                   <div className="font-medium text-zinc-800 dark:text-zinc-200 truncate text-xs leading-tight">
@@ -220,7 +220,7 @@ export default function ActivityMiniKanban({
 
               {/* Zona vazia */}
               {column.tasks.length === 0 && (
-                <div className="bg-zinc-100 dark:bg-zinc-700 rounded border-2 border-dashed border-zinc-300 dark:border-zinc-600 p-2 text-center text-zinc-400 dark:text-zinc-500">
+                <div className="bg-zinc-50 dark:bg-zinc-800/40 rounded border border-dashed border-zinc-300 dark:border-zinc-700/50 p-2 text-center text-zinc-400 dark:text-zinc-500">
                   Vazio
                 </div>
               )}

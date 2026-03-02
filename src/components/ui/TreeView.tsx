@@ -159,7 +159,7 @@ function TreeItem({
           {hasChildren ? (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="size-6 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full hover:bg-muted transition-colors"
+              className="size-6 flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full hover:bg-muted transition-colors"
               aria-label={expanded ? "Recolher" : "Expandir"}
             >
               <span
