@@ -233,7 +233,7 @@ export default function Select({
                     clsx(
                       "flex cursor-pointer items-center justify-between px-4 py-2 text-base transition group",
                       {
-                        "bg-blue-100 dark:bg-zinc-700": idx === highlight,
+                        "bg-blue-50 dark:bg-zinc-800": idx === highlight,
                         "opacity-50 cursor-not-allowed": opt.disabled,
                       },
                     ),
@@ -241,7 +241,11 @@ export default function Select({
                 >
                   <span
                     className={twMerge(
-                      clsx({ "group-hover:text-zinc-600": !opt.disabled }),
+                      clsx("transition-colors", {
+                        "group-hover:text-zinc-800 dark:group-hover:text-zinc-100":
+                          !opt.disabled,
+                        "text-zinc-900 dark:text-zinc-100": idx === highlight,
+                      }),
                     )}
                   >
                     {opt.label}

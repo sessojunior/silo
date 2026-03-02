@@ -280,11 +280,11 @@ export const getStatusClasses = (
     case "white":
       switch (variant) {
         case "timeline":
-          return "bg-white text-zinc-800 border border-zinc-300 dark:bg-zinc-100 dark:text-zinc-900"; // Referência: barra de 28 dias
+          return "bg-white text-zinc-800 border border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600 dark:text-zinc-300"; // Referência: barra de 28 dias
         case "calendar":
-          return "bg-white border border-zinc-300 dark:bg-zinc-100"; // Mesma tonalidade da timeline
+          return "bg-white border border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600"; // Mesma tonalidade da timeline
         case "stats":
-          return "bg-white border border-zinc-300 dark:bg-zinc-100"; // Mesma tonalidade da timeline
+          return "bg-white border border-zinc-300 dark:bg-zinc-800 dark:border-zinc-600"; // Mesma tonalidade da timeline
       }
     default:
       return "bg-zinc-200 dark:bg-zinc-700";

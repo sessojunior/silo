@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface DialogProps {
   open: boolean;
@@ -20,6 +21,11 @@ export default function Dialog({
 }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fecha ao pressionar ESC
   useEffect(() => {
@@ -39,7 +45,7 @@ export default function Dialog({
     }
   }
 
-  if (!open) return null;
+  if (!open || ! mounted) return null;
 
   const WIDTH_MAP: Record<NonNullable<DialogProps["size"]>, string> = {
     sm: "400px",
@@ -49,10 +55,10 @@ export default function Dialog({
   };
   const panelWidth = WIDTH_MAP[size] ?? WIDTH_MAP.sm;
 
-  return (
+  const content = (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-200 flex items-center justify-center bg-black/40"
       onClick={handleOverlayClick}
       aria-modal="true"
       role="dialog"
@@ -90,4 +96,6 @@ export default function Dialog({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

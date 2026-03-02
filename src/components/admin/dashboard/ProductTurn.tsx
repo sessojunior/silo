@@ -88,7 +88,7 @@ export default function ProductTurn({ productName, days, onTurnClick }: Props) {
               content={
                 <div className="w-72 text-sm">
                   {/* Cabeçalho */}
-                  <div className="rounded-t-xl border-b border-zinc-200 bg-zinc-50 px-4 py-2 dark:border-zinc-700">
+                  <div className="rounded-t-xl border-b border-zinc-200 bg-zinc-50 px-4 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                     <div className="flex items-center gap-2">
                       <span className="icon-[lucide--calendar-days] size-5 shrink-0 text-zinc-400"></span>
                       <span className="text-lg font-medium">{productName}</span>
@@ -113,7 +113,7 @@ export default function ProductTurn({ productName, days, onTurnClick }: Props) {
                         className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                       >
                         <div
-                          className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs ${getStatusClasses(turn.status)}`}
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${getStatusClasses(turn.status)}`}
                         >
                           {turn.time}
                         </div>
@@ -179,7 +179,7 @@ export default function ProductTurn({ productName, days, onTurnClick }: Props) {
                     return (
                       <div
                         key={index}
-                        className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-center text-xs hover:scale-110 transition-transform ${getStatusClasses(turn.status)}`}
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-center text-xs hover:opacity-50 transition-opacity ${getStatusClasses(turn.status)}`}
                         title={tooltipContent}
                       >
                         {turn.time}

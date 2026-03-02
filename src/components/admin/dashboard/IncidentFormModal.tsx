@@ -102,7 +102,7 @@ export default function IncidentFormModal({
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
         <div>
           <Label htmlFor="incident-name" required>
             Nome do incidente
@@ -148,7 +148,7 @@ export default function IncidentFormModal({
           </div>
         )}
 
-        <div className="flex gap-2 justify-end m-4">
+        <div className="flex gap-2 justify-end mt-4">
           <Button
             type="button"
             style="bordered"

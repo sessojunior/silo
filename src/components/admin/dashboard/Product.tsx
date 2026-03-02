@@ -350,40 +350,40 @@ export default function Product({
           <div className="flex items-center text-xs leading-none">
             {priority == "urgent" && (
               <div
-                className="inline-block rounded-md bg-red-100 px-2 py-1.5 dark:bg-red-600"
+                className="inline-flex items-center justify-center rounded-md bg-red-100 dark:bg-red-600 h-8"
                 title="Prioridade Urgente"
               >
-                <span className="text-xs font-medium text-nowrap text-red-500 uppercase dark:text-white">
+                <span className="text-xs font-medium text-nowrap text-red-500 uppercase dark:text-white -mt-0.5 px-2">
                   Urgente
                 </span>
               </div>
             )}
             {priority == "high" && (
               <div
-                className="inline-block rounded-md bg-orange-100 px-2 py-1.5 dark:bg-red-600"
+                className="inline-flex items-center justify-center rounded-md bg-orange-100 dark:bg-red-600 h-8"
                 title="Prioridade Alta"
               >
-                <span className="text-xs font-medium text-nowrap text-red-500 uppercase dark:text-white">
+                <span className="text-xs font-medium text-nowrap text-red-500 uppercase dark:text-white -mt-0.5 px-2">
                   Alta
                 </span>
               </div>
             )}
             {priority == "normal" && (
               <div
-                className="inline-block rounded-md bg-orange-100 px-2 py-1.5 dark:bg-orange-600"
+                className="inline-flex items-center justify-center rounded-md bg-orange-100 dark:bg-orange-600 h-8"
                 title="Prioridade Normal"
               >
-                <span className="text-xs font-medium text-nowrap text-orange-500 uppercase dark:text-white">
+                <span className="text-xs font-medium text-nowrap text-orange-500 uppercase dark:text-white -mt-0.5 px-2">
                   Normal
                 </span>
               </div>
             )}
             {priority == "low" && (
               <div
-                className="inline-block rounded-md bg-green-200 px-2 py-1.5 dark:bg-green-700"
+                className="inline-flex items-center justify-center rounded-md bg-green-200 dark:bg-green-700 h-8"
                 title="Prioridade Baixa"
               >
-                <span className="text-xs font-medium text-nowrap text-green-600 uppercase dark:text-white">
+                <span className="text-xs font-medium text-nowrap text-green-600 uppercase dark:text-white -mt-0.5 px-2">
                   Baixa
                 </span>
               </div>
