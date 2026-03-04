@@ -15,18 +15,21 @@ import { isValidEmail, isValidDomain } from "@/lib/auth/validate";
 import { auth } from "@/lib/auth/server";
 import { z } from "zod";
 
+const TextIdSchema = z.string().trim().min(1, "ID inválido.");
+const OptionalTextIdSchema = z.preprocess((value) => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}, z.string().min(1).optional());
+
 const ListUsersQuerySchema = z.object({
   search: z.string().optional(),
   status: z.enum(["all", "active", "inactive"]).optional(),
-  groupId: z.preprocess((value) => {
-    if (typeof value !== "string") return undefined;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }, z.string().uuid().optional()),
+  groupId: OptionalTextIdSchema,
 });
 
 const UserGroupInputSchema = z.object({
-  groupId: z.string().uuid(),
+  groupId: TextIdSchema,
 });
 
 const CreateUserSchema = z.object({
@@ -50,12 +53,12 @@ const CreateUserSchema = z.object({
     .max(120)
     .optional(),
   groups: z.array(UserGroupInputSchema).optional(),
-  groupId: z.string().uuid().optional(),
+  groupId: OptionalTextIdSchema,
   isActive: z.boolean().optional(),
 });
 
 const UpdateUserSchema = z.object({
-  id: z.string().uuid(),
+  id: TextIdSchema,
   name: z
     .string()
     .trim()
@@ -73,7 +76,7 @@ const UpdateUserSchema = z.object({
   emailVerified: z.boolean().optional(),
   isActive: z.boolean().optional(),
   groups: z.array(UserGroupInputSchema).optional(),
-  groupId: z.string().uuid().optional(),
+  groupId: OptionalTextIdSchema,
 });
 
 // Interface para grupos de usuário

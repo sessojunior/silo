@@ -76,16 +76,18 @@ const ContactBaseFormSchema = z.object({
 
 const CreateContactFormSchema = ContactBaseFormSchema;
 
+const ContactIdSchema = z.preprocess(
+  (v) => (typeof v === "string" ? v.trim() : v),
+  z.string().min(1, "ID do contato é obrigatório"),
+);
+
 const UpdateContactFormSchema = ContactBaseFormSchema.extend({
-  id: z.preprocess(
-    (v) => (typeof v === "string" ? v.trim() : v),
-    z.string().uuid("ID do contato é obrigatório"),
-  ),
+  id: ContactIdSchema,
   removeImage: z.preprocess((v) => toBoolean(v) ?? false, z.boolean()),
 });
 
 const DeleteContactSchema = z.object({
-  id: z.string().uuid("ID do contato é obrigatório"),
+  id: ContactIdSchema,
 });
 
 // GET - Listar contatos com filtros

@@ -12,12 +12,14 @@ import {
 } from "@/lib/api-response";
 import { z } from "zod";
 
+const GroupIdSchema = z.string().trim().min(1, "ID do grupo é obrigatório.");
+
 const GroupPermissionQuerySchema = z.object({
-  groupId: z.string().uuid(),
+  groupId: GroupIdSchema,
 });
 
 const GroupPermissionUpdateSchema = z.object({
-  groupId: z.string().uuid(),
+  groupId: GroupIdSchema,
   resource: z.string().trim().min(1),
   action: z.string().trim().min(1),
   enabled: z.boolean(),

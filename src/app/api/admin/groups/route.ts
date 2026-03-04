@@ -20,6 +20,8 @@ import {
 } from "@/lib/api-response";
 import { z } from "zod";
 
+const TextIdSchema = z.string().trim().min(1, "ID do grupo é obrigatório.");
+
 const ListGroupsQuerySchema = z.object({
   search: z.string().optional(),
   status: z.enum(["all", "active", "inactive"]).optional(),
@@ -39,7 +41,7 @@ const CreateGroupSchema = z.object({
 });
 
 const UpdateGroupSchema = CreateGroupSchema.extend({
-  id: z.string().uuid("ID do grupo é obrigatório."),
+  id: TextIdSchema,
 });
 
 // GET - Listar grupos com busca e filtros
