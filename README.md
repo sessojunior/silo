@@ -117,6 +117,7 @@ npm run dev
 - 📧 [**Configuração SMTP**](./docs/SMTP.md) - Servidor de email
 - 📋 [**Sistema de Logs**](./docs/LOGS.md) - Padrões de logging
 - 📐 [**Padrões de Código**](./docs/PATTERNS.md) - Convenções e boas práticas
+- 🔄 [**Data Flow (API)**](./docs/DATAFLOW.md) - Proposta de API para fluxo de dados por modelo/data/turno
 
 ---
 
@@ -285,6 +286,7 @@ Exemplos práticos (mesmo build, só mudando env):
 - **SMTP:** Configuração de email → [`docs/SMTP.md`](./docs/SMTP.md)
 - **Logs:** Padrões de logging → [`docs/LOGS.md`](./docs/LOGS.md)
 - **Padrões:** Convenções e boas práticas → [`docs/PATTERNS.md`](./docs/PATTERNS.md)
+- **Data Flow:** Proposta de API para fluxo de dados por modelo/data/turno → [`docs/DATAFLOW.md`](./docs/DATAFLOW.md)
 
 ---
 
