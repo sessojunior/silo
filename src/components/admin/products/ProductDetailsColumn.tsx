@@ -55,8 +55,8 @@ export default function ProductDetailsColumn({
   children,
 }: ProductDetailsColumnProps) {
   return (
-    <div className="flex w-full flex-grow flex-col">
-      <div className="scrollbar size-full h-[calc(100vh-131px)] overflow-y-auto">
+    <div className="flex w-full grow flex-col">
+      <div className="scrollbar size-full h-[calc(100vh-140px)] overflow-y-auto">
         {/* Cabeçalho */}
         <div className="flex flex-col gap-2 border-b border-zinc-200 p-8 md:grid md:grid-cols-2 dark:border-zinc-700">
           <div className="flex">

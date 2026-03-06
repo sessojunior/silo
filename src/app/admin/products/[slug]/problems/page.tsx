@@ -827,7 +827,7 @@ export default function ProblemsPage() {
 
   if (initialLoading) {
     return (
-      <div className="flex h-[calc(100vh-131px)] w-full items-center justify-center">
+      <div className="flex h-[calc(100vh-140px)] w-full items-center justify-center">
         <LoadingSpinner
           text="Carregando problemas e soluções..."
           size="lg"
@@ -857,7 +857,7 @@ export default function ProblemsPage() {
 
         {/* Coluna direita com o problema selecionado */}
         <div className="flex w-full grow flex-col">
-          <div className="scrollbar size-full h-[calc(100vh-131px)] overflow-y-auto">
+          <div className="scrollbar size-full h-[calc(100vh-140px)] overflow-y-auto">
             <ProblemDetailColumn
               loadingDetail={loadingDetail}
               problem={problem}

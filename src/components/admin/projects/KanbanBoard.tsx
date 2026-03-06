@@ -660,7 +660,7 @@ export default function KanbanBoard({
 
   if (!isClient) {
     return (
-      <div className="flex h-[calc(100vh-131px)] w-full items-center justify-center">
+      <div className="flex h-[calc(100vh-140px)] w-full items-center justify-center">
         <LoadingSpinner
           text="Carregando Kanban..."
           size="lg"

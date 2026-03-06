@@ -943,7 +943,7 @@ export default function ProductsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-[calc(100vh-131px)] w-full items-center justify-center">
+      <div className="flex h-[calc(100vh-140px)] w-full items-center justify-center">
         <LoadingSpinner
           text="Carregando base de conhecimento..."
           size="lg"

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Gantt, Task, ViewMode } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
+import { useParams, useSearchParams } from "next/navigation";
 
 import Dialog from "@/components/ui/Dialog";
 import { ProductStatus, getStatusLabel } from "@/lib/productStatus";
@@ -28,7 +29,15 @@ interface TaskGroup {
 }
 
 interface GroupedPipelineData {
+  model: string;
+  date: string;
+  turn: string;
+  status: ProductStatus;
   groups: TaskGroup[];
+}
+
+interface GroupedPipelineDataFile {
+  pipelines: GroupedPipelineData[];
 }
 
 interface DetailNode {
@@ -132,7 +141,7 @@ const STATUS_BAR_STYLE: Record<
   },
 };
 
-const GROUPED_PIPELINE_DATA = groupedPipelineDataJson as GroupedPipelineData;
+const GROUPED_PIPELINE_DATA = groupedPipelineDataJson as GroupedPipelineDataFile;
 
 const DATE_TIME_BRIEF_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -144,8 +153,8 @@ const DATE_TIME_BRIEF_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
 
 const TASK_LIST_WIDTH = {
   name: 340,
-  from: 100,
-  to: 100,
+  from: 110,
+  to: 110,
 };
 
 const TASK_LIST_TOTAL_WIDTH =
@@ -153,7 +162,7 @@ const TASK_LIST_TOTAL_WIDTH =
 
 const LIST_CELL_WIDTH = `${Math.ceil(TASK_LIST_TOTAL_WIDTH / 3)}px`;
 const MIN_GANTT_HEIGHT = 220;
-const VIEWPORT_CHROME_HEIGHT = 131; // Topbar + Navbar
+const VIEWPORT_CHROME_HEIGHT = 139; // Topbar + Navbar
 const GANTT_HEADER_HEIGHT = 50;
 const GANTT_HORIZONTAL_SCROLLBAR_SPACE = 20;
 const GANTT_BOTTOM_SAFETY_SPACE = 4;
@@ -294,20 +303,66 @@ function getGroupStatus(tasks: GroupedTask[]): ProductStatus {
 }
 
 export default function ProductDataFlowPage() {
+  const params = useParams<{ slug: string }>();
+  const searchParams = useSearchParams();
+  const modelSlug = String(params?.slug ?? "").trim();
+  const selectedDate = searchParams.get("date");
+  const selectedTurn = searchParams.get("turn");
+
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const ganttShellRef = useRef<HTMLDivElement | null>(null);
   const [ganttHeight, setGanttHeight] = useState(300);
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
-    ingestion: false,
-    preprocessing: false,
-    modeling: false,
-    products: false,
-  });
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  const modelSnapshots = useMemo(() => {
+    const exactMatch = GROUPED_PIPELINE_DATA.pipelines.filter(
+      (snapshot) => snapshot.model === modelSlug,
+    );
+
+    if (exactMatch.length > 0) return exactMatch;
+
+    // Keep fake data usable for any product slug while preserving model/date/turn shape.
+    return GROUPED_PIPELINE_DATA.pipelines.map((snapshot) => ({
+      ...snapshot,
+      model: modelSlug || snapshot.model,
+    }));
+  }, [modelSlug]);
+
+  const activeSnapshot = useMemo(() => {
+    if (modelSnapshots.length === 0) return null;
+
+    if (selectedDate && selectedTurn) {
+      const exact = modelSnapshots.find(
+        (snapshot) => snapshot.date === selectedDate && snapshot.turn === selectedTurn,
+      );
+      if (exact) return exact;
+    }
+
+    const sorted = [...modelSnapshots].sort((a, b) => {
+      const dateDiff = b.date.localeCompare(a.date);
+      if (dateDiff !== 0) return dateDiff;
+      return Number(b.turn) - Number(a.turn);
+    });
+
+    return sorted[0] ?? null;
+  }, [modelSnapshots, selectedDate, selectedTurn]);
+
+  const groups = useMemo(() => activeSnapshot?.groups ?? [], [activeSnapshot]);
+
+  useEffect(() => {
+    setCollapsedGroups((previous) => {
+      const next: Record<string, boolean> = {};
+      for (const group of groups) {
+        next[group.id] = previous[group.id] ?? false;
+      }
+      return next;
+    });
+  }, [groups]);
 
   const detailById = useMemo(() => {
     const map = new Map<string, DetailNode>();
 
-    for (const group of GROUPED_PIPELINE_DATA.groups) {
+    for (const group of groups) {
       const starts = group.tasks.map((task) => new Date(task.start).getTime());
       const ends = group.tasks.map((task) => new Date(task.end).getTime());
       const groupStatus = getGroupStatus(group.tasks);
@@ -336,12 +391,12 @@ export default function ProductDataFlowPage() {
     }
 
     return map;
-  }, []);
+  }, [groups]);
 
   const ganttTasks = useMemo<Task[]>(() => {
     const tasks: Task[] = [];
 
-    for (const group of GROUPED_PIPELINE_DATA.groups) {
+    for (const group of groups) {
       const starts = group.tasks.map((task) => new Date(task.start).getTime());
       const ends = group.tasks.map((task) => new Date(task.end).getTime());
       const groupStatus = getGroupStatus(group.tasks);
@@ -388,13 +443,13 @@ export default function ProductDataFlowPage() {
     }
 
     return tasks;
-  }, [collapsedGroups]);
+  }, [collapsedGroups, groups]);
 
   const blockedTaskIds = useMemo(() => {
     const failing = new Set<string>();
     const blocked = new Set<string>();
 
-    for (const group of GROUPED_PIPELINE_DATA.groups) {
+    for (const group of groups) {
       for (const task of group.tasks) {
         if (
           ["with_problems", "run_again", "not_run", "under_support", "suspended"].includes(
@@ -406,7 +461,7 @@ export default function ProductDataFlowPage() {
       }
     }
 
-    for (const group of GROUPED_PIPELINE_DATA.groups) {
+    for (const group of groups) {
       for (const task of group.tasks) {
         if (task.dependencies.some((dep) => failing.has(dep))) {
           blocked.add(task.id);
@@ -415,7 +470,7 @@ export default function ProductDataFlowPage() {
     }
 
     return blocked;
-  }, []);
+  }, [groups]);
 
   const selectedTask = selectedTaskId ? detailById.get(selectedTaskId) : null;
 
@@ -493,8 +548,16 @@ export default function ProductDataFlowPage() {
     };
   }, []);
 
+  if (!activeSnapshot) {
+    return (
+      <div className="w-full rounded-lg border border-zinc-200 bg-white p-4 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+        Nenhum fluxo fake encontrado para este modelo.
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-[calc(100vh-131px)] max-h-[calc(100vh-131px)] min-h-0 flex flex-col overflow-hidden">
+    <div className="w-full h-full max-h-full min-h-0 flex flex-col overflow-hidden">
       <div
         ref={ganttShellRef}
         className="data-flow-gantt-shell w-full h-full flex-1 min-h-0 overflow-hidden dark:bg-zinc-800"

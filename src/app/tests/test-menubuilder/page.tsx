@@ -215,7 +215,7 @@ export default function TesteMenuPage() {
   // Evita problemas de hidratação SSR
   if (!isMounted) {
     return (
-      <div className="flex h-[calc(100vh-131px)] w-full items-center justify-center">
+      <div className="flex h-[calc(100vh-140px)] w-full items-center justify-center">
         <LoadingSpinner text="Carregando..." size="lg" variant="centered" />
       </div>
     );

@@ -37,10 +37,10 @@ export function ProblemsListColumn({
   loadingDetail,
 }: ProblemsListColumnProps) {
   return (
-    <div className="flex w-full flex-shrink-0 flex-col border-r border-zinc-200 sm:w-md dark:border-zinc-700">
+    <div className="flex w-full shrink-0 flex-col border-r border-zinc-200 sm:w-md dark:border-zinc-700">
       <div
         ref={listRef}
-        className="scrollbar size-full h-[calc(100vh-131px)] overflow-y-auto"
+        className="scrollbar size-full h-[calc(100vh-140px)] overflow-y-auto"
       >
         {/* Campo de busca */}
         <div className="border-b border-zinc-200 p-4 flex items-center gap-2">

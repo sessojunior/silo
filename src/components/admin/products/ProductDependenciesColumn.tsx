@@ -100,8 +100,8 @@ export default function ProductDependenciesColumn({
   };
 
   return (
-    <div className="flex md:w-md flex-shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-700">
-      <div className="scrollbar size-full h-[calc(100vh-131px)] overflow-y-auto">
+    <div className="flex md:w-md shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-700">
+      <div className="scrollbar size-full h-[calc(100vh-140px)] overflow-y-auto">
         {/* TreeView */}
         <div className="p-6" role="tree" aria-orientation="vertical">
           {/* Header */}

@@ -26,7 +26,7 @@ export default async function ProductsLayout({ children, params }: Props) {
   const tabs = [
     { label: "Base de conhecimento", url: `/admin/products/${slug}` },
     { label: "Problemas & soluções", url: `/admin/products/${slug}/problems` },
-    { label: "Fluxo de dados", url: `/admin/products/${slug}/data-flow` },
+    { label: "Fluxo de dados (Fake)", url: `/admin/products/${slug}/data-flow` },
   ];
 
   return (
@@ -34,8 +34,16 @@ export default async function ProductsLayout({ children, params }: Props) {
       <div className="flex flex-col">
         {/* Botões */}
         <div className="flex">
-          <div className="flex w-full border-b border-zinc-200 bg-zinc-100 px-4 py-3 transition dark:border-zinc-700 dark:bg-zinc-700">
-            <ProductTabs tabs={tabs} />
+          <div className="h-19 flex w-full border-b border-zinc-200 bg-zinc-100 px-4 py-3 transition dark:border-zinc-700 dark:bg-zinc-700">
+            <ProductTabs
+              tabs={tabs}
+              modelSlug={slug}
+              modelTurns={
+                Array.isArray(found[0]?.turns)
+                  ? found[0].turns.map((turn) => String(turn))
+                  : []
+              }
+            />
           </div>
         </div>
         <div>

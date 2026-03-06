@@ -33,7 +33,7 @@ export default function ProjectDetailsHeader({
     <div className="w-full">
       {/* Navegação por Abas */}
       <div className="flex">
-        <div className="flex w-full border-b border-zinc-200 bg-zinc-100 px-4 py-3 transition dark:border-zinc-700 dark:bg-zinc-700">
+        <div className="h-19 flex w-full border-b border-zinc-200 bg-zinc-100 px-4 py-3 transition dark:border-zinc-700 dark:bg-zinc-700">
           <ProductTabs tabs={tabs} />
         </div>
       </div>

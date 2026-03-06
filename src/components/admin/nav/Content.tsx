@@ -19,8 +19,8 @@ export default function NavContent({
       className={twMerge(clsx("bg-white dark:bg-zinc-800"), className)}
       {...props}
     >
-      <div className="flex w-full flex-shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-700">
-        <div className="scrollbar size-full h-[calc(100vh-131px)] overflow-y-auto">
+      <div className="flex w-full shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-700">
+        <div className="scrollbar size-full h-[calc(100vh-140px)] overflow-y-auto">
           {children}
         </div>
       </div>
