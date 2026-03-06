@@ -29,7 +29,8 @@ export default function ChartLine({ refresh = 0 }: { refresh?: number }) {
     async function load() {
       try {
         const res = await fetch(
-          config.getApiUrl("/api/admin/dashboard/problems-solutions"),
+          `${config.getApiUrl("/api/admin/dashboard/problems-solutions")}?_t=${Date.now()}`,
+          { cache: "no-store" },
         );
         if (res.ok) {
           const json = (await res.json()) as HttpResponse<ChartApiResponse>;

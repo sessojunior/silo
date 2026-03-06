@@ -146,8 +146,10 @@ export default function ProductTimeline({ statuses, timelineData }: Props) {
                   );
                 }
 
-                // Determinar cor do dia baseado nos turnos
-                const turnStatuses = allTurnsForDate.map(
+                // Determinar cor do dia com base apenas nos turnos realmente registrados.
+                // Isso evita que turnos ausentes (preenchidos como pending só para tooltip)
+                // impeçam a visualização de "completed" após salvar um acontecimento.
+                const turnStatuses = existingTurns.map(
                   (turn) => turn.status as ProductStatus,
                 );
                 const dayColor = getDayColorFromTurns(turnStatuses);

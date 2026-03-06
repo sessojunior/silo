@@ -422,7 +422,6 @@ export default function ProductActivityOffcanvas({
           onClose={() => setIncidentManagementOpen(false)}
           onIncidentUpdated={() => {
             loadIncidents();
-            onSaved?.();
           }}
         />
       </div>

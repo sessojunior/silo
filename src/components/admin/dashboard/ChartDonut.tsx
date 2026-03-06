@@ -29,7 +29,8 @@ export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
     async function load() {
       try {
         const res = await fetch(
-          config.getApiUrl("/api/admin/dashboard/problems-causes"),
+          `${config.getApiUrl("/api/admin/dashboard/problems-causes")}?_t=${Date.now()}`,
+          { cache: "no-store" },
         );
         if (res.ok) {
           const json = (await res.json()) as HttpResponse<ApiResponse>;

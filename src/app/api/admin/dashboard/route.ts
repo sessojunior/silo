@@ -7,6 +7,8 @@ import { INCIDENT_STATUS } from "@/lib/productStatus";
 import { requireAdminAuthUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type AlertStatus =
   | "pending"

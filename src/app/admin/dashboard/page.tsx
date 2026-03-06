@@ -67,7 +67,10 @@ export default function DashboardPage() {
   } | null>(null);
 
   const fetchSummary = useCallback(async () => {
-    const res = await fetch(config.getApiUrl("/api/admin/dashboard/summary"));
+    const res = await fetch(
+      `${config.getApiUrl("/api/admin/dashboard/summary")}?_t=${Date.now()}`,
+      { cache: "no-store" },
+    );
     if (res.ok) {
       const json = (await res.json()) as HttpResponse<{
         recentCount: number;
@@ -79,7 +82,10 @@ export default function DashboardPage() {
   }, []);
 
   const fetchDashboard = useCallback(async () => {
-    const res = await fetch(config.getApiUrl("/api/admin/dashboard"));
+    const res = await fetch(
+      `${config.getApiUrl("/api/admin/dashboard")}?_t=${Date.now()}`,
+      { cache: "no-store" },
+    );
     if (res.ok) {
       const json = (await res.json()) as HttpResponse<DashboardProduct[]>;
       const items = json.success && Array.isArray(json.data) ? json.data : [];
@@ -101,7 +107,8 @@ export default function DashboardPage() {
     async function loadProjects() {
       try {
         const res = await fetch(
-          config.getApiUrl("/api/admin/dashboard/projects"),
+          `${config.getApiUrl("/api/admin/dashboard/projects")}?_t=${Date.now()}`,
+          { cache: "no-store" },
         );
         if (res.ok) {
           const json = (await res.json()) as HttpResponse<

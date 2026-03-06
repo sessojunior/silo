@@ -10,7 +10,7 @@ interface DashboardLayoutProps {
 
 const DASHBOARD_TABS = [
   { label: "Visão geral", url: "/admin/dashboard" },
-  { label: "Monitoramento", url: "/admin/dashboard/monitoramento" },
+  { label: "Monitoramento", url: "/admin/dashboard/monitoring" },
 ] as const;
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
