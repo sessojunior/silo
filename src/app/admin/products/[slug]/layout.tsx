@@ -26,6 +26,7 @@ export default async function ProductsLayout({ children, params }: Props) {
   const tabs = [
     { label: "Base de conhecimento", url: `/admin/products/${slug}` },
     { label: "Problemas & soluções", url: `/admin/products/${slug}/problems` },
+    { label: "Fluxo de dados", url: `/admin/products/${slug}/data-flow` },
   ];
 
   return (

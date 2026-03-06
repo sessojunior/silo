@@ -9,7 +9,7 @@ export default async function ProjectDetailsLayout({
   children,
 }: ProjectDetailsLayoutProps) {
   return (
-    <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-900">
+    <div className="w-full h-full flex flex-col">
       {children}
     </div>
   );

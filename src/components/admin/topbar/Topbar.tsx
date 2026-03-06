@@ -4,11 +4,15 @@ import TopbarDropdown from "@/components/admin/topbar/TopbarDropdown";
 import TopbarButton from "@/components/admin/topbar/TopbarButton";
 import TopbarDivider from "@/components/admin/topbar/TopbarDivider";
 import ChatNotificationButton from "@/components/admin/topbar/ChatNotificationButton";
+import TopbarTitle from "@/components/admin/topbar/TopbarTitle";
 import { useSidebar } from "@/context/SidebarContext";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { config } from "@/lib/config";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import type { ApiResponse } from "@/lib/api-response";
+import { useAdminPageTitle } from "@/hooks/useAdminPageTitle";
+import { getAdminTopbarBackHref } from "@/lib/navigation/pageTitle";
 
 export type AccountLinkProps = {
   id: string;
@@ -21,7 +25,10 @@ export type AccountProps = AccountLinkProps[];
 
 export default function Topbar() {
   const { isOpenSidebar } = useSidebar();
+  const pathname = usePathname();
   const [chatEnabled, setChatEnabled] = useState(true);
+  const pageTitle = useAdminPageTitle();
+  const backHref = getAdminTopbarBackHref(pathname || "/");
 
   // Verificar se o chat está habilitado para o usuário
   useEffect(() => {
@@ -86,7 +93,7 @@ export default function Topbar() {
   return (
     <>
       <header
-        className={`sticky inset-x-0 top-0 z-40 flex h-16 w-full shrink-0 flex-wrap border-b border-b-zinc-200 bg-white py-2.5 md:flex-nowrap md:justify-start dark:border-zinc-700 dark:bg-zinc-900 ${isOpenSidebar ? "ps-[260px]" : "lg:ps-[260px]"}`}
+        className={`sticky inset-x-0 top-0 z-40 flex h-16 w-full shrink-0 flex-wrap border-b border-b-zinc-200 bg-white py-2.5 md:flex-nowrap md:justify-start dark:border-zinc-700 dark:bg-zinc-900 ${isOpenSidebar ? "ps-65" : "lg:ps-65"}`}
       >
         <nav className="flex w-full items-center px-4">
           <div className="flex w-full items-center justify-between gap-x-2">
@@ -98,11 +105,16 @@ export default function Topbar() {
                 </TopbarButton>
               </div>
 
-              {/* Título fixo do sistema */}
-              <div className="flex items-center p-2">
-                <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[500px] xl:max-w-[600px] 2xl:max-w-none">
-                  Sistema de gestão de produtos e projetos metereológicos
-                </h1>
+              {/* Título dinâmico da página atual */}
+              <div className="flex items-center p-2 min-w-0">
+                {backHref && (
+                  <TopbarButton href={backHref} icon="icon-[lucide--arrow-left]">
+                    Voltar
+                  </TopbarButton>
+                )}
+                <TopbarTitle className="truncate max-w-40 sm:max-w-65 md:max-w-95 lg:max-w-125 xl:max-w-150 2xl:max-w-none">
+                  {pageTitle}
+                </TopbarTitle>
               </div>
             </div>
 

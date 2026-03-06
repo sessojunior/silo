@@ -222,15 +222,6 @@ export default function UsersPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="w-full p-6 border-b border-zinc-200 dark:border-zinc-700">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-          Usuários
-        </h1>
-        <p className="text-zinc-600 dark:text-zinc-400 mt-1">
-          Gerencie os usuários do sistema
-        </p>
-      </div>
       <div className="w-full space-y-6 p-6">
         {/* Ações e Filtros */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">

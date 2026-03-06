@@ -266,16 +266,6 @@ export default function SettingsProductsPage() {
 
   return (
     <div className="w-full">
-      {/* Cabeçalho */}
-      <div className="p-6 border-b border-zinc-200 dark:border-zinc-700">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-          Produtos
-        </h1>
-        <p className="text-zinc-600 dark:text-zinc-400 mt-1">
-          Gerencie os produtos e tasks do sistema
-        </p>
-      </div>
-
       {/* Conteúdo */}
       <div className="p-6">
         <div className="max-w-7xl mx-auto space-y-6">

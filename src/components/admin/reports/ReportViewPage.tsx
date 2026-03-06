@@ -357,32 +357,6 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
 
   return (
     <div className="w-full">
-      {/* Header */}
-      <div className="bg-white dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
-        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                  {report.title}
-                </h1>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
-                  {report.description}
-                </p>
-              </div>
-            </div>
-            <Button
-              style="bordered"
-              className="w-full sm:w-auto"
-              icon="icon-[lucide--target]"
-              onClick={() => setIsSmartOpen(true)}
-            >
-              Metas
-            </Button>
-          </div>
-        </div>
-      </div>
-
       <Offcanvas
         open={isSmartOpen}
         onClose={() => setIsSmartOpen(false)}
@@ -399,7 +373,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
         }
         width="lg"
       >
-        <div className="flex flex-col gap-6 p-6">
+        <div className="flex flex-col gap-3">
           <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-700/50 dark:bg-blue-950/20">
             <div className="flex items-start gap-3">
               <span className="icon-[lucide--sparkles] size-5 text-blue-600 dark:text-blue-400 mt-0.5" />
@@ -487,6 +461,16 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           reportType={reportId as "availability" | "problems" | "projects"}
+          rightAction={
+            <Button
+              style="bordered"
+              className="w-full sm:w-auto"
+              icon="icon-[lucide--target]"
+              onClick={() => setIsSmartOpen(true)}
+            >
+              Metas
+            </Button>
+          }
         />
       </div>
 
@@ -822,8 +806,8 @@ function renderProjectsTable(data: Record<string, unknown>) {
             >
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0 h-10 w-10">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-purple-400 to-zinc-500 flex items-center justify-center">
+                  <div className="shrink-0 h-10 w-10">
+                    <div className="h-10 w-10 rounded-full bg-linear-to-r from-purple-400 to-zinc-500 flex items-center justify-center">
                       <span className="text-sm font-medium text-white">
                         {(project.name as string)?.charAt(0)?.toUpperCase() ||
                           "P"}
@@ -861,7 +845,7 @@ function renderProjectsTable(data: Record<string, unknown>) {
                 <div className="flex items-center">
                   <div className="w-16 bg-gray-200 dark:bg-zinc-700 rounded-full h-2 mr-2">
                     <div
-                      className="bg-gradient-to-r from-zinc-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                      className="bg-linear-to-r from-zinc-500 to-purple-500 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${(project.progress as number) || 0}%` }}
                     ></div>
                   </div>
@@ -1006,8 +990,8 @@ function renderAvailabilityTable(data: Record<string, unknown>) {
             >
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0 h-10 w-10">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-zinc-400 to-purple-500 flex items-center justify-center">
+                  <div className="shrink-0 h-10 w-10">
+                    <div className="h-10 w-10 rounded-full bg-linear-to-r from-zinc-400 to-purple-500 flex items-center justify-center">
                       <span className="text-sm font-medium text-white">
                         {(product.name as string)?.charAt(0)?.toUpperCase() ||
                           "P"}
@@ -1038,7 +1022,7 @@ function renderAvailabilityTable(data: Record<string, unknown>) {
                 <div className="flex items-center">
                   <div className="w-16 bg-gray-200 dark:bg-zinc-700 rounded-full h-2 mr-2">
                     <div
-                      className="bg-gradient-to-r from-green-500 to-zinc-500 h-2 rounded-full transition-all duration-300"
+                      className="bg-linear-to-r from-green-500 to-zinc-500 h-2 rounded-full transition-all duration-300"
                       style={{
                         width: `${(product.availabilityPercentage as number) || 0}%`,
                       }}
@@ -1143,8 +1127,8 @@ function renderProblemsTable(data: Record<string, unknown>) {
             >
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0 h-10 w-10">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-red-400 to-orange-500 flex items-center justify-center">
+                  <div className="shrink-0 h-10 w-10">
+                    <div className="h-10 w-10 rounded-full bg-linear-to-r from-red-400 to-orange-500 flex items-center justify-center">
                       <span className="text-sm font-medium text-white">⚠️</span>
                     </div>
                   </div>
@@ -1166,8 +1150,8 @@ function renderProblemsTable(data: Record<string, unknown>) {
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0 h-8 w-8">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-r from-zinc-400 to-purple-500 flex items-center justify-center">
+                  <div className="shrink-0 h-8 w-8">
+                    <div className="h-8 w-8 rounded-full bg-linear-to-r from-zinc-400 to-purple-500 flex items-center justify-center">
                       <span className="text-xs font-medium text-white">
                         {(
                           (problem.product as Record<string, unknown>)

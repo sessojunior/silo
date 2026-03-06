@@ -1,0 +1,233 @@
+{
+  "groups": [
+    {
+      "id": "ingestion",
+      "name": "Ingestao de dados",
+      "tasks": [
+        {
+          "id": "download_gfs_025",
+          "name": "Download GFS 0.25",
+          "start": "2026-03-05T00:00:00Z",
+          "end": "2026-03-05T00:30:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": [],
+          "type": "task"
+        },
+        {
+          "id": "download_ecmwf_hres",
+          "name": "Download ECMWF HRES",
+          "start": "2026-03-05T00:15:00Z",
+          "end": "2026-03-05T00:45:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": [],
+          "type": "task"
+        },
+        {
+          "id": "download_obs_surface",
+          "name": "Download OBS Superficie",
+          "start": "2026-03-05T00:45:00Z",
+          "end": "2026-03-05T01:15:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": [],
+          "type": "task"
+        },
+        {
+          "id": "download_satellite_ir",
+          "name": "Download Satelite IR",
+          "start": "2026-03-05T01:00:00Z",
+          "end": "2026-03-05T01:30:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": [],
+          "type": "task"
+        },
+        {
+          "id": "download_radar_volume",
+          "name": "Download Volume Radar",
+          "start": "2026-03-05T01:15:00Z",
+          "end": "2026-03-05T01:45:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": [],
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "preprocessing",
+      "name": "Pre-processamento",
+      "tasks": [
+        {
+          "id": "convert_grib_netcdf",
+          "name": "Conversao GRIB para NetCDF",
+          "start": "2026-03-05T02:00:00Z",
+          "end": "2026-03-05T02:30:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": ["download_gfs_025", "download_ecmwf_hres"],
+          "type": "task"
+        },
+        {
+          "id": "qc_surface_obs",
+          "name": "Controle de Qualidade OBS",
+          "start": "2026-03-05T02:15:00Z",
+          "end": "2026-03-05T02:45:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": ["download_obs_surface"],
+          "type": "task"
+        },
+        {
+          "id": "radar_dealiasing",
+          "name": "Dealiasing de Velocidade Radar",
+          "start": "2026-03-05T02:30:00Z",
+          "end": "2026-03-05T03:00:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": ["download_radar_volume"],
+          "type": "task"
+        },
+        {
+          "id": "bias_correction",
+          "name": "Correcao de Bias",
+          "start": "2026-03-05T03:00:00Z",
+          "end": "2026-03-05T03:30:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": ["convert_grib_netcdf"],
+          "type": "task"
+        },
+        {
+          "id": "data_assimilation_3dvar",
+          "name": "Assimilacao 3DVAR",
+          "start": "2026-03-05T03:45:00Z",
+          "end": "2026-03-05T04:30:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": [
+            "qc_surface_obs",
+            "bias_correction",
+            "download_satellite_ir",
+            "radar_dealiasing"
+          ],
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "modeling",
+      "name": "Modelagem numerica",
+      "tasks": [
+        {
+          "id": "wrf_domain_prep",
+          "name": "Preparacao Dominios WRF",
+          "start": "2026-03-05T04:45:00Z",
+          "end": "2026-03-05T05:15:00Z",
+          "progress": 100,
+          "status": "completed",
+          "dependencies": ["data_assimilation_3dvar"],
+          "type": "task"
+        },
+        {
+          "id": "run_wrf_d01",
+          "name": "Execucao WRF D01",
+          "start": "2026-03-05T05:30:00Z",
+          "end": "2026-03-05T07:15:00Z",
+          "progress": 65,
+          "status": "in_progress",
+          "dependencies": ["wrf_domain_prep"],
+          "type": "task"
+        },
+        {
+          "id": "run_wrf_d02",
+          "name": "Execucao WRF D02",
+          "start": "2026-03-05T05:45:00Z",
+          "end": "2026-03-05T07:30:00Z",
+          "progress": 60,
+          "status": "in_progress",
+          "dependencies": ["wrf_domain_prep"],
+          "type": "task"
+        },
+        {
+          "id": "run_eta_15km",
+          "name": "Execucao ETA 15km",
+          "start": "2026-03-05T06:00:00Z",
+          "end": "2026-03-05T07:15:00Z",
+          "progress": 45,
+          "status": "with_problems",
+          "dependencies": ["data_assimilation_3dvar"],
+          "type": "task"
+        },
+        {
+          "id": "run_brams",
+          "name": "Execucao BRAMS",
+          "start": "2026-03-05T06:15:00Z",
+          "end": "2026-03-05T07:45:00Z",
+          "progress": 55,
+          "status": "under_support",
+          "dependencies": ["data_assimilation_3dvar"],
+          "type": "task"
+        }
+      ]
+    },
+    {
+      "id": "products",
+      "name": "Produtos e publicacao",
+      "tasks": [
+        {
+          "id": "post_wrf_fields",
+          "name": "Pos-processamento WRF",
+          "start": "2026-03-05T08:00:00Z",
+          "end": "2026-03-05T08:30:00Z",
+          "progress": 0,
+          "status": "pending",
+          "dependencies": ["run_wrf_d01", "run_wrf_d02"],
+          "type": "task"
+        },
+        {
+          "id": "post_eta_fields",
+          "name": "Pos-processamento ETA",
+          "start": "2026-03-05T08:15:00Z",
+          "end": "2026-03-05T08:45:00Z",
+          "progress": 35,
+          "status": "run_again",
+          "dependencies": ["run_eta_15km"],
+          "type": "task"
+        },
+        {
+          "id": "ensemble_blend",
+          "name": "Blend Ensemble Multimodelo",
+          "start": "2026-03-05T09:00:00Z",
+          "end": "2026-03-05T09:30:00Z",
+          "progress": 0,
+          "status": "pending",
+          "dependencies": ["post_wrf_fields", "post_eta_fields", "run_brams"],
+          "type": "task"
+        },
+        {
+          "id": "generate_products",
+          "name": "Geracao Produtos Meteo",
+          "start": "2026-03-05T09:45:00Z",
+          "end": "2026-03-05T10:15:00Z",
+          "progress": 0,
+          "status": "pending",
+          "dependencies": ["ensemble_blend"],
+          "type": "product"
+        },
+        {
+          "id": "publish_api_and_notify",
+          "name": "Publicacao API e Notificacao",
+          "start": "2026-03-05T10:30:00Z",
+          "end": "2026-03-05T11:00:00Z",
+          "progress": 0,
+          "status": "pending",
+          "dependencies": ["generate_products"],
+          "type": "task"
+        }
+      ]
+    }
+  ]
+}

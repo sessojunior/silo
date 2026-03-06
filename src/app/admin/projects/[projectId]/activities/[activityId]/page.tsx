@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "@/lib/toast";
-import { notFound, useParams, useRouter } from "next/navigation";
-import { getToday, formatDateBR } from "@/lib/dateUtils";
+import { notFound, useParams } from "next/navigation";
+import { getToday } from "@/lib/dateUtils";
+import { config } from "@/lib/config";
 import KanbanBoard from "@/components/admin/projects/KanbanBoard";
 import TaskFormOffcanvas from "@/components/admin/projects/TaskFormOffcanvas";
 import TaskHistoryModal from "@/components/admin/projects/TaskHistoryModal";
@@ -81,12 +82,10 @@ interface Activity {
   status?: "todo" | "progress" | "done" | "blocked";
 }
 
-import { config } from "@/lib/config";
 import type { ApiResponse } from "@/lib/api-response";
 
 export default function TaskKanbanPage() {
   const params = useParams();
-  const router = useRouter();
   const projectId = params.projectId as string;
   const activityId = params.activityId as string;
 
@@ -541,122 +540,8 @@ export default function TaskKanbanPage() {
     );
   }
 
-  // Função para voltar à página do projeto
-  const handleGoBack = () => {
-    router.push(`/admin/projects/${projectId}`);
-  };
-
-  // Função para obter ícone de prioridade
-  const getPriorityIcon = (priority: Activity["priority"]) => {
-    const priorityIcons = {
-      low: "⬇️",
-      medium: "➡️",
-      high: "⬆️",
-      urgent: "🚨",
-    };
-    const priorityLabels = {
-      low: "Baixa",
-      medium: "Média",
-      high: "Alta",
-      urgent: "Urgente",
-    };
-    return `${priorityIcons[priority || "medium"]} ${priorityLabels[priority || "medium"]}`;
-  };
-
-  // Função para formatar data
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return "Não definida";
-    return formatDateBR(dateString);
-  };
-
   return (
-    <div className="relative w-full h-[calc(100vh-64px)] flex flex-col overflow-x-auto overflow-y-auto">
-      {/* Cabeçalho */}
-      <div className="w-full p-6 border-b border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 sticky top-0 left-0 z-10">
-        <div className="flex items-center justify-between gap-6">
-          {/* Lado Esquerdo - Título e Botão Voltar */}
-          <div className="flex items-center gap-4 flex-1">
-            <button
-              onClick={handleGoBack}
-              className="size-10 rounded-full flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-              title="Voltar ao projeto"
-            >
-              <span className="icon-[lucide--arrow-left] size-4 text-zinc-600 dark:text-zinc-400" />
-            </button>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                {activity.name}
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="icon-[lucide--square-chart-gantt] size-3 text-blue-500" />
-                <p className="text-sm text-blue-500">{project.name}</p>
-                {activity.description && (
-                  <>
-                    <span className="text-zinc-400 dark:text-zinc-600">
-                      {" "}
-                      •{" "}
-                    </span>
-                    <p className="text-sm text-zinc-400 dark:text-zinc-600 max-w-sm truncate">
-                      {activity.description}
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Lado Direito - Informações da Atividade */}
-          <div className="flex gap-4">
-            {/* Prioridade */}
-            <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 px-4 py-3 min-w-[140px]">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-3 h-3 rounded-full ${activity.priority === "urgent" ? "bg-red-500" : activity.priority === "high" ? "bg-orange-500" : activity.priority === "medium" ? "bg-yellow-500" : "bg-green-500"}`}
-                />
-                <div>
-                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    Prioridade
-                  </p>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {getPriorityIcon(activity.priority)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Data de Início */}
-            <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 px-4 py-3 min-w-[140px]">
-              <div className="flex items-center gap-3">
-                <span className="icon-[lucide--calendar-days] size-4 text-zinc-400" />
-                <div>
-                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    Data de Início
-                  </p>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {formatDate(activity.startDate)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Data de Fim */}
-            <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 px-4 py-3 min-w-[140px]">
-              <div className="flex items-center gap-3">
-                <span className="icon-[lucide--calendar-check] size-4 text-zinc-400" />
-                <div>
-                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    Data de Fim
-                  </p>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {formatDate(activity.endDate)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="relative w-full h-[calc(100vh-64px)] flex flex-col overflow-x-auto overflow-y-auto bg-zinc-50 dark:bg-zinc-900">
       {/* Conteúdo */}
       <div className="flex-1 bg-zinc-50 dark:bg-zinc-900">
         <KanbanBoard

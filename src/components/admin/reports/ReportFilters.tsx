@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Select from "@/components/ui/Select";
 import { formatDate, formatDateBR } from "@/lib/dateUtils";
 
@@ -13,12 +14,14 @@ interface ReportFiltersProps {
   filters: ReportFiltersType;
   onFiltersChange: (filters: ReportFiltersType) => void;
   reportType: "availability" | "problems" | "projects";
+  rightAction?: ReactNode;
 }
 
 export function ReportFilters({
   filters,
   onFiltersChange,
   reportType,
+  rightAction,
 }: ReportFiltersProps) {
   const handleFilterChange = (
     key: keyof ReportFiltersType,
@@ -113,6 +116,7 @@ export function ReportFilters({
               { label: "📅 Personalizado", value: "custom" },
             ]}
           />
+          {rightAction}
         </div>
       </div>
 
