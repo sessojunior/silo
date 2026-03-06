@@ -496,7 +496,7 @@ export default function TaskKanbanPage() {
   // Estados de loading e erro
   if (loading) {
     return (
-      <div className="h-[calc(100vh-64px)] flex items-center justify-center">
+      <div className="h-[calc(100vh-140px)] flex items-center justify-center">
         <LoadingSpinner
           text="Carregando tarefas no kanban..."
           size="lg"
@@ -530,7 +530,7 @@ export default function TaskKanbanPage() {
 
   if (!activity || !project) {
     return (
-      <div className="h-[calc(100vh-64px)] flex items-center justify-center">
+      <div className="h-[calc(100vh-140px)] flex items-center justify-center">
         <div className="text-center">
           <p className="text-zinc-600 dark:text-zinc-400">
             Dados não encontrados
@@ -541,9 +541,9 @@ export default function TaskKanbanPage() {
   }
 
   return (
-    <div className="relative w-full h-[calc(100vh-64px)] flex flex-col overflow-x-auto overflow-y-auto bg-zinc-50 dark:bg-zinc-900">
+    <div className="relative w-full h-[calc(100vh-140px)] flex flex-col overflow-hidden bg-zinc-50 dark:bg-zinc-900">
       {/* Conteúdo */}
-      <div className="flex-1 bg-zinc-50 dark:bg-zinc-900">
+      <div className="flex-1 min-h-0 bg-zinc-50 dark:bg-zinc-900">
         <KanbanBoard
           tasks={kanbanTasks}
           onTasksReorder={handleTasksReorder}

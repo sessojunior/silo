@@ -3,10 +3,12 @@ import { config } from "@/lib/config";
 const STATIC_PAGE_TITLES: Record<string, string> = {
   "/admin": "Visão geral",
   "/admin/dashboard": "Visão geral",
+  "/admin/dashboard/monitoramento": "Monitoramento",
   "/admin/products": "Produtos & tasks",
   "/admin/projects": "Projetos ativos",
   "/admin/reports": "Relatórios",
   "/admin/groups": "Grupos & usuários",
+  "/admin/groups/users": "Usuários",
   "/admin/chat": "Bate-papo",
   "/admin/settings": "Configurações",
   "/admin/settings/products": "Produtos & tasks",

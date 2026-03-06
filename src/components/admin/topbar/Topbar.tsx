@@ -7,12 +7,10 @@ import ChatNotificationButton from "@/components/admin/topbar/ChatNotificationBu
 import TopbarTitle from "@/components/admin/topbar/TopbarTitle";
 import { useSidebar } from "@/context/SidebarContext";
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
 import { config } from "@/lib/config";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import type { ApiResponse } from "@/lib/api-response";
 import { useAdminPageTitle } from "@/hooks/useAdminPageTitle";
-import { getAdminTopbarBackHref } from "@/lib/navigation/pageTitle";
 
 export type AccountLinkProps = {
   id: string;
@@ -25,10 +23,8 @@ export type AccountProps = AccountLinkProps[];
 
 export default function Topbar() {
   const { isOpenSidebar } = useSidebar();
-  const pathname = usePathname();
   const [chatEnabled, setChatEnabled] = useState(true);
   const pageTitle = useAdminPageTitle();
-  const backHref = getAdminTopbarBackHref(pathname || "/");
 
   // Verificar se o chat está habilitado para o usuário
   useEffect(() => {
@@ -107,11 +103,6 @@ export default function Topbar() {
 
               {/* Título dinâmico da página atual */}
               <div className="flex items-center p-2 min-w-0">
-                {backHref && (
-                  <TopbarButton href={backHref} icon="icon-[lucide--arrow-left]">
-                    Voltar
-                  </TopbarButton>
-                )}
                 <TopbarTitle className="truncate max-w-40 sm:max-w-65 md:max-w-95 lg:max-w-125 xl:max-w-150 2xl:max-w-none">
                   {pageTitle}
                 </TopbarTitle>

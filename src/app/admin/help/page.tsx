@@ -70,6 +70,15 @@ export default function HelpPage() {
     fetchHelpDoc();
   }, []);
 
+  useEffect(() => {
+    const handleOpenEditor = () => setEditorOpen(true);
+    window.addEventListener("openHelpEditor", handleOpenEditor);
+
+    return () => {
+      window.removeEventListener("openHelpEditor", handleOpenEditor);
+    };
+  }, []);
+
   // Extrair títulos do markdown
   const extractTitles = (markdown: string) => {
     if (!markdown) return [];
@@ -177,27 +186,8 @@ export default function HelpPage() {
   return (
     <div className="w-full h-full flex bg-zinc-50 dark:bg-zinc-900">
       {/* Sidebar */}
-      <div className="w-96 border-r border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 flex-shrink-0">
+      <div className="w-96 border-r border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shrink-0">
         <div className="h-full flex flex-col">
-          <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-700 p-6">
-            <div>
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
-                Ajuda
-              </h2>
-              <p className="text-base text-zinc-600 dark:text-zinc-400 mt-1">
-                Documentação do Silo
-              </p>
-            </div>
-            <div>
-              <Button
-                onClick={() => setEditorOpen(true)}
-                style="unstyled"
-                className="rounded-full size-10 px-0 py-0"
-              >
-                <span className="icon-[lucide--settings] size-4" />
-              </Button>
-            </div>
-          </div>
           <div className="flex-1 overflow-y-auto p-3">
             {titles.length === 0 ? (
               <div className="text-center py-6">
@@ -272,7 +262,7 @@ export default function HelpPage() {
       <Offcanvas
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
-        title="Editor da Documentação"
+        title="Editor da Ajuda"
         width="xl"
         contentClassName="p-0"
         footerActions={
@@ -304,7 +294,7 @@ export default function HelpPage() {
               <Label htmlFor="content" required>
                 Conteúdo da Documentação (Markdown)
               </Label>
-              <div className="flex-1 min-h-[400px]">
+              <div className="flex-1 min-h-100">
                 <MarkdownEditor
                   value={formContent}
                   onChange={(val: string) => setFormContent(val || "")}

@@ -385,7 +385,7 @@ function DroppableColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`w-72 flex flex-col rounded-xl border-2 ${column.border} shadow-md ${column.bg}`}
+      className={`w-72 shrink-0 flex flex-col rounded-xl border-2 ${column.border} shadow-md ${column.bg}`}
     >
       {/* Cabeçalho da coluna */}
       <div
@@ -671,14 +671,14 @@ export default function KanbanBoard({
   }
 
   return (
-    <div className="flex-1 bg-zinc-50 dark:bg-zinc-900">
+    <div className="h-full w-full overflow-auto bg-zinc-50 dark:bg-zinc-900">
       <div
-        className={`min-w-max h-full p-6 relative ${isDragBlocked ? "pointer-events-none select-none" : ""}`}
+        className={`min-w-max min-h-full p-6 relative ${isDragBlocked ? "pointer-events-none select-none" : ""}`}
       >
         {(() => {
           if (isDragBlocked) {
             return (
-              <div className="flex gap-6 items-start overflow-x-auto">
+              <div className="flex w-max gap-6 items-start">
                 {columns.map((column) => (
                   <DroppableColumn
                     key={column.id}
@@ -701,7 +701,7 @@ export default function KanbanBoard({
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
               >
-                <div className="flex gap-6 items-start overflow-x-auto">
+                <div className="flex w-max gap-6 items-start">
                   {columns.map((column) => (
                     <DroppableColumn
                       key={column.id}

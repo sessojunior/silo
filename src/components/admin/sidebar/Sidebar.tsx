@@ -281,8 +281,30 @@ export default function Sidebar() {
                   id: "1.4",
                   title: "Relatórios",
                   icon: "icon-[lucide--bar-chart-3]",
-                  url: "/admin/reports",
-                  items: null,
+                  url: "#",
+                  items: [
+                    {
+                      id: "1.4.1",
+                      title: "Disponibilidade por Produto",
+                      icon: null,
+                      url: "/admin/reports/availability",
+                      items: null,
+                    },
+                    {
+                      id: "1.4.2",
+                      title: "Problemas Mais Frequentes",
+                      icon: null,
+                      url: "/admin/reports/problems",
+                      items: null,
+                    },
+                    {
+                      id: "1.4.3",
+                      title: "Projetos e Atividades",
+                      icon: null,
+                      url: "/admin/reports/projects",
+                      items: null,
+                    },
+                  ],
                 },
               ]
             : []),
@@ -380,7 +402,7 @@ export default function Sidebar() {
 
   return (
     <div
-      className={`fixed inset-y-0 start-0 z-60 h-full w-[260px] transform border-e border-zinc-200 bg-white transition-all duration-300 dark:border-zinc-700 dark:bg-zinc-900 lg:block lg:translate-x-0 
+      className={`fixed inset-y-0 start-0 z-60 h-full w-65 transform border-e border-zinc-200 bg-white transition-all duration-300 dark:border-zinc-700 dark:bg-zinc-900 lg:block lg:translate-x-0 
 					${isOpenSidebar ? "translate-x-0" : "-translate-x-full"}
 				`}
       role="dialog"

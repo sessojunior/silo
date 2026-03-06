@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   isValidName,
   isValidEmail,
@@ -30,6 +31,7 @@ interface FormState {
 import { config } from "@/lib/config";
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const { currentUser } = useCurrentUser();
   const {
     userProfile,
@@ -38,7 +40,6 @@ export default function SettingsPage() {
     updateUserProfile,
     updateUserPreferences,
   } = useUser();
-  const [activeTab, setActiveTab] = useState<TabType>("profile");
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPreferences, setLoadingPreferences] = useState(false);
   const [loadingEmail, setLoadingEmail] = useState(false);
@@ -166,27 +167,11 @@ export default function SettingsPage() {
     fetchAllData();
   }, [fetchAllData]);
 
-  // Navigation items
-  const navigationItems = [
-    {
-      id: "profile" as TabType,
-      name: "Perfil",
-      icon: "icon-[lucide--user]",
-      description: "Informações pessoais e foto",
-    },
-    {
-      id: "preferences" as TabType,
-      name: "Preferências",
-      icon: "icon-[lucide--settings]",
-      description: "Permissões e notificações",
-    },
-    {
-      id: "security" as TabType,
-      name: "Segurança",
-      icon: "icon-[lucide--shield-check]",
-      description: "E-mail e senha",
-    },
-  ];
+  const tabFromUrl = searchParams.get("tab");
+  const activeTab: TabType =
+    tabFromUrl === "preferences" || tabFromUrl === "security"
+      ? tabFromUrl
+      : "profile";
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -949,50 +934,9 @@ export default function SettingsPage() {
       {/* Content */}
       <div className="p-6 bg-white dark:bg-zinc-800">
         <div className="max-w-7xl mx-auto">
-          {/* Mobile Navigation Dropdown */}
-          <div className="lg:hidden mb-6">
-            <Select
-              name="mobile-navigation"
-              selected={activeTab}
-              onChange={(value) => setActiveTab(value as TabType)}
-              options={navigationItems.map((item) => ({
-                value: item.id,
-                label: item.name,
-              }))}
-              placeholder="Selecione uma seção"
-            />
-          </div>
-
-          {/* Desktop Layout */}
-          <div className="grid lg:grid-cols-[280px_1fr] gap-6">
-            {/* Left Sidebar Navigation - Hidden on mobile */}
-            <div className="hidden lg:block">
-              <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-2">
-                <nav className="space-y-1">
-                  {navigationItems.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-3 rounded-md text-left transition-colors ${activeTab === item.id ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700" : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"}`}
-                    >
-                      <span className={`${item.icon} size-5`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium">{item.name}</div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                          {item.description}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </nav>
-              </div>
-            </div>
-
-            {/* Right Content Area */}
-            <div className="min-w-0 flex-1">
-              <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-6">
-                {getActiveTabContent()}
-              </div>
+          <div className="min-w-0 flex-1">
+            <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-6">
+              {getActiveTabContent()}
             </div>
           </div>
         </div>
