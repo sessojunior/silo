@@ -10,6 +10,7 @@ type NavButtonProps = Omit<LinkProps, "href"> & {
   disabled?: boolean;
   icon?: string | null;
   active?: boolean;
+  title?: string;
 };
 
 export default function NavButton({
@@ -18,6 +19,7 @@ export default function NavButton({
   disabled = false,
   icon = null,
   active = false,
+  title,
   ...props
 }: NavButtonProps) {
   const finalClassName = twMerge(
@@ -46,6 +48,7 @@ export default function NavButton({
       prefetch={prefetch}
       aria-disabled={disabled}
       role="button"
+      title={title}
       className={finalClassName}
       {...props}
     >

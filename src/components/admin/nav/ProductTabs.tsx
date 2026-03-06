@@ -26,6 +26,8 @@ interface GroupedPipelineDataFile {
 
 const GROUPED_PIPELINE_DATA = groupedPipelineDataJson as GroupedPipelineDataFile;
 const DATA_FLOW_MODEL = "bsm";
+const DATA_FLOW_FAKE_TAB_TITLE =
+  "Fluxo de dados falso como ilustração de exemplo de como poderia ser apresentado o fluxo de dados de cada turno de cada modelo. Poderá ser desenvolvido em uma versão futura.";
 
 function formatIsoDateForLabel(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");
@@ -185,7 +187,12 @@ export default function ProductTabs({
       <div className="flex gap-x-2">
         {/* Botões */}
         {tabs.map((tab) => (
-          <Button key={tab.url} href={tab.url} active={pathname === tab.url}>
+          <Button
+            key={tab.url}
+            href={tab.url}
+            active={pathname === tab.url}
+            title={tab.label === "Fluxo de dados (Fake)" ? DATA_FLOW_FAKE_TAB_TITLE : undefined}
+          >
             {tab.label}
           </Button>
         ))}
