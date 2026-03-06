@@ -11,6 +11,7 @@ interface StatusHistoryEntry {
   id: string;
   status: string;
   description?: string | null;
+  intervention?: string | null;
   createdAt: string;
   user: {
     id: string;
@@ -138,7 +139,7 @@ export default function ProductStatusHistory({
             {history.map((entry) => (
               <div key={entry.id} className="relative flex items-start gap-3">
                 {/* Ícone da ação com fundo branco para sobrepor a linha */}
-                <div className="relative z-10 flex-shrink-0 size-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center border-2 border-white dark:border-zinc-800">
+                <div className="relative z-10 shrink-0 size-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center border-2 border-white dark:border-zinc-800">
                   <span className="icon-[lucide--activity] size-4 text-blue-600 dark:text-blue-400" />
                 </div>
 
@@ -169,11 +170,28 @@ export default function ProductStatusHistory({
                     })()}
                   </div>
                   {entry.description && (
-                    <TruncatedDescription
-                      description={entry.description}
-                      maxLines={3}
-                      className="mt-2 text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 rounded px-2 py-1"
-                    />
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        Descrição do incidente
+                      </p>
+                      <TruncatedDescription
+                        description={entry.description}
+                        maxLines={3}
+                        className="text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 rounded px-2 py-1"
+                      />
+                    </div>
+                  )}
+                  {entry.intervention && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                        Intervenção realizada
+                      </p>
+                      <TruncatedDescription
+                        description={entry.intervention}
+                        maxLines={3}
+                        className="text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800 rounded px-2 py-1"
+                      />
+                    </div>
                   )}
                 </div>
               </div>

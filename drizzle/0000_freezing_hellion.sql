@@ -131,6 +131,7 @@ CREATE TABLE "product_activity" (
 	"status" text NOT NULL,
 	"problem_category_id" text,
 	"description" text,
+	"intervention" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "unique_product_activity_product_date_turn" UNIQUE("product_id","date","turn")
@@ -142,6 +143,7 @@ CREATE TABLE "product_activity_history" (
 	"user_id" text NOT NULL,
 	"status" text NOT NULL,
 	"description" text,
+	"intervention" text,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint

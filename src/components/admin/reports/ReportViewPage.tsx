@@ -9,6 +9,7 @@ import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { config } from "@/lib/config";
 import Button from "@/components/ui/Button";
 import Offcanvas from "@/components/ui/Offcanvas";
+import { readApiResponse } from "@/lib/api-response";
 
 interface ReportViewPageProps {
   reportId: string;
@@ -29,15 +30,14 @@ interface AvailabilityReportData {
     totalActivities: number;
     completedActivities: number;
     failedActivities: number;
+    interventionsCount: number;
+    latestInterventionAt?: string | null;
+    latestInterventionText?: string | null;
     lastActivity?: Date;
   }>;
-  summary: {
-    totalProducts: number;
-    averageAvailability: number;
-    totalActivities: number;
-    completedActivities: number;
-    failedActivities: number;
-  };
+  totalProducts: number;
+  avgAvailability: number;
+  totalInterventions: number;
 }
 
 interface ProblemsReportData {
@@ -224,20 +224,21 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           queryParams.append("endDate", formatDate(filters.endDate));
 
         const apiUrl = `${config.getApiUrl(apiPath)}?${queryParams.toString()}`;
-        const response = await fetch(apiUrl);
+        const response = await fetch(apiUrl, {
+          credentials: "include",
+        });
 
-        if (!response.ok) {
-          const errorData = await response.json();
+        const apiResponse = await readApiResponse(response);
+
+        if (!response.ok || !apiResponse.success) {
           console.error("❌ [COMPONENT_REPORTS] Erro da API:", {
             status: response.status,
-            error: errorData,
+            error: apiResponse,
           });
           throw new Error(
-            errorData.error || "Erro ao buscar dados do relatório",
+            apiResponse.error || "Erro ao buscar dados do relatório",
           );
         }
-
-        const data = await response.json();
 
         // Mapear dados para o formato do relatório
         const reportData: ReportData = {
@@ -245,15 +246,19 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           title: getReportTitle(reportId),
           description: getReportDescription(reportId),
           type: reportId as "availability" | "problems" | "projects",
-          data: data,
+          data: (apiResponse.data || {}) as ReportDataStructure,
           filters: filters,
         };
 
         setReport(reportData);
       } catch (err) {
+        const normalizedError =
+          err instanceof Error
+            ? { message: err.message, stack: err.stack }
+            : { message: String(err) };
         console.error("❌ [COMPONENT_REPORTS] Erro ao buscar relatório:", {
           reportId,
-          error: err,
+          error: normalizedError,
         });
         setError(err instanceof Error ? err.message : "Erro desconhecido");
       } finally {
@@ -548,10 +553,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
         {/* Tabela Detalhada - Apenas para relatório de projetos */}
         {report.type === "projects" && (
           <div className="mt-6 sm:mt-8">
-            <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-                Detalhamento dos Projetos
-              </h3>
+            <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
               {renderProjectsTable(
                 report.data as unknown as Record<string, unknown>,
               )}
@@ -562,10 +564,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
         {/* Tabela Detalhada - Apenas para relatório de disponibilidade */}
         {report.type === "availability" && (
           <div className="mt-6 sm:mt-8">
-            <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-                Detalhamento dos Produtos
-              </h3>
+            <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
               {renderAvailabilityTable(
                 report.data as unknown as Record<string, unknown>,
               )}
@@ -576,10 +575,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
         {/* Tabela Detalhada - Apenas para relatório de problemas */}
         {report.type === "problems" && (
           <div className="mt-6 sm:mt-8">
-            <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-                Detalhamento dos Problemas
-              </h3>
+            <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
               {renderProblemsTable(
                 report.data as unknown as Record<string, unknown>,
               )}
@@ -612,6 +608,14 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               {(data.avgAvailability as number)
                 ? `${(data.avgAvailability as number).toFixed(1)}%`
                 : "0%"}
+            </span>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 bg-blue-50 dark:bg-blue-950 rounded-lg space-y-2 sm:space-y-0">
+            <span className="text-blue-800 dark:text-blue-200 font-medium text-sm sm:text-base">
+              Intervenções Registradas
+            </span>
+            <span className="text-blue-900 dark:text-blue-100 font-bold text-lg sm:text-xl">
+              {(data.totalInterventions as number) || 0}
             </span>
           </div>
         </>
@@ -974,6 +978,9 @@ function renderAvailabilityTable(data: Record<string, unknown>) {
               Atividades Falharam
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              Intervenções
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               Última Atividade
             </th>
           </tr>
@@ -1040,6 +1047,21 @@ function renderAvailabilityTable(data: Record<string, unknown>) {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                 {(product.failedActivities as number) || 0}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {(product.interventionsCount as number) || 0}
+                  </span>
+                  {(product.latestInterventionText as string) && (
+                    <span
+                      className="text-xs text-gray-500 dark:text-gray-400 max-w-48 truncate"
+                      title={product.latestInterventionText as string}
+                    >
+                      {product.latestInterventionText as string}
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                 {(product.lastActivityDate as string)

@@ -1,5 +1,5 @@
 {
-  "id": "a9a36e34-5fec-4731-93bb-1c80132dad3b",
+  "id": "c967449c-8330-4fa2-aaf0-da243eb5146f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -95,8 +95,12 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -168,8 +172,12 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -179,7 +187,9 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": ["token"]
+          "columns": [
+            "token"
+          ]
         }
       },
       "policies": {},
@@ -256,7 +266,9 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         }
       },
       "policies": {},
@@ -465,8 +477,12 @@
           "name": "chat_message_sender_user_id_user_id_fk",
           "tableFrom": "chat_message",
           "tableTo": "user",
-          "columnsFrom": ["sender_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "sender_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -474,8 +490,12 @@
           "name": "chat_message_receiver_group_id_group_id_fk",
           "tableFrom": "chat_message",
           "tableTo": "group",
-          "columnsFrom": ["receiver_group_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "receiver_group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -483,8 +503,12 @@
           "name": "chat_message_receiver_user_id_user_id_fk",
           "tableFrom": "chat_message",
           "tableTo": "user",
-          "columnsFrom": ["receiver_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "receiver_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -533,8 +557,12 @@
           "name": "chat_user_presence_user_id_user_id_fk",
           "tableFrom": "chat_user_presence",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -620,7 +648,9 @@
         "contact_email_unique": {
           "name": "contact_email_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         }
       },
       "policies": {},
@@ -706,7 +736,9 @@
         "group_name_unique": {
           "name": "group_name_unique",
           "nullsNotDistinct": false,
-          "columns": ["name"]
+          "columns": [
+            "name"
+          ]
         }
       },
       "policies": {},
@@ -794,8 +826,12 @@
           "name": "group_permissions_group_id_group_id_fk",
           "tableFrom": "group_permissions",
           "tableTo": "group",
-          "columnsFrom": ["group_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -805,7 +841,11 @@
         "unique_group_permission": {
           "name": "unique_group_permission",
           "nullsNotDistinct": false,
-          "columns": ["group_id", "resource", "action"]
+          "columns": [
+            "group_id",
+            "resource",
+            "action"
+          ]
         }
       },
       "policies": {},
@@ -963,6 +1003,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "intervention": {
+          "name": "intervention",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1042,8 +1088,12 @@
           "name": "product_activity_product_id_product_id_fk",
           "tableFrom": "product_activity",
           "tableTo": "product",
-          "columnsFrom": ["product_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1051,8 +1101,12 @@
           "name": "product_activity_user_id_user_id_fk",
           "tableFrom": "product_activity",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1060,8 +1114,12 @@
           "name": "product_activity_problem_category_id_product_problem_category_id_fk",
           "tableFrom": "product_activity",
           "tableTo": "product_problem_category",
-          "columnsFrom": ["problem_category_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "problem_category_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1071,7 +1129,11 @@
         "unique_product_activity_product_date_turn": {
           "name": "unique_product_activity_product_date_turn",
           "nullsNotDistinct": false,
-          "columns": ["product_id", "date", "turn"]
+          "columns": [
+            "product_id",
+            "date",
+            "turn"
+          ]
         }
       },
       "policies": {},
@@ -1109,6 +1171,12 @@
         },
         "description": {
           "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "intervention": {
+          "name": "intervention",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -1173,8 +1241,12 @@
           "name": "product_activity_history_product_activity_id_product_activity_id_fk",
           "tableFrom": "product_activity_history",
           "tableTo": "product_activity",
-          "columnsFrom": ["product_activity_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_activity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1182,8 +1254,12 @@
           "name": "product_activity_history_user_id_user_id_fk",
           "tableFrom": "product_activity_history",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1230,8 +1306,12 @@
           "name": "product_contact_product_id_product_id_fk",
           "tableFrom": "product_contact",
           "tableTo": "product",
-          "columnsFrom": ["product_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1239,8 +1319,12 @@
           "name": "product_contact_contact_id_contact_id_fk",
           "tableFrom": "product_contact",
           "tableTo": "contact",
-          "columnsFrom": ["contact_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "contact_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1331,8 +1415,12 @@
           "name": "product_dependency_product_id_product_id_fk",
           "tableFrom": "product_dependency",
           "tableTo": "product",
-          "columnsFrom": ["product_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1386,8 +1474,12 @@
           "name": "product_manual_product_id_product_id_fk",
           "tableFrom": "product_manual",
           "tableTo": "product",
-          "columnsFrom": ["product_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1520,8 +1612,12 @@
           "name": "product_problem_product_id_product_id_fk",
           "tableFrom": "product_problem",
           "tableTo": "product",
-          "columnsFrom": ["product_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1529,8 +1625,12 @@
           "name": "product_problem_user_id_user_id_fk",
           "tableFrom": "product_problem",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1538,8 +1638,12 @@
           "name": "product_problem_problem_category_id_product_problem_category_id_fk",
           "tableFrom": "product_problem",
           "tableTo": "product_problem_category",
-          "columnsFrom": ["problem_category_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "problem_category_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1608,7 +1712,9 @@
         "product_problem_category_name_unique": {
           "name": "product_problem_category_name_unique",
           "nullsNotDistinct": false,
-          "columns": ["name"]
+          "columns": [
+            "name"
+          ]
         }
       },
       "policies": {},
@@ -1650,8 +1756,12 @@
           "name": "product_problem_image_product_problem_id_product_problem_id_fk",
           "tableFrom": "product_problem_image",
           "tableTo": "product_problem",
-          "columnsFrom": ["product_problem_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_problem_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1717,8 +1827,12 @@
           "name": "product_solution_user_id_user_id_fk",
           "tableFrom": "product_solution",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1726,8 +1840,12 @@
           "name": "product_solution_product_problem_id_product_problem_id_fk",
           "tableFrom": "product_solution",
           "tableTo": "product_problem",
-          "columnsFrom": ["product_problem_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_problem_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1767,8 +1885,12 @@
           "name": "product_solution_checked_user_id_user_id_fk",
           "tableFrom": "product_solution_checked",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1776,8 +1898,12 @@
           "name": "product_solution_checked_product_solution_id_product_solution_id_fk",
           "tableFrom": "product_solution_checked",
           "tableTo": "product_solution",
-          "columnsFrom": ["product_solution_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_solution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1823,8 +1949,12 @@
           "name": "product_solution_image_product_solution_id_product_solution_id_fk",
           "tableFrom": "product_solution_image",
           "tableTo": "product_solution",
-          "columnsFrom": ["product_solution_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "product_solution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2001,8 +2131,12 @@
           "name": "project_activity_project_id_project_id_fk",
           "tableFrom": "project_activity",
           "tableTo": "project",
-          "columnsFrom": ["project_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2114,8 +2248,12 @@
           "name": "project_task_project_id_project_id_fk",
           "tableFrom": "project_task",
           "tableTo": "project",
-          "columnsFrom": ["project_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2123,8 +2261,12 @@
           "name": "project_task_project_activity_id_project_activity_id_fk",
           "tableFrom": "project_task",
           "tableTo": "project_activity",
-          "columnsFrom": ["project_activity_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "project_activity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2254,8 +2396,12 @@
           "name": "project_task_history_task_id_project_task_id_fk",
           "tableFrom": "project_task_history",
           "tableTo": "project_task",
-          "columnsFrom": ["task_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2263,8 +2409,12 @@
           "name": "project_task_history_user_id_user_id_fk",
           "tableFrom": "project_task_history",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2357,8 +2507,12 @@
           "name": "project_task_user_task_id_project_task_id_fk",
           "tableFrom": "project_task_user",
           "tableTo": "project_task",
-          "columnsFrom": ["task_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2366,8 +2520,12 @@
           "name": "project_task_user_user_id_user_id_fk",
           "tableFrom": "project_task_user",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2377,7 +2535,10 @@
         "unique_task_user": {
           "name": "unique_task_user",
           "nullsNotDistinct": false,
-          "columns": ["task_id", "user_id"]
+          "columns": [
+            "task_id",
+            "user_id"
+          ]
         }
       },
       "policies": {},
@@ -2432,7 +2593,11 @@
         "unique_rate_limit_email_ip_route": {
           "name": "unique_rate_limit_email_ip_route",
           "nullsNotDistinct": false,
-          "columns": ["email", "ip", "route"]
+          "columns": [
+            "email",
+            "ip",
+            "route"
+          ]
         }
       },
       "policies": {},
@@ -2514,8 +2679,12 @@
           "name": "user_group_user_id_user_id_fk",
           "tableFrom": "user_group",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2523,8 +2692,12 @@
           "name": "user_group_group_id_group_id_fk",
           "tableFrom": "user_group",
           "tableTo": "group",
-          "columnsFrom": ["group_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "group_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2534,7 +2707,10 @@
         "unique_user_group": {
           "name": "unique_user_group",
           "nullsNotDistinct": false,
-          "columns": ["user_id", "group_id"]
+          "columns": [
+            "user_id",
+            "group_id"
+          ]
         }
       },
       "policies": {},
@@ -2571,8 +2747,12 @@
           "name": "user_preferences_user_id_user_id_fk",
           "tableFrom": "user_preferences",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2642,8 +2822,12 @@
           "name": "user_profile_user_id_user_id_fk",
           "tableFrom": "user_profile",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

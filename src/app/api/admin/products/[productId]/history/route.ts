@@ -58,6 +58,7 @@ export async function GET(
         id: schema.productActivityHistory.id,
         status: schema.productActivityHistory.status,
         description: schema.productActivityHistory.description,
+        intervention: schema.productActivityHistory.intervention,
         createdAt: schema.productActivityHistory.createdAt,
         user: {
           id: schema.authUser.id,

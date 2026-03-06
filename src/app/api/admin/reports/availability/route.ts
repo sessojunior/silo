@@ -4,12 +4,12 @@ import { product, productActivity } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { getToday, getDaysAgo, formatDate } from "@/lib/dateUtils";
 import { INCIDENT_STATUS, ProductStatus } from "@/lib/productStatus";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("reports", "view");
     if (!authResult.ok) return authResult.response;
 
     // Extrair parâmetros da query - timezone São Paulo
@@ -145,6 +145,22 @@ export async function GET(request: NextRequest) {
         else if (availabilityPercentage < 70) productStatus = "warning";
         else if (availabilityPercentage < 90) productStatus = "stable";
 
+        const activitiesWithIntervention = activities.filter(
+          (a) => typeof a.intervention === "string" && a.intervention.trim(),
+        );
+        const interventionsCount = activitiesWithIntervention.length;
+
+        let latestInterventionAt: string | null = null;
+        let latestInterventionText: string | null = null;
+        if (activitiesWithIntervention.length > 0) {
+          const latestIntervention = [...activitiesWithIntervention].sort(
+            (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+          )[0];
+
+          latestInterventionAt = formatDate(latestIntervention.date);
+          latestInterventionText = latestIntervention.intervention || null;
+        }
+
         // Encontrar data da última atividade
         let lastActivityDate = null;
         if (activities.length > 0) {
@@ -169,6 +185,9 @@ export async function GET(request: NextRequest) {
           completedActivities,
           activeActivities,
           failedActivities,
+          interventionsCount,
+          latestInterventionAt,
+          latestInterventionText,
           availabilityPercentage,
           lastActivityDate,
         };
@@ -193,6 +212,10 @@ export async function GET(request: NextRequest) {
       name: p.name,
       availability: p.availabilityPercentage,
     }));
+    const totalInterventions = productsWithAvailability.reduce(
+      (sum, p) => sum + p.interventionsCount,
+      0,
+    );
     console.log("ℹ️ [API_REPORTS_AVAILABILITY] Produtos com disponibilidade:", {
       productsWithAvailabilityMap,
     });
@@ -200,6 +223,7 @@ export async function GET(request: NextRequest) {
     return successResponse({
       totalProducts,
       avgAvailability,
+      totalInterventions,
       products: productsWithAvailability,
     });
   } catch (error) {

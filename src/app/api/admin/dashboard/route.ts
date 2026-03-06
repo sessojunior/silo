@@ -31,6 +31,7 @@ type DashboardProduct = {
     user_id: string;
     status: string;
     description: string | null;
+    intervention: string | null;
     category_id: string | null;
     alert: boolean;
   }[];
@@ -129,6 +130,7 @@ export async function GET() {
         user_id: row.userId,
         status: row.status,
         description: row.description,
+        intervention: row.intervention,
         category_id: row.problemCategoryId ?? null,
         alert: isAlert(row.status),
       });

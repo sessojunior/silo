@@ -24,6 +24,7 @@ interface ProductDateStatus {
   turn: number;
   status: string;
   description?: string | null;
+  intervention?: string | null;
   category_id?: string | null;
   user_name?: string | null;
 }
@@ -67,6 +68,7 @@ export default function Product({
     turn: number;
     status: string;
     description?: string | null;
+    intervention?: string | null;
     category_id?: string | null;
   } | null>(null);
   const [activityPanelOpen, setActivityPanelOpen] = useState(false);
@@ -104,6 +106,7 @@ export default function Product({
           time: number;
           status: string;
           description?: string | null;
+          intervention?: string | null;
           category_id?: string | null;
           user_name?: string | null;
         }[];
@@ -125,6 +128,7 @@ export default function Product({
           time: d.turn,
           status: d.status,
           description: d.description,
+          intervention: d.intervention,
           category_id: d.category_id,
           user_name: d.user_name,
         });
@@ -136,6 +140,7 @@ export default function Product({
         ) {
           existingTurn.status = d.status;
           existingTurn.description = d.description;
+          existingTurn.intervention = d.intervention;
           existingTurn.category_id = d.category_id;
           existingTurn.id = d.id;
           existingTurn.user_name = d.user_name;
@@ -160,6 +165,7 @@ export default function Product({
               time: turnNum,
               status: dbRecord.status,
               description: dbRecord.description,
+              intervention: dbRecord.intervention,
               category_id: dbRecord.category_id,
               user_name: dbRecord.user_name,
             });
@@ -416,6 +422,7 @@ export default function Product({
                   turn: target.turn,
                   status: target.status,
                   description: target.description,
+                  intervention: target.intervention,
                   category_id: target.category_id,
                 });
               } else {
@@ -425,6 +432,7 @@ export default function Product({
                   turn: turn,
                   status: "not_run",
                   description: null,
+                  intervention: null,
                   category_id: null,
                 });
               }
@@ -463,6 +471,7 @@ export default function Product({
           existingId={activityCtx.id || null}
           initialStatus={activityCtx.status}
           initialDescription={activityCtx.description || ""}
+          initialIntervention={activityCtx.intervention || ""}
           initialCategoryId={activityCtx.category_id || null}
           onSaved={() => {
             onSaved?.();

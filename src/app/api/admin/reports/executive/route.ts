@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { requireAdminAuthUser } from "@/lib/auth/server";
 import { db } from "@/lib/db";
 import {
   productProblem,
@@ -14,10 +13,11 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { getToday, getDaysAgo, formatDate } from "@/lib/dateUtils";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("reports", "view");
     if (!authResult.ok) return authResult.response;
 
     // Extrair parâmetros da query

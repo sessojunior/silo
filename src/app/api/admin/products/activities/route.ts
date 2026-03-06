@@ -18,8 +18,15 @@ export async function POST(req: NextRequest) {
     const user = authResult.user;
 
     const data = await req.json();
-    const { productId, date, turn, status, description, problemCategoryId } =
-      data || {};
+    const {
+      productId,
+      date,
+      turn,
+      status,
+      description,
+      intervention,
+      problemCategoryId,
+    } = data || {};
 
     // Normalizar data para timezone de São Paulo
     const normalizedDate = formatDate(date);
@@ -40,6 +47,7 @@ export async function POST(req: NextRequest) {
         turn,
         status,
         description: description || null,
+        intervention: intervention || null,
         problemCategoryId: problemCategoryId || null,
       })
       .onConflictDoUpdate({
@@ -51,6 +59,7 @@ export async function POST(req: NextRequest) {
         set: {
           status,
           description: description || null,
+          intervention: intervention || null,
           problemCategoryId: problemCategoryId || null,
           updatedAt: new Date(),
         },
@@ -68,6 +77,7 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       status: record.status,
       description: record.description,
+      intervention: record.intervention,
     });
 
     return successResponse(
@@ -94,7 +104,8 @@ export async function PUT(req: NextRequest) {
     const user = authResult.user;
 
     const data = await req.json();
-    const { id, status, description, problemCategoryId } = data || {};
+    const { id, status, description, intervention, problemCategoryId } =
+      data || {};
 
     if (!id || !status) {
       return errorResponse("Parâmetros obrigatórios ausentes.", 400);
@@ -110,6 +121,7 @@ export async function PUT(req: NextRequest) {
       .set({
         status,
         description: description || null,
+        intervention: intervention || null,
         problemCategoryId: problemCategoryId || null,
         updatedAt: new Date(),
       })
@@ -122,6 +134,7 @@ export async function PUT(req: NextRequest) {
       userId: user.id,
       status: updated.status,
       description: updated.description,
+      intervention: updated.intervention,
     });
 
     return successResponse(updated, "Atividade atualizada com sucesso");

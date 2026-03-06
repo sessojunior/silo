@@ -29,6 +29,7 @@ type ProductDateStatus = {
   user_id: string;
   status: string;
   description: string | null;
+  intervention: string | null;
   category_id: string | null;
   alert: boolean;
 };
@@ -308,6 +309,7 @@ export default function DashboardPage() {
                               user_id: "",
                               status: DEFAULT_STATUS,
                               description: null,
+                              intervention: null,
                               category_id: null,
                               alert: false,
                             },
@@ -335,6 +337,7 @@ export default function DashboardPage() {
                               user_id: "",
                               status: DEFAULT_STATUS,
                               description: null,
+                              intervention: null,
                               category_id: null,
                               alert: false,
                             },
@@ -482,7 +485,7 @@ export default function DashboardPage() {
                     <span className="text-lg">💡</span>
                     <span>Consulte os </span>
                     <Link
-                      href="/admin/reports"
+                      href="./reports/availability"
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium underline"
                     >
                       relatórios

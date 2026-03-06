@@ -13,12 +13,12 @@ import {
   NO_INCIDENTS_CATEGORY_ID,
   NO_INCIDENTS_CATEGORY_NAME,
 } from "@/lib/constants";
-import { requireAdminAuthUser } from "@/lib/auth/server";
+import { requirePermissionAuthUser } from "@/lib/permissions";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAdminAuthUser();
+    const authResult = await requirePermissionAuthUser("reports", "view");
     if (!authResult.ok) return authResult.response;
 
     const { searchParams } = new URL(request.url);

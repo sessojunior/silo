@@ -25,6 +25,7 @@ interface Props {
   existingId?: string | null;
   initialStatus?: string;
   initialDescription?: string | null;
+  initialIntervention?: string | null;
   initialCategoryId?: string | null;
   onSaved?: () => void;
   onAddSaveLog?: (
@@ -46,6 +47,7 @@ export default function ProductActivityOffcanvas({
   existingId = null,
   initialStatus = "completed",
   initialDescription = "",
+  initialIntervention = "",
   initialCategoryId = null,
   onSaved,
   onAddSaveLog,
@@ -54,6 +56,9 @@ export default function ProductActivityOffcanvas({
   const [status, setStatus] = useState<string>(initialStatus);
   const [description, setDescription] = useState<string>(
     initialDescription || "",
+  );
+  const [intervention, setIntervention] = useState<string>(
+    initialIntervention || "",
   );
   const [incidentId, setIncidentId] = useState<string | null>(
     initialCategoryId || "",
@@ -80,13 +85,20 @@ export default function ProductActivityOffcanvas({
       // reset fields when reopened
       setStatus(initialStatus);
       setDescription(initialDescription || "");
+      setIntervention(initialIntervention || "");
       setIncidentId(
         initialCategoryId === NO_INCIDENTS_CATEGORY_ID
           ? ""
           : initialCategoryId || "",
       );
     }
-  }, [open, initialStatus, initialDescription, initialCategoryId]);
+  }, [
+    open,
+    initialStatus,
+    initialDescription,
+    initialIntervention,
+    initialCategoryId,
+  ]);
 
   const loadIncidents = useCallback(async () => {
     try {
@@ -175,7 +187,10 @@ export default function ProductActivityOffcanvas({
   }, [status, allIncidents, incidentId]);
 
   useEffect(() => {
-    if (!isRealIncident(incidentId)) setDescription("");
+    if (!isRealIncident(incidentId)) {
+      setDescription("");
+      setIntervention("");
+    }
   }, [incidentId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -187,6 +202,7 @@ export default function ProductActivityOffcanvas({
       turn,
       status,
       description,
+      intervention,
       incidentId,
       existingId,
     });
@@ -215,6 +231,7 @@ export default function ProductActivityOffcanvas({
         turn: number;
         status: string;
         description: string;
+        intervention: string;
         problemCategoryId: string | null;
         id?: string;
       } = {
@@ -223,6 +240,7 @@ export default function ProductActivityOffcanvas({
         turn,
         status,
         description,
+        intervention,
         problemCategoryId:
           incidentId && incidentId !== NO_INCIDENTS_CATEGORY_ID
             ? incidentId
@@ -400,7 +418,7 @@ export default function ProductActivityOffcanvas({
             </div>
           </div>
           {hasRealIncident && (
-            <div>
+            <div className="space-y-4">
               <Label required>Descrição de incidentes</Label>
 
               {/* Dicas de formatação Markdown */}
@@ -411,6 +429,18 @@ export default function ProductActivityOffcanvas({
                   className="h-full w-full"
                   uploadConfig={uploadConfig}
                 />
+              </div>
+
+              <div>
+                <Label>Descrição da intervenção realizada</Label>
+                <div className="mt-2">
+                  <MarkdownEditor
+                    value={intervention}
+                    onChange={(value) => setIntervention(value || "")}
+                    className="h-full w-full"
+                    uploadConfig={uploadConfig}
+                  />
+                </div>
               </div>
             </div>
           )}

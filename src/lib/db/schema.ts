@@ -536,6 +536,7 @@ export const productActivity = pgTable(
       () => productProblemCategory.id,
     ),
     description: text("description"),
+    intervention: text("intervention"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -570,6 +571,7 @@ export const productActivityHistory = pgTable(
       .references(() => authUser.id),
     status: text("status").notNull(),
     description: text("description"),
+    intervention: text("intervention"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({
