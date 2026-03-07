@@ -162,7 +162,6 @@ const TASK_LIST_TOTAL_WIDTH =
 
 const LIST_CELL_WIDTH = `${Math.ceil(TASK_LIST_TOTAL_WIDTH / 3)}px`;
 const MIN_GANTT_HEIGHT = 220;
-const VIEWPORT_CHROME_HEIGHT = 139; // Topbar + Navbar
 const GANTT_HEADER_HEIGHT = 50;
 const GANTT_HORIZONTAL_SCROLLBAR_SPACE = 20;
 const GANTT_BOTTOM_SAFETY_SPACE = 4;
@@ -310,6 +309,7 @@ export default function ProductDataFlowPage() {
   const selectedTurn = searchParams.get("turn");
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const pageRootRef = useRef<HTMLDivElement | null>(null);
   const ganttShellRef = useRef<HTMLDivElement | null>(null);
   const [ganttHeight, setGanttHeight] = useState(300);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -529,22 +529,53 @@ export default function ProductDataFlowPage() {
   }, [ganttTasks]);
 
   useEffect(() => {
-    const updateHeightFromViewport = () => {
-      const viewportArea =
-        window.innerHeight -
-        VIEWPORT_CHROME_HEIGHT -
-        GANTT_HEADER_HEIGHT -
-        GANTT_HORIZONTAL_SCROLLBAR_SPACE -
-        GANTT_BOTTOM_SAFETY_SPACE;
-      const nextHeight = Math.max(MIN_GANTT_HEIGHT, Math.floor(viewportArea));
+    const root = pageRootRef.current;
+    if (!root) return;
+
+    const updateHeightFromContainer = () => {
+      const shellHeight = root.clientHeight;
+      const available =
+        shellHeight - GANTT_HEADER_HEIGHT - GANTT_HORIZONTAL_SCROLLBAR_SPACE - GANTT_BOTTOM_SAFETY_SPACE;
+      const nextHeight = Math.max(MIN_GANTT_HEIGHT, Math.floor(available));
       setGanttHeight((current) => (current === nextHeight ? current : nextHeight));
     };
 
-    updateHeightFromViewport();
-    window.addEventListener("resize", updateHeightFromViewport);
+    updateHeightFromContainer();
+
+    const observer = new ResizeObserver(() => {
+      updateHeightFromContainer();
+    });
+
+    observer.observe(root);
 
     return () => {
-      window.removeEventListener("resize", updateHeightFromViewport);
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = pageRootRef.current;
+    if (!root) return;
+
+    // Keep the route-level shell fixed; scrolling should happen inside gantt internals.
+    let scrollHost: HTMLElement | null = root.parentElement;
+    while (scrollHost) {
+      const { overflowY } = window.getComputedStyle(scrollHost);
+      if (overflowY === "auto" || overflowY === "scroll") break;
+      scrollHost = scrollHost.parentElement;
+    }
+
+    if (!scrollHost) return;
+
+    const previousOverflowY = scrollHost.style.overflowY;
+    const previousOverscrollBehavior = scrollHost.style.overscrollBehavior;
+
+    scrollHost.style.overflowY = "hidden";
+    scrollHost.style.overscrollBehavior = "contain";
+
+    return () => {
+      scrollHost.style.overflowY = previousOverflowY;
+      scrollHost.style.overscrollBehavior = previousOverscrollBehavior;
     };
   }, []);
 
@@ -557,7 +588,10 @@ export default function ProductDataFlowPage() {
   }
 
   return (
-    <div className="w-full h-full max-h-full min-h-0 flex flex-col overflow-hidden">
+    <div
+      ref={pageRootRef}
+      className="flex h-[calc(100dvh-140px)] w-full min-h-0 flex-col overflow-hidden"
+    >
       <div
         ref={ganttShellRef}
         className="data-flow-gantt-shell w-full h-full flex-1 min-h-0 overflow-hidden dark:bg-zinc-800"

@@ -188,7 +188,7 @@ export default function HelpPage() {
       {/* Sidebar */}
       <div className="w-96 border-r border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shrink-0">
         <div className="h-full flex flex-col">
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="scrollbar flex-1 overflow-y-auto p-3">
             {titles.length === 0 ? (
               <div className="text-center py-6">
                 <span className="icon-[lucide--list] size-8 text-zinc-400 mx-auto mb-2 block" />
@@ -221,7 +221,7 @@ export default function HelpPage() {
 
       {/* Conteúdo principal */}
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-800">
+        <div className="scrollbar flex-1 overflow-y-auto bg-white dark:bg-zinc-800">
           {helpDoc?.description?.trim() ? (
             <div className="p-8">
               {/* Conteúdo renderizado apenas como visualização */}
@@ -289,7 +289,7 @@ export default function HelpPage() {
           className="flex flex-col h-full"
           onSubmit={handleSubmit}
         >
-          <div className="flex-1 min-h-0 overflow-y-auto -m-6">
+          <div className="scrollbar flex-1 min-h-0 overflow-y-auto -m-6">
             <div className="flex flex-col gap-4 p-6">
               <Label htmlFor="content" required>
                 Conteúdo da Documentação (Markdown)

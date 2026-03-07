@@ -1,0 +1,122 @@
+{
+  "referenceDate": "2026-03-06",
+  "products": [
+    {
+      "productId": "bam",
+      "model": "BAM",
+      "description": "Brazilian Atmospheric Model",
+      "turns": [
+        {
+          "turn": "0",
+          "status": "completed",
+          "progress": 100
+        },
+        {
+          "turn": "12",
+          "status": "not_run",
+          "progress": 0
+        }
+      ]
+    },
+    {
+      "productId": "smec",
+      "model": "SMEC",
+      "description": "Sistema de Meteorologia e Climatologia",
+      "turns": [
+        {
+          "turn": "0",
+          "status": "completed",
+          "progress": 100
+        },
+        {
+          "turn": "12",
+          "status": "with_problems",
+          "progress": 38
+        }
+      ]
+    },
+    {
+      "productId": "brams-15km",
+      "model": "BRAMS AMS 15KM",
+      "description": "Modelo regional de alta resolucao",
+      "turns": [
+        {
+          "turn": "0",
+          "status": "completed",
+          "progress": 100
+        },
+        {
+          "turn": "6",
+          "status": "completed",
+          "progress": 100
+        },
+        {
+          "turn": "12",
+          "status": "pending",
+          "progress": 0
+        },
+        {
+          "turn": "18",
+          "status": "not_run",
+          "progress": 0
+        }
+      ]
+    },
+    {
+      "productId": "wrf",
+      "model": "WRF",
+      "description": "Weather Research and Forecasting",
+      "turns": [
+        {
+          "turn": "0",
+          "status": "completed",
+          "progress": 100
+        }
+      ]
+    },
+    {
+      "productId": "eta-15km",
+      "model": "ETA 15KM",
+      "description": "Previsao regional com foco operacional",
+      "turns": [
+        {
+          "turn": "0",
+          "status": "with_problems",
+          "progress": 22
+        },
+        {
+          "turn": "6",
+          "status": "not_run",
+          "progress": 0
+        },
+        {
+          "turn": "12",
+          "status": "pending",
+          "progress": 0
+        },
+        {
+          "turn": "18",
+          "status": "not_run",
+          "progress": 0
+        }
+      ]
+    },
+    {
+      "productId": "roms",
+      "model": "ROMS",
+      "description": "Modelo oceanico acoplado",
+      "turns": [
+        {
+          "turn": "0",
+          "status": "completed",
+          "progress": 100
+        },
+        {
+          "turn": "12",
+          "status": "completed",
+          "progress": 100
+        }
+      ]
+    }
+  ]
+}

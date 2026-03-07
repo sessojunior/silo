@@ -261,19 +261,19 @@ export default function DashboardPage() {
       : 0;
 
   return (
-    <div className="flex w-full bg-white dark:bg-zinc-900">
+    <div className="flex min-h-0 w-full flex-1 overflow-hidden bg-white dark:bg-zinc-900">
       {/* Lado esquerdo */}
-      <div className="flex flex-grow flex-col">
-        <div className="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-zinc-700">
+      <div className="flex min-w-0 grow flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           {/* Estatísticas */}
-          <div className="flex flex-col border-b border-b-zinc-200 p-8 pb-10 dark:border-b-zinc-700">
+          <div className="shrink-0 border-b border-b-zinc-200 p-8 pb-10 dark:border-b-zinc-700">
             <Stats productCount={data.length} items={statsItems} />
           </div>
 
           {/* Colunas */}
-          <div className="flex flex-col divide-zinc-200 border-zinc-200 md:grid md:grid-cols-2 md:divide-x dark:divide-zinc-700 dark:border-zinc-700 dark:border-b-zinc-700">
+          <div className="min-h-0 flex-1 flex-col overflow-x-hidden divide-zinc-200 border-zinc-200 md:grid md:grid-cols-2 md:divide-x dark:divide-zinc-700 dark:border-zinc-700 dark:border-b-zinc-700">
             {/* Coluna esquerda */}
-            <div className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700">
+            <div className="scrollbar min-h-0 min-w-0 overflow-x-hidden overflow-y-auto divide-y divide-zinc-200 dark:divide-zinc-700">
               {/* Seção única de Produtos */}
               <div className="p-8">
                 <h3 className="pb-4 text-xl font-medium">
@@ -368,7 +368,7 @@ export default function DashboardPage() {
               </div>
             </div>
             {/* Coluna direita */}
-            <div className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700">
+            <div className="scrollbar min-h-0 min-w-0 overflow-x-hidden overflow-y-auto divide-y divide-zinc-200 dark:divide-zinc-700">
               {/* Gráficos */}
               {/* Item 1 */}
               <div className="flex flex-col p-8">
@@ -410,15 +410,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Lado direito */}
-      <div className="hidden w-[400px] flex-shrink-0 flex-col border-l border-l-zinc-200 2xl:flex dark:border-l-zinc-700">
-        <div className="size-full h-[calc(100vh-64px)] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-50 dark:[&::-webkit-scrollbar-track]:bg-zinc-700">
-          <div className="p-8">
+        <div className="scrollbar hidden w-100 basis-100 min-h-0 min-w-0 max-w-100 shrink-0 overflow-x-hidden overflow-y-auto border-l border-l-zinc-200 2xl:flex 2xl:flex-col dark:border-l-zinc-700">
+          <div className="min-w-0 p-8">
             {/* Resumo */}
             <div className="flex flex-col border-b border-b-zinc-200 pb-6 dark:border-b-zinc-700">
               <h3 className="pb-4 text-2xl font-medium">Resumo de 7 dias</h3>
               {summary ? (
-                <div className="text-base space-y-3">
-                  <p>
+                <div className="text-base space-y-3 wrap-break-word">
+                  <p className="wrap-break-word">
                     {summary.recentCount === 0 ? (
                       <span className="text-green-600 dark:text-green-400 font-semibold">
                         🎉 Excelente! Não houve problemas nos últimos 7 dias.
@@ -481,7 +480,7 @@ export default function DashboardPage() {
                     )}
                   </p>
 
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400 pt-5 border-t border-zinc-200 dark:border-zinc-700">
+                  <p className="text-sm wrap-break-word text-zinc-600 dark:text-zinc-400 pt-5 border-t border-zinc-200 dark:border-zinc-700">
                     <span className="text-lg">💡</span>
                     <span>Consulte os </span>
                     <Link
@@ -553,7 +552,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
       </div>
     </div>
   );

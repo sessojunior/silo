@@ -3,7 +3,7 @@ import { config } from "@/lib/config";
 const STATIC_PAGE_TITLES: Record<string, string> = {
   "/admin": "Visão geral",
   "/admin/dashboard": "Visão geral",
-  "/admin/dashboard/monitoring": "Monitoramento",
+  "/admin/monitoring": "Monitoramento",
   "/admin/products": "Produtos & tasks",
   "/admin/projects": "Projetos ativos",
   "/admin/reports": "Relatórios",

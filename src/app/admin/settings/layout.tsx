@@ -56,36 +56,42 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] w-full flex-col bg-white dark:bg-zinc-900">
+    <div className="flex w-full flex-col bg-white dark:bg-zinc-900">
       <div className="flex flex-col">
-        <div className="sticky top-16 z-30 flex">
-          <div className="h-19 flex w-full border-b border-zinc-200 bg-zinc-100 px-4 py-3 transition dark:border-zinc-700 dark:bg-zinc-700">
-            <div className="flex w-full items-center justify-between gap-3">
-              <div className="flex gap-x-2">
-                {isSettingsProductsPage ? (
-                  <Button
-                    href={SETTINGS_PRODUCTS_TAB.url}
-                    active={isSettingsProductsPage}
-                  >
-                    {SETTINGS_PRODUCTS_TAB.label}
-                  </Button>
-                ) : (
-                  SETTINGS_TABS.map((tab) => (
+        <div className="fixed inset-x-0 top-16 z-30">
+          <div className="lg:pl-65">
+            <div className="h-19 flex w-full border-b border-zinc-200 bg-zinc-100 px-4 py-3 transition dark:border-zinc-700 dark:bg-zinc-700">
+              <div className="flex w-full items-center justify-between gap-3">
+                <div className="flex gap-x-2">
+                  {isSettingsProductsPage ? (
                     <Button
-                      key={tab.url}
-                      href={tab.url}
-                      active={isTabActive(tab.url)}
+                      href={SETTINGS_PRODUCTS_TAB.url}
+                      active={isSettingsProductsPage}
                     >
-                      {tab.label}
+                      {SETTINGS_PRODUCTS_TAB.label}
                     </Button>
-                  ))
-                )}
+                  ) : (
+                    SETTINGS_TABS.map((tab) => (
+                      <Button
+                        key={tab.url}
+                        href={tab.url}
+                        active={isTabActive(tab.url)}
+                      >
+                        {tab.label}
+                      </Button>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="w-full">{children}</div>
+        <div className="w-full pt-19">
+          <div className="scrollbar h-[calc(100dvh-140px)] overflow-y-auto">
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

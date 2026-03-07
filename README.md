@@ -118,6 +118,8 @@ npm run dev
 - 📋 [**Sistema de Logs**](./docs/LOGS.md) - Padrões de logging
 - 📐 [**Padrões de Código**](./docs/PATTERNS.md) - Convenções e boas práticas
 - 🔄 [**Data Flow (API)**](./docs/DATAFLOW.md) - Proposta de API para fluxo de dados por modelo/data/turno
+- 📡 [**Radares (API)**](./docs/RADARS.md) - Proposta de API para monitoramento de radares por grupos
+- 🖼️ [**Páginas e Figuras (API)**](./docs/PICTURES.md) - Proposta de API para monitoramento de paginas e figuras da previsao do tempo
 
 ---
 
@@ -287,6 +289,8 @@ Exemplos práticos (mesmo build, só mudando env):
 - **Logs:** Padrões de logging → [`docs/LOGS.md`](./docs/LOGS.md)
 - **Padrões:** Convenções e boas práticas → [`docs/PATTERNS.md`](./docs/PATTERNS.md)
 - **Data Flow:** Proposta de API para fluxo de dados por modelo/data/turno → [`docs/DATAFLOW.md`](./docs/DATAFLOW.md)
+- **Radares:** Proposta de API para monitoramento de radares por grupos → [`docs/RADARS.md`](./docs/RADARS.md)
+- **Páginas e Figuras:** Proposta de API para monitoramento de paginas e figuras da previsao do tempo → [`docs/PICTURES.md`](./docs/PICTURES.md)
 
 ---
 

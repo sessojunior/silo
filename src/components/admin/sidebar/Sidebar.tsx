@@ -226,6 +226,13 @@ export default function Sidebar() {
             url: postLoginRedirectPath,
             items: null,
           },
+          {
+            id: "1.1.1",
+            title: "Monitoramento",
+            icon: "icon-[lucide--radar]",
+            url: "/admin/monitoring",
+            items: null,
+          },
           ...(canSeeProducts
             ? [
                 {

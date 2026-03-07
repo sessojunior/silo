@@ -1,0 +1,360 @@
+{
+  "groups": [
+    {
+      "id": "cemaden",
+      "name": "CEMADEN",
+      "radars": [
+        {
+          "id": "almenara",
+          "name": "almenara",
+          "description": "Radar de monitoramento hidrometeorologico do vale do Jequitinhonha.",
+          "logDate": "2026-03-06T08:12:00-03:00",
+          "logUrl": "https://logs.example.com/radars/cemaden/almenara",
+          "delay": "0 min",
+          "delayMinutes": 0,
+          "status": "ok"
+        },
+        {
+          "id": "jaraguari",
+          "name": "jaraguari",
+          "description": "Radar de cobertura regional com foco em celulas convectivas.",
+          "logDate": "2026-03-06T07:35:00-03:00",
+          "logUrl": "https://logs.example.com/radars/cemaden/jaraguari",
+          "delay": "37 min",
+          "delayMinutes": 37,
+          "status": "delayed"
+        },
+        {
+          "id": "maceio",
+          "name": "maceio",
+          "description": "Radar costeiro para nowcasting de chuva intensa no litoral.",
+          "logDate": "2026-03-06T08:10:00-03:00",
+          "logUrl": "https://logs.example.com/radars/cemaden/maceio",
+          "delay": "2 min",
+          "delayMinutes": 2,
+          "status": "ok"
+        },
+        {
+          "id": "natal",
+          "name": "natal",
+          "description": "Radar operacional com ingestao de volume em alta frequencia.",
+          "logDate": "2026-03-06T06:58:00-03:00",
+          "logUrl": "https://logs.example.com/radars/cemaden/natal",
+          "delay": "74 min",
+          "delayMinutes": 74,
+          "status": "delayed"
+        },
+        {
+          "id": "petrolina",
+          "name": "petrolina",
+          "description": "Radar de suporte a previsao de curto prazo no semiarido.",
+          "logDate": "2026-03-06T08:11:00-03:00",
+          "logUrl": "https://logs.example.com/radars/cemaden/petrolina",
+          "delay": "1 min",
+          "delayMinutes": 1,
+          "status": "ok"
+        },
+        {
+          "id": "salvador",
+          "name": "salvador",
+          "description": "Radar urbano para monitoramento de acumulados severos.",
+          "logDate": "2026-03-06T08:06:00-03:00",
+          "logUrl": "https://logs.example.com/radars/cemaden/salvador",
+          "delay": "6 min",
+          "delayMinutes": 6,
+          "status": "ok"
+        },
+        {
+          "id": "santatereza",
+          "name": "santatereza",
+          "description": "Radar de serra para vigilancia de instabilidade orografica.",
+          "logDate": "2026-03-06T05:48:00-03:00",
+          "logUrl": "https://logs.example.com/radars/cemaden/santatereza",
+          "delay": "144 min",
+          "delayMinutes": 144,
+          "status": "delayed"
+        },
+        {
+          "id": "saofrancisco",
+          "name": "saofrancisco",
+          "description": "Radar de bacia para monitoramento de eventos persistentes.",
+          "logDate": "2026-03-06T08:07:00-03:00",
+          "logUrl": "https://logs.example.com/radars/cemaden/saofrancisco",
+          "delay": "5 min",
+          "delayMinutes": 5,
+          "status": "ok"
+        },
+        {
+          "id": "tresmarias",
+          "name": "tresmarias",
+          "description": "Radar em manutencao preventiva com telemetria parcial.",
+          "logDate": "2026-03-06T00:00:00-03:00",
+          "logUrl": "https://logs.example.com/radars/cemaden/tresmarias",
+          "delay": "indefinido",
+          "delayMinutes": null,
+          "status": "undefined"
+        }
+      ]
+    },
+    {
+      "id": "decea",
+      "name": "DECEA",
+      "radars": [
+        {
+          "id": "saoroque",
+          "name": "saoroque",
+          "description": "Radar de rota aerea com integracao meteorologica operacional.",
+          "logDate": "2026-03-06T08:09:00-03:00",
+          "logUrl": "https://logs.example.com/radars/decea/saoroque",
+          "delay": "3 min",
+          "delayMinutes": 3,
+          "status": "ok"
+        },
+        {
+          "id": "picocouto",
+          "name": "picocouto",
+          "description": "Radar de altitude para suporte a vigilancia de frente fria.",
+          "logDate": "2026-03-06T07:01:00-03:00",
+          "logUrl": "https://logs.example.com/radars/decea/picocouto",
+          "delay": "71 min",
+          "delayMinutes": 71,
+          "status": "delayed"
+        },
+        {
+          "id": "gama",
+          "name": "gama",
+          "description": "Radar de cobertura metropolitana para chuva forte localizada.",
+          "logDate": "2026-03-06T08:12:00-03:00",
+          "logUrl": "https://logs.example.com/radars/decea/gama",
+          "delay": "0 min",
+          "delayMinutes": 0,
+          "status": "ok"
+        },
+        {
+          "id": "morroigreja",
+          "name": "morroigreja",
+          "description": "Radar com disponibilidade reduzida por falha de enlace.",
+          "logDate": "2026-03-06T00:00:00-03:00",
+          "logUrl": "https://logs.example.com/radars/decea/morroigreja",
+          "delay": "desativado",
+          "delayMinutes": null,
+          "status": "off"
+        },
+        {
+          "id": "cangucu",
+          "name": "cangucu",
+          "description": "Radar de fronteira para monitoramento de bandas precipitantes.",
+          "logDate": "2026-03-06T08:05:00-03:00",
+          "logUrl": "https://logs.example.com/radars/decea/cangucu",
+          "delay": "7 min",
+          "delayMinutes": 7,
+          "status": "ok"
+        },
+        {
+          "id": "santiago",
+          "name": "santiago",
+          "description": "Radar com fila de processamento acima do esperado.",
+          "logDate": "2026-03-06T06:42:00-03:00",
+          "logUrl": "https://logs.example.com/radars/decea/santiago",
+          "delay": "90 min",
+          "delayMinutes": 90,
+          "status": "delayed"
+        }
+      ]
+    },
+    {
+      "id": "funceme",
+      "name": "FUNCEME",
+      "radars": [
+        {
+          "id": "quixeramobim",
+          "name": "quixeramobim",
+          "description": "Radar regional do sertao com atualizacao continua.",
+          "logDate": "2026-03-06T08:08:00-03:00",
+          "logUrl": "https://logs.example.com/radars/funceme/quixeramobim",
+          "delay": "4 min",
+          "delayMinutes": 4,
+          "status": "ok"
+        },
+        {
+          "id": "fortaleza",
+          "name": "fortaleza",
+          "description": "Radar costeiro com oscilacao no envio de produtos.",
+          "logDate": "2026-03-06T07:18:00-03:00",
+          "logUrl": "https://logs.example.com/radars/funceme/fortaleza",
+          "delay": "54 min",
+          "delayMinutes": 54,
+          "status": "delayed"
+        }
+      ]
+    },
+    {
+      "id": "sdcsc",
+      "name": "SDCSC",
+      "radars": [
+        {
+          "id": "lontras",
+          "name": "lontras",
+          "description": "Radar de vale com leituras estaveis sem atraso.",
+          "logDate": "2026-03-06T08:11:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sdcsc/lontras",
+          "delay": "1 min",
+          "delayMinutes": 1,
+          "status": "ok"
+        },
+        {
+          "id": "movel",
+          "name": "movel",
+          "description": "Radar movel sem telemetria recente apos realocacao.",
+          "logDate": "2026-03-06T00:00:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sdcsc/movel",
+          "delay": "indefinido",
+          "delayMinutes": null,
+          "status": "undefined"
+        },
+        {
+          "id": "chapeco",
+          "name": "chapeco",
+          "description": "Radar com atraso moderado por carga de rede.",
+          "logDate": "2026-03-06T07:32:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sdcsc/chapeco",
+          "delay": "40 min",
+          "delayMinutes": 40,
+          "status": "delayed"
+        }
+      ]
+    },
+    {
+      "id": "inea",
+      "name": "INEA",
+      "radars": [
+        {
+          "id": "guaratiba",
+          "name": "guaratiba",
+          "description": "Radar costeiro para apoio a alertas metropolitanos.",
+          "logDate": "2026-03-06T08:10:00-03:00",
+          "logUrl": "https://logs.example.com/radars/inea/guaratiba",
+          "delay": "2 min",
+          "delayMinutes": 2,
+          "status": "ok"
+        },
+        {
+          "id": "macae",
+          "name": "macae",
+          "description": "Radar em modo standby durante janela de manutencao.",
+          "logDate": "2026-03-06T00:00:00-03:00",
+          "logUrl": "https://logs.example.com/radars/inea/macae",
+          "delay": "desativado",
+          "delayMinutes": null,
+          "status": "off"
+        }
+      ]
+    },
+    {
+      "id": "sipam",
+      "name": "SIPAM",
+      "radars": [
+        {
+          "id": "belem",
+          "name": "belem",
+          "description": "Radar amazonia oriental com coleta operacional.",
+          "logDate": "2026-03-06T08:04:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/belem",
+          "delay": "8 min",
+          "delayMinutes": 8,
+          "status": "ok"
+        },
+        {
+          "id": "boavista",
+          "name": "boavista",
+          "description": "Radar com atraso alto por reprocessamento de volume.",
+          "logDate": "2026-03-06T06:14:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/boavista",
+          "delay": "118 min",
+          "delayMinutes": 118,
+          "status": "delayed"
+        },
+        {
+          "id": "cruzeirodosul",
+          "name": "cruzeirodosul",
+          "description": "Radar em operacao normal no extremo oeste.",
+          "logDate": "2026-03-06T08:12:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/cruzeirodosul",
+          "delay": "0 min",
+          "delayMinutes": 0,
+          "status": "ok"
+        },
+        {
+          "id": "macapa",
+          "name": "macapa",
+          "description": "Radar sem ultimo carimbo valido de log.",
+          "logDate": "2026-03-06T00:00:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/macapa",
+          "delay": "indefinido",
+          "delayMinutes": null,
+          "status": "undefined"
+        },
+        {
+          "id": "manaus",
+          "name": "manaus",
+          "description": "Radar central da rede com boa disponibilidade.",
+          "logDate": "2026-03-06T08:09:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/manaus",
+          "delay": "3 min",
+          "delayMinutes": 3,
+          "status": "ok"
+        },
+        {
+          "id": "portovelho",
+          "name": "portovelho",
+          "description": "Radar com latencia crescente no envio ao cluster.",
+          "logDate": "2026-03-06T07:02:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/portovelho",
+          "delay": "70 min",
+          "delayMinutes": 70,
+          "status": "delayed"
+        },
+        {
+          "id": "santarem",
+          "name": "santarem",
+          "description": "Radar fluvial em operacao estavel.",
+          "logDate": "2026-03-06T08:11:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/santarem",
+          "delay": "1 min",
+          "delayMinutes": 1,
+          "status": "ok"
+        },
+        {
+          "id": "saoluis",
+          "name": "saoluis",
+          "description": "Radar costeiro com atraso eventual.",
+          "logDate": "2026-03-06T07:41:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/saoluis",
+          "delay": "31 min",
+          "delayMinutes": 31,
+          "status": "delayed"
+        },
+        {
+          "id": "tabatinga",
+          "name": "tabatinga",
+          "description": "Radar de fronteira com status indefinido por perda de link.",
+          "logDate": "2026-03-06T00:00:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/tabatinga",
+          "delay": "indefinido",
+          "delayMinutes": null,
+          "status": "undefined"
+        },
+        {
+          "id": "tefe",
+          "name": "tefe",
+          "description": "Radar em manutencao agendada com transmissao desativada.",
+          "logDate": "2026-03-06T00:00:00-03:00",
+          "logUrl": "https://logs.example.com/radars/sipam/tefe",
+          "delay": "desativado",
+          "delayMinutes": null,
+          "status": "off"
+        }
+      ]
+    }
+  ]
+}
