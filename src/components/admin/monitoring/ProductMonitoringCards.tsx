@@ -58,6 +58,13 @@ function formatTurnLabel(turn: string): string {
   return `Turno ${turn.padStart(2, "0")}h`;
 }
 
+function formatReferenceDate(date: string): string {
+  // Espera formato YYYY-MM-DD ou similar
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return date;
+  return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+}
+
 export default function ProductMonitoringCards({ data }: ProductMonitoringCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -82,12 +89,17 @@ export default function ProductMonitoringCards({ data }: ProductMonitoringCardsP
                 return (
                   <div key={`${product.productId}-${turn.turn}`} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-300">
-                      <Link
-                        href={`/admin/products/${encodeURIComponent(product.productId)}/data-flow?date=${encodeURIComponent(data.referenceDate)}&turn=${encodeURIComponent(turn.turn)}`}
-                        className="font-medium text-blue-600 hover:underline dark:text-blue-400"
-                      >
-                        {formatTurnLabel(turn.turn)}
-                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Link
+                          href={`/admin/products/${encodeURIComponent(product.productId)}/data-flow?date=${encodeURIComponent(data.referenceDate)}&turn=${encodeURIComponent(turn.turn)}`}
+                          className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+                        >
+                          {formatTurnLabel(turn.turn)}
+                        </Link>
+                        <span className="text-zinc-400 dark:text-zinc-500 text-xs">
+                          &middot; {formatReferenceDate(data.referenceDate)}
+                        </span>
+                      </div>
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">{turnProgress}%</span>
                     </div>
 
