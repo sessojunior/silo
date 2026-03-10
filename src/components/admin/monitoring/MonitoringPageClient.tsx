@@ -247,12 +247,8 @@ export default function MonitoringPageClient({
               items={pictureStatsItems}
               secondaryMetrics={[
                 {
-                  value: pictureLinksSummary.delayed,
-                  label: "links atrasados",
-                },
-                {
-                  value: pictureLinksSummary.offline,
-                  label: "links offline",
+                  value: PICTURE_PAGES.reduce((acc, page) => acc + page.links.length, 0),
+                  label: "links monitorados",
                 },
               ]}
               progressTitleFormatter={(item) =>
@@ -261,7 +257,7 @@ export default function MonitoringPageClient({
               legendTitleFormatter={(item) =>
                 `${item.name}: ${item.progress} links`
               }
-              legendItemNames={["Links atrasados", "Links offline"]}
+              legendItemNames={["Links ok", "Links atrasados", "Links offline"]}
             />
 
             <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-700">

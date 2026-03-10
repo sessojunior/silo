@@ -112,11 +112,10 @@ export default function PicturePagesAccordion({
           const pageKey = `${page.id}-${originalIndex}-${sortedIndex}`;
           const isOpen = openPageIndexes.includes(originalIndex);
 
-          const showOfflineBadge = page.status === "offline";
-          const showDelayedBadge = page.delayedLinks > 0;
-          const showOfflineCountBadge = page.offlineLinks > 0;
-          const hasIssues =
-            showOfflineBadge || showDelayedBadge || showOfflineCountBadge;
+          // Calcular total de links ok e total de links com problemas
+          const totalOk = page.links.filter((l) => l.status === "ok").length;
+          const totalProblema = page.links.length - totalOk;
+          const hasIssues = totalProblema > 0;
 
           return (
             <div
@@ -149,30 +148,19 @@ export default function PicturePagesAccordion({
                   <span className="max-w-64 truncate rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-300">
                     {page.url}
                   </span>
-                  {!hasIssues && (
-                    <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-green-400 text-white">
-                      <span className="icon-[lucide--check] size-2.5" />
-                    </span>
-                  )}
+                  {/* Removido ícone de check do lado do link */}
                 </span>
 
                 <span className="flex shrink-0 items-center gap-2">
-                  {showOfflineBadge && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                      <span className="icon-[lucide--triangle-alert] size-3" />
-                      Offline
+                  {hasIssues ? (
+                    <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold">
+                      <span>{totalProblema}</span>
+                      <span className="icon-[lucide--triangle-alert] size-4" />
                     </span>
-                  )}
-                  {showDelayedBadge && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                      <span className="icon-[lucide--triangle-alert] size-3" />
-                      {page.delayedLinks} atrasados
-                    </span>
-                  )}
-                  {showOfflineCountBadge && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                      <span className="icon-[lucide--triangle-alert] size-3" />
-                      {page.offlineLinks} offline
+                  ) : (
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-semibold">
+                      <span>{totalOk}</span>
+                      <span className="icon-[lucide--check] size-4" />
                     </span>
                   )}
                 </span>
@@ -243,7 +231,7 @@ export default function PicturePagesAccordion({
                             <span className="inline-flex items-center">
                               {isOk ? (
                                 <span className="inline-flex size-4 items-center justify-center rounded-full bg-green-400 text-white">
-                                  <span className="icon-[lucide--check] size-2.5" />
+                                  <span className="icon-[lucide--check] size-3" />
                                 </span>
                               ) : (
                                 <span className="inline-flex size-4 items-center justify-center text-red-600 dark:text-red-400">
