@@ -299,8 +299,7 @@ export default function Product({
         <div className="flex items-center justify-between">
           {/* Produto */}
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="icon-[lucide--folder-git-2] size-5 shrink-0 text-zinc-400"></span>
+            <div className="flex items-center2">
               <span className="text-lg font-medium">{name}</span>
             </div>
             <div className="text-sm">

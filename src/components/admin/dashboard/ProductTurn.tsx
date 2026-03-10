@@ -1,5 +1,5 @@
 import Popover from "@/components/ui/Popover";
-import { formatDateBR } from "@/lib/dateUtils";
+import { formatDateBR, getTodayDate, parseDate } from "@/lib/dateUtils";
 import {
   getStatusLabel,
   getStatusColor,
@@ -60,11 +60,11 @@ const getStatusClasses = (status: string): string => {
 };
 
 export default function ProductTurn({ productName, days, onTurnClick }: Props) {
-  // Função para verificar se uma data é futura
+  // Função para verificar se uma data é futura (timezone São Paulo)
   const isFutureDate = (date: string): boolean => {
-    const today = new Date();
-    const targetDate = new Date(date);
+    const today = getTodayDate();
     today.setHours(0, 0, 0, 0);
+    const targetDate = parseDate(date);
     targetDate.setHours(0, 0, 0, 0);
     return targetDate > today;
   };

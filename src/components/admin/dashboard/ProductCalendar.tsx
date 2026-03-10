@@ -4,6 +4,7 @@ import {
   StatusColor,
   getStatusClasses as getCentralizedStatusClasses,
 } from "@/lib/productStatus";
+import { getTodayDate, parseDate } from "@/lib/dateUtils";
 
 interface DateTurn {
   dateTurn: number;
@@ -61,37 +62,13 @@ export default function ProductCalendar({
     })[day.toLowerCase()] || "";
   const turnNumbers = turns.map((t) => parseInt(t));
 
-  // Função para verificar se uma data é futura
+  // Função para verificar se uma data é futura (timezone São Paulo)
   const isFutureDate = (date: string): boolean => {
-    // Obter data atual em São Paulo usando Intl.DateTimeFormat
-    const now = new Date();
-    const saoPauloFormatter = new Intl.DateTimeFormat("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-
-    const parts = saoPauloFormatter.formatToParts(now);
-    const year = parts.find((part) => part.type === "year")?.value;
-    const month = parts.find((part) => part.type === "month")?.value;
-    const day = parts.find((part) => part.type === "day")?.value;
-
-    // Data de hoje em São Paulo (meia-noite)
-    const today = new Date(
-      parseInt(year!),
-      parseInt(month!) - 1,
-      parseInt(day!),
-    );
-
-    // Data alvo (meia-noite) - usar parsing explícito para evitar problemas de timezone
-    const targetDate = new Date(date + "T00:00:00");
+    const today = getTodayDate();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = parseDate(date);
     targetDate.setHours(0, 0, 0, 0);
-
-    // Comparação
-    const isFuture = targetDate.getTime() > today.getTime();
-
-    return isFuture;
+    return targetDate > today;
   };
 
   // Classes Tailwind

@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDateTimeShortBR } from "@/lib/dateUtils";
+import { formatDateTimeShortBR, getTodayDate, formatDate } from "@/lib/dateUtils";
 import ChartColumn from "@/components/admin/dashboard/ChartColumn";
 import ChartLine from "@/components/admin/dashboard/ChartLine";
 import ChartDonut from "@/components/admin/dashboard/ChartDonut";
@@ -287,15 +287,15 @@ export default function DashboardPage() {
                       if (p.turns.length === 1) daysCount = 4;
                       else if (p.turns.length === 2) daysCount = 3;
 
-                      // Definir today aqui para garantir data atual
-                      const today = new Date();
+                      // Usar data centralizada no timezone São Paulo
+                      const today = getTodayDate();
 
                       // Últimos dias (timeline completa baseada no número de turnos)
                       const lastDates: string[] = [];
                       for (let i = daysCount - 1; i >= 0; i--) {
-                        const d = new Date();
-                        d.setDate(today.getDate() - i); // Corrigido: mais antigo → mais recente
-                        lastDates.push(dateYMD(d));
+                        const d = new Date(today);
+                        d.setDate(today.getDate() - i);
+                        lastDates.push(formatDate(d));
                       }
 
                       // Mapear status para cada dia dos últimos turnos (incluindo dias sem atividade)
@@ -321,9 +321,9 @@ export default function DashboardPage() {
                       // Últimos 28 dias (timeline completa)
                       const last28Dates: string[] = [];
                       for (let i = 27; i >= 0; i--) {
-                        const d = new Date();
-                        d.setDate(today.getDate() - i); // Corrigido: mais antigo → mais recente
-                        last28Dates.push(dateYMD(d));
+                        const d = new Date(today);
+                        d.setDate(today.getDate() - i);
+                        last28Dates.push(formatDate(d));
                       }
 
                       // Mapear status para cada dia (incluindo dias sem atividade) - CORRIGIDO para incluir TODOS os turnos

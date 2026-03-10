@@ -53,6 +53,7 @@ export default function ProductActivityOffcanvas({
   onAddSaveLog,
   onViewHistory,
 }: Props) {
+  
   const [status, setStatus] = useState<string>(initialStatus);
   const [description, setDescription] = useState<string>(
     initialDescription || "",
@@ -400,7 +401,9 @@ export default function ProductActivityOffcanvas({
                   name="incident"
                   options={incidents}
                   selected={incidentId ?? undefined}
-                  onChange={setIncidentId}
+                  onChange={(value) => {
+                    setIncidentId(value);
+                  }}
                   placeholder="Selecione o incidente"
                   required={requireIncident}
                   clearable={!requireIncident}

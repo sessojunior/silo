@@ -13,8 +13,7 @@ export default function Project({
     <div className="flex flex-col rounded-lg border border-dashed border-zinc-200 bg-white p-4 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-300">
       <div className="flex w-full flex-row items-center">
         <div className="flex w-full flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="icon-[lucide--square-chart-gantt] size-5 shrink-0 text-zinc-400 dark:text-zinc-500"></span>
+          <div className="flex items-center">
             <span className="text-lg font-medium text-zinc-800 dark:text-zinc-100 truncate">
               {name}
             </span>
