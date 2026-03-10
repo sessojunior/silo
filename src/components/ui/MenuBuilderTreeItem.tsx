@@ -447,12 +447,12 @@ export const TreeItem = memo(
           }`}
           ref={ref}
           style={treeItemStyle}
-          onMouseEnter={(e) => {
+          onMouseEnter={() => {
             if (!clone && !ghost) {
               setIsHovered(true);
             }
           }}
-          onMouseLeave={(e) => {
+          onMouseLeave={() => {
             if (!clone && !ghost) {
               setIsHovered(false);
             }
