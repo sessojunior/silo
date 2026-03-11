@@ -51,6 +51,7 @@ interface ProblemSolutionsSectionProps {
   onToggleExpandSolution: (id: string) => void;
   onImageClick: (image: string, description: string) => void;
   formatDate: (date: Date) => string;
+  selectedProblemId?: string | null;
 }
 
 export function ProblemSolutionsSection({
@@ -61,6 +62,7 @@ export function ProblemSolutionsSection({
   onToggleExpandSolution,
   onImageClick,
   formatDate,
+  selectedProblemId = null,
 }: ProblemSolutionsSectionProps) {
   // Função para encontrar a mensagem pai
   const findParentMessage = (replyId: string | null) => {
@@ -236,15 +238,17 @@ export function ProblemSolutionsSection({
               </span>
             </div>
           </div>
-          <Button
-            type="button"
-            icon="icon-[lucide--plus]"
-            style="unstyled"
-            className="shrink-0 py-2"
-            onClick={() => onOpenSolutionModal("create")}
-          >
-            Adicionar solução
-          </Button>
+          {selectedProblemId && (
+            <Button
+              type="button"
+              icon="icon-[lucide--plus]"
+              style="unstyled"
+              className="shrink-0 py-2"
+              onClick={() => onOpenSolutionModal("create")}
+            >
+              Adicionar solução
+            </Button>
+          )}
         </div>
 
         {/* Placeholder para adicionar solução */}
@@ -259,15 +263,17 @@ export function ProblemSolutionsSection({
             Este problema ainda não possui soluções registradas. Seja o primeiro
             a compartilhar uma solução!
           </p>
-          <Button
-            type="button"
-            icon="icon-[lucide--plus]"
-            style="unstyled"
-            className="shrink-0 py-2"
-            onClick={() => onOpenSolutionModal("create")}
-          >
-            Adicionar primeira solução
-          </Button>
+          {selectedProblemId && (
+            <Button
+              type="button"
+              icon="icon-[lucide--plus]"
+              style="unstyled"
+              className="shrink-0 py-2"
+              onClick={() => onOpenSolutionModal("create")}
+            >
+              Adicionar primeira solução
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -286,15 +292,17 @@ export function ProblemSolutionsSection({
             </span>
           </div>
         </div>
-        <Button
-          type="button"
-          icon="icon-[lucide--plus]"
-          style="unstyled"
-          className="shrink-0 py-2"
-          onClick={() => onOpenSolutionModal("create")}
-        >
-          Adicionar solução
-        </Button>
+        {selectedProblemId && (
+          <Button
+            type="button"
+            icon="icon-[lucide--plus]"
+            style="unstyled"
+            className="shrink-0 py-2"
+            onClick={() => onOpenSolutionModal("create")}
+          >
+            Adicionar solução
+          </Button>
+        )}
       </div>
 
       {/* Soluções principais */}

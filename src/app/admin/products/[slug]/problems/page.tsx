@@ -845,7 +845,15 @@ export default function ProblemsPage() {
           listRef={listRef}
           filter={filter}
           setFilter={setFilter}
-          onAddProblem={() => setOffcanvasOpen(true)}
+          onAddProblem={() => {
+            // Abrir o offcanvas em modo criação — limpar estado do formulário
+            setEditing(null);
+            setFormTitle("");
+            setFormDescription("");
+            setFormCategoryId(null);
+            setFormError(null);
+            setOffcanvasOpen(true);
+          }}
           onOpenCategories={() => setCategoryOffcanvasOpen(true)}
           filteredProblems={filteredProblems}
           problemsToShow={problemsToShow}
@@ -882,6 +890,7 @@ export default function ProblemsPage() {
                 setLightboxOpen(true);
               }}
               formatDate={formatDate}
+              selectedProblemId={problem?.id ?? null}
             />
           </div>
         </div>
