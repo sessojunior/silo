@@ -4,6 +4,8 @@ import { config as appConfig } from "@/lib/config";
 export default function SidebarLogo() {
   const logoSrc = appConfig.getPublicPath("/images/logo.png");
 
+  const VERSION = "26.3.11.11.36"; // Formato da versão é "ANO.MÊS.DIA.HORA.MINUTO"
+
   return (
     <div className="flex items-center">
       <Image
@@ -23,6 +25,7 @@ export default function SidebarLogo() {
       >
         SILO
       </div>
+      <div className="text-zinc-500 dark:text-zinc-400 text-xs ml-2 mt-1" title="Versão do Silo no formato Ano.Mês.Dia.Hora.Minuto.">v{VERSION}</div>
     </div>
   );
 }
