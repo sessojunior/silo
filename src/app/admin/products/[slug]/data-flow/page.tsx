@@ -276,11 +276,12 @@ function TaskListTablePtBr({
         return (
           <div
             key={`${task.id}-row`}
-            className="data-flow-tasklist-row border-b border-zinc-100 dark:border-zinc-800"
+            className={`data-flow-tasklist-row border-b border-zinc-100 dark:border-zinc-800 ${
+              isSelected ? "bg-slate-100/80 dark:bg-zinc-800/80" : "bg-transparent"
+            }`}
             style={{
               height: rowHeight,
               minWidth: TASK_LIST_TOTAL_WIDTH,
-              backgroundColor: isSelected ? "rgb(241 245 249 / 0.8)" : "transparent",
             }}
           >
             <button
