@@ -92,52 +92,111 @@ const STATUS_BAR_STYLE: Record<
   }
 > = {
   pending: {
-    track: "#e5e7eb",
-    fill: "#9ca3af",
-    selectedTrack: "#d1d5db",
+    track: "#f3f4f6", // very light gray
+    fill: "#9ca3af", // gray-400
+    selectedTrack: "#e5e7eb",
     selectedFill: "#6b7280",
   },
   in_progress: {
-    track: "#bfdbfe",
-    fill: "#2563eb",
-    selectedTrack: "#93c5fd",
-    selectedFill: "#1d4ed8",
+    track: "#dbeafe", // blue-100
+    fill: "#3b82f6", // blue-500
+    selectedTrack: "#bfdbfe",
+    selectedFill: "#2563eb",
   },
   completed: {
-    track: "#bbf7d0",
-    fill: "#16a34a",
-    selectedTrack: "#86efac",
-    selectedFill: "#15803d",
+    track: "#dcfce7", // green-100
+    fill: "#22c55e", // green-500
+    selectedTrack: "#bbf7d0",
+    selectedFill: "#16a34a",
   },
   with_problems: {
-    track: "#fecaca",
-    fill: "#dc2626",
-    selectedTrack: "#fca5a5",
-    selectedFill: "#b91c1c",
+    track: "#fee2e2", // red-100
+    fill: "#ef4444", // red-500
+    selectedTrack: "#fecaca",
+    selectedFill: "#dc2626",
   },
   run_again: {
-    track: "#fed7aa",
-    fill: "#ea580c",
-    selectedTrack: "#fdba74",
-    selectedFill: "#c2410c",
+    track: "#ffedd5", // orange-100
+    fill: "#f97316", // orange-500
+    selectedTrack: "#fed7aa",
+    selectedFill: "#ea580c",
   },
   not_run: {
-    track: "#d1d5db",
-    fill: "#4b5563",
-    selectedTrack: "#9ca3af",
-    selectedFill: "#374151",
+    track: "#f3f4f6", // gray-100
+    fill: "#6b7280", // gray-500
+    selectedTrack: "#e5e7eb",
+    selectedFill: "#4b5563",
   },
   under_support: {
-    track: "#ddd6fe",
-    fill: "#7c3aed",
-    selectedTrack: "#c4b5fd",
-    selectedFill: "#6d28d9",
+    track: "#f3e8ff", // purple-100
+    fill: "#a855f7", // purple-500
+    selectedTrack: "#e9d5ff",
+    selectedFill: "#9333ea",
   },
   suspended: {
-    track: "#9ca3af",
-    fill: "#111827",
-    selectedTrack: "#6b7280",
-    selectedFill: "#030712",
+    track: "#f4f4f5", // zinc-100
+    fill: "#52525b", // zinc-600
+    selectedTrack: "#e4e4e7",
+    selectedFill: "#3f3f46",
+  },
+};
+
+const STATUS_BAR_STYLE_DARK: Record<
+  ProductStatus,
+  {
+    track: string;
+    fill: string;
+    selectedTrack: string;
+    selectedFill: string;
+  }
+> = {
+  pending: {
+    track: "#3f3f46", // zinc-700
+    fill: "#a1a1aa", // zinc-400
+    selectedTrack: "#52525b",
+    selectedFill: "#d4d4d8",
+  },
+  in_progress: {
+    track: "#1e3a8a", // blue-900
+    fill: "#3b82f6", // blue-500
+    selectedTrack: "#1e40af",
+    selectedFill: "#60a5fa",
+  },
+  completed: {
+    track: "#14532d", // green-900
+    fill: "#22c55e", // green-500
+    selectedTrack: "#166534",
+    selectedFill: "#4ade80",
+  },
+  with_problems: {
+    track: "#7f1d1d", // red-900
+    fill: "#ef4444", // red-500
+    selectedTrack: "#991b1b",
+    selectedFill: "#f87171",
+  },
+  run_again: {
+    track: "#7c2d12", // orange-900
+    fill: "#f97316", // orange-500
+    selectedTrack: "#9a3412",
+    selectedFill: "#fb923c",
+  },
+  not_run: {
+    track: "#27272a", // zinc-800
+    fill: "#71717a", // zinc-500
+    selectedTrack: "#3f3f46",
+    selectedFill: "#a1a1aa",
+  },
+  under_support: {
+    track: "#581c87", // purple-900
+    fill: "#a855f7", // purple-500
+    selectedTrack: "#7e22ce",
+    selectedFill: "#c084fc",
+  },
+  suspended: {
+    track: "#27272a", // zinc-800
+    fill: "#71717a", // zinc-500
+    selectedTrack: "#3f3f46",
+    selectedFill: "#a1a1aa",
   },
 };
 
@@ -313,6 +372,8 @@ export default function ProductDataFlowPage() {
   const ganttShellRef = useRef<HTMLDivElement | null>(null);
   const [ganttHeight, setGanttHeight] = useState(300);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [isDark, setIsDark] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const modelSnapshots = useMemo(() => {
     const exactMatch = GROUPED_PIPELINE_DATA.pipelines.filter(
@@ -359,6 +420,59 @@ export default function ProductDataFlowPage() {
     });
   }, [groups]);
 
+  useEffect(() => {
+    // run only on client mount to avoid hydration mismatch
+    if (typeof document === "undefined") return;
+
+    const detect = () => {
+      try {
+        return (
+          document.documentElement.classList.contains("dark") ||
+          (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
+        );
+      } catch (e) {
+        return false;
+      }
+    };
+
+    setIsDark(detect());
+    setMounted(true);
+
+    const classObserver = new MutationObserver(() => setIsDark(detect()));
+    classObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
+    const mql = typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+    const mqListener = () => setIsDark(detect());
+    if (mql && mql.addEventListener) mql.addEventListener("change", mqListener);
+
+    return () => {
+      classObserver.disconnect();
+      if (mql && mql.removeEventListener) mql.removeEventListener("change", mqListener);
+    };
+  }, []);
+
+  const globalGanttStyling = useMemo(() => {
+    if (isDark) {
+      return {
+        barBackgroundColor: "#0f1724",
+        barBackgroundSelectedColor: "#111827",
+        barProgressColor: "#60a5fa",
+        barProgressSelectedColor: "#93c5fd",
+        arrowColor: "#e6eef6",
+        todayColor: "#334155",
+      };
+    }
+
+    return {
+      barBackgroundColor: "#f4f4f5",
+      barBackgroundSelectedColor: "#e5e7eb",
+      barProgressColor: "#2563eb",
+      barProgressSelectedColor: "#1d4ed8",
+      arrowColor: "#6b7280",
+      todayColor: "#f1f5f9",
+    };
+  }, [isDark]);
+
   const detailById = useMemo(() => {
     const map = new Map<string, DetailNode>();
 
@@ -368,7 +482,7 @@ export default function ProductDataFlowPage() {
       const groupStatus = getGroupStatus(group.tasks);
       const groupProgress = Math.round(
         group.tasks.reduce((acc, task) => acc + task.progress, 0) /
-          group.tasks.length,
+        group.tasks.length,
       );
 
       map.set(group.id, {
@@ -396,13 +510,15 @@ export default function ProductDataFlowPage() {
   const ganttTasks = useMemo<Task[]>(() => {
     const tasks: Task[] = [];
 
+    const styleMap = isDark ? STATUS_BAR_STYLE_DARK : STATUS_BAR_STYLE;
+
     for (const group of groups) {
       const starts = group.tasks.map((task) => new Date(task.start).getTime());
       const ends = group.tasks.map((task) => new Date(task.end).getTime());
       const groupStatus = getGroupStatus(group.tasks);
       const groupProgress = Math.round(
         group.tasks.reduce((acc, task) => acc + task.progress, 0) /
-          group.tasks.length,
+        group.tasks.length,
       );
 
       tasks.push({
@@ -414,10 +530,10 @@ export default function ProductDataFlowPage() {
         type: "project",
         hideChildren: collapsedGroups[group.id] ?? false,
         styles: {
-          backgroundColor: STATUS_BAR_STYLE[groupStatus].track,
-          backgroundSelectedColor: STATUS_BAR_STYLE[groupStatus].selectedTrack,
-          progressColor: STATUS_BAR_STYLE[groupStatus].fill,
-          progressSelectedColor: STATUS_BAR_STYLE[groupStatus].selectedFill,
+          backgroundColor: styleMap[groupStatus].track,
+          backgroundSelectedColor: styleMap[groupStatus].selectedTrack,
+          progressColor: styleMap[groupStatus].fill,
+          progressSelectedColor: styleMap[groupStatus].selectedFill,
         },
       });
 
@@ -433,17 +549,17 @@ export default function ProductDataFlowPage() {
           type: "task",
           project: group.id,
           styles: {
-            backgroundColor: STATUS_BAR_STYLE[task.status].track,
-            backgroundSelectedColor: STATUS_BAR_STYLE[task.status].selectedTrack,
-            progressColor: STATUS_BAR_STYLE[task.status].fill,
-            progressSelectedColor: STATUS_BAR_STYLE[task.status].selectedFill,
+            backgroundColor: styleMap[task.status].track,
+            backgroundSelectedColor: styleMap[task.status].selectedTrack,
+            progressColor: styleMap[task.status].fill,
+            progressSelectedColor: styleMap[task.status].selectedFill,
           },
         });
       }
     }
 
     return tasks;
-  }, [collapsedGroups, groups]);
+  }, [collapsedGroups, groups, isDark]);
 
   const blockedTaskIds = useMemo(() => {
     const failing = new Set<string>();
@@ -609,6 +725,10 @@ export default function ProductDataFlowPage() {
           barFill={80}
           barCornerRadius={4}
           fontSize="1rem"
+          /* Use per-task `styles` for bar colors to avoid global overrides
+            that cause mismatches between light/dark themes. */
+          arrowColor={globalGanttStyling.arrowColor}
+          todayColor={globalGanttStyling.todayColor}
           TooltipContent={() => null}
           preStepsCount={1}
           onClick={(task) => setSelectedTaskId(task.id)}
@@ -727,12 +847,32 @@ export default function ProductDataFlowPage() {
         }
 
         .data-flow-gantt-shell text {
+          font-family: inherit !important;
+        }
+
+        /* Set calendar text axes (hours and months) explicitly */
+        .data-flow-gantt-shell g.calendar text,
+        .data-flow-gantt-shell g.calendarTop text {
           font-size: 1rem !important;
           fill: rgb(82 82 91) !important;
         }
 
-        .dark .data-flow-gantt-shell text {
+        .dark .data-flow-gantt-shell g.calendar text,
+        .dark .data-flow-gantt-shell g.calendarTop text {
           fill: rgb(228 228 231) !important;
+        }
+
+        /* Target strictly the labels inside task blocks ensuring high contrast against the colored backgrounds */
+        .data-flow-gantt-shell g.bar text {
+          fill: #18181b !important;
+          font-weight: 400 !important;
+          text-shadow: none !important;
+        }
+
+        .dark .data-flow-gantt-shell g.bar text {
+          fill: #ffffff !important;
+          font-weight: 400 !important;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0,0,0,0.5) !important;
         }
 
         .data-flow-tasklist-header,
@@ -855,6 +995,101 @@ export default function ProductDataFlowPage() {
 
         .dark .data-flow-gantt-shell *::-webkit-scrollbar-thumb:hover {
           background: #a1a1aa;
+        }
+
+        /* Dark-mode SVG / grid / background adjustments */
+        .dark .data-flow-gantt-shell {
+          background-color: #0b1220 !important;
+        }
+
+        .dark .data-flow-gantt-shell svg > rect:first-of-type {
+          fill: #0b1220 !important;
+        }
+
+        /* Limit rect stroke overrides to grid/calendar rows only (avoid
+           touching bar fills which are provided inline by the library). */
+        .dark .data-flow-gantt-shell svg g.grid rect,
+        .dark .data-flow-gantt-shell svg g.grid g.rows rect,
+        .dark .data-flow-gantt-shell svg g.calendar rect {
+          stroke: rgba(148,163,184,0.06) !important;
+        }
+
+        /* Limit generic SVG stroke overrides to grid elements only */
+        .dark .data-flow-gantt-shell svg g.grid line,
+        .dark .data-flow-gantt-shell svg g.grid polyline,
+        .dark .data-flow-gantt-shell svg g.grid path {
+          stroke: rgba(148,163,184,0.16) !important;
+        }
+
+        /* Use explicit colors to fix light/dark mode bugs correctly */
+        .data-flow-gantt-shell g.arrows,
+        .data-flow-gantt-shell g[class*="arrow"],
+        .data-flow-gantt-shell .arrows,
+        g.arrows {
+          fill: #52525b !important;
+          stroke: #52525b !important;
+        }
+
+        .dark .data-flow-gantt-shell g.arrows,
+        .dark .data-flow-gantt-shell g[class*="arrow"],
+        .dark .data-flow-gantt-shell .arrows,
+        .dark g.arrows {
+          fill: #e4e4e7 !important;
+          stroke: #e4e4e7 !important;
+        }
+
+        /* Make arrow strokes use fixed width and rounded caps/joins */
+        .data-flow-gantt-shell g.arrows path,
+        g.arrows path {
+          stroke-width: 1.6 !important;
+          stroke-linecap: round !important;
+          stroke-linejoin: round !important;
+        }
+
+        .data-flow-gantt-shell g.arrows polygon,
+        g.arrows polygon {
+          fill: #52525b !important;
+          stroke: none !important;
+        }
+
+        .dark .data-flow-gantt-shell g.arrows polygon,
+        .dark g.arrows polygon {
+          fill: #e4e4e7 !important;
+          stroke: none !important;
+        }
+
+        .dark .data-flow-gantt-shell svg g[class*="grid"] line {
+          stroke: rgba(148,163,184,0.08) !important;
+        }
+
+        /* More specific overrides for grid rows, ticks and calendar header */
+        .dark .data-flow-gantt-shell svg g.grid rect,
+        .dark .data-flow-gantt-shell svg g.grid g.rows rect,
+        .dark .data-flow-gantt-shell svg g.grid .rows rect {
+          fill: #0b1220 !important;
+        }
+
+        /* Zebra striping for dark mode (resembles light mode zebra) */
+        .dark .data-flow-gantt-shell svg g.grid g.rows rect:nth-child(even),
+        .dark .data-flow-gantt-shell svg g.grid .rows rect:nth-child(even) {
+          fill: #141f33 !important;
+        }
+
+        .dark .data-flow-gantt-shell svg g.grid g.rowLines line,
+        .dark .data-flow-gantt-shell svg g.grid g.ticks line,
+        .dark .data-flow-gantt-shell svg g.grid line._3rUKi,
+        .dark .data-flow-gantt-shell svg g.grid line._RuwuK {
+          stroke: rgba(148,163,184,0.08) !important;
+        }
+
+        .dark .data-flow-gantt-shell svg g.calendar rect,
+        .dark .data-flow-gantt-shell svg g.calendarTop rect {
+          fill: #07101a !important;
+        }
+
+        .dark .data-flow-gantt-shell svg g.calendar text,
+        .dark .data-flow-gantt-shell svg g.calendarTop text {
+          fill: #e4e4e7 !important;
         }
       `}</style>
     </div>
