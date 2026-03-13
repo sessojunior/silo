@@ -147,6 +147,8 @@ export interface ProductFormData {
   assignedTo?: string;
   dueDate?: Date;
   tags?: string[];
+  url_product_flow?: string;
+  data_product_flow?: unknown[];
 }
 
 // Interface para upload de arquivos

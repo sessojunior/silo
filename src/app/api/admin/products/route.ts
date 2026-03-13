@@ -109,6 +109,7 @@ export async function POST(request: Request) {
   const priority = parsed.data.priority;
   const turns = parsed.data.turns;
   const description = parsed.data.description ?? null;
+  const urlProductFlow = parsed.data.url_product_flow ?? null;
 
   if (name.length < 2) {
     return errorResponse("O nome deve possuir ao menos dois caracteres.", 400, {
@@ -142,7 +143,8 @@ export async function POST(request: Request) {
       available,
       priority,
       turns,
-      description,
+        description,
+        urlProductFlow,
     });
     return successResponse(null, "Produto criado com sucesso", 201);
   } catch {
@@ -165,6 +167,7 @@ export async function PUT(request: Request) {
   const priority = parsed.data.priority;
   const turns = parsed.data.turns;
   const description = parsed.data.description ?? null;
+  const urlProductFlow = parsed.data.url_product_flow ?? null;
 
   if (!id) {
     return errorResponse("ID do produto é obrigatório.", 400);
@@ -195,7 +198,7 @@ export async function PUT(request: Request) {
   try {
     const result = await db
       .update(product)
-      .set({ name, slug, available, priority, turns, description })
+        .set({ name, slug, available, priority, turns, description, urlProductFlow })
       .where(eq(product.id, id));
     if (!result.rowCount) {
       return errorResponse("Produto não encontrado.", 404);

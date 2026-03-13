@@ -12,6 +12,7 @@ interface ProductFormProps {
     turns: string[];
     priority: "low" | "normal" | "high" | "urgent";
     description: string | null;
+    urlProductFlow?: string | null;
   };
   onSubmit: (data: {
     id?: string;
@@ -21,6 +22,7 @@ interface ProductFormProps {
     turns: string[];
     priority: "low" | "normal" | "high" | "urgent";
     description: string | null;
+    url_product_flow?: string | null;
   }) => Promise<void>;
   loading: boolean;
   formId: string;
@@ -44,6 +46,9 @@ export default function ProductForm({
   const [description, setDescription] = useState(
     initialData?.description ?? "",
   );
+  const [urlProductFlow, setUrlProductFlow] = useState(
+    initialData?.urlProductFlow ?? "",
+  );
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -62,7 +67,11 @@ export default function ProductForm({
         available,
         turns,
         priority,
-        description: trimmedDescription.length > 0 ? trimmedDescription : null,
+          description: trimmedDescription.length > 0 ? trimmedDescription : null,
+          url_product_flow:
+            urlProductFlow && urlProductFlow.trim().length > 0
+              ? urlProductFlow.trim()
+              : null,
       });
       toast({
         type: "success",
@@ -95,6 +104,26 @@ export default function ProductForm({
           disabled={loading}
         />
         {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      </div>
+      <div>
+        <label
+          htmlFor="product-url-flow"
+          className="block text-base font-medium text-zinc-700 dark:text-zinc-200 mb-1"
+        >
+          URL do Fluxo de Dados (opcional)
+        </label>
+        <input
+          id="product-url-flow"
+          type="url"
+          placeholder="https://example.com/webhook"
+          className="block w-full rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={urlProductFlow}
+          onChange={(e) => setUrlProductFlow(e.target.value)}
+          disabled={loading}
+        />
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+          Informe a URL onde este produto receberá os dados do pipeline (webhook).
+        </p>
       </div>
       <div>
         <label

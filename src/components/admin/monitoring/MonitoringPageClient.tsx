@@ -8,14 +8,12 @@ import ProductMonitoringCards, {
 } from "@/components/admin/monitoring/ProductMonitoringCards";
 import Stats, { type StatItem } from "@/components/admin/dashboard/Stats";
 import Dialog from "@/components/ui/Dialog";
-import PicturePagesAccordion, {
-  type PicturePage,
-} from "../../../components/admin/monitoring/PicturePagesAccordion";
+import PicturePagesAccordion, { type PicturePage } from "../../../components/admin/monitoring/PicturePagesAccordion";
+import PicturePagesTable from "./PicturePagesTable";
 import picturesJson from "@/app/admin/monitoring/pictures.json";
 import radarsJson from "@/app/admin/monitoring/radars.json";
 
 type RadarStatus = "ok" | "delayed" | "undefined" | "off";
-
 type RadarItem = {
   id: string;
   name: string;
@@ -71,7 +69,7 @@ const RADAR_BLOCK_COLOR: Record<RadarStatus, string> = {
 };
 
 const RADAR_DATA = radarsJson as RadarFile;
-const PICTURE_PAGES = (picturesJson as { pages: PicturePage[] }).pages;
+// default pages loaded from static JSON; server can pass `picturePages` via props
 const SECTION_TITLE_CLASS = "pb-4 text-2xl font-medium text-zinc-900 dark:text-zinc-100";
 
 function getProductSummaryStatus(turns: MonitoringProductItem["turns"]):
@@ -100,15 +98,20 @@ function getProductSummaryStatus(turns: MonitoringProductItem["turns"]):
 
 type MonitoringPageClientProps = {
   productsData: MonitoringProductsFile;
+  picturePages?: PicturePage[];
 };
 
 export default function MonitoringPageClient({
   productsData,
+  picturePages,
 }: MonitoringPageClientProps) {
   const [selectedRadar, setSelectedRadar] = useState<{
     groupName: string;
     radar: RadarItem;
   } | null>(null);
+  const [viewMode, setViewMode] = useState<"accordion" | "table">("accordion");
+
+  const PICTURE_PAGES = picturePages ?? (picturesJson as { pages: PicturePage[] }).pages;
 
   const pictureLinksSummary = useMemo(
     () =>
@@ -132,7 +135,7 @@ export default function MonitoringPageClient({
         },
         { ok: 0, delayed: 0, offline: 0 },
       ),
-    [],
+    [PICTURE_PAGES],
   );
 
   const pictureStatsItems = useMemo<StatItem[]>(
@@ -261,7 +264,31 @@ export default function MonitoringPageClient({
             />
 
             <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-700">
-              <PicturePagesAccordion pages={PICTURE_PAGES} />
+              <div className="mb-4 flex items-center gap-2">
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">Visualização:</span>
+                <div className="inline-flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("accordion")}
+                    className={`px-2 py-1 rounded-md text-sm ${viewMode === "accordion" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+                  >
+                    Accordion
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("table")}
+                    className={`px-2 py-1 rounded-md text-sm ${viewMode === "table" ? "bg-zinc-100 dark:bg-zinc-800" : ""}`}
+                  >
+                    Tabela
+                  </button>
+                </div>
+              </div>
+
+              {viewMode === "accordion" ? (
+                <PicturePagesAccordion pages={PICTURE_PAGES} />
+              ) : (
+                <PicturePagesTable pages={PICTURE_PAGES} />
+              )}
             </div>
           </section>
         </div>

@@ -8,6 +8,11 @@ import { useParams, useSearchParams } from "next/navigation";
 import Dialog from "@/components/ui/Dialog";
 import { ProductStatus, getStatusLabel } from "@/lib/productStatus";
 import groupedPipelineDataJson from "./pipeline-data.json";
+import { useCallback } from "react";
+
+// Toggle this to `false` to read real data from the DB via admin API
+// NOTE: change only this variable to switch sources in runtime.
+const USE_FAKE_DATA = true;
 
 type NodeType = "task" | "product";
 
@@ -200,7 +205,7 @@ const STATUS_BAR_STYLE_DARK: Record<
   },
 };
 
-const GROUPED_PIPELINE_DATA = groupedPipelineDataJson as GroupedPipelineDataFile;
+const GROUPED_PIPELINE_DATA_INITIAL = groupedPipelineDataJson as GroupedPipelineDataFile;
 
 const DATE_TIME_BRIEF_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -374,21 +379,48 @@ export default function ProductDataFlowPage() {
   const [ganttHeight, setGanttHeight] = useState(300);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [isDark, setIsDark] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  
+  const [groupedPipelineData, setGroupedPipelineData] = useState<GroupedPipelineDataFile>(
+    GROUPED_PIPELINE_DATA_INITIAL,
+  );
 
   const modelSnapshots = useMemo(() => {
-    const exactMatch = GROUPED_PIPELINE_DATA.pipelines.filter(
+    const exactMatch = groupedPipelineData.pipelines.filter(
       (snapshot) => snapshot.model === modelSlug,
     );
 
     if (exactMatch.length > 0) return exactMatch;
 
     // Keep fake data usable for any product slug while preserving model/date/turn shape.
-    return GROUPED_PIPELINE_DATA.pipelines.map((snapshot) => ({
+    return groupedPipelineData.pipelines.map((snapshot) => ({
       ...snapshot,
       model: modelSlug || snapshot.model,
     }));
+  }, [modelSlug, groupedPipelineData]);
+
+  const fetchFromDb = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/products?slug=${encodeURIComponent(modelSlug)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const products = data?.products || [];
+      if (products.length === 0) return;
+
+      // Expect `dataProductFlow` to be an array of snapshots similar to pipeline-data.json
+      const dbSnapshots = products[0].dataProductFlow ?? [];
+      if (!Array.isArray(dbSnapshots)) return;
+
+      setGroupedPipelineData({ pipelines: dbSnapshots });
+    } catch {
+      // swallow errors in client to avoid breaking the UI
+    }
   }, [modelSlug]);
+
+  useEffect(() => {
+    if (!USE_FAKE_DATA && modelSlug) {
+      fetchFromDb();
+    }
+  }, [fetchFromDb, modelSlug]);
 
   const activeSnapshot = useMemo(() => {
     if (modelSnapshots.length === 0) return null;
@@ -431,13 +463,12 @@ export default function ProductDataFlowPage() {
           document.documentElement.classList.contains("dark") ||
           (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
         );
-      } catch (e) {
+      } catch {
         return false;
       }
     };
 
     setIsDark(detect());
-    setMounted(true);
 
     const classObserver = new MutationObserver(() => setIsDark(detect()));
     classObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });

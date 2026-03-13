@@ -137,6 +137,11 @@ const productBaseSchema = z.object({
     .array(z.enum(productTurnEnumValues))
     .min(1, "Deve selecionar ao menos um turno")
     .default(["0", "6", "12", "18"]),
+  url_product_flow: z
+    .string()
+    .url("URL do fluxo de dados inválida")
+    .nullable()
+    .optional(),
 });
 
 export const productSchema = productBaseSchema;

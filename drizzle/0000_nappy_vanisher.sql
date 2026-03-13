@@ -112,6 +112,34 @@ CREATE TABLE "help" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "picture_link" (
+	"id" text PRIMARY KEY NOT NULL,
+	"page_id" text NOT NULL,
+	"name" text,
+	"url" text NOT NULL,
+	"size" text,
+	"last_update" timestamp,
+	"delay" text,
+	"delay_minutes" integer,
+	"status" text DEFAULT 'ok' NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "picture_page" (
+	"id" text PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"url" text NOT NULL,
+	"description" text,
+	"check_mode" text DEFAULT 'page' NOT NULL,
+	"status" text DEFAULT 'ok' NOT NULL,
+	"delay" text,
+	"delay_minutes" integer,
+	"delayed_links" integer DEFAULT 0 NOT NULL,
+	"offline_links" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "product" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
@@ -119,7 +147,9 @@ CREATE TABLE "product" (
 	"available" boolean DEFAULT true NOT NULL,
 	"priority" text DEFAULT 'normal' NOT NULL,
 	"turns" jsonb DEFAULT '["0","6","12","18"]'::jsonb NOT NULL,
-	"description" text
+	"description" text,
+	"url_product_flow" text,
+	"data_product_flow" jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "product_activity" (
@@ -339,6 +369,7 @@ ALTER TABLE "chat_message" ADD CONSTRAINT "chat_message_receiver_group_id_group_
 ALTER TABLE "chat_message" ADD CONSTRAINT "chat_message_receiver_user_id_user_id_fk" FOREIGN KEY ("receiver_user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "chat_user_presence" ADD CONSTRAINT "chat_user_presence_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "group_permissions" ADD CONSTRAINT "group_permissions_group_id_group_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."group"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "picture_link" ADD CONSTRAINT "picture_link_page_id_picture_page_id_fk" FOREIGN KEY ("page_id") REFERENCES "public"."picture_page"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_activity" ADD CONSTRAINT "product_activity_product_id_product_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."product"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_activity" ADD CONSTRAINT "product_activity_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_activity" ADD CONSTRAINT "product_activity_problem_category_id_product_problem_category_id_fk" FOREIGN KEY ("problem_category_id") REFERENCES "public"."product_problem_category"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

@@ -1,6 +1,7 @@
 import MonitoringPageClient from "@/components/admin/monitoring/MonitoringPageClient";
 import { db } from "@/lib/db";
-import { product } from "@/lib/db/schema";
+import { product, picturePage, pictureLink } from "@/lib/db/schema";
+import type { PicturePage as DBPicturePage, PictureLink as DBPictureLink } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import productsJson from "./products.json";
 
@@ -83,5 +84,45 @@ export default async function DashboardMonitoringPage() {
       .filter((productItem): productItem is MonitoringProductItem => productItem !== null),
   };
 
-  return <MonitoringPageClient productsData={filteredProductsData} />;
+  // Load picture pages from DB if present, otherwise fallback to static JSON
+  const pagesFromDbRows = (await db.select().from(picturePage).orderBy(picturePage.name)) as DBPicturePage[];
+  let picturePages = (await import("./pictures.json")).pages as unknown[];
+  if (pagesFromDbRows.length > 0) {
+    const linkRows = (await db.select().from(pictureLink)) as DBPictureLink[];
+    const linksByPage: Record<string, DBPictureLink[]> = {};
+    for (const l of linkRows) {
+      const key = l.pageId;
+      if (!linksByPage[key]) linksByPage[key] = [];
+      linksByPage[key].push(l);
+    }
+
+    picturePages = pagesFromDbRows.map((p) => {
+      const links = (linksByPage[p.id] || []).map((l) => ({
+        id: l.id,
+        name: l.name,
+        url: l.url,
+        size: l.size,
+        lastUpdate: l.lastUpdate ? l.lastUpdate.toISOString() : "",
+        delay: l.delay || "",
+        delayMinutes: l.delayMinutes ?? null,
+        status: l.status || "ok",
+      }));
+
+      return {
+        id: p.id,
+        name: p.name,
+        url: p.url,
+        description: p.description,
+        checkMode: p.checkMode || "page",
+        status: p.status || "ok",
+        delay: p.delay || "",
+        delayMinutes: p.delayMinutes ?? null,
+        delayedLinks: p.delayedLinks ?? links.filter((l) => l.status !== "ok").length,
+        offlineLinks: p.offlineLinks ?? links.filter((l) => l.status === "offline").length,
+        links,
+      };
+    });
+  }
+
+  return <MonitoringPageClient productsData={filteredProductsData} picturePages={picturePages} />;
 }

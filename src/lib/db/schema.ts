@@ -186,8 +186,40 @@ export const product = pgTable("product", {
   priority: text("priority").notNull().default("normal"), // 'low', 'normal', 'high', 'urgent'
   turns: jsonb("turns").notNull().default(["0", "6", "12", "18"]),
   description: text("description"),
+  urlProductFlow: text("url_product_flow"),
+  dataProductFlow: jsonb("data_product_flow").notNull().default([]),
 });
 export type Product = typeof product.$inferSelect;
+
+export const picturePage = pgTable("picture_page", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  description: text("description"),
+  checkMode: text("check_mode").notNull().default("page"),
+  status: text("status").notNull().default("ok"),
+  delay: text("delay"),
+  delayMinutes: integer("delay_minutes"),
+  delayedLinks: integer("delayed_links").notNull().default(0),
+  offlineLinks: integer("offline_links").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+export type PicturePage = typeof picturePage.$inferSelect;
+
+export const pictureLink = pgTable("picture_link", {
+  id: text("id").primaryKey(),
+  pageId: text("page_id").notNull().references(() => picturePage.id, { onDelete: "cascade" }),
+  name: text("name"),
+  url: text("url").notNull(),
+  size: text("size"),
+  lastUpdate: timestamp("last_update"),
+  delay: text("delay"),
+  delayMinutes: integer("delay_minutes"),
+  status: text("status").notNull().default("ok"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+export type PictureLink = typeof pictureLink.$inferSelect;
 
 // === NOVA TABELA: Categorias de Problemas ===
 export const productProblemCategory = pgTable("product_problem_category", {
