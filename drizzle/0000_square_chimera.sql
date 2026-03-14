@@ -115,6 +115,7 @@ CREATE TABLE "help" (
 CREATE TABLE "picture_link" (
 	"id" text PRIMARY KEY NOT NULL,
 	"page_id" text NOT NULL,
+	"slug" text,
 	"name" text,
 	"url" text NOT NULL,
 	"size" text,
@@ -122,11 +123,13 @@ CREATE TABLE "picture_link" (
 	"delay" text,
 	"delay_minutes" integer,
 	"status" text DEFAULT 'ok' NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "picture_link_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
 CREATE TABLE "picture_page" (
 	"id" text PRIMARY KEY NOT NULL,
+	"slug" text,
 	"name" text NOT NULL,
 	"url" text NOT NULL,
 	"description" text,
@@ -137,7 +140,8 @@ CREATE TABLE "picture_page" (
 	"delayed_links" integer DEFAULT 0 NOT NULL,
 	"offline_links" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "picture_page_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
 CREATE TABLE "product" (
@@ -326,6 +330,34 @@ CREATE TABLE "project_task_user" (
 	CONSTRAINT "unique_task_user" UNIQUE("task_id","user_id")
 );
 --> statement-breakpoint
+CREATE TABLE "radar" (
+	"id" text PRIMARY KEY NOT NULL,
+	"group_id" text NOT NULL,
+	"slug" text,
+	"name" text NOT NULL,
+	"description" text,
+	"webhook_url" text,
+	"log_url" text,
+	"status" text DEFAULT 'ok' NOT NULL,
+	"delay" text,
+	"delay_minutes" integer,
+	"log_date" timestamp,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "radar_slug_unique" UNIQUE("slug")
+);
+--> statement-breakpoint
+CREATE TABLE "radar_group" (
+	"id" text PRIMARY KEY NOT NULL,
+	"slug" text,
+	"name" text NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "radar_group_slug_unique" UNIQUE("slug")
+);
+--> statement-breakpoint
 CREATE TABLE "rate_limit" (
 	"id" text PRIMARY KEY NOT NULL,
 	"route" text NOT NULL,
@@ -395,6 +427,7 @@ ALTER TABLE "project_task_history" ADD CONSTRAINT "project_task_history_task_id_
 ALTER TABLE "project_task_history" ADD CONSTRAINT "project_task_history_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project_task_user" ADD CONSTRAINT "project_task_user_task_id_project_task_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."project_task"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project_task_user" ADD CONSTRAINT "project_task_user_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "radar" ADD CONSTRAINT "radar_group_id_radar_group_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."radar_group"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_group" ADD CONSTRAINT "user_group_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_group" ADD CONSTRAINT "user_group_group_id_group_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."group"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_preferences" ADD CONSTRAINT "user_preferences_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

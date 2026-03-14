@@ -12,6 +12,7 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "npx tsx src/lib/db/seed.ts",
+    "db:reset": "npx tsx src/lib/db/reset.ts",
     "db:studio": "drizzle-kit studio",
     "deploy": "node deploy.js"
   },

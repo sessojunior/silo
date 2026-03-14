@@ -25,6 +25,14 @@ import {
   generateSolutions,
   projectActivitiesData,
 } from "./seedData";
+import { seedPictures } from "./seedPictures";
+import { seedMonitoringProducts } from "./seedProducts";
+import { seedRadars } from "./seedRadars";
+import { 
+  SeedRadarGroup, 
+  SeedPicturePage, 
+  SeedMonitoringProduct 
+} from "./seedTypes";
 
 // === TIPAGENS DO SCHEMA ===
 type ProductDependency = typeof schema.productDependency.$inferInsert;
@@ -114,6 +122,18 @@ const allGroupPermissions: GroupPermissionSeed[] = [
   { resource: "chat", action: "send_private" },
   { resource: "chat", action: "send_group_all" },
   { resource: "chat", action: "presence" },
+  { resource: "picturePages", action: "list" },
+  { resource: "picturePages", action: "create" },
+  { resource: "picturePages", action: "update" },
+  { resource: "picturePages", action: "delete" },
+  { resource: "radarGroups", action: "list" },
+  { resource: "radarGroups", action: "create" },
+  { resource: "radarGroups", action: "update" },
+  { resource: "radarGroups", action: "delete" },
+  { resource: "radars", action: "list" },
+  { resource: "radars", action: "create" },
+  { resource: "radars", action: "update" },
+  { resource: "radars", action: "delete" },
 ];
 
 // === FUNÇÕES AUXILIARES ===
@@ -159,6 +179,162 @@ async function insertDependencies(
       );
     }
   }
+}
+
+function parseLastUpdate(val: string): Date | null {
+  if (!val || val === "indefinido" || val === "" || val.includes("atrasado")) return null;
+  try {
+    const parts = val.split(" ");
+    if (parts.length < 2) return null;
+    const [dayMonth, time] = parts;
+    const [day, month] = dayMonth.split("/").map(Number);
+    const [hour, minute] = time.split(":").map(Number);
+    const date = new Date(2026, month - 1, day, hour, minute);
+    return isNaN(date.getTime()) ? null : date;
+  } catch {
+    return null;
+  }
+}
+
+export async function seedMonitoring() {
+  console.log("🔵 Iniciando seed de monitoramento...");
+  console.log("   - Verificando existência de dados de monitoramento...");
+
+  // Se já existirem registros de páginas ou radares, não semear para evitar sobrescrita
+  const existingPictures = await checkTableData(
+    "picture_pages",
+    () => db.select().from(schema.picturePage).limit(1),
+  );
+  const existingRadars = await checkTableData(
+    "radar_groups",
+    () => db.select().from(schema.radarGroup).limit(1),
+  );
+
+  if (existingPictures.hasData || existingRadars.hasData) {
+    console.log(
+      "⚠️ Dados de monitoramento já existem — pulando seedMonitoring para evitar sobrescrita.",
+    );
+    return;
+  }
+
+  // 1. RADARES
+  console.log("   - Semeando radares...");
+  const radarData = seedRadars as unknown as { groups: SeedRadarGroup[] };
+  const groupsSeen = new Set<string>();
+
+  for (const groupData of radarData.groups) {
+    if (groupsSeen.has(groupData.id)) continue;
+    groupsSeen.add(groupData.id);
+
+    // Só insere se não existir slug
+    const existingGroup = await db.select().from(schema.radarGroup).where(eq(schema.radarGroup.slug, groupData.id)).limit(1);
+    let groupId: string;
+    if (existingGroup.length > 0) {
+      groupId = existingGroup[0].id;
+    } else {
+      const [group] = await db.insert(schema.radarGroup).values({
+        id: randomUUID(),
+        slug: groupData.id,
+        name: groupData.name,
+      }).returning();
+      groupId = group.id;
+    }
+
+    const radarsSeen = new Set<string>();
+    for (const r of groupData.radars) {
+      if (radarsSeen.has(r.id)) continue;
+      radarsSeen.add(r.id);
+
+      const existingRadar = await db.select().from(schema.radar).where(eq(schema.radar.slug, r.id)).limit(1);
+      if (existingRadar.length === 0) {
+        await db.insert(schema.radar).values({
+          id: randomUUID(),
+          groupId: groupId,
+          slug: r.id,
+          name: r.name,
+          description: r.description,
+          logUrl: r.logUrl,
+          status: r.status,
+          delay: r.delay,
+          delayMinutes: r.delayMinutes,
+          logDate: r.logDate ? new Date(r.logDate) : null,
+        });
+      }
+    }
+  }
+
+  // 2. MONITORAMENTO (PÁGINAS E LINKS)
+  console.log("   - Semeando páginas e figuras...");
+  const pagesData = (seedPictures as unknown as { pages: SeedPicturePage[] }).pages;
+  const pagesSeen = new Map<string, string>(); // slug -> id
+
+  for (const pageData of pagesData) {
+    if (pagesSeen.has(pageData.id)) continue;
+
+    // Só insere se não existir slug
+    const existingPage = await db.select().from(schema.picturePage).where(eq(schema.picturePage.slug, pageData.id)).limit(1);
+    let pageId: string;
+    if (existingPage.length > 0) {
+      pageId = existingPage[0].id;
+    } else {
+      const [page] = await db.insert(schema.picturePage).values({
+        id: randomUUID(),
+        slug: pageData.id,
+        name: pageData.name,
+        url: pageData.url,
+        description: pageData.description,
+        checkMode: pageData.checkMode,
+        status: pageData.status,
+        delay: pageData.delay,
+        delayMinutes: pageData.delayMinutes,
+        delayedLinks: pageData.delayedLinks || 0,
+        offlineLinks: pageData.offlineLinks || 0,
+      }).returning();
+      pageId = page.id;
+    }
+
+    pagesSeen.set(pageData.id, pageId);
+
+    const linksSeen = new Set<string>();
+    for (const linkData of pageData.links) {
+      if (linksSeen.has(linkData.id)) continue;
+      linksSeen.add(linkData.id);
+
+      const existingLink = await db.select().from(schema.pictureLink).where(eq(schema.pictureLink.slug, linkData.id)).limit(1);
+      if (existingLink.length === 0) {
+        await db.insert(schema.pictureLink).values({
+          id: randomUUID(),
+          pageId: pageId,
+          slug: linkData.id,
+          name: linkData.name,
+          url: linkData.url,
+          size: linkData.size,
+          lastUpdate: parseLastUpdate(linkData.lastUpdate),
+          delay: linkData.delay,
+          delayMinutes: linkData.delayMinutes,
+          status: linkData.status,
+        });
+      }
+    }
+  }
+
+  // 3. PRODUTOS (SINCRONIZAR Slugs)
+  console.log("   - Sincronizando produtos de monitoramento...");
+  const pData = (seedMonitoringProducts as unknown as { products: SeedMonitoringProduct[] }).products;
+  for (const prod of pData) {
+    // Transformamos turnos de objetos para array de strings (apenas as horas)
+    const turnStrings = prod.turns.map(t => t.turn);
+    
+    await db.update(schema.product)
+      .set({
+        name: prod.model,
+        description: prod.description,
+        turns: turnStrings,
+      })
+      .where(eq(schema.product.slug, prod.productId));
+  }
+
+  console.log("✅ Seed de monitoramento concluído com sucesso!");
 }
 
 async function checkTableData(
@@ -726,22 +902,29 @@ async function seed() {
     if (bamProduct.length > 0) {
       console.log("🔍 ID do produto BAM:", bamProduct[0].id);
 
-      // Remover histórico antigo do BAM
+      // Verificar existência de histórico antigo do BAM — NÃO remover nada
       const oldActivities = await db
         .select({ id: schema.productActivity.id })
         .from(schema.productActivity)
         .where(eq(schema.productActivity.productId, bamProduct[0].id));
-      if (oldActivities.length > 0) {
-        const oldActivityIds = oldActivities.map((a) => a.id);
-        await db
-          .delete(schema.productActivityHistory)
-          .where(
-            inArray(
-              schema.productActivityHistory.productActivityId,
-              oldActivityIds,
-            ),
-          );
-        console.log("✅ Histórico antigo do BAM removido");
+      const oldActivityIds = oldActivities.map((a) => a.id);
+      const existingHistoryForBam = oldActivityIds.length
+        ? await db
+            .select()
+            .from(schema.productActivityHistory)
+            .where(
+              inArray(
+                schema.productActivityHistory.productActivityId,
+                oldActivityIds,
+              ),
+            )
+            .limit(1)
+        : [];
+
+      if (existingHistoryForBam.length > 0) {
+        console.log(
+          "⚠️ Histórico de atividades do BAM já existe — pulando criação de histórico para evitar sobrescrita",
+        );
       }
 
       // Buscar atividades do BAM para a data atual
@@ -865,6 +1048,17 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
       // Gerar histórico apenas para as atividades de hoje (máximo 3)
       for (let i = 0; i < Math.min(todayActivities.length, 3); i++) {
         const activity = todayActivities[i];
+
+        // Se já existe histórico para esta atividade, pular (não destrutivo)
+        const existing = await db
+          .select()
+          .from(schema.productActivityHistory)
+          .where(eq(schema.productActivityHistory.productActivityId, activity.id))
+          .limit(1);
+        if (existing.length > 0) {
+          console.log(`⚠️ Histórico já existe para atividade ${activity.id}, pulando`);
+          continue;
+        }
 
         // Criar data base para o histórico (mais recente que a atividade)
         const baseHistoryDate = new Date();
@@ -1153,17 +1347,17 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
     }
 
     // === 12. CRIAR DADOS DAS TAREFAS DOS PROJETOS (ARQUITETURA SIMPLIFICADA) ===
-    // FORÇAR RECRIAÇÃO para corrigir as datas das tarefas
-    console.log("🔵 Recriando dados das tarefas com datas corretas...");
+    // NÃO-DESTRUTIVO: não remover ou recriar tarefas existentes.
+    console.log("🔵 Preparando criação de tarefas (não destrutivo)...");
 
-    // Remover tarefas existentes para recriar com datas corretas
-    await db.delete(schema.projectTask);
-    console.log("✅ Tarefas antigas removidas para recriação");
-
-    // Buscar atividades existentes
+    // Buscar atividades existentes (projeto)
     const allActivities = await db.select().from(schema.projectActivity);
 
-    if (allActivities.length > 0) {
+    // Somente criar tarefas se nenhuma existir
+    const existingTasks = await db.select().from(schema.projectTask).limit(1);
+    if (existingTasks.length > 0) {
+      console.log("⚠️ Tarefas já existem, pulando criação para evitar sobrescrita");
+    } else if (allActivities.length > 0) {
       let totalTasksCreated = 0;
 
       for (const project of insertedProjects.slice(0, 1)) {
@@ -1331,12 +1525,8 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
     // === 13. CRIAR ASSOCIAÇÕES TAREFA-USUÁRIO ===
     // REQUISITO: TODA tarefa deve estar associada a pelo menos um usuário
     console.log(
-      "🔵 Criando associações tarefa-usuário (REQUISITO: toda tarefa deve ter pelo menos um usuário)...",
+      "🔵 Criando associações tarefa-usuário (não destrutivo)...",
     );
-
-    // Remover associações existentes
-    await db.delete(schema.projectTaskUser);
-    console.log("✅ Associações antigas removidas");
 
     // Buscar tarefas e usuários existentes
     const allTasks = await db.select().from(schema.projectTask);
@@ -1345,7 +1535,11 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
       .from(schema.authUser)
       .where(eq(schema.authUser.isActive, true));
 
-    if (allTasks.length > 0 && allUsers.length > 0) {
+    // Somente criar associações se não houver associações existentes
+    const existingTaskUsers = await db.select().from(schema.projectTaskUser).limit(1);
+    if (existingTaskUsers.length > 0) {
+      console.log("⚠️ Associações tarefa-usuário já existem, pulando criação");
+    } else if (allTasks.length > 0 && allUsers.length > 0) {
       const taskUsersToCreate = [];
 
       // REQUISITO: Para CADA tarefa, associar pelo menos 1 usuário
@@ -1385,24 +1579,24 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
     }
 
     // 🆕 HISTÓRICO DE TAREFAS (project_task_history)
-    console.log("🔄 Criando histórico simulado para tarefas existentes...");
+    console.log("🔄 Criando histórico simulado para tarefas existentes (não destrutivo)...");
 
-    // Remover histórico existente
-    await db.delete(schema.projectTaskHistory);
-    console.log("✅ Histórico antigo removido");
-
-    // Buscar todas as tarefas existentes
-    const existingTasks = await db.select().from(schema.projectTask);
+    // Buscar todas as tarefas existentes e usuários ativos
+    const existingTasksForHistory = await db.select().from(schema.projectTask);
     const activeUsers = await db
       .select()
       .from(schema.authUser)
       .where(eq(schema.authUser.isActive, true));
 
-    if (existingTasks.length > 0 && activeUsers.length > 0) {
+    // Somente criar histórico se não houver histórico existente
+    const existingHistory = await db.select().from(schema.projectTaskHistory).limit(1);
+    if (existingHistory.length > 0) {
+      console.log("⚠️ Histórico de tarefas já existe, pulando criação");
+    } else if (existingTasksForHistory.length > 0 && activeUsers.length > 0) {
       const historyEntries = [];
 
       // Para cada tarefa, criar histórico simulado
-      for (const task of existingTasks) {
+      for (const task of existingTasksForHistory) {
         const randomUser =
           activeUsers[Math.floor(Math.random() * activeUsers.length)];
 
@@ -1508,14 +1702,21 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
       `   - Sistema de tarefas com arquitetura simplificada implementado`,
     );
     console.log(`   - Nenhuma duplicação de dados`);
+ 
+    // Seed de monitoramento (Radares, Páginas, Links)
+    await seedMonitoring();
   } catch (error) {
     console.error("❌ Erro durante o seed:", error);
     throw error;
   }
 }
 
-// Executar seed
-seed().catch((err) => {
-  console.error("❌ Erro fatal no seed:", err);
-  process.exit(1);
-});
+// Executar seed se for o arquivo principal
+const isMain = process.argv[1]?.includes("seed.ts") || process.argv[1]?.includes("seed.js");
+
+if (isMain) {
+  seed().catch((err) => {
+    console.error("❌ Erro fatal no seed:", err);
+    process.exit(1);
+  });
+}

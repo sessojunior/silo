@@ -1,23 +1,34 @@
 import MonitoringPageClient from "@/components/admin/monitoring/MonitoringPageClient";
 import { db } from "@/lib/db";
-import { product, picturePage, pictureLink } from "@/lib/db/schema";
+import { product, picturePage, pictureLink, radarGroup, radar } from "@/lib/db/schema";
 import type { PicturePage as DBPicturePage, PictureLink as DBPictureLink } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import productsJson from "./products.json";
+import { seedMonitoringProducts as PRODUCTS_DATA } from "@/lib/db/seedProducts";
+import { seedPictures } from "@/lib/db/seedPictures";
 
 import type {
   MonitoringProductItem,
   MonitoringProductsFile,
 } from "@/components/admin/monitoring/ProductMonitoringCards";
+import { 
+  DbRadarGroup,
+  DbRadar,
+} from "@/components/admin/monitoring/MonitoringPageClient";
+import { SeedMonitoringProduct, SeedPicturePage } from "@/lib/db/seedTypes";
+import type { 
+  PicturePage, 
+  PictureLink,
+  PictureLinkStatus,
+  PictureCheckMode,
+} from "@/components/admin/monitoring/PicturePagesAccordion";
 
 type ActiveProduct = {
   slug: string;
   name: string;
 };
 
-const PRODUCTS_DATA = productsJson as MonitoringProductsFile;
-
 function normalizeModelKey(value: string): string {
+  if (!value) return "";
   return value
     .toLowerCase()
     .normalize("NFD")
@@ -62,12 +73,14 @@ export default async function DashboardMonitoringPage() {
     .from(product)
     .where(eq(product.available, true));
 
+  const productsDataTyped = PRODUCTS_DATA as unknown as { referenceDate: string; products: SeedMonitoringProduct[] };
+
   const filteredProductsData: MonitoringProductsFile = {
-    referenceDate: PRODUCTS_DATA.referenceDate,
-    products: PRODUCTS_DATA.products
+    referenceDate: productsDataTyped.referenceDate,
+    products: productsDataTyped.products
       .map((mockProduct) => {
         const matchedProduct = findMatchingActiveProduct(
-          mockProduct,
+          mockProduct as unknown as MonitoringProductItem,
           activeProducts,
         );
 
@@ -79,14 +92,16 @@ export default async function DashboardMonitoringPage() {
           ...mockProduct,
           productId: matchedProduct.slug,
           model: matchedProduct.name,
-        };
+        } as MonitoringProductItem;
       })
       .filter((productItem): productItem is MonitoringProductItem => productItem !== null),
   };
 
-  // Load picture pages from DB if present, otherwise fallback to static JSON
+  // Load picture pages from DB
   const pagesFromDbRows = (await db.select().from(picturePage).orderBy(picturePage.name)) as DBPicturePage[];
-  let picturePages = (await import("./pictures.json")).pages as unknown[];
+  
+  let picturePagesResult: PicturePage[] = [];
+
   if (pagesFromDbRows.length > 0) {
     const linkRows = (await db.select().from(pictureLink)) as DBPictureLink[];
     const linksByPage: Record<string, DBPictureLink[]> = {};
@@ -96,25 +111,29 @@ export default async function DashboardMonitoringPage() {
       linksByPage[key].push(l);
     }
 
-    picturePages = pagesFromDbRows.map((p) => {
-      const links = (linksByPage[p.id] || []).map((l) => ({
+    picturePagesResult = pagesFromDbRows.map((p) => {
+      const links: PictureLink[] = (linksByPage[p.id] || []).map((l) => ({
         id: l.id,
-        name: l.name,
+        pageId: l.pageId,
+        slug: l.slug || "",
+        name: l.name || "",
         url: l.url,
-        size: l.size,
+        size: l.size || "",
         lastUpdate: l.lastUpdate ? l.lastUpdate.toISOString() : "",
         delay: l.delay || "",
         delayMinutes: l.delayMinutes ?? null,
-        status: l.status || "ok",
+        status: (l.status as unknown as PictureLinkStatus) || "ok",
+        type: ((l as unknown) as { type: string }).type || "asset",
       }));
 
       return {
         id: p.id,
         name: p.name,
+        slug: p.slug || "",
         url: p.url,
-        description: p.description,
-        checkMode: p.checkMode || "page",
-        status: p.status || "ok",
+        description: p.description || "",
+        checkMode: (p.checkMode as unknown as PictureCheckMode) || "page",
+        status: (p.status as unknown as PictureLinkStatus) || "ok",
         delay: p.delay || "",
         delayMinutes: p.delayMinutes ?? null,
         delayedLinks: p.delayedLinks ?? links.filter((l) => l.status !== "ok").length,
@@ -122,7 +141,32 @@ export default async function DashboardMonitoringPage() {
         links,
       };
     });
+  } else {
+    // Fallback to TS seed data
+    picturePagesResult = (seedPictures as unknown as { pages: SeedPicturePage[] }).pages.map(p => ({
+      ...p,
+      slug: p.id,
+      checkMode: p.checkMode as unknown as PictureCheckMode,
+      status: p.status as unknown as PictureLinkStatus,
+      links: p.links.map(l => ({
+        ...l,
+        slug: l.slug || "",
+        status: l.status as unknown as PictureLinkStatus,
+        type: l.type || "asset"
+      }))
+    }));
   }
-
-  return <MonitoringPageClient productsData={filteredProductsData} picturePages={picturePages} />;
+ 
+  // Load radar groups and radars from DB
+  const radarGroupsResult = await db.select().from(radarGroup).orderBy(radarGroup.sortOrder);
+  const radarsResult = await db.select().from(radar).orderBy(radar.name);
+ 
+  return (
+    <MonitoringPageClient 
+      productsData={filteredProductsData} 
+      picturePages={picturePagesResult}
+      radarGroups={radarGroupsResult as unknown as DbRadarGroup[]}
+      radars={radarsResult as unknown as DbRadar[]}
+    />
+  );
 }

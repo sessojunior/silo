@@ -443,7 +443,7 @@ export default function SettingsProductsPage() {
                                   key={turn}
                                   className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
                                 >
-                                  {turn.padStart(2, "0")}:00
+                                  {String(turn).padStart(2, "0")}:00
                                 </span>
                               ))
                             ) : (

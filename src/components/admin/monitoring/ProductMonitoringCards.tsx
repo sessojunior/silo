@@ -55,7 +55,7 @@ function clampProgress(value: number): number {
 }
 
 function formatTurnLabel(turn: string): string {
-  return `Turno ${turn.padStart(2, "0")}h`;
+  return `Turno ${String(turn).padStart(2, "0")}h`;
 }
 
 function formatReferenceDate(date: string): string {
@@ -68,10 +68,10 @@ function formatReferenceDate(date: string): string {
 export default function ProductMonitoringCards({ data }: ProductMonitoringCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-      {data.products.map((product) => {
+      {data.products.map((product, productIndex) => {
         return (
           <article
-            key={product.productId}
+            key={`${product.productId}-${productIndex}`}
             className="rounded-xl border border-zinc-200 bg-white px-4 pt-4 pb-6 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800/80"
           >
             <header className="-mx-4 mb-4 border-b border-zinc-200 px-4 pb-3 dark:border-zinc-700">
@@ -82,12 +82,12 @@ export default function ProductMonitoringCards({ data }: ProductMonitoringCardsP
             </header>
 
             <div className="space-y-3">
-              {product.turns.map((turn) => {
+              {product.turns.map((turn, turnIndex) => {
                 const visualState = toVisualState(turn.status);
                 const turnProgress = clampProgress(turn.progress);
 
                 return (
-                  <div key={`${product.productId}-${turn.turn}`} className="space-y-1.5">
+                  <div key={`${product.productId}-${turn.turn}-${turnIndex}`} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-300">
                       <div className="flex items-center gap-1">
                         <Link

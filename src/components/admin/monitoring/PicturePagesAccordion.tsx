@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { toast } from "@/lib/toast";
-
 export type PictureLinkStatus = "ok" | "delayed" | "offline" | "undefined";
 export type PictureCheckMode = "page" | "items";
 
 export type PictureLink = {
   id: string;
+  pageId?: string;
+  slug: string;
   name: string;
   url: string;
   size: string;
@@ -22,6 +22,7 @@ export type PictureLink = {
 export type PicturePage = {
   id: string;
   name: string;
+  slug: string;
   url: string;
   description: string;
   checkMode: PictureCheckMode;
@@ -37,11 +38,13 @@ export type PicturePage = {
 type PicturePagesAccordionProps = {
   pages: PicturePage[];
   refreshToken?: number;
+  onEdit?: (page: PicturePage) => void;
 };
 
 export default function PicturePagesAccordion({
   pages,
   refreshToken = 0,
+  onEdit,
 }: PicturePagesAccordionProps) {
   const [openPageIndexes, setOpenPageIndexes] = useState<number[]>([]);
   const [pageItems, setPageItems] = useState<PicturePage[]>(pages);
@@ -75,28 +78,6 @@ export default function PicturePagesAccordion({
       });
   }, [pageItems]);
 
-  function handleDeletePage(indexToDelete: number) {
-    setPageItems((prev) => prev.filter((_, index) => index !== indexToDelete));
-    setOpenPageIndexes((prev) =>
-      prev
-        .filter((index) => index !== indexToDelete)
-        .map((index) => (index > indexToDelete ? index - 1 : index)),
-    );
-
-    toast({
-      type: "warning",
-      title: "Pagina removida",
-      description: "Remocao local de exemplo. Ainda nao conectada a API.",
-    });
-  }
-
-  function handleEditPage(pageName: string) {
-    toast({
-      type: "info",
-      title: `Alterar pagina: ${pageName}`,
-      description: "Acao de edicao ainda nao conectada a API.",
-    });
-  }
 
   if (pageItems.length === 0) {
     return (
@@ -142,13 +123,13 @@ export default function PicturePagesAccordion({
                   <span
                     className={`${isOpen ? "icon-[lucide--minus]" : "icon-[lucide--plus]"} size-5 shrink-0 text-zinc-500 dark:text-zinc-300`}
                   />
+                  <span className="icon-[lucide--monitor] size-5 shrink-0 text-blue-500/70 dark:text-blue-400/70" />
                   <span className="truncate text-sky-600 dark:text-zinc-200">
                     {page.name}
                   </span>
-                  <span className="max-w-64 truncate rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-300">
+                  <span className="max-w-64 truncate rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                     {page.url}
                   </span>
-                  {/* Removido ícone de check do lado do link */}
                 </span>
 
                 <span className="flex shrink-0 items-center gap-2">
@@ -176,21 +157,12 @@ export default function PicturePagesAccordion({
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-md border border-zinc-300 px-2 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                        onClick={() => handleEditPage(page.name)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700/50"
+                        onClick={() => onEdit?.(page)}
                         title="Alterar pagina"
                       >
-                        <span className="icon-[lucide--pencil] size-4" />
+                        <span className="icon-[lucide--pencil] size-4 shrink-0" />
                         Alterar
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950/40"
-                        onClick={() => handleDeletePage(originalIndex)}
-                        title="Apagar pagina"
-                      >
-                        <span className="icon-[lucide--trash-2] size-4" />
-                        Apagar
                       </button>
                     </div>
                   </div>

@@ -204,7 +204,7 @@ export default function ProductForm({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    Turno {turn.padStart(2, "0")}:00
+                    Turno {String(turn).padStart(2, "0")}:00
                   </p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
                     {parseInt(turn) === 0

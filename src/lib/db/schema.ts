@@ -193,6 +193,7 @@ export type Product = typeof product.$inferSelect;
 
 export const picturePage = pgTable("picture_page", {
   id: text("id").primaryKey(),
+  slug: text("slug").unique(), // Estável para seed/importação
   name: text("name").notNull(),
   url: text("url").notNull(),
   description: text("description"),
@@ -210,6 +211,7 @@ export type PicturePage = typeof picturePage.$inferSelect;
 export const pictureLink = pgTable("picture_link", {
   id: text("id").primaryKey(),
   pageId: text("page_id").notNull().references(() => picturePage.id, { onDelete: "cascade" }),
+  slug: text("slug").unique(), // Estável para seed/importação
   name: text("name"),
   url: text("url").notNull(),
   size: text("size"),
@@ -220,6 +222,37 @@ export const pictureLink = pgTable("picture_link", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 export type PictureLink = typeof pictureLink.$inferSelect;
+ 
+// === SISTEMA DE RADARES ===
+export const radarGroup = pgTable("radar_group", {
+  id: text("id").primaryKey(),
+  slug: text("slug").unique(), // Estável para seed/importação
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+export type RadarGroup = typeof radarGroup.$inferSelect;
+ 
+export const radar = pgTable("radar", {
+  id: text("id").primaryKey(),
+  groupId: text("group_id")
+    .notNull()
+    .references(() => radarGroup.id, { onDelete: "cascade" }),
+  slug: text("slug").unique(), // Estável para seed/importação
+  name: text("name").notNull(),
+  description: text("description"),
+  webhookUrl: text("webhook_url"), // URL para receber dados ou gerenciar
+  logUrl: text("log_url"),
+  status: text("status").notNull().default("ok"),
+  delay: text("delay"),
+  delayMinutes: integer("delay_minutes"),
+  logDate: timestamp("log_date"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+export type Radar = typeof radar.$inferSelect;
 
 // === NOVA TABELA: Categorias de Problemas ===
 export const productProblemCategory = pgTable("product_problem_category", {
