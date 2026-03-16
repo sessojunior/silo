@@ -17,7 +17,7 @@ export default function SidebarLogo() {
         unoptimized
       />
       <div
-        className={`inline-block px-1 text-zinc-600 dark:text-zinc-200 text-2xl font-bold tracking-[-0.5px] flex-1 m-0 uppercase`}
+        className={`inline-block px-1 text-zinc-600 dark:text-zinc-200 text-2xl font-bold tracking-[-0.5px] flex-1 m-0`}
         style={{
           fontFamily:
             "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
