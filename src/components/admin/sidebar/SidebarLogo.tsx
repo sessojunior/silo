@@ -4,7 +4,7 @@ import { config as appConfig } from "@/lib/config";
 export default function SidebarLogo() {
   const logoSrc = appConfig.getPublicPath("/images/logo.png");
 
-  const VERSION = "26.3.14.0057"; // Formato da versão é "Ano.Mês.Dia.HoraMinuto"
+  const VERSION = "26.3.16.1358"; // Formato da versão é "Ano.Mês.Dia.HoraMinuto"
 
   return (
     <div className="flex items-center">
@@ -23,7 +23,7 @@ export default function SidebarLogo() {
             "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         }}
       >
-        SILO
+        Silo
       </div>
       <div className="text-zinc-500 dark:text-zinc-400 text-xs ml-2 mt-1" title="Versão do Silo no formato Ano.Mês.Dia.Hora.Minuto.">v{VERSION}</div>
     </div>

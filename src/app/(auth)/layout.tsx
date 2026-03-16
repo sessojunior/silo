@@ -41,7 +41,7 @@ export default function AuthLayout({
                     className="block h-12 w-12"
                   />
                   <div
-                    className={`inline-block px-1 text-zinc-600 dark:text-zinc-200 text-3xl font-bold tracking-[-0.5px] flex-1 m-0 uppercase`}
+                    className={`inline-block px-1 text-zinc-600 dark:text-zinc-200 text-3xl font-bold tracking-[-0.5px] flex-1 m-0`}
                     style={{
                       fontFamily:
                         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
