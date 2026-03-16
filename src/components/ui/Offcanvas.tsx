@@ -35,6 +35,8 @@ interface OffcanvasProps {
 const FOCUSABLE_SELECTOR =
   'a[href],button,textarea,input,select,[tabindex]:not([tabindex="-1"])';
 
+const offcanvasStack: string[] = [];
+
 let openCount = 0;
 let bodyOverflowBackup: string | null = null;
 
@@ -73,10 +75,21 @@ export default function Offcanvas({
   const [rendered, setRendered] = useState(false);
   const [active, setActive] = useState(false);
   const titleId = useId();
+  const instanceId = useId();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (open) {
+      offcanvasStack.push(instanceId);
+      return () => {
+        const index = offcanvasStack.indexOf(instanceId);
+        if (index > -1) offcanvasStack.splice(index, 1);
+      };
+    }
+  }, [open, instanceId]);
 
   useEffect(() => {
     if (open) {
@@ -114,7 +127,9 @@ export default function Offcanvas({
     if (!open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
+        if (offcanvasStack[offcanvasStack.length - 1] === instanceId) {
+          onClose();
+        }
         return;
       }
       if (event.key !== "Tab") return;

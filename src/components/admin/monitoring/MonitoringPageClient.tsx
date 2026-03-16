@@ -176,6 +176,7 @@ export default function MonitoringPageClient({
         description: "Página excluída com sucesso!",
       });
       setPageToDelete(null);
+      setEditingPage(null);
       router.refresh();
     } catch (error) {
       console.error(error);
@@ -320,8 +321,9 @@ export default function MonitoringPageClient({
     try {
       const slug = editingPage.slug || formatSlug(editingPage.name);
 
+      const isNew = editingPage.id.includes("new-page-");
       const res = await fetch(config.getApiUrl("/api/admin/monitoring/picture-pages"), {
-        method: "PUT",
+        method: isNew ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editingPage.id,
@@ -339,7 +341,7 @@ export default function MonitoringPageClient({
       toast({
         type: "success",
         title: "Sucesso",
-        description: "Página atualizada com sucesso!",
+        description: isNew ? "Página criada com sucesso!" : "Página atualizada com sucesso!",
       });
       setEditingPage(null);
       router.refresh();
@@ -553,7 +555,7 @@ export default function MonitoringPageClient({
                   style="unstyled"
                   className="inline-flex text-base items-center gap-1 font-semibold text-blue-600 dark:text-blue-400 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                   onClick={() => setEditingPage({
-                    id: `page-${Date.now()}`,
+                    id: `new-page-${Date.now()}`,
                     slug: "",
                     name: "",
                     url: "",
@@ -724,7 +726,7 @@ export default function MonitoringPageClient({
           <div>
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">Grupos de Radares</h4>
-              <Button onClick={() => setEditingRadarGroup({ id: `group-${Date.now()}`, slug: "", name: "", sortOrder: 0 })}>
+              <Button onClick={() => setEditingRadarGroup({ id: `new-group-${Date.now()}`, slug: "", name: "", sortOrder: 0 })}>
                 Novo Grupo
               </Button>
             </div>
@@ -744,7 +746,7 @@ export default function MonitoringPageClient({
                     }}>
                       <span className="icon-[lucide--pencil] size-4" />
                     </Button>
-                    <Button style="unstyled" className="py-1 px-2 text-sm h-auto flex items-center" onClick={() => setEditingRadar({ id: `radar-${Date.now()}`, groupId: group.id, slug: "", name: "", description: "", webhookUrl: "", logUrl: "", status: "ok", active: true, delay: null, delayMinutes: null, logDate: null })}>
+                    <Button style="unstyled" className="py-1 px-2 text-sm h-auto flex items-center" onClick={() => setEditingRadar({ id: `new-radar-${Date.now()}`, groupId: group.id, slug: "", name: "", description: "", webhookUrl: "", logUrl: "", status: "ok", active: true, delay: null, delayMinutes: null, logDate: null })}>
                       <span className="icon-[lucide--plus] size-4" />
                       Novo radar
                     </Button>
@@ -794,7 +796,7 @@ export default function MonitoringPageClient({
         footerActions={
           <div className="flex justify-between items-center w-full">
             <div>
-              {!editingRadarGroup?.id?.includes("group-") && (
+              {!editingRadarGroup?.id?.includes("new-group-") && (
                 <Button
                   style="bordered"
                   className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/30"
@@ -811,7 +813,7 @@ export default function MonitoringPageClient({
                 if (!editingRadarGroup) return;
                 const slug = editingRadarGroup.slug || formatSlug(editingRadarGroup.name);
                 const res = await fetch(config.getApiUrl("/api/admin/monitoring/radar-groups"), {
-                  method: editingRadarGroup?.id?.includes("group-") ? "POST" : "PUT",
+                  method: editingRadarGroup?.id?.includes("new-group-") ? "POST" : "PUT",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ ...editingRadarGroup, slug }),
                 });
@@ -836,16 +838,6 @@ export default function MonitoringPageClient({
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>Slug</Label>
-              <Input
-                type="text"
-                value={editingRadarGroup.slug}
-                setValue={(v) => setEditingRadarGroup({ ...editingRadarGroup, slug: v })}
-                placeholder="ex: grupo-sul"
-                required
-              />
-            </div>
           </div>
         )}
       </Offcanvas>
@@ -860,7 +852,7 @@ export default function MonitoringPageClient({
         footerActions={
           <div className="flex justify-between items-center w-full">
             <div>
-              {!editingRadar?.id?.includes("radar-") && (
+              {!editingRadar?.id?.includes("new-radar-") && (
                 <Button
                   style="bordered"
                   className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/30"
@@ -915,26 +907,19 @@ export default function MonitoringPageClient({
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Slug</Label>
-              <Input
-                type="text"
-                value={editingRadar.slug}
-                setValue={(v) => setEditingRadar({ ...editingRadar, slug: v })}
-                placeholder="ex: radar-foz"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Webhook URL (Gerenciamento)</Label>
+              <Label>Webhook URL</Label>
               <Input
                 type="text"
                 value={editingRadar.webhookUrl || ""}
                 setValue={(v) => setEditingRadar({ ...editingRadar, webhookUrl: v })}
                 placeholder="https://hooks.example.com/..."
               />
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                Funciona como um mensageiro que avisa imediatamente quando os dados forem atualizados.
+              </p>
             </div>
             <div className="space-y-2">
-              <Label>URL de Log (Botão)</Label>
+              <Label>URL do Log</Label>
               <Input
                 type="text"
                 value={editingRadar.logUrl || ""}
@@ -956,11 +941,12 @@ export default function MonitoringPageClient({
       <Offcanvas
         open={!!editingPage}
         onClose={() => setEditingPage(null)}
-        title="Editar Página de Monitoramento"
+        title={editingPage?.id?.includes("new-page-") ? "Nova Página de Monitoramento" : "Editar Página de Monitoramento"}
+        width="lg"
         footerActions={
           <div className="flex w-full justify-between items-center">
             <div>
-              {!editingPage?.id?.includes("page-") && (
+              {!editingPage?.id?.includes("new-page-") && (
                 <Button
                   style="bordered"
                   className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/30"
@@ -976,7 +962,7 @@ export default function MonitoringPageClient({
                 Cancelar
               </Button>
               <Button type="submit" form="edit-monitoring-page-form" loading={isSaving}>
-                Salvar Alterações
+                {editingPage?.id?.includes("new-page-") ? "Criar Página" : "Salvar Alterações"}
               </Button>
             </div>
           </div>
@@ -991,17 +977,6 @@ export default function MonitoringPageClient({
                 value={editingPage.name}
                 setValue={(v) => setEditingPage({ ...editingPage, name: v })}
                 placeholder="Ex: Previsão do Tempo Inmet"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Slug</Label>
-              <Input
-                type="text"
-                value={editingPage.slug}
-                setValue={(v) => setEditingPage({ ...editingPage, slug: v })}
-                placeholder="exemplo-slug"
                 required
               />
             </div>
@@ -1027,51 +1002,54 @@ export default function MonitoringPageClient({
               />
             </div>
 
-            <div className="pt-6 border-t border-zinc-200 dark:border-zinc-700">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold uppercase text-zinc-500">Links da Página</h4>
-                <Button
-                  style="bordered"
-                  className="h-9 px-3 text-xs"
-                  onClick={() => setEditingLink({ id: `link-${Date.now()}`, pageId: editingPage.id, slug: "", name: "", url: "", size: "" })}
-                >
-                  <span className="icon-[lucide--plus] size-3 mr-1" />
-                  Novo Link
-                </Button>
-              </div>
+            {!editingPage.id.includes("new-page-") && (
+              <div className="pt-6 border-t border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-sm font-bold uppercase text-zinc-500">Links da Página</h4>
+                  <Button
+                    style="bordered"
+                    type="button"
+                    className="h-9 px-3 text-xs"
+                    onClick={() => setEditingLink({ id: `new-link-${Date.now()}`, pageId: editingPage.id, slug: "", name: "", url: "", size: "" })}
+                  >
+                    <span className="icon-[lucide--plus] size-3 mr-1" />
+                    Novo Link
+                  </Button>
+                </div>
 
-              <div className="space-y-3">
-                {editingPage.links.length > 0 ? (
-                  editingPage.links.map(link => (
-                    <div key={link.id} className="flex items-center justify-between p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-zinc-50/50 dark:bg-zinc-800/50 transition-colors hover:border-zinc-300 dark:hover:border-zinc-600">
-                      <div className="min-w-0 pr-4">
-                        <p className="font-medium text-sm truncate text-zinc-900 dark:text-zinc-100">{link.name || link.slug}</p>
-                        <p className="text-xs text-zinc-500 truncate">{link.url}</p>
+                <div className="space-y-3">
+                  {editingPage.links.length > 0 ? (
+                    editingPage.links.map(link => (
+                      <div key={link.id} className="flex items-center justify-between p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-zinc-50/50 dark:bg-zinc-800/50 transition-colors hover:border-zinc-300 dark:hover:border-zinc-600">
+                        <div className="min-w-0 pr-4">
+                          <p className="font-medium text-sm truncate text-zinc-900 dark:text-zinc-100">{link.name || link.slug}</p>
+                          <p className="text-xs text-zinc-500 truncate">{link.url}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button type="button" style="unstyled" className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors" onClick={() => setEditingLink({
+                            id: link.id,
+                            pageId: editingPage.id,
+                            slug: link.slug,
+                            name: link.name,
+                            url: link.url,
+                            size: link.size || ""
+                          })}>
+                            <span className="icon-[lucide--pencil] size-4 text-zinc-500" />
+                          </Button>
+                          <Button type="button" style="unstyled" className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors group" onClick={() => setLinkToDelete({ id: link.id, name: link.name || link.slug })}>
+                            <span className="icon-[lucide--trash-2] size-4 text-zinc-400 group-hover:text-red-500" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button style="unstyled" className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors" onClick={() => setEditingLink({
-                          id: link.id,
-                          pageId: editingPage.id,
-                          slug: link.slug,
-                          name: link.name,
-                          url: link.url,
-                          size: link.size || ""
-                        })}>
-                          <span className="icon-[lucide--pencil] size-4 text-zinc-500" />
-                        </Button>
-                        <Button style="unstyled" className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors group" onClick={() => setLinkToDelete({ id: link.id, name: link.name || link.slug })}>
-                          <span className="icon-[lucide--trash-2] size-4 text-zinc-400 group-hover:text-red-500" />
-                        </Button>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
+                      <p className="text-sm text-zinc-500">Nenhum link cadastrado ainda.</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
-                    <p className="text-sm text-zinc-500">Nenhum link cadastrado ainda.</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </form>
         )}
       </Offcanvas>
@@ -1086,7 +1064,7 @@ export default function MonitoringPageClient({
         <div className="p-6">
           <p className="text-zinc-600 dark:text-zinc-400 mb-6">
             Tem certeza que deseja excluir a página <span className="font-semibold text-zinc-900 dark:text-zinc-100">&quot;{pageToDelete?.name}&quot;</span>?
-            Esta ação não pode ser desfeita.
+            Esta ação não pode ser desfeita e <strong>removerá permanentemente todos os links vinculados</strong> a esta página.
           </p>
           <div className="flex justify-end gap-3">
             <Button style="bordered" onClick={() => setPageToDelete(null)}>
@@ -1106,7 +1084,7 @@ export default function MonitoringPageClient({
       <Offcanvas
         open={!!editingLink}
         onClose={() => setEditingLink(null)}
-        title={editingLink?.id.includes("link-") ? "Novo Link" : "Editar Link"}
+        title={editingLink?.id.includes("new-link-") ? "Novo Link" : "Editar Link"}
         width="md"
         zIndex={100}
         footerActions={
@@ -1140,27 +1118,6 @@ export default function MonitoringPageClient({
                 placeholder="https://..."
                 required
               />
-            </div>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 space-y-2">
-                <Label>Slug</Label>
-                <Input
-                  type="text"
-                  value={editingLink.slug}
-                  setValue={(v) => setEditingLink({ ...editingLink, slug: v })}
-                  placeholder="curitiba"
-                  required
-                />
-              </div>
-              <div className="w-full md:w-32 space-y-2">
-                <Label>Tamanho</Label>
-                <Input
-                  type="text"
-                  value={editingLink.size || ""}
-                  setValue={(v) => setEditingLink({ ...editingLink, size: v })}
-                  placeholder="100x100"
-                />
-              </div>
             </div>
           </form>
         )}
