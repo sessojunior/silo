@@ -9,10 +9,10 @@ Guia tecnico para substituir o JSON fake de paginas e figuras por API, mantendo 
 Migrar a secao `Paginas e Figuras da Previsao do tempo` de uma fonte estatica (arquivo JSON local) para uma fonte dinamica via API, com:
 
 - listagem de paginas monitoradas
-- lista de links/figuras por pagina
-- status consolidado por pagina e por link
+- lista de links/figuras por pagina (gerada automaticamente)
+- status consolidado por pagina e por link (detectado pelo sistema)
 - resposta compativel com a UI atual da pagina de Monitoramento
-- evolucao segura para ambiente real (observabilidade, cache e permissoes)
+- evolucao segura para ambiente real (observabilidade, crawler e webhooks)
 
 ---
 
@@ -87,8 +87,8 @@ Status permitidos (`page.status` e `link.status`):
 
 Modos permitidos (`page.checkMode`):
 
-- `page`: monitora somente a URL principal da pagina
-- `items`: monitora lista de links/figuras vinculados a pagina
+- `page`: monitora somente a URL principal da pagina. O sistema verifica se a URL esta acessivel e o tempo de resposta.
+- `items`: monitora a lista de links/figuras vinculados a pagina. O sistema identifica novos assets e atualiza metadados (tamanho, data) automaticamente.
 
 ---
 
@@ -200,10 +200,11 @@ Recomendacao para `page.delay`:
 - em `checkMode: page`, usar atraso textual da propria URL principal
 - em `checkMode: items`, usar sintese por contagem (ex.: `8 links atrasados`, `2 links offline`)
 
-Importante:
-
-- o frontend nao deve recalcular status principal
-- a API deve retornar `status`, `delay` e contadores consolidados prontos
+Regras de Ouro:
+- O usuario cadastra apenas **Nome** e **URL**.
+- O **Slug** e gerado automaticamente pelo sistema para fins de roteamento.
+- O **Tamanho (size)** e **Status** de cada link sao detectados pelo monitor/crawler do backend.
+- O frontend apenas exibe os dados recebidos da API de monitoramento.
 
 ---
 

@@ -11,7 +11,7 @@ Migrar o módulo de Fluxo de Dados de uma fonte estática (arquivos JSON) para u
 - consulta por `model`, `date` e `turn`
 - resposta com o mesmo formato dos arquivos de exemplo
 - dados consistentes para renderização de Gantt
-- evolução segura para ambientes reais (observabilidade, cache, controle de acesso)
+- recepção de dados via Webhook configurado no Produto
 
 ---
 
@@ -61,6 +61,14 @@ Campos de task:
 - `progress` entre `0` e `100`
 - `dependencies` com IDs válidos de tasks existentes no mesmo snapshot
 - `type`: `task` ou `product`
+
+---
+
+### Webhook de Fluxo de Dados (Pipeline)
+Assim como nos radares, cada produto possui uma **Webhook URL** (configurada na página de edição do produto).
+- **O que é**: Um ponto de entrada para o sistema de processamento (cluster/supercomputador) notificar o SILO sobre o progresso de cada tarefa.
+- **Como funciona**: O script de controle do modelo faz um POST para este Webhook enviando o snapshot do pipeline (Gantt).
+- **Consistência**: Garante que o dashboard de monitoramento reflita o estado real do supercomputador sem intervenção manual.
 
 ---
 

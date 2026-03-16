@@ -9,9 +9,9 @@ Guia técnico para substituir o JSON fake de monitoramento de radares por API, m
 Migrar o módulo de Radares de uma fonte estática (arquivo JSON local) para uma fonte dinâmica via API, com:
 
 - listagem por grupos de radares
-- status e atraso já calculados no backend
+- status e atraso ja calculados no backend ou recebidos via webhook
 - resposta compatível com a UI atual da página de Monitoramento
-- evolução segura para ambiente real (observabilidade, cache e permissões)
+- gerenciamento de Webhooks para atualizacao em tempo real
 
 ---
 
@@ -63,6 +63,19 @@ Status permitidos:
 - `delayed`: com atraso (bloco vermelho)
 - `undefined`: status indefinido (bloco cinza)
 - `off`: radar desativado (bloco branco)
+
+---
+
+### Webhooks de Radar
+Cada radar pode ser configurado com uma **Webhook URL**. 
+- **O que é**: Funciona como um mensageiro que avisa imediatamente quando os dados forem atualizados.
+- **Fluxo**: O sistema de coleta de dados do radar (externo) faz um POST para esta URL enviando o status atualizado e a data do log.
+- **Vantagem**: Elimina a necessidade de polling constante pelo servidor SILO, mantendo o dashboard atualizado em tempo quase real.
+
+Regras de Ouro:
+- O usuário cadastra apenas **Nome**, **Grupo** e **Webhook/Log URL**.
+- O **Slug** é gerado automaticamente pelo sistema.
+- O campo **URL do Log** serve para acesso rápido aos detalhes técnicos do radar.
 
 ---
 

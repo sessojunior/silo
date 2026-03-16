@@ -22,7 +22,8 @@ Documentação completa de todas as APIs do sistema SILO, incluindo endpoints, c
 7. [Dashboard e Relatórios](#-dashboard-e-relatórios)
 8. [Chat](#-chat)
 9. [Upload de Arquivos](#-upload-de-arquivos)
-10. [Padrão de Resposta](#-padrão-de-resposta)
+10. [Monitoramento](#-monitoramento)
+11. [Padrão de Resposta](#-padrão-de-resposta)
 
 ---
 
@@ -1214,6 +1215,46 @@ Response:
       "optimized": true
     }
   ]
+}
+```
+
+## 🩺 **MONITORAMENTO**
+
+Endpoints para gestão e consulta de páginas de visualização e radares.
+
+### **Páginas e Figuras**
+
+```http
+GET /api/admin/monitoring/picture-pages
+Response: { "success": true, "data": [...] }
+
+POST /api/admin/monitoring/picture-pages
+{
+  "name": "Nome da Página",
+  "url": "https://...",
+  "description": "Texto"
+}
+
+DELETE /api/admin/monitoring/picture-pages?id=page-123
+```
+
+### **Grupos e Radares**
+
+```http
+GET /api/admin/monitoring/radars
+Response: { "success": true, "data": [...] }
+
+POST /api/admin/monitoring/radars
+{
+  "name": "Radar A",
+  "groupId": "group-123",
+  "webhookUrl": "https://...",
+  "logUrl": "https://..."
+}
+
+POST /api/admin/monitoring/radar-groups
+{
+  "name": "Sul"
 }
 ```
 
