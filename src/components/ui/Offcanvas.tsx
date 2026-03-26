@@ -83,6 +83,8 @@ export default function Offcanvas({
 
   useEffect(() => {
     if (open) {
+      // Fecha todos os popovers ao abrir o Offcanvas
+      window.dispatchEvent(new CustomEvent('close-popovers'));
       offcanvasStack.push(instanceId);
       return () => {
         const index = offcanvasStack.indexOf(instanceId);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { twMerge } from "tailwind-merge";
 import clsx from "clsx";
 
@@ -43,6 +44,8 @@ export default function Popover({
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -55,43 +58,118 @@ export default function Popover({
         setOpen(false);
       }
     }
-
+    function handleClosePopovers() {
+      setOpen(false);
+    }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("close-popovers", handleClosePopovers);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("close-popovers", handleClosePopovers);
+    };
   }, []);
 
+
   const handleClick = () => {
-    setOpen((prev) => !prev);
-    if (onClick) {
-      onClick();
-    }
+    setOpen((prev) => {
+      const next = !prev;
+      if (next) setReady(false);
+      if (onClick) onClick();
+      return next;
+    });
   };
 
-  return (
-    <div className="relative inline-block">
-      <button
-        ref={buttonRef}
-        onClick={handleClick}
-        className="focus:outline-none"
-      >
-        {children}
-      </button>
+  // Mede e posiciona o popover após renderizar
+  useEffect(() => {
+    if (!open) return;
+    if (!buttonRef.current || !popoverRef.current) return;
+    // Mede após o mount
+    const popover = popoverRef.current;
+    const buttonRect = buttonRef.current.getBoundingClientRect();
+    const spacing = 8;
+    let top = 0, left = 0;
+    switch (position) {
+      case "top-left":
+        top = buttonRect.top - popover.offsetHeight - spacing;
+        left = buttonRect.left;
+        break;
+      case "top-right":
+        top = buttonRect.top - popover.offsetHeight - spacing;
+        left = buttonRect.right - popover.offsetWidth;
+        break;
+      case "top-center":
+        top = buttonRect.top - popover.offsetHeight - spacing;
+        left = buttonRect.left + buttonRect.width / 2 - popover.offsetWidth / 2;
+        break;
+      case "bottom-left":
+        top = buttonRect.bottom + spacing;
+        left = buttonRect.left;
+        break;
+      case "bottom-right":
+        top = buttonRect.bottom + spacing;
+        left = buttonRect.right - popover.offsetWidth;
+        break;
+      case "bottom-center":
+        top = buttonRect.bottom + spacing;
+        left = buttonRect.left + buttonRect.width / 2 - popover.offsetWidth / 2;
+        break;
+      case "right-bottom":
+        top = buttonRect.bottom;
+        left = buttonRect.right + spacing;
+        break;
+      case "left-bottom":
+        top = buttonRect.bottom;
+        left = buttonRect.left - popover.offsetWidth - spacing;
+        break;
+      default:
+        top = buttonRect.bottom + spacing;
+        left = buttonRect.left;
+    }
+    setPopoverStyle({
+      position: "absolute",
+      top: Math.max(top, 8),
+      left: Math.max(left, 8),
+      zIndex: 1050,
+      opacity: 1,
+      pointerEvents: "auto",
+      transition: "opacity 0.15s"
+    });
+    setReady(true);
+    // eslint-disable-next-line
+  }, [open, position, content, children]);
 
-      {open && (
+  return (
+    <>
+      <span className="inline-block" ref={buttonRef}>
+        <button onClick={handleClick} className="focus:outline-none">
+          {children}
+        </button>
+      </span>
+      {open && typeof window !== "undefined" && createPortal(
         <div
           ref={popoverRef}
+          style={ready ? popoverStyle : { opacity: 0, pointerEvents: "none", position: "absolute" }}
           className={twMerge(
             clsx(
-              "absolute z-50 rounded-xl border bg-white shadow-md transition-opacity dark:bg-zinc-800",
+              "rounded-xl border bg-white shadow-md transition-opacity dark:bg-zinc-800",
               "border-zinc-200 dark:border-zinc-700",
-              positionMap[position],
               className,
             ),
           )}
+          onClick={e => {
+            // Fecha ao clicar em links ou botões
+            const target = e.target as HTMLElement;
+            if (
+              target.closest('a,button,[role="menuitem"],[data-popover-close]')
+            ) {
+              setOpen(false);
+            }
+          }}
         >
           {content}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
