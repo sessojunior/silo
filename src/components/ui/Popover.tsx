@@ -151,8 +151,10 @@ export default function Popover({
           style={ready ? popoverStyle : { opacity: 0, pointerEvents: "none", position: "absolute" }}
           className={twMerge(
             clsx(
-              "rounded-xl border bg-white shadow-md transition-opacity dark:bg-zinc-800",
-              "border-zinc-200 dark:border-zinc-700",
+              "rounded-xl border bg-white shadow-md transition-opacity",
+              "text-zinc-800 dark:text-zinc-100", // texto claro no dark
+              "dark:bg-zinc-700", // tom mais claro para dark
+              "border-zinc-200 dark:border-zinc-600",
               className,
             ),
           )}
