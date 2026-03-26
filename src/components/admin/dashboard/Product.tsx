@@ -81,7 +81,9 @@ export default function Product({
 
   // Filtra status conforme turnos configurados do produto
   const filteredLastDays = useMemo(() => {
-    const result = lastDaysStatus.filter((d) => turns.includes(String(d.turn)));
+    const result = lastDaysStatus.filter((d) =>
+      turns.map((t) => t.trim()).includes(String(d.turn)),
+    );
     return result;
   }, [lastDaysStatus, turns]);
   // A timeline de 28 dias é agregada por dia; não deve ser filtrada por turno
@@ -92,7 +94,7 @@ export default function Product({
 
   // Usar status de 28 dias para a timeline (filtrados por turnos para consistência)
   const timelineStatuses = last28DaysStatus
-    .filter((d) => turns.includes(String(d.turn)))
+    .filter((d) => turns.map((t) => t.trim()).includes(String(d.turn)))
     .map((d) => d.status);
 
   // Build days array for ProductTurn - timeline completa dos últimos turnos
@@ -199,15 +201,15 @@ export default function Product({
     dateTurns: {
       dateTurn: number;
       dateStatus:
-        | "green"
-        | "orange"
-        | "red"
-        | "gray"
-        | "transparent"
-        | "blue"
-        | "violet"
-        | "yellow"
-        | "white";
+      | "green"
+      | "orange"
+      | "red"
+      | "gray"
+      | "transparent"
+      | "blue"
+      | "violet"
+      | "yellow"
+      | "white";
       realStatus: string;
     }[];
   };
@@ -339,8 +341,11 @@ export default function Product({
             {/* Linha do tempo */}
             <ProductTimeline
               statuses={timelineStatuses}
+              productTurns={turns}
               timelineData={last28DaysStatus
-                .filter((d) => turns.includes(String(d.turn)))
+                .filter((d) =>
+                  turns.map((t) => t.trim()).includes(String(d.turn)),
+                )
                 .map((d) => ({
                   date: d.date,
                   turn: d.turn,
@@ -399,7 +404,7 @@ export default function Product({
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`Detalhes de ${name}`}
+        title={`Mapa de status dos últimos 3 meses de ${name}`}
       >
         {/* Calendário gerado dinamicamente (últimos 28 dias) */}
         {calendars.map((cal, idx) => (

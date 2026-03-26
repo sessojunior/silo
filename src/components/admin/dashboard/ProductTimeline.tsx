@@ -19,6 +19,7 @@ interface TimelineItem {
 interface Props {
   statuses: string[]; // array 28 itens (dia0..dia27) - DEPRECATED
   timelineData?: TimelineItem[]; // dados completos para clique
+  productTurns?: string[]; // Turnos configurados do produto (ex: ['6', '12', '18', '0'])
 }
 
 // Função para obter classes CSS baseadas no status ou cor
@@ -47,7 +48,11 @@ function getStatusClasses(input: string): string {
   return getCentralizedStatusClasses(color, "timeline"); // Variante de referência
 }
 
-export default function ProductTimeline({ statuses, timelineData }: Props) {
+export default function ProductTimeline({
+  statuses,
+  timelineData,
+  productTurns,
+}: Props) {
   // Se timelineData está disponível, usar dados completos; senão usar statuses simples
   const hasCompleteData = timelineData && timelineData.length > 0;
 
@@ -85,14 +90,19 @@ export default function ProductTimeline({ statuses, timelineData }: Props) {
       date: string,
       existingTurns: TimelineItem[],
     ): TimelineItem[] => {
-      // Obter turnos únicos dos dados existentes para determinar quais turnos o produto tem
-      const configuredTurns = [
-        ...new Set(timelineData!.map((item) => item.turn)),
-      ].sort((a, b) => a - b);
+      // Usar turnos do prop ou inferir (fallback) a partir dos dados existentes
+      const configuredTurns = productTurns
+        ? productTurns.map(Number).sort((a, b) => a - b)
+        : [...new Set(timelineData!.map((item) => item.turn))].sort(
+            (a, b) => a - b,
+          );
       const result: TimelineItem[] = [];
 
       for (const turn of configuredTurns) {
-        const existingTurn = existingTurns.find((t) => t.turn === turn);
+        // Busca o turno nos dados existentes, garantindo comparação numérica
+        const existingTurn = existingTurns.find(
+          (t) => Number(t.turn) === Number(turn),
+        );
         if (existingTurn) {
           // Turno existe no banco - usar dados reais
           result.push(existingTurn);
@@ -126,7 +136,7 @@ export default function ProductTimeline({ statuses, timelineData }: Props) {
     ].sort();
 
     return (
-      <div className="h-8">
+      <div className="h-auto">
         <div className="flex">
           {weeks.map((start, wIdx) => (
             <div key={wIdx} className={weekClass}>
@@ -134,25 +144,6 @@ export default function ProductTimeline({ statuses, timelineData }: Props) {
                 // Obter turnos existentes e garantir que todos os turnos esperados sejam exibidos
                 const existingTurns = dataByDate[date] || [];
                 const allTurnsForDate = getExpectedTurns(date, existingTurns);
-
-                // Se não há dados para esta data, criar elemento vazio
-                if (allTurnsForDate.length === 0) {
-                  return (
-                    <div
-                      key={`${date}-${idx}`}
-                      className="h-5 w-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700"
-                      title={`${formatDateBR(date)} - Sem dados`}
-                    />
-                  );
-                }
-
-                // Determinar cor do dia com base apenas nos turnos realmente registrados.
-                // Isso evita que turnos ausentes (preenchidos como pending só para tooltip)
-                // impeçam a visualização de "completed" após salvar um acontecimento.
-                const turnStatuses = existingTurns.map(
-                  (turn) => turn.status as ProductStatus,
-                );
-                const dayColor = getDayColorFromTurns(turnStatuses);
 
                 // Construir tooltip com todos os turnos da data
                 const dateFormatted = formatDateBR(date);
@@ -188,9 +179,16 @@ export default function ProductTimeline({ statuses, timelineData }: Props) {
                 return (
                   <div
                     key={`${date}-${idx}`}
-                    className={`h-5 w-1.5 rounded-full ${getStatusClasses(dayColor)} hover:scale-110 transition-transform`}
+                    className="flex flex-col gap-0.5"
                     title={tooltipContent}
-                  />
+                  >
+                    {allTurnsForDate.map((turn, tIdx) => (
+                      <div
+                        key={`${turn.date}-${turn.turn}-${tIdx}`}
+                        className={`h-3 w-1.5 rounded-full ${getStatusClasses(turn.status)} hover:scale-110 transition-transform`}
+                      />
+                    ))}
+                  </div>
                 );
               })}
             </div>
@@ -205,14 +203,14 @@ export default function ProductTimeline({ statuses, timelineData }: Props) {
   const weeks = [0, 7, 14, 21];
   const weekClass = "flex gap-x-0.5 p-1.5";
   return (
-    <div className="h-8">
+    <div className="h-auto">
       <div className="flex">
         {weeks.map((start, wIdx) => (
           <div key={wIdx} className={weekClass}>
             {statuses.slice(start, start + 7).map((s, idx) => (
               <div
                 key={idx}
-                className={`h-5 w-1.5 rounded-full ${getStatusClasses(s)}`}
+                className={`h-3 w-1.5 rounded-full ${getStatusClasses(s)}`}
               ></div>
             ))}
           </div>

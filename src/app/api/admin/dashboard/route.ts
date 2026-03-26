@@ -44,7 +44,7 @@ const normalizeTurns = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     const normalized = value
       .map((item) => {
-        if (typeof item === "string") return item;
+        if (typeof item === "string") return item.trim();
         if (typeof item === "number") return String(item);
         return null;
       })

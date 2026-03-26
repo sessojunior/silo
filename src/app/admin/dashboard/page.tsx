@@ -176,7 +176,9 @@ export default function DashboardPage() {
   data.forEach((product) => {
     product.dates.forEach((d) => {
       if (new Date(d.date) < cut28) return;
-      if (!product.turns.includes(String(d.turn))) return;
+      // Normalização para comparação robusta
+      const productTurnStrings = product.turns.map(t => t.trim());
+      if (!productTurnStrings.includes(String(d.turn))) return;
       if (STATUS_INFO[d.status]) statusCounts[d.status]++;
     });
   });
@@ -215,7 +217,9 @@ export default function DashboardPage() {
   data.forEach((product) => {
     product.dates.forEach((d) => {
       if (new Date(d.date) < cut28) return;
-      if (!product.turns.includes(String(d.turn))) return;
+      // Normalização para comparação robusta
+      const productTurnStrings = product.turns.map(t => t.trim());
+      if (!productTurnStrings.includes(String(d.turn))) return;
       if (STATUS_INFO[d.status] && isRealIncident(d.category_id)) {
         incidentsByStatus[d.status]++;
       }
@@ -301,21 +305,30 @@ export default function DashboardPage() {
                       // Mapear status para cada dia dos últimos turnos (incluindo dias sem atividade)
                       const lastDaysStatus = lastDates.flatMap((date) => {
                         const dayData = p.dates.filter((d) => d.date === date);
-                        if (dayData.length === 0) {
-                          return [
-                            {
-                              date,
-                              turn: 0,
-                              user_id: "",
-                              status: DEFAULT_STATUS,
-                              description: null,
-                              intervention: null,
-                              category_id: null,
-                              alert: false,
-                            },
-                          ];
-                        }
-                        return dayData;
+                        
+                        // Garante que todos os turnos configurados apareçam para o dia
+                        return p.turns.map((t) => {
+                          const turnNum = Number(t.trim());
+                          const existing = dayData.find((d) => Number(d.turn) === turnNum);
+                          
+                          if (existing) {
+                            return {
+                              ...existing,
+                              turn: turnNum,
+                            };
+                          }
+                          
+                          return {
+                            date,
+                            turn: turnNum,
+                            user_id: "",
+                            status: DEFAULT_STATUS,
+                            description: null,
+                            intervention: null,
+                            category_id: null,
+                            alert: false,
+                          };
+                        });
                       });
 
                       // Últimos 28 dias (timeline completa)
@@ -329,21 +342,32 @@ export default function DashboardPage() {
                       // Mapear status para cada dia (incluindo dias sem atividade) - CORRIGIDO para incluir TODOS os turnos
                       const last28DaysStatus = last28Dates.flatMap((date) => {
                         const dayData = p.dates.filter((d) => d.date === date);
-                        if (dayData.length === 0) {
-                          return [
-                            {
-                              date,
-                              turn: 0,
-                              user_id: "",
-                              status: DEFAULT_STATUS,
-                              description: null,
-                              intervention: null,
-                              category_id: null,
-                              alert: false,
-                            },
-                          ];
-                        }
-                        return dayData;
+
+                        // Garante que todos os turnos configurados apareçam para o dia
+                        return p.turns.map((t) => {
+                          const turnNum = Number(t.trim());
+                          const existing = dayData.find(
+                            (d) => Number(d.turn) === turnNum,
+                          );
+
+                          if (existing) {
+                            return {
+                              ...existing,
+                              turn: turnNum, // Garante que turn seja número
+                            };
+                          }
+
+                          return {
+                            date,
+                            turn: turnNum,
+                            user_id: "",
+                            status: DEFAULT_STATUS,
+                            description: null,
+                            intervention: null,
+                            category_id: null,
+                            alert: false,
+                          };
+                        });
                       });
 
                       return (
