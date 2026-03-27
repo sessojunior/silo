@@ -43,7 +43,7 @@ ENV DRIZZLE_TELEMETRY_DISABLED=1
 # Isso gera a pasta .next necessária para o next start
 # ------------------------------------------------------
 RUN npm run build
-RUN npm prune --omit=dev
+RUN npm prune --omit=dev --legacy-peer-deps
 
 # ------------------------------------------------------
 # Expõe a porta padrão do Next.js
