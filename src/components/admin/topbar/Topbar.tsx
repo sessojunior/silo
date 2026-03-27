@@ -5,6 +5,7 @@ import TopbarButton from "@/components/admin/topbar/TopbarButton";
 import TopbarDivider from "@/components/admin/topbar/TopbarDivider";
 import ChatNotificationButton from "@/components/admin/topbar/ChatNotificationButton";
 import TopbarTitle from "@/components/admin/topbar/TopbarTitle";
+import ServerClock from "@/components/admin/topbar/ServerClock";
 import { useSidebar } from "@/context/SidebarContext";
 import { useState, useEffect } from "react";
 import { config } from "@/lib/config";
@@ -24,6 +25,7 @@ export type AccountProps = AccountLinkProps[];
 export default function Topbar() {
   const { isOpenSidebar } = useSidebar();
   const [chatEnabled, setChatEnabled] = useState(true);
+  const [loadingChatEnabled, setLoadingChatEnabled] = useState(true);
   const pageTitle = useAdminPageTitle();
 
   // Verificar se o chat está habilitado para o usuário
@@ -46,6 +48,8 @@ export default function Topbar() {
           "❌ [COMPONENT_TOPBAR] Erro ao verificar preferências do chat:",
           { error },
         );
+      } finally {
+        setLoadingChatEnabled(false);
       }
     };
 
@@ -111,12 +115,15 @@ export default function Topbar() {
 
             {/* Botoes, divisoria e dropdown */}
             <div className="flex flex-row items-center justify-end gap-1">
-              <TopbarButton
-                href="/admin/help"
-                icon="icon-[lucide--circle-help]"
-              >
-                Ajuda
-              </TopbarButton>
+              <div className="flex items-center gap-2">
+                <ServerClock apiUrl={config.getApiUrl("/api/server-time")} />
+                <TopbarButton
+                  href="/admin/help"
+                  icon="icon-[lucide--circle-help]"
+                >
+                  Ajuda
+                </TopbarButton>
+              </div>
               <TopbarButton
                 href={postLoginRedirectPath}
                 icon="icon-[lucide--activity]"
@@ -129,7 +136,7 @@ export default function Topbar() {
               >
                 Configurações
               </TopbarButton>
-              {chatEnabled && (
+              {!loadingChatEnabled && chatEnabled && (
                 <>
                   <TopbarDivider />
                   <ChatNotificationButton />

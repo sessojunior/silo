@@ -21,10 +21,10 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # ------------------------------------------------------
-# Instala dependências de forma limpa e previsível
-# npm ci é recomendado para ambientes de produção
+# Instala dependências ignorando conflitos de peer dependencies
+# Garante build mesmo com pacotes legados
 # ------------------------------------------------------
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # ------------------------------------------------------
 # Copia todo o restante do código da aplicação
