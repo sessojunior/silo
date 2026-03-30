@@ -270,9 +270,10 @@ export default function Product({
     const daysInMonth = new Date(Number(yearStr), month, 0).getDate();
     const dates: CalendarDate[] = [];
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${ym}-${String(day).padStart(2, "0")}`;
-      const weekName = dayOfWeekName(new Date(dateStr).getDay());
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${ym}-${String(day).padStart(2, "0")}`;
+        // Forçar parsing como data local adicionando T00:00:00
+        const weekName = dayOfWeekName(new Date(dateStr + "T00:00:00").getDay());
 
       const dateTurns = turns.map((t) => {
         const turnNum = parseInt(t);

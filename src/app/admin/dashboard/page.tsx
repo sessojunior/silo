@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDateTimeShortBR, getTodayDate, formatDate } from "@/lib/dateUtils";
+import { formatDateTimeShortBR, getTodayDate, formatDate, getDaysAgo } from "@/lib/dateUtils";
 import ChartColumn from "@/components/admin/dashboard/ChartColumn";
 import ChartLine from "@/components/admin/dashboard/ChartLine";
 import ChartDonut from "@/components/admin/dashboard/ChartDonut";
@@ -141,8 +141,7 @@ export default function DashboardPage() {
   }, []);
 
   // ===== Estatísticas dinâmicas =====
-  const cut28 = new Date();
-  cut28.setDate(new Date().getDate() - 28);
+  const cut28Str = getDaysAgo(28);
 
   // Mapeamento de status → info visual (usando definições centralizadas)
   const STATUS_INFO: Record<
@@ -175,7 +174,7 @@ export default function DashboardPage() {
   // Conta cada ocorrência (turno) no período de 28 dias, limitado aos turnos configurados do produto
   data.forEach((product) => {
     product.dates.forEach((d) => {
-      if (new Date(d.date) < cut28) return;
+      if (d.date < cut28Str) return;
       // Normalização para comparação robusta
       const productTurnStrings = product.turns.map(t => t.trim());
       if (!productTurnStrings.includes(String(d.turn))) return;
@@ -216,7 +215,7 @@ export default function DashboardPage() {
 
   data.forEach((product) => {
     product.dates.forEach((d) => {
-      if (new Date(d.date) < cut28) return;
+      if (d.date < cut28Str) return;
       // Normalização para comparação robusta
       const productTurnStrings = product.turns.map(t => t.trim());
       if (!productTurnStrings.includes(String(d.turn))) return;
@@ -247,7 +246,7 @@ export default function DashboardPage() {
   let completedTurns28 = 0;
   data.forEach((prod) => {
     prod.dates.forEach((d) => {
-      if (new Date(d.date) >= cut28 && prod.turns.includes(String(d.turn))) {
+      if (d.date >= cut28Str && prod.turns.includes(String(d.turn))) {
         totalTurns28++;
         if (d.status === "completed") completedTurns28++;
       }

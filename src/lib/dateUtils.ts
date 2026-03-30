@@ -14,46 +14,39 @@ export const DATETIME_FORMAT = DATE_CONFIG.DATETIME_FORMAT;
 export const DISPLAY_DATE_FORMAT = DATE_CONFIG.DISPLAY_DATE_FORMAT;
 export const DISPLAY_DATETIME_FORMAT = DATE_CONFIG.DISPLAY_DATETIME_FORMAT;
 
-/**
- * Obtém a data atual no timezone de São Paulo
- */
 export function getToday(): string {
-  const now = new Date();
-  const saoPauloDate = new Date(
-    now.toLocaleString("en-US", { timeZone: DATE_CONFIG.TIMEZONE }),
-  );
-  return saoPauloDate.toISOString().split("T")[0]; // YYYY-MM-DD
+  return formatDate(new Date());
 }
 
 /**
  * Obtém a data atual no timezone de São Paulo como Date
  */
 export function getTodayDate(): Date {
-  const now = new Date();
-  return new Date(
-    now.toLocaleString("en-US", { timeZone: DATE_CONFIG.TIMEZONE }),
-  );
+  // Retorna a data atual respeitando o sistema. 
+  // Funções de formatação devem lidar com o timezone.
+  return new Date();
 }
 
-/**
- * Formata uma data para o formato YYYY-MM-DD no timezone de São Paulo
- */
 export function formatDate(date: Date | string): string {
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
   const dateObj = typeof date === "string" ? new Date(date) : date;
-  const saoPauloDate = new Date(
-    dateObj.toLocaleString("en-US", { timeZone: DATE_CONFIG.TIMEZONE }),
-  );
-  return saoPauloDate.toISOString().split("T")[0];
+  
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: DATE_CONFIG.TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(dateObj);
 }
 
-/**
- * Converte uma string de data para Date no timezone de São Paulo
- */
 export function parseDate(dateString: string): Date {
-  const date = new Date(dateString + "T00:00:00");
-  return new Date(
-    date.toLocaleString("en-US", { timeZone: DATE_CONFIG.TIMEZONE }),
-  );
+  // Interpretar a string como data local de São Paulo
+  const [year, month, day] = dateString.split("-").map(Number);
+  // Usar Intl para garantir que criamos a data correta no timezone alvo
+  // Ou simplesmente retornar a data sem horas (UTC meia-noite) se for apenas para exibição
+  return new Date(year, month - 1, day);
 }
 
 /**

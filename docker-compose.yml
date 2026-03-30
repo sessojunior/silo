@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:17-alpine
-    profiles: ["db"]
+    profiles: [ "db" ]
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
@@ -40,6 +40,9 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USERNAME: ${SMTP_USERNAME}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
+
+      # Fuso horário
+      TZ: America/Sao_Paulo
     volumes:
       - uploads_data:/app/uploads
     restart: unless-stopped
@@ -50,6 +53,7 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+
 
 networks:
   frontend:
