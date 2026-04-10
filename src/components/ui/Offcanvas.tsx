@@ -160,7 +160,7 @@ export default function Offcanvas({
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, instanceId]);
 
   useEffect(() => {
     if (open && panelRef.current) {

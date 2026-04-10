@@ -2,7 +2,6 @@ import {
   getStatusLabel,
   getStatusColor,
   ProductStatus,
-  getDayColorFromTurns,
   getStatusClasses as getCentralizedStatusClasses,
   DEFAULT_STATUS,
 } from "@/lib/productStatus";

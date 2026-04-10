@@ -23,16 +23,7 @@ interface PopoverProps {
   onClick?: () => void;
 }
 
-const positionMap: Record<Position, string> = {
-  "top-left": "bottom-full left-0 mb-2",
-  "top-right": "bottom-full right-0 mb-2",
-  "top-center": "bottom-full left-1/2 -translate-x-1/2 mb-2",
-  "bottom-left": "top-full left-0 mt-2",
-  "bottom-right": "top-full right-0 mt-2",
-  "bottom-center": "top-full left-1/2 -translate-x-1/2 mt-2",
-  "right-bottom": "left-full top-full ml-2",
-  "left-bottom": "right-full top-full mr-2",
-};
+// Positioning is calculated dynamically in the effect below.
 
 export default function Popover({
   children,
@@ -135,7 +126,6 @@ export default function Popover({
       transition: "opacity 0.15s"
     });
     setReady(true);
-    // eslint-disable-next-line
   }, [open, position, content, children]);
 
   return (

@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ApiResponse } from "@/lib/api-response";
 
 export default function ServerClock({ apiUrl }: { apiUrl: string }) {
   const localNow = new Date();
   const [time, setTime] = useState<string>(localNow.toLocaleTimeString("pt-BR", { hour12: false }));
   const [date, setDate] = useState<string>(localNow.toLocaleDateString("pt-BR"));
+
+
 
   useEffect(() => {
     let offset = 0;
@@ -15,17 +18,36 @@ export default function ServerClock({ apiUrl }: { apiUrl: string }) {
       try {
         const res = await fetch(apiUrl);
         if (!res.ok) throw new Error("Erro ao buscar horário do servidor");
-        const data = await res.json();
-        const serverDate = new Date(data.time);
-        const localDate = new Date();
-        offset = serverDate.getTime() - localDate.getTime();
-        setDate(serverDate.toLocaleDateString("pt-BR"));
+        const payload = (await res.json()) as
+          | ApiResponse<{ time?: string; timestamp?: string }>
+          | { time?: string; timestamp?: string };
+
+        // Suporta resposta padronizada ApiResponse { data: { time: '...' } }
+        // ou formatos simples { time: '...' } / { timestamp: '...' }
+        const timeString =
+          (payload as ApiResponse<{ time?: string }>)?.data?.time ??
+          (payload as { time?: string })?.time ??
+          (payload as { timestamp?: string })?.timestamp ??
+          null;
+
+        if (timeString && typeof timeString === "string") {
+          const serverDate = new Date(timeString);
+          if (!Number.isNaN(serverDate.getTime())) {
+            const localDate = new Date();
+            offset = serverDate.getTime() - localDate.getTime();
+            setDate(serverDate.toLocaleDateString("pt-BR"));
+          } else {
+            console.warn("ServerClock: servidor retornou horário inválido", timeString);
+          }
+        } else {
+          console.warn("ServerClock: resposta do servidor sem campo de horário", payload);
+        }
+      } catch (err) {
+        console.warn("ServerClock: failed to fetch server time", err);
+      } finally {
+        // Garantir que o relógio atualize mesmo se o fetch falhar
         updateTime();
         interval = setInterval(updateTime, 1000);
-      } catch (err) {
-        // keep local time/date as fallback and log for debugging
-        // eslint-disable-next-line no-console
-        console.warn("ServerClock: failed to fetch server time", err);
       }
     }
 
