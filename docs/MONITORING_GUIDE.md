@@ -1,72 +1,125 @@
-# 🩺 Guia Completo de Monitoramento – SILO
+# Guia de Monitoramento - SILO
 
-Este documento fornece uma análise profunda da arquitetura de monitoramento do sistema SILO, cobrindo a integração de Páginas de Figuras, Radares e Fluxo de Dados (Pipelines).
-
----
-
-## 🚀 1. Filosofia de Monitoramento: Automação em Primeiro Lugar
-
-No SILO, o monitoramento é projetado para minimizar a carga administrativa. O princípio fundamental é: **O usuário define o Alvo (URL/Nome), e o sistema descobre e reporta os metadados e o estado.**
-
-### Pilares da Automação:
-- **Redução de redundância**: Campos como Slugs, Tamanhos de Arquivos e Identificadores Técnicos são geridos automaticamente ou recebidos via integração.
-- **Webhooks como Mensageiros**: Uso de URLs de callback para que sistemas externos "avisem" o SILO sobre mudanças, eliminando o atraso de consultas periódicas.
-- **Detecção Próxima ao Dado**: O sistema monitora diretamente as URLs de figuras e páginas para medir latência e disponibilidade.
+Este documento descreve a arquitetura de monitoramento do SILO, cobrindo páginas de figuras, radares e fluxo de dados de produtos meteorológicos.
 
 ---
 
-## 🖼️ 2. Páginas e Figuras da Previsão do Tempo
+## 1. Visão geral
+
+A página `/admin/monitoring` consolida três tipos de acompanhamento:
+
+- **Produtos**: status por produto e turno, derivado do fluxo de dados via Kafka REST Proxy ou do simulador local.
+- **Páginas e Figuras**: disponibilidade e atraso de páginas/figuras cadastradas.
+- **Radares**: agrupamentos, status operacional e links de diagnóstico.
+
+O princípio geral é reduzir preenchimento manual: o usuário cadastra os alvos operacionais e o sistema recebe, calcula ou coleta os estados necessários.
+
+---
+
+## 2. Produtos e Fluxo de Dados
+
+Os cards de produtos da página de monitoramento usam a mesma origem do Gantt de fluxo de dados: **Kafka REST Proxy**.
+
+Fluxo atual:
+
+1. A página `/admin/monitoring` carrega os produtos ativos no banco.
+2. Para esses produtos, chama `getMonitoringProductsFromKafkaRest`.
+3. Em modo real, a função lê mensagens dos tópicos de data-flow via REST Proxy.
+4. Em modo simulado, usa os dados fake existentes e os adapta aos produtos ativos.
+5. O resultado alimenta os cards de status por turno.
+
+Configuração relevante:
+
+```bash
+KAFKA_REST_PROXY_URL=http://rest-proxy:8082
+KAFKA_REST_PROXY_USE_MOCK_DATA=true
+KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.
+```
+
+Enquanto `KAFKA_REST_PROXY_USE_MOCK_DATA=true`, a tela funciona sem o proxy real. Para tentar ler do Kafka REST Proxy, defina `KAFKA_REST_PROXY_USE_MOCK_DATA=false` e configure `KAFKA_REST_PROXY_URL`.
+
+Mais detalhes do contrato estão em `docs/KAFKA.md` e `docs/DATAFLOW.md`.
+
+---
+
+## 3. Páginas e Figuras da Previsão do Tempo
 
 Esta seção monitora a saúde das páginas públicas e internas de entrega de produtos meteorológicos.
 
-### Como os dados são obtidos:
-1. **Cadastro Mínimo**: O administrador fornece apenas o **Nome** e a **URL** da página.
-2. **Identificação de Assets**: Quando em modo `items`, o crawler do SILO analisa a página em busca de imagens e arquivos.
-3. **Metadados Automáticos**: O sistema detecta o tamanho do arquivo (`size`), a data de modificação e calcula o atraso (`delay`) comparando com a janela de publicação esperada.
-4. **Resiliência**: Se uma URL de figura mudar ou o nome for alterado, o sistema atualiza o registro ou alerta sobre o link quebrado (Status: `offline`).
+Como os dados são obtidos:
+
+1. O administrador cadastra nome, URL e metadados da página.
+2. A aplicação carrega os registros do banco.
+3. Quando não houver dados cadastrados, a tela ainda pode usar os seeds existentes como fallback de desenvolvimento.
+4. O estado operacional pode incluir disponibilidade, atraso e informações das figuras associadas.
+
+O objetivo é manter a visão de entrega do produto próxima da experiência real do usuário final: página disponível, figuras atualizadas e links acessíveis.
 
 ---
 
-## 📡 3. Radares e Webhooks
+## 4. Radares
 
 O monitoramento de radares foca na disponibilidade operacional das estações de coleta.
 
-### O Papel do Webhook:
-Cada radar possui uma **Webhook URL** privada gerada pelo sistema.
-- **Funcionamento**: "Funciona como um mensageiro que avisa imediatamente quando os dados forem atualizados."
-- **Fluxo de Dados**: O coletor de dados (ex: scripts no CEMADEN ou DECEA) envia um payload JSON para o Webhook do radar no SILO contendo o timestamp do último log.
-- **Vantagem**: O SILO não precisa "adivinhar" se o radar caiu; o próprio sistema de transmissão notifica a interrupção.
+Cada radar pode ter:
 
-### URL de Log:
-Diferente da Webhook, a **URL de Log** é um link de saída para que um técnico humano possa clicar no dashboard e ser levado diretamente à página de diagnóstico detalhado do radar.
+- grupo operacional;
+- nome e identificação;
+- URL de webhook ou integração;
+- URL de log para diagnóstico humano;
+- status e dados complementares.
 
----
-
-## 🔄 4. Fluxo de Dados (Pipeline e Gantt)
-
-O monitoramento de fluxo de dados é o nível mais granular, acompanhando o processamento de modelos meteorológicos minuto a minuto.
-
-### Configuração por Produto:
-Diferente dos radares, o Webhook de Fluxo de Dados é configurado na **página do Produto**. 
-- **Centralização**: Como um produto (ex: WRF) pode ter dezenas de tarefas, existe um único Webhook que recebe o "Snapshot" completo do pipeline para aquele turno (ex: Rodada das 12z).
-
-### Dinâmica da Atualização:
-1. **Início da Rodada**: O script de submissão no supercomputador envia um sinal de "iniciado" para o Webhook.
-2. **Tarefas em Progresso**: Conforme cada etapa (Ingestão, Pré-processamento, Execução, Pós-processamento) termina, o sistema de integração envia um novo payload atualizando o `progress` e o `status` de cada tarefa no Gantt.
-3. **Visualização (Gantt Chart)**: O dashboard do SILO transforma esses payloads em uma linha do tempo visual, permitindo identificar gargalos ou atrasos em cascata em tempo quase real.
+A URL de log é um link de saída para o técnico abrir o diagnóstico detalhado do radar. O webhook continua sendo um caminho válido para integrações de radar, mas não é a fonte do fluxo de dados dos produtos.
 
 ---
 
-## 🛠️ 5. Resumo Técnico de Integração
+## 5. Diferença entre monitoramento e Gantt
 
-| Componente | Entrada (Usuário) | Origem do Dado (Sistema) | Atualização |
-| :--- | :--- | :--- | :--- |
-| **Pág. de Figuras** | Nome, URL | Crawler/Monitor SILO | Periódica |
-| **Radares** | Nome, Grupo | Webhook (POST) | Real-time |
-| **Fluxo de Dados** | Webhook no Produto | Webhook (POST) da Pipeline | Real-time |
+O Gantt em `/admin/products/:slug/data-flow` mostra a execução detalhada de um produto, data e turno.
+
+A página `/admin/monitoring` mostra um resumo operacional para múltiplos produtos e turnos. Para produtos, esse resumo é calculado a partir dos mesmos pipelines usados pelo Gantt:
+
+- status agregado do pipeline;
+- progresso médio das tasks;
+- data de referência mais recente;
+- turnos disponíveis para o produto.
+
+Assim, o operador pode identificar rapidamente um problema no monitoramento e abrir o fluxo de dados do produto para ver qual task causou o atraso ou falha.
 
 ---
 
-## 🎯 Conclusão
+## 6. Resumo técnico
 
-A arquitetura de monitoramento do SILO foi desenhada para ser um espelho fiel da operação técnica. Ao usar **Webhooks** para eventos críticos e **Crawlers** para verificação de ativos, o sistema garante que a gestão da DIPTC tenha uma visão clara do que está online, o que está atrasado e onde os recursos estão sendo consumidos, sem exigir que o técnico preencha formulários complexos a cada mudança.
+| Componente | Origem principal | Fallback atual | Atualização |
+| --- | --- | --- | --- |
+| Produtos | Kafka REST Proxy | Snapshots fake convertidos para Kafka/ecFlow | Conforme mensagens do tópico |
+| Fluxo de Dados | Kafka REST Proxy | `pipeline-data.json` simulado | Por produto/data/turno |
+| Páginas e Figuras | Banco de dados | Seeds de desenvolvimento | Conforme cadastro/verificação |
+| Radares | Banco de dados/integrações | Seeds de desenvolvimento | Conforme cadastro/integração |
+
+Arquivos principais:
+
+- `src/app/admin/monitoring/page.tsx`
+- `src/lib/dataflow/kafkaDataFlowSource.ts`
+- `src/components/admin/monitoring/MonitoringPageClient.tsx`
+- `src/components/admin/monitoring/ProductMonitoringCards.tsx`
+
+---
+
+## 7. Operação
+
+Para operar sem Kafka real durante o desenvolvimento:
+
+```bash
+KAFKA_REST_PROXY_USE_MOCK_DATA=true
+```
+
+Para operar com Kafka REST Proxy real:
+
+```bash
+KAFKA_REST_PROXY_URL=http://rest-proxy:8082
+KAFKA_REST_PROXY_USE_MOCK_DATA=false
+KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.
+```
+
+O Kafka não deve ser acessado diretamente por broker na aplicação. Todo acesso Kafka passa pelo REST Proxy.

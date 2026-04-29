@@ -36,6 +36,8 @@ O **Silo** usa **1 container** (e opcionalmente um Postgres):
 1. **`silo`** (porta 3000) - Aplicação Next.js (frontend + APIs + uploads locais)
 2. **`db`** (opcional) - PostgreSQL (via Docker Compose, recomendado apenas quando você não usa Postgres gerenciado)
 
+Consumers Kafka REST Proxy podem ser executados em containers separados usando `docker-compose.kafka.yml`. Eles não acessam brokers diretamente; todo consumo e produção de DLQ passa pelo REST Proxy.
+
 ---
 
 ## ⚙️ **CONFIGURAÇÃO**
@@ -91,6 +93,18 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USERNAME=
 SMTP_PASSWORD=
+
+# Kafka REST Proxy
+KAFKA_REST_PROXY_URL=http://localhost:8082
+KAFKA_REST_PROXY_AUTH=
+KAFKA_REST_PROXY_USE_MOCK_DATA=true
+KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.
+KAFKA_GROUP_ID=silo-consumer-group
+KAFKA_TOPIC=
+KAFKA_TOPICS=
+KAFKA_DLQ_PREFIX=dlq.
+KAFKA_PROCESS_RETRY_COUNT=3
+KAFKA_RETRY_BACKOFF_MS=1000
 ```
 
 Observações:
@@ -100,6 +114,7 @@ Observações:
 - `APP_URL_DEV` e `APP_URL_PROD` devem ser apenas a origem (sem subdiretório). O subdiretório base é sempre definido em `NEXT_PUBLIC_BASE_PATH`.
 - O `docker-compose.yml` suporta subir um PostgreSQL junto com a aplicação usando o profile `db`.
 - Se você não ativar o profile `db`, as variáveis `DATABASE_URL_DEV`/`DATABASE_URL_PROD` devem apontar para um PostgreSQL externo (gerenciado ou já existente).
+- `KAFKA_REST_PROXY_USE_MOCK_DATA=true` mantém as telas de monitoramento e fluxo de dados funcionando com dados fake simulados. Use `false` apenas quando o REST Proxy real estiver disponível.
 
 ### **Arquivo docker-compose.yml**
 
@@ -187,6 +202,28 @@ POSTGRES_PORT=5432
 DATABASE_URL_DEV=postgresql://silo:uma_senha_forte@db:5432/silo
 DATABASE_URL_PROD=postgresql://silo:uma_senha_forte@db:5432/silo
 ```
+
+### **Consumers Kafka REST Proxy**
+
+Para rodar consumers Kafka via REST Proxy em containers separados, use o arquivo `docker-compose.kafka.yml` junto do compose principal:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml --profile db up -d --build
+```
+
+Cada serviço em `docker-compose.kafka.yml` deve definir um `KAFKA_TOPIC`. A recomendação operacional é manter um container por tópico para isolar checkpoints, retries e logs.
+
+Exemplo de variáveis no `.env`:
+
+```bash
+KAFKA_REST_PROXY_URL=http://rest-proxy:8082
+KAFKA_REST_PROXY_AUTH=
+KAFKA_GROUP_ID=silo-consumer-group
+KAFKA_DLQ_PREFIX=dlq.
+DATABASE_URL=postgresql://silo:uma_senha_forte@db:5432/silo
+```
+
+Detalhes do contrato e dos comandos estão em `docs/KAFKA.md`.
 
 ---
 

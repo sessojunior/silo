@@ -587,6 +587,65 @@ PUT /api/admin/products
 DELETE /api/admin/products?productId=prod-123
 ```
 
+### **Fluxo de Dados do Produto**
+
+```http
+GET /api/admin/products/{slug}/data-flow
+GET /api/admin/products/{slug}/data-flow?date=2026-03-06&turn=18
+```
+
+Retorna os pipelines de fluxo de dados do produto. A fonte é Kafka REST Proxy; enquanto o proxy real não estiver disponível, a API usa dados simulados a partir dos snapshots fake existentes.
+
+Permissão exigida: `products:list`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "pipelines": [
+      {
+        "model": "bam",
+        "date": "2026-03-06",
+        "turn": "18",
+        "status": "completed",
+        "groups": [
+          {
+            "id": "ingestion",
+            "name": "Ingestao de dados",
+            "tasks": [
+              {
+                "id": "download_gfs_025",
+                "name": "Download GFS 0.25",
+                "start": "2026-03-06T18:08:00Z",
+                "end": "2026-03-06T18:47:00Z",
+                "progress": 100,
+                "dependencies": [],
+                "status": "completed",
+                "type": "task",
+                "plannedStartAt": "2026-03-06T18:08:00Z",
+                "plannedEndAt": "2026-03-06T18:47:00Z",
+                "startedAt": "2026-03-06T18:08:00Z",
+                "finishedAt": "2026-03-06T18:47:00Z",
+                "referenceDurationMinutes": 39,
+                "delayMinutes": 0,
+                "isDelayed": false
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Regras principais:
+
+- `start` e `end` representam os horários planejados usados pelo Gantt.
+- `startedAt` e `finishedAt` representam horários reais.
+- `dependencies` contém IDs estáveis de tasks.
+- `status` já vem normalizado para `ProductStatus`.
+
 ### **Histórico de Atividades**
 
 ```http
@@ -1220,7 +1279,7 @@ Response:
 
 ## 🩺 **MONITORAMENTO**
 
-Endpoints para gestão e consulta de páginas de visualização e radares.
+Endpoints para gestão e consulta de páginas de visualização e radares. Os cards de produtos exibidos em `/admin/monitoring` são montados pela camada Kafka REST/simulada documentada em `docs/KAFKA.md` e `docs/DATAFLOW.md`.
 
 ### **Páginas e Figuras**
 

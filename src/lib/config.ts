@@ -198,6 +198,33 @@ export const config = {
     const port = Number.parseInt(portRaw, 10);
     return { host, port, secure, username, password, from };
   },
+
+  /**
+   * Configurações do Kafka REST Proxy
+   */
+  get kafka() {
+    const groupId = process.env.KAFKA_GROUP_ID || "silo-consumer-group";
+    const topics = (process.env.KAFKA_TOPICS || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const dlqPrefix = process.env.KAFKA_DLQ_PREFIX || "dlq.";
+    const processRetryCount = Number(process.env.KAFKA_PROCESS_RETRY_COUNT || "3");
+    const retryBackoffMs = Number(process.env.KAFKA_RETRY_BACKOFF_MS || "1000");
+    const restProxyUrl = (process.env.KAFKA_REST_PROXY_URL || "").trim();
+    const restProxyAuth = (process.env.KAFKA_REST_PROXY_AUTH || "").trim();
+    const restProxyUseMockData = process.env.KAFKA_REST_PROXY_USE_MOCK_DATA !== "false";
+    const dataFlowTopicPrefix = process.env.KAFKA_DATAFLOW_TOPIC_PREFIX || "silo.dataflow.";
+
+    return {
+      groupId,
+      topics,
+      dlqPrefix,
+      processRetryCount,
+      retryBackoffMs,
+      dataFlowTopicPrefix,
+      restProxyAuth,
+      restProxyUrl,
+      restProxyUseMockData,
+    };
+  },
 };
 
 /**

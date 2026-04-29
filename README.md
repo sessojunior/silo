@@ -117,7 +117,8 @@ npm run dev
 - 📧 [**Configuração SMTP**](./docs/SMTP.md) - Servidor de email
 - 📋 [**Sistema de Logs**](./docs/LOGS.md) - Padrões de logging
 - 📐 [**Padrões de Código**](./docs/PATTERNS.md) - Convenções e boas práticas
-- 🔄 [**Data Flow (API)**](./docs/DATAFLOW.md) - Proposta de API para fluxo de dados por modelo/data/turno
+- 🔄 [**Data Flow**](./docs/DATAFLOW.md) - Fluxo de dados por produto/data/turno via Kafka REST Proxy
+- 📡 [**Kafka REST Proxy**](./docs/KAFKA.md) - Operação Kafka REST-only, consumer, DLQ e contrato de mensagens
 - 📡 [**Radares (API)**](./docs/RADARS.md) - Proposta de API para monitoramento de radares por grupos
 - 🖼️ [**Páginas e Figuras (API)**](./docs/PICTURES.md) - Proposta de API para monitoramento de paginas e figuras da previsao do tempo
 
@@ -247,6 +248,18 @@ SMTP_SECURE=false # Defina como true se usar SSL (porta 465)
 SMTP_USERNAME=usuario@exemplo.com
 SMTP_PASSWORD=senha
 
+# Kafka REST Proxy (monitoramento e fluxo de dados)
+KAFKA_REST_PROXY_URL=http://localhost:8082
+KAFKA_REST_PROXY_AUTH=
+KAFKA_REST_PROXY_USE_MOCK_DATA=true
+KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.
+KAFKA_GROUP_ID=silo-consumer-group
+KAFKA_TOPIC=
+KAFKA_TOPICS=
+KAFKA_DLQ_PREFIX=dlq.
+KAFKA_PROCESS_RETRY_COUNT=3
+KAFKA_RETRY_BACKOFF_MS=1000
+
 ```
 
 **Regra do base path (muito importante):**
@@ -288,7 +301,8 @@ Exemplos práticos (mesmo build, só mudando env):
 - **SMTP:** Configuração de email → [`docs/SMTP.md`](./docs/SMTP.md)
 - **Logs:** Padrões de logging → [`docs/LOGS.md`](./docs/LOGS.md)
 - **Padrões:** Convenções e boas práticas → [`docs/PATTERNS.md`](./docs/PATTERNS.md)
-- **Data Flow:** Proposta de API para fluxo de dados por modelo/data/turno → [`docs/DATAFLOW.md`](./docs/DATAFLOW.md)
+- **Data Flow:** Fluxo de dados por produto/data/turno via Kafka REST Proxy → [`docs/DATAFLOW.md`](./docs/DATAFLOW.md)
+- **Kafka REST Proxy:** Configuração, consumer, DLQ e contrato de mensagens → [`docs/KAFKA.md`](./docs/KAFKA.md)
 - **Radares:** Proposta de API para monitoramento de radares por grupos → [`docs/RADARS.md`](./docs/RADARS.md)
 - **Páginas e Figuras:** Proposta de API para monitoramento de paginas e figuras da previsao do tempo → [`docs/PICTURES.md`](./docs/PICTURES.md)
 

@@ -3,18 +3,14 @@ import { db } from "@/lib/db";
 import { product, picturePage, pictureLink, radarGroup, radar } from "@/lib/db/schema";
 import type { PicturePage as DBPicturePage, PictureLink as DBPictureLink } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { seedMonitoringProducts as PRODUCTS_DATA } from "@/lib/db/seedProducts";
 import { seedPictures } from "@/lib/db/seedPictures";
+import { getMonitoringProductsFromKafkaRest } from "@/lib/dataflow/kafkaDataFlowSource";
 
-import type {
-  MonitoringProductItem,
-  MonitoringProductsFile,
-} from "@/components/admin/monitoring/ProductMonitoringCards";
 import { 
   DbRadarGroup,
   DbRadar,
 } from "@/components/admin/monitoring/MonitoringPageClient";
-import { SeedMonitoringProduct, SeedPicturePage } from "@/lib/db/seedTypes";
+import { SeedPicturePage } from "@/lib/db/seedTypes";
 import type { 
   PicturePage, 
   PictureLink,
@@ -27,75 +23,15 @@ type ActiveProduct = {
   name: string;
 };
 
-function normalizeModelKey(value: string): string {
-  if (!value) return "";
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function findMatchingActiveProduct(
-  mockProduct: MonitoringProductItem,
-  activeProducts: ActiveProduct[],
-): ActiveProduct | null {
-  const mockId = normalizeModelKey(mockProduct.productId);
-  const modelKey = normalizeModelKey(mockProduct.model);
-
-  for (const activeProduct of activeProducts) {
-    const activeSlug = normalizeModelKey(activeProduct.slug);
-    const activeName = normalizeModelKey(activeProduct.name);
-
-    if (
-      activeSlug === mockId ||
-      activeSlug === modelKey ||
-      activeName === mockId ||
-      activeName === modelKey ||
-      activeSlug.includes(modelKey) ||
-      modelKey.includes(activeSlug) ||
-      activeName.includes(modelKey) ||
-      modelKey.includes(activeName) ||
-      activeSlug.includes(mockId) ||
-      mockId.includes(activeSlug)
-    ) {
-      return activeProduct;
-    }
-  }
-
-  return null;
-}
-
 export default async function DashboardMonitoringPage() {
   const activeProducts = await db
     .select({ slug: product.slug, name: product.name })
     .from(product)
     .where(eq(product.available, true));
 
-  const productsDataTyped = PRODUCTS_DATA as unknown as { referenceDate: string; products: SeedMonitoringProduct[] };
-
-  const filteredProductsData: MonitoringProductsFile = {
-    referenceDate: productsDataTyped.referenceDate,
-    products: productsDataTyped.products
-      .map((mockProduct) => {
-        const matchedProduct = findMatchingActiveProduct(
-          mockProduct as unknown as MonitoringProductItem,
-          activeProducts,
-        );
-
-        if (!matchedProduct) {
-          return null;
-        }
-
-        return {
-          ...mockProduct,
-          productId: matchedProduct.slug,
-          model: matchedProduct.name,
-        } as MonitoringProductItem;
-      })
-      .filter((productItem): productItem is MonitoringProductItem => productItem !== null),
-  };
+  const filteredProductsData = await getMonitoringProductsFromKafkaRest(
+    activeProducts as ActiveProduct[],
+  );
 
   // Load picture pages from DB
   const pagesFromDbRows = (await db.select().from(picturePage).orderBy(picturePage.name)) as DBPicturePage[];

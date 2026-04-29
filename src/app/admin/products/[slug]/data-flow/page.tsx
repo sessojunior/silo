@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Gantt, Task, ViewMode } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import { useParams, useSearchParams } from "next/navigation";
 
 import Dialog from "@/components/ui/Dialog";
+import { config } from "@/lib/config";
 import { ProductStatus, getStatusLabel } from "@/lib/productStatus";
+import type { GroupedPipelineData, GroupedPipelineDataFile } from "@/lib/dataflow/types";
 import groupedPipelineDataJson from "./pipeline-data.json";
-import { useCallback } from "react";
-
-// Toggle this to `false` to read real data from the DB via admin API
-// NOTE: change only this variable to switch sources in runtime.
-const USE_FAKE_DATA = true;
 
 type NodeType = "task" | "product";
 
@@ -25,24 +22,13 @@ interface GroupedTask {
   dependencies: string[];
   status: ProductStatus;
   type: NodeType;
-}
-
-interface TaskGroup {
-  id: string;
-  name: string;
-  tasks: GroupedTask[];
-}
-
-interface GroupedPipelineData {
-  model: string;
-  date: string;
-  turn: string;
-  status: ProductStatus;
-  groups: TaskGroup[];
-}
-
-interface GroupedPipelineDataFile {
-  pipelines: GroupedPipelineData[];
+  plannedStartAt?: string | null;
+  plannedEndAt?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  referenceDurationMinutes?: number;
+  delayMinutes?: number;
+  isDelayed?: boolean;
 }
 
 interface DetailNode {
@@ -55,6 +41,13 @@ interface DetailNode {
   dependencies: string[];
   type: NodeType | "group";
   groupId?: string;
+  plannedStartAt?: string | null;
+  plannedEndAt?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  referenceDurationMinutes?: number;
+  delayMinutes?: number;
+  isDelayed?: boolean;
 }
 
 interface TaskListHeaderProps {
@@ -353,6 +346,10 @@ function formatDateTimeBR(value: string): string {
   });
 }
 
+function formatNullableDateTimeBR(value?: string | null): string {
+  return value ? formatDateTimeBR(value) : "-";
+}
+
 function getGroupStatus(tasks: GroupedTask[]): ProductStatus {
   const statuses = tasks.map((task) => task.status);
 
@@ -398,29 +395,32 @@ export default function ProductDataFlowPage() {
     }));
   }, [modelSlug, groupedPipelineData]);
 
-  const fetchFromDb = useCallback(async () => {
+  const fetchFromKafkaRestProxy = useCallback(async () => {
+    if (!modelSlug) return;
+
     try {
-      const res = await fetch(`/api/admin/products?slug=${encodeURIComponent(modelSlug)}`);
+      const query = new URLSearchParams();
+      if (selectedDate) query.set("date", selectedDate);
+      if (selectedTurn) query.set("turn", selectedTurn);
+
+      const url = config.getApiUrl(
+        `/api/admin/products/${encodeURIComponent(modelSlug)}/data-flow${query.toString() ? `?${query.toString()}` : ""}`,
+      );
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) return;
-      const data = await res.json();
-      const products = data?.products || [];
-      if (products.length === 0) return;
+      const data = (await res.json()) as { data?: { pipelines?: GroupedPipelineData[] } };
+      const pipelines = data.data?.pipelines;
+      if (!Array.isArray(pipelines) || pipelines.length === 0) return;
 
-      // Expect `dataProductFlow` to be an array of snapshots similar to pipeline-data.json
-      const dbSnapshots = products[0].dataProductFlow ?? [];
-      if (!Array.isArray(dbSnapshots)) return;
-
-      setGroupedPipelineData({ pipelines: dbSnapshots });
+      setGroupedPipelineData({ pipelines });
     } catch {
       // swallow errors in client to avoid breaking the UI
     }
-  }, [modelSlug]);
+  }, [modelSlug, selectedDate, selectedTurn]);
 
   useEffect(() => {
-    if (!USE_FAKE_DATA && modelSlug) {
-      fetchFromDb();
-    }
-  }, [fetchFromDb, modelSlug]);
+    fetchFromKafkaRestProxy();
+  }, [fetchFromKafkaRestProxy]);
 
   const activeSnapshot = useMemo(() => {
     if (modelSnapshots.length === 0) return null;
@@ -814,15 +814,39 @@ export default function ProductDataFlowPage() {
                 </p>
               </div>
               <div>
-                <p className="text-zinc-500 dark:text-zinc-400">Inicio</p>
+                <p className="text-zinc-500 dark:text-zinc-400">Inicio planejado</p>
                 <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {formatDateTimeBR(selectedTask.start)}
+                  {formatNullableDateTimeBR(selectedTask.plannedStartAt ?? selectedTask.start)}
                 </p>
               </div>
               <div>
-                <p className="text-zinc-500 dark:text-zinc-400">Fim</p>
+                <p className="text-zinc-500 dark:text-zinc-400">Fim planejado</p>
                 <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {formatDateTimeBR(selectedTask.end)}
+                  {formatNullableDateTimeBR(selectedTask.plannedEndAt ?? selectedTask.end)}
+                </p>
+              </div>
+              <div>
+                <p className="text-zinc-500 dark:text-zinc-400">Inicio real</p>
+                <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {formatNullableDateTimeBR(selectedTask.startedAt)}
+                </p>
+              </div>
+              <div>
+                <p className="text-zinc-500 dark:text-zinc-400">Fim real</p>
+                <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {formatNullableDateTimeBR(selectedTask.finishedAt)}
+                </p>
+              </div>
+              <div>
+                <p className="text-zinc-500 dark:text-zinc-400">Duracao ref.</p>
+                <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {selectedTask.referenceDurationMinutes ?? "-"} min
+                </p>
+              </div>
+              <div>
+                <p className="text-zinc-500 dark:text-zinc-400">Atraso</p>
+                <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {selectedTask.isDelayed ? `${selectedTask.delayMinutes ?? 0} min` : "Sem atraso"}
                 </p>
               </div>
             </div>

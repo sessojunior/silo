@@ -651,3 +651,21 @@ export const productActivityHistory = pgTable(
   }),
 );
 export type ProductActivityHistory = typeof productActivityHistory.$inferSelect;
+
+// Tabela para registrar mensagens processadas do Kafka e garantir deduplicação
+export const kafkaProcessedMessages = pgTable(
+  "kafka_processed_messages",
+  {
+    topic: text("topic").notNull(),
+    messageId: text("message_id").notNull(),
+    handler: text("handler"),
+    processedAt: timestamp("processed_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueTopicMessage: unique("unique_kafka_processed_message").on(
+      table.topic,
+      table.messageId,
+    ),
+  }),
+);
+export type KafkaProcessedMessage = typeof kafkaProcessedMessages.$inferSelect;

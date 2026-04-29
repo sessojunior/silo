@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  kafka-consumer-topic1:
+    build: .
+    command: ["npm", "run", "kafka:consumer"]
+    environment:
+      KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL}
+      KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH:-}
+      KAFKA_TOPIC: silo.dataflow.topic1
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-consumer-group}
+      KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      - db
+    restart: always
+
+  kafka-consumer-topic2:
+    build: .
+    command: ["npm", "run", "kafka:consumer"]
+    environment:
+      KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL}
+      KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH:-}
+      KAFKA_TOPIC: silo.dataflow.topic2
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-consumer-group}
+      KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      - db
+    restart: always
+
+networks:
+  default:
+    external: false

@@ -13,6 +13,7 @@ import {
   ProductStatus,
 } from "@/lib/productStatus";
 import IncidentManagementOffcanvas from "./IncidentManagementOffcanvas";
+import ProductActivityPendingEmailDialog from "./ProductActivityPendingEmailDialog";
 import { config } from "@/lib/config";
 
 interface Props {
@@ -68,6 +69,7 @@ export default function ProductActivityOffcanvas({
   const [allIncidents, setAllIncidents] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [incidentManagementOpen, setIncidentManagementOpen] = useState(false);
+  const [pendingEmailOpen, setPendingEmailOpen] = useState(false);
   const uploadConfig = useMemo(
     () => ({
       enabled: true,
@@ -193,6 +195,10 @@ export default function ProductActivityOffcanvas({
       setIntervention("");
     }
   }, [incidentId]);
+
+  useEffect(() => {
+    if (!open) setPendingEmailOpen(false);
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -321,6 +327,29 @@ export default function ProductActivityOffcanvas({
 
   const requireIncident = INCIDENT_STATUS.has(status as ProductStatus);
   const hasRealIncident = isRealIncident(incidentId);
+  const selectedIncidentName = useMemo(() => {
+    if (!hasRealIncident) return null;
+
+    return (
+      allIncidents.find((incident) => incident.value === incidentId)?.label ||
+      incidents.find((incident) => incident.value === incidentId)?.label ||
+      null
+    );
+  }, [allIncidents, hasRealIncident, incidentId, incidents]);
+  const canSendPendingEmail =
+    description.trim().length > 0 || intervention.trim().length > 0;
+
+  const handleOpenPendingEmail = () => {
+    if (!canSendPendingEmail) {
+      toast({
+        type: "error",
+        title: "Preencha incidente ou intervenção para enviar pendências",
+      });
+      return;
+    }
+
+    setPendingEmailOpen(true);
+  };
 
   return (
     <Offcanvas
@@ -331,14 +360,33 @@ export default function ProductActivityOffcanvas({
       width="xl"
       zIndex={80}
       footerActions={
-        <>
-          <Button style="bordered" type="button" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" form="product-activity-form" disabled={loading}>
-            {loading ? "Salvando..." : "Salvar"}
-          </Button>
-        </>
+        <div className="flex w-full flex-wrap items-center justify-between gap-2">
+          <div>
+            <Button
+              icon="icon-[lucide--mail-plus]"
+              style="bordered"
+              type="button"
+              onClick={handleOpenPendingEmail}
+              disabled={loading}
+              className="shrink-0"
+              title="Enviar pendências"
+            >
+              Enviar pendências
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button style="bordered" type="button" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="product-activity-form"
+              disabled={loading}
+            >
+              {loading ? "Salvando..." : "Salvar"}
+            </Button>
+          </div>
+        </div>
       }
     >
       <div className="flex flex-col gap-6">
@@ -456,6 +504,18 @@ export default function ProductActivityOffcanvas({
           onIncidentUpdated={() => {
             loadIncidents();
           }}
+        />
+        <ProductActivityPendingEmailDialog
+          open={pendingEmailOpen}
+          onClose={() => setPendingEmailOpen(false)}
+          productId={productId}
+          productName={productName}
+          date={date}
+          turn={turn}
+          status={status}
+          incidentName={selectedIncidentName}
+          description={description}
+          intervention={intervention}
         />
       </div>
     </Offcanvas>

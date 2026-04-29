@@ -1,0 +1,36 @@
+services:
+  silo:
+    image: ${SILO_IMAGE:?SILO_IMAGE nao definido}
+    container_name: ${SILO_CONTAINER_NAME:-silo-app}
+    ports:
+      - "${SILO_PORT:-8084}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL_DEV: ${DATABASE_URL_DEV}
+      DATABASE_URL_PROD: ${DATABASE_URL_PROD}
+      APP_URL_DEV: ${APP_URL_DEV:-http://localhost:3000}
+      APP_URL_PROD: ${APP_URL_PROD:-https://fortuna.cptec.inpe.br}
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      TZ: America/Sao_Paulo
+    volumes:
+      - uploads_data:/app/uploads
+    restart: unless-stopped
+    networks:
+      - frontend
+      - default
+
+volumes:
+  uploads_data:
+
+networks:
+  frontend:
+    external: true
+    name: frontend

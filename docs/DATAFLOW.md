@@ -1,27 +1,185 @@
-# Fluxo de Dados via API
+# Fluxo de Dados via Kafka REST Proxy
 
-Guia técnico para substituir os JSONs fake de fluxo de dados por API, mantendo o mesmo contrato de dados usado hoje nos exemplos em `src/app/admin/products/[slug]/data-flow/pipeline-snapshots`.
+Este guia descreve o fluxo de dados exibido em `/admin/products/:slug/data-flow`. A fonte oficial do módulo é o **Kafka REST Proxy**. Enquanto o REST Proxy real não estiver disponível, a aplicação usa os snapshots fake existentes e os converte para o mesmo contrato Kafka/ecFlow esperado em produção.
 
 ---
 
 ## Objetivo
 
-Migrar o módulo de Fluxo de Dados de uma fonte estática (arquivos JSON) para uma fonte dinâmica via API, com:
+O módulo de Fluxo de Dados deve exibir, por produto, data e turno:
 
-- consulta por `model`, `date` e `turn`
-- resposta com o mesmo formato dos arquivos de exemplo
-- dados consistentes para renderização de Gantt
-- recepção de dados via Webhook configurado no Produto
+- a linha do tempo planejada das tarefas;
+- o status real de execução quando disponível;
+- dependências entre tarefas por IDs estáveis;
+- progresso agregado por pipeline;
+- detalhes de atraso, duração de referência e horários planejados/reais.
+
+A UI não consome mais o JSON fake diretamente como fonte principal. Ela chama a API interna do Next.js, que por sua vez lê do Kafka REST Proxy ou do simulador local.
 
 ---
 
-## Formato de Dados (Contrato Canônico)
+## Origem dos dados
 
-Cada snapshot de fluxo deve seguir este formato:
+Fluxo atual:
+
+1. A tela `/admin/products/:slug/data-flow` chama `GET /api/admin/products/{slug}/data-flow`.
+2. A rota chama `getProductDataFlowPipelinesFromKafkaRest`.
+3. Se `KAFKA_REST_PROXY_USE_MOCK_DATA` for diferente de `false`, ou se `KAFKA_REST_PROXY_URL` não estiver definido, o sistema usa os snapshots fake existentes.
+4. Se `KAFKA_REST_PROXY_USE_MOCK_DATA=false` e `KAFKA_REST_PROXY_URL` estiver definido, o sistema cria um consumidor temporário via REST Proxy e lê o tópico `${KAFKA_DATAFLOW_TOPIC_PREFIX}${slug}`.
+5. O payload Kafka/ecFlow é normalizado para o formato usado pelo Gantt.
+
+Arquivos principais:
+
+- `src/app/api/admin/products/[slug]/data-flow/route.ts`
+- `src/lib/dataflow/kafkaDataFlowSource.ts`
+- `src/lib/dataflow/types.ts`
+- `src/app/admin/products/[slug]/data-flow/page.tsx`
+- `src/components/admin/nav/ProductTabs.tsx`
+
+---
+
+## Endpoint atual
+
+### Listar pipelines ou buscar por data/turno
+
+```http
+GET /api/admin/products/{slug}/data-flow
+GET /api/admin/products/{slug}/data-flow?date=2026-03-06&turn=18
+```
+
+Permissão necessária: `products:list`.
+
+Resposta:
 
 ```json
 {
-  "model": "bsm",
+  "success": true,
+  "data": {
+    "pipelines": [
+      {
+        "model": "bam",
+        "date": "2026-03-06",
+        "turn": "18",
+        "status": "completed",
+        "groups": []
+      }
+    ]
+  }
+}
+```
+
+Uso pela interface:
+
+- sem `date`/`turn`: o seletor da aba monta as opções disponíveis;
+- com `date`/`turn`: a tela carrega o snapshot específico;
+- ordenação: data mais recente primeiro e turno maior primeiro.
+
+---
+
+## Contrato Kafka/ecFlow
+
+O valor da mensagem no tópico de data-flow deve seguir este formato base:
+
+```json
+{
+  "schemaVersion": 1,
+  "source": {
+    "type": "ecflow",
+    "transport": "kafka",
+    "topic": "silo.dataflow.bam",
+    "messageId": "bam-2026-03-06-18-20260413T180500-0300",
+    "generatedAt": "2026-04-13T18:05:00-03:00"
+  },
+  "product": {
+    "slug": "bam",
+    "name": "BAM"
+  },
+  "run": {
+    "date": "2026-03-06",
+    "turn": "18",
+    "cycleAt": "2026-03-06T18:00:00-03:00",
+    "status": "completed"
+  },
+  "defaults": {
+    "timezone": "America/Sao_Paulo",
+    "latenessToleranceMinutes": 5,
+    "referenceDurationMinutes": 15
+  },
+  "groups": [
+    {
+      "id": "ingestion",
+      "kind": "family",
+      "name": "Ingestao de dados",
+      "status": "complete",
+      "tasks": [
+        {
+          "id": "download_gfs_025",
+          "kind": "task",
+          "name": "Download GFS 0.25",
+          "state": "complete",
+          "dependencies": [],
+          "plannedStartAt": "2026-03-06T18:08:00Z",
+          "plannedEndAt": "2026-03-06T18:47:00Z",
+          "startedAt": "2026-03-06T18:08:00Z",
+          "finishedAt": "2026-03-06T18:47:00Z",
+          "referenceDurationMinutes": 39,
+          "delayMinutes": 0,
+          "isDelayed": false,
+          "progress": 100
+        }
+      ]
+    }
+  ],
+  "raw": {
+    "suiteId": "BAM_PRE_OPER"
+  }
+}
+```
+
+---
+
+## Regras obrigatórias
+
+- `source.messageId` deve ser estável e único para deduplicação operacional.
+- `product.slug` deve corresponder ao `{slug}` da URL e ao sufixo do tópico.
+- `run.date` deve usar `YYYY-MM-DD`.
+- `run.turn` deve ser string, como `"0"`, `"6"`, `"12"` ou `"18"`.
+- `groups[].tasks[].id` deve ser estável ao longo das execuções.
+- `dependencies` deve conter IDs estáveis de tasks, nunca nomes soltos.
+- `referenceDurationMinutes` deve existir por task; o valor em `defaults` é apenas fallback.
+- `plannedStartAt` e `plannedEndAt` devem existir por task sempre que possível.
+- `startedAt` e `finishedAt` representam o tempo real e podem ser `null` para tarefas pendentes.
+
+O Gantt usa `plannedStartAt` e `plannedEndAt` como `start` e `end`. Isso permite posicionar tarefas pendentes e detectar atraso antes de existir um horário real de término.
+
+---
+
+## Mapeamento de status
+
+Estados Kafka/ecFlow são convertidos para os status aceitos pela UI em `productStatus.ts`.
+
+| Estado recebido | Status na UI |
+| --- | --- |
+| `queued`, `queue`, `pending`, `submitted` | `pending` |
+| `complete`, `completed` | `completed` |
+| `active`, `running`, `in_progress` | `in_progress` |
+| `failed`, `aborted`, `error`, `with_problems` | `with_problems` |
+| `run_again` | `run_again` |
+| `not_run` | `not_run` |
+| `under_support` | `under_support` |
+| `suspended` | `suspended` |
+
+Quando `run.status` não vem preenchido, o status agregado do pipeline é derivado das tasks.
+
+---
+
+## Contrato usado pela UI
+
+Depois da normalização, a UI recebe pipelines neste formato:
+
+```json
+{
+  "model": "bam",
   "date": "2026-03-06",
   "turn": "18",
   "status": "completed",
@@ -36,9 +194,16 @@ Cada snapshot de fluxo deve seguir este formato:
           "start": "2026-03-06T18:08:00Z",
           "end": "2026-03-06T18:47:00Z",
           "progress": 100,
-          "status": "completed",
           "dependencies": [],
-          "type": "task"
+          "status": "completed",
+          "type": "task",
+          "plannedStartAt": "2026-03-06T18:08:00Z",
+          "plannedEndAt": "2026-03-06T18:47:00Z",
+          "startedAt": "2026-03-06T18:08:00Z",
+          "finishedAt": "2026-03-06T18:47:00Z",
+          "referenceDurationMinutes": 39,
+          "delayMinutes": 0,
+          "isDelayed": false
         }
       ]
     }
@@ -46,222 +211,64 @@ Cada snapshot de fluxo deve seguir este formato:
 }
 ```
 
-Regras essenciais:
+---
 
-- `model`: slug do produto (ex.: `bsm`, `wrf`, `smec`)
-- `date`: formato `YYYY-MM-DD`
-- `turn`: string do turno (`"0"`, `"6"`, `"12"`, `"18"`, etc.)
-- `status`: status agregado do snapshot
-- `groups`: agrupamentos lógicos de execução
-- `tasks`: itens exibidos no Gantt
+## Modo simulado
 
-Campos de task:
+O modo simulado existe para manter as telas funcionando antes da disponibilidade do REST Proxy real.
 
-- `start` e `end` em ISO UTC
-- `progress` entre `0` e `100`
-- `dependencies` com IDs válidos de tasks existentes no mesmo snapshot
-- `type`: `task` ou `product`
+Configuração padrão:
+
+```bash
+KAFKA_REST_PROXY_USE_MOCK_DATA=true
+```
+
+Com esse valor, o sistema:
+
+- usa `src/app/admin/products/[slug]/data-flow/pipeline-data.json` como base;
+- adapta snapshots existentes para o `slug` solicitado quando não houver match exato;
+- gera mensagens no formato Kafka/ecFlow;
+- passa essas mensagens pelo mesmo mapper usado para dados reais.
+
+Para testar leitura real pelo REST Proxy:
+
+```bash
+KAFKA_REST_PROXY_URL=http://rest-proxy:8082
+KAFKA_REST_PROXY_USE_MOCK_DATA=false
+KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.
+```
 
 ---
 
-### Webhook de Fluxo de Dados (Pipeline)
-Assim como nos radares, cada produto possui uma **Webhook URL** (configurada na página de edição do produto).
-- **O que é**: Um ponto de entrada para o sistema de processamento (cluster/supercomputador) notificar o SILO sobre o progresso de cada tarefa.
-- **Como funciona**: O script de controle do modelo faz um POST para este Webhook enviando o snapshot do pipeline (Gantt).
-- **Consistência**: Garante que o dashboard de monitoramento reflita o estado real do supercomputador sem intervenção manual.
+## Smoke test local
 
----
+Com o modo mock ativo, este comando valida a conversão para `bam`, data `2026-03-06`, turno `18`:
 
-## Endpoints Recomendados
-
-### 1) Listar opções para o seletor (datas/turnos)
-
-```http
-GET /api/admin/products/{slug}/data-flow/options?days=4
+```powershell
+npx tsx -e "void (async () => { const mod = await import('./src/lib/dataflow/kafkaDataFlowSource.ts'); const fn = mod.default.getProductDataFlowPipelinesFromKafkaRest; const pipelines = await fn({ slug: 'bam', date: '2026-03-06', turn: '18' }); const first = pipelines[0]; console.log(JSON.stringify({ count: pipelines.length, model: first?.model, date: first?.date, turn: first?.turn, status: first?.status, groups: first?.groups.length, firstTask: first?.groups[0]?.tasks[0] }, null, 2)); })();"
 ```
 
-Resposta sugerida:
+Resultado esperado resumido:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "model": "bsm",
-    "days": [
-      {
-        "date": "2026-03-06",
-        "turns": [
-          { "turn": "18", "status": "completed" },
-          { "turn": "12", "status": "completed" },
-          { "turn": "6", "status": "completed" },
-          { "turn": "0", "status": "completed" }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Uso no frontend:
-
-- montar o `Select` com ordenacao decrescente por data e turno
-- evitar hardcode de turnos por produto
-
-### 2) Obter snapshot por data e turno
-
-```http
-GET /api/admin/products/{slug}/data-flow?date=2026-03-06&turn=18
-```
-
-Resposta sugerida:
-
-```json
-{
-  "success": true,
-  "data": {
-    "model": "bsm",
-    "date": "2026-03-06",
-    "turn": "18",
-    "status": "completed",
-    "groups": []
-  }
-}
-```
-
-### 3) Buscar snapshot mais recente (fallback)
-
-```http
-GET /api/admin/products/{slug}/data-flow/latest
-```
-
-Resposta sugerida:
-
-```json
-{
-  "success": true,
-  "data": {
-    "model": "bsm",
-    "date": "2026-03-06",
-    "turn": "18",
-    "status": "completed",
-    "groups": []
-  }
+  "count": 1,
+  "model": "bam",
+  "date": "2026-03-06",
+  "turn": "18",
+  "status": "completed",
+  "groups": 4
 }
 ```
 
 ---
 
-## Ordenacao (contrato funcional)
+## Referências internas
 
-- datas: mais nova para mais antiga
-- turnos: maior para menor (ex.: `18`, `12`, `6`, `0`)
-- valor padrao ao abrir a pagina: primeiro item da ordenacao (data mais nova + ultimo turno)
-
----
-
-## Validacoes de Consistencia
-
-A API deve validar antes de responder:
-
-- todos os `dependencies[]` existem no mesmo snapshot
-- `end > start` para toda task
-- `progress` no intervalo `0..100`
-- `status` permitido
-- `model` da resposta igual ao `slug` solicitado
-
-Validacoes recomendadas para qualidade operacional:
-
-- detectar ciclos em dependencias (A -> B -> A)
-- detectar tarefas isoladas sem grupo
-- detectar sobreposicoes criticas indevidas, quando regra de negocio exigir
-
----
-
-## Modelo de Persistencia (sugestao)
-
-Opcao A (mais simples para inicio):
-
-- tabela unica `product_data_flow_snapshot`
-- campos: `product_slug`, `date`, `turn`, `status`, `payload_json`, `created_at`, `updated_at`
-- indice unico: `(product_slug, date, turn)`
-
-Opcao B (normalizada para analytics):
-
-- `product_data_flow_run` (snapshot)
-- `product_data_flow_group` (grupos)
-- `product_data_flow_task` (tasks)
-- `product_data_flow_task_dependency` (relacao N:N)
-
-Recomendacao pratica:
-
-- comecar na Opcao A para entrega rapida
-- evoluir para Opcao B quando houver demanda de relatorios analiticos por task
-
----
-
-## Cache e Performance
-
-Para leitura frequente (dashboard/tela aberta):
-
-- `Cache-Control: private, max-age=30`
-- ETag para respostas de snapshot
-- invalidar cache quando novo snapshot for publicado
-
-Para dados historicos pouco mutaveis:
-
-- `max-age` maior (60-300s), conforme necessidade
-
----
-
-## Seguranca e Permissoes
-
-- endpoint restrito a usuario autenticado
-- validar permissao de leitura de produto
-- nunca expor dados de modelo diferente do `slug` requisitado
-- registrar auditoria para erros de consistencia e acessos negados
-
----
-
-## Erros (padrao recomendado)
-
-```json
-{ "success": false, "error": "Parâmetro date inválido." }
-```
-
-Cenarios esperados:
-
-- `400`: query invalida (`date/turn`)
-- `404`: snapshot inexistente
-- `403`: sem permissao
-- `500`: falha inesperada
-
----
-
-## Plano de Migracao (Fake -> API)
-
-1. Criar endpoint `options` e consumir no `Select`.
-2. Criar endpoint `data-flow` por `date/turn` e substituir import JSON no frontend.
-3. Manter fallback temporario para arquivo local apenas em desenvolvimento.
-4. Ativar monitoramento e alertas de inconsistencias.
-5. Remover dependencia de arquivos `pipeline-snapshots` em producao.
-
----
-
-## Compatibilidade com o Frontend Atual
-
-A UI atual (tabs + select + Gantt) ja funciona com o contrato acima. A migracao para API exige apenas:
-
-- trocar a fonte de dados (`import ...json` -> `fetch`)
-- preservar os mesmos campos e nomes
-- manter a ordenacao funcional do seletor
-
-Com isso, o comportamento visual permanece estavel e previsivel.
-
----
-
-## Referencias Internas
-
-- Exemplo de payloads fake: `src/app/admin/products/[slug]/data-flow/pipeline-snapshots`
-- Tela de consumo: `src/app/admin/products/[slug]/data-flow/page.tsx`
-- Seletor/tabs: `src/components/admin/nav/ProductTabs.tsx`
-- API geral do projeto: `docs/API.md`
+- `docs/KAFKA.md`
+- `src/app/api/admin/products/[slug]/data-flow/route.ts`
+- `src/lib/dataflow/kafkaDataFlowSource.ts`
+- `src/lib/dataflow/types.ts`
+- `src/app/admin/products/[slug]/data-flow/page.tsx`
+- `src/components/admin/nav/ProductTabs.tsx`
+- `src/app/admin/products/[slug]/data-flow/pipeline-data.json`

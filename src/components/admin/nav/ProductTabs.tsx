@@ -1,11 +1,12 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/admin/nav/Button";
 import Select from "@/components/ui/Select";
-import { getStatusLabel, ProductStatus } from "@/lib/productStatus";
-import groupedPipelineDataJson from "@/app/admin/products/[slug]/data-flow/pipeline-data.json";
+import { getStatusLabel } from "@/lib/productStatus";
+import { config } from "@/lib/config";
+import type { GroupedPipelineData } from "@/lib/dataflow/types";
 
 interface ProductTabsProps {
   tabs: { label: string; url: string }[];
@@ -13,21 +14,8 @@ interface ProductTabsProps {
   modelTurns?: string[];
 }
 
-interface GroupedPipelineData {
-  model: string;
-  date: string;
-  turn: string;
-  status: ProductStatus;
-}
-
-interface GroupedPipelineDataFile {
-  pipelines: GroupedPipelineData[];
-}
-
-const GROUPED_PIPELINE_DATA = groupedPipelineDataJson as GroupedPipelineDataFile;
-const DATA_FLOW_MODEL = "bsm";
-const DATA_FLOW_FAKE_TAB_TITLE =
-  "Fluxo de dados falso como ilustração de exemplo de como poderia ser apresentado o fluxo de dados de cada turno de cada modelo. Poderá ser desenvolvido em uma versão futura.";
+const DATA_FLOW_TAB_TITLE =
+  "Fluxo de dados obtido pelo Kafka REST Proxy. Enquanto o proxy real nao estiver ativo, a tela usa snapshots simulados.";
 
 function formatIsoDateForLabel(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");
@@ -58,21 +46,52 @@ export default function ProductTabs({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isDataFlowPage = pathname.endsWith("/data-flow");
+  const [dataFlowSnapshots, setDataFlowSnapshots] = useState<GroupedPipelineData[]>([]);
+  const [hasLoadedDataFlowOptions, setHasLoadedDataFlowOptions] = useState(false);
 
-  const bsmSnapshots = useMemo(
-    () =>
-      GROUPED_PIPELINE_DATA.pipelines.filter(
-        (snapshot) => snapshot.model === DATA_FLOW_MODEL,
-      ),
-    [],
-  );
+  useEffect(() => {
+    if (!isDataFlowPage || !modelSlug) return;
+
+    let isCancelled = false;
+    setHasLoadedDataFlowOptions(false);
+
+    const loadDataFlowOptions = async () => {
+      try {
+        const response = await fetch(
+          config.getApiUrl(`/api/admin/products/${encodeURIComponent(modelSlug)}/data-flow`),
+          { cache: "no-store" },
+        );
+        if (!response.ok) {
+          if (!isCancelled) setHasLoadedDataFlowOptions(true);
+          return;
+        }
+
+        const payload = (await response.json()) as { data?: { pipelines?: GroupedPipelineData[] } };
+        if (!isCancelled) {
+          setDataFlowSnapshots(Array.isArray(payload.data?.pipelines) ? payload.data.pipelines : []);
+          setHasLoadedDataFlowOptions(true);
+        }
+      } catch {
+        if (!isCancelled) {
+          setDataFlowSnapshots([]);
+          setHasLoadedDataFlowOptions(true);
+        }
+      }
+    };
+
+    loadDataFlowOptions();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isDataFlowPage, modelSlug]);
 
   const turns = useMemo(() => {
-    const turnsFromBsm = Array.from(
-      new Set(bsmSnapshots.map((snapshot) => String(snapshot.turn).trim()).filter(Boolean)),
+    const turnsFromKafka = Array.from(
+      new Set(dataFlowSnapshots.map((snapshot) => String(snapshot.turn).trim()).filter(Boolean)),
     );
-    const uniqueTurns = turnsFromBsm.length
-      ? turnsFromBsm
+    const uniqueTurns = turnsFromKafka.length
+      ? turnsFromKafka
       : Array.from(
           new Set((modelTurns ?? []).map((turn) => String(turn).trim()).filter(Boolean)),
         );
@@ -89,16 +108,20 @@ export default function ProductTabs({
 
       return b.localeCompare(a);
     });
-  }, [bsmSnapshots, modelTurns]);
+  }, [dataFlowSnapshots, modelTurns]);
 
   const dayTurnOptions = useMemo(() => {
     const days = (() => {
-      const datesFromBsm = Array.from(
-        new Set(bsmSnapshots.map((snapshot) => snapshot.date).filter(Boolean)),
+      const datesFromKafka = Array.from(
+        new Set(dataFlowSnapshots.map((snapshot) => snapshot.date).filter(Boolean)),
       ).sort((a, b) => b.localeCompare(a));
 
-      if (datesFromBsm.length > 0) {
-        return datesFromBsm.slice(0, 4);
+      if (datesFromKafka.length > 0) {
+        return datesFromKafka.slice(0, 4);
+      }
+
+      if (isDataFlowPage && !hasLoadedDataFlowOptions) {
+        return [];
       }
 
       return getLastFourDaysIso();
@@ -116,7 +139,7 @@ export default function ProductTabs({
     }
 
     return options;
-  }, [bsmSnapshots, turns]);
+  }, [dataFlowSnapshots, hasLoadedDataFlowOptions, isDataFlowPage, turns]);
 
   const selectedDate = searchParams.get("date");
   const selectedTurn = searchParams.get("turn");
@@ -164,23 +187,13 @@ export default function ProductTabs({
     const [date, turn] = selectValue.split("|");
     if (!date || !turn) return null;
 
-    const snapshots = GROUPED_PIPELINE_DATA.pipelines;
-    const byModelAndSlot = snapshots.find(
-      (snapshot) =>
-        snapshot.model === modelSlug &&
-        snapshot.date === date &&
-        snapshot.turn === turn,
-    );
-
-    const bySlot = snapshots.find(
+    const target = dataFlowSnapshots.find(
       (snapshot) => snapshot.date === date && snapshot.turn === turn,
     );
-
-    const target = byModelAndSlot ?? bySlot;
     if (!target) return null;
 
     return `${getStatusLabel(target.status)}`;
-  }, [isDataFlowPage, modelSlug, selectValue]);
+  }, [dataFlowSnapshots, isDataFlowPage, selectValue]);
 
   return (
     <div className="flex w-full items-center justify-between gap-3">
@@ -191,7 +204,7 @@ export default function ProductTabs({
             key={tab.url}
             href={tab.url}
             active={pathname === tab.url}
-            title={tab.label === "Fluxo de dados (Fake)" ? DATA_FLOW_FAKE_TAB_TITLE : undefined}
+            title={tab.label === "Fluxo de dados" ? DATA_FLOW_TAB_TITLE : undefined}
           >
             {tab.label}
           </Button>
@@ -219,7 +232,6 @@ export default function ProductTabs({
                 const nextParams = new URLSearchParams(searchParams.toString());
                 nextParams.set("date", date);
                 nextParams.set("turn", turn);
-                nextParams.set("model", DATA_FLOW_MODEL);
 
                 router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
               }}

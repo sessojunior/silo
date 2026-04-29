@@ -1,0 +1,111 @@
+stages:
+  - validate
+  - build
+  - deploy
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    - if: '$CI_COMMIT_BRANCH == $MAIN_BRANCH'
+    - when: never
+
+variables:
+  NODE_ENV: "production"
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
+  DEPLOY_COMPOSE_FILE: "docker-compose.deploy.yml"
+  DEPLOY_IMAGE: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+  MAIN_BRANCH: "main"
+
+default:
+  interruptible: true
+
+.node_template:
+  image: node:22-alpine
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  before_script:
+    - npm config set cache "$CI_PROJECT_DIR/.npm" --global
+    - npm ci --prefer-offline --no-audit
+
+validate:
+  stage: validate
+  extends: .node_template
+  script:
+    - npm run lint
+    - npm run typecheck
+
+build:image:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    - if: '$CI_COMMIT_BRANCH == $MAIN_BRANCH'
+    - when: never
+  script:
+    - mkdir -p /kaniko/.docker
+    - |
+      cat > /kaniko/.docker/config.json <<EOF
+      {
+        "auths": {
+          "${CI_REGISTRY}": {
+            "username": "${CI_REGISTRY_USER}",
+            "password": "${CI_REGISTRY_PASSWORD}"
+          }
+        }
+      }
+      EOF
+    - |
+      if [ "${CI_PIPELINE_SOURCE}" = "merge_request_event" ]; then
+        /kaniko/executor \
+          --context "${CI_PROJECT_DIR}" \
+          --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
+          --cache=false \
+          --no-push
+      else
+        set -- \
+          --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" \
+          --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
+
+        if [ "${CI_COMMIT_BRANCH}" = "${MAIN_BRANCH}" ]; then
+          set -- "$@" --destination "${CI_REGISTRY_IMAGE}:latest"
+        fi
+
+        /kaniko/executor \
+          --context "${CI_PROJECT_DIR}" \
+          --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
+          --cache=true \
+          --cache-repo "${CI_REGISTRY_IMAGE}/cache" \
+          "$@"
+      fi
+
+.deploy_template:
+  stage: deploy
+  image: alpine:3.20
+  before_script:
+    - apk add --no-cache openssh-client
+  script:
+    - sh scripts/gitlab/deploy.sh
+
+deploy:staging:
+  extends: .deploy_template
+  environment:
+    name: staging
+  resource_group: staging
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $MAIN_BRANCH'
+
+deploy:production:
+  extends: .deploy_template
+  environment:
+    name: production
+  resource_group: production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $MAIN_BRANCH'
+      when: manual
+    - when: never
