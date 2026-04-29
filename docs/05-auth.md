@@ -33,7 +33,7 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 
 ## 🔑 **MÉTODOS DE AUTENTICAÇÃO**
 
-A autenticação é gerenciada pelo Better Auth e exposta em `/api/auth/*` pelo handler `src/app/api/auth/[...all]/route.ts`. O frontend usa `authClient` para iniciar login, registro e OTP.
+A autenticação é gerenciada pelo Better Auth e exposta em `/api/auth/*` pelo handler `apps/web/src/app/api/auth/[...all]/route.ts`. O frontend usa `authClient` para iniciar login, registro e OTP.
 
 ### **1. Login com Email e Senha**
 
@@ -222,7 +222,7 @@ GOOGLE_CLIENT_SECRET='seu-client-secret'
 
 ### **Arquivo de Configuração**
 
-Arquivo: `src/lib/auth/server.ts`
+Arquivo: `apps/web/src/lib/auth/server.ts`
 
 ```typescript
 export const auth = betterAuth({
@@ -270,15 +270,15 @@ export const auth = betterAuth({
 
 **Componentes afetados:**
 
-- `src/components/admin/sidebar/SidebarFooter.tsx`
-- `src/components/admin/topbar/TopbarDropdown.tsx`
+- `apps/web/src/components/admin/sidebar/SidebarFooter.tsx`
+- `apps/web/src/components/admin/topbar/TopbarDropdown.tsx`
 - Componentes genéricos (`Button`, `NavButton`, etc.) devem automaticamente desabilitar prefetch para URLs que começam com `/api/`
 
 **Regra geral:** Se `href.startsWith('/api/')`, SEMPRE usar `prefetch={false}`.
 
 ### **Validação de Domínio**
 
-Função centralizada em `src/lib/auth/validate.ts`:
+Função centralizada em `apps/web/src/lib/auth/validate.ts`:
 
 ```typescript
 export function isValidDomain(email: string): boolean {
@@ -307,7 +307,7 @@ Os rate limits são aplicados por combinação de email + IP + rota, com janelas
 - **Lockout de OTP:** 10s
 - **Cooldown de reenvio de OTP:** 90s
 
-Arquivo: `src/lib/rateLimit.ts`
+Arquivo: `apps/web/src/lib/rate-limit.ts`
 
 ```typescript
 export async function isRateLimited(params: {
@@ -333,7 +333,7 @@ export async function recordRateLimit(params: {
 
 **Hashing:** bcrypt com salt rounds 10
 
-Arquivo: `src/lib/auth/hash.ts`
+Arquivo: `apps/web/src/lib/auth/hash.ts`
 
 ```typescript
 export async function hashPassword(password: string): Promise<string> {
@@ -393,7 +393,7 @@ SMTP_PASSWORD='senha'
 
 ### **Obter Usuário Autenticado**
 
-Arquivo: `src/lib/auth/server.ts`
+Arquivo: `apps/web/src/lib/auth/server.ts`
 
 ```typescript
 export async function getAuthUser() {
@@ -471,7 +471,7 @@ if (userId === session.userId) {
 
 ### **UserContext**
 
-Arquivo: `src/context/UserContext.tsx`
+Arquivo: `apps/web/src/context/UserContext.tsx`
 
 ```typescript
 export const UserContext = createContext<{
@@ -508,7 +508,7 @@ await refreshUser();
 
 ### **Hook de Usuário Atual**
 
-Arquivo: `src/hooks/useCurrentUser.ts`
+Arquivo: `apps/web/src/hooks/useCurrentUser.ts`
 
 ```typescript
 export function useCurrentUser() {
@@ -541,4 +541,4 @@ Todos os grupos possuem permissões obrigatórias que não podem ser removidas:
 
 ---
 
-**🎯 Para detalhes técnicos de implementação, consulte o código em `src/lib/auth/` e `src/app/api/auth/`**
+**🎯 Para detalhes técnicos de implementação, consulte o código em `apps/web/src/lib/auth/` e `apps/web/src/app/api/auth/`**

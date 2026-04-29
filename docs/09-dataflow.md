@@ -30,11 +30,11 @@ Fluxo atual:
 
 Arquivos principais:
 
-- `src/app/api/admin/products/[slug]/data-flow/route.ts`
-- `src/lib/dataflow/kafkaDataFlowSource.ts`
-- `src/lib/dataflow/types.ts`
-- `src/app/admin/products/[slug]/data-flow/page.tsx`
-- `src/components/admin/nav/ProductTabs.tsx`
+- `apps/web/src/app/api/admin/products/[slug]/data-flow/route.ts`
+- `apps/web/src/lib/dataflow/kafka-data-flow-source.ts`
+- `apps/web/src/lib/dataflow/types.ts`
+- `apps/web/src/app/admin/products/[slug]/data-flow/page.tsx`
+- `apps/web/src/components/admin/nav/product-tabs.tsx`
 
 ---
 
@@ -265,10 +265,10 @@ Resultado esperado resumido:
 
 ## Referências internas
 
-- `docs/KAFKA.md`
-- `src/app/api/admin/products/[slug]/data-flow/route.ts`
-- `src/lib/dataflow/kafkaDataFlowSource.ts`
-- `src/lib/dataflow/types.ts`
-- `src/app/admin/products/[slug]/data-flow/page.tsx`
-- `src/components/admin/nav/ProductTabs.tsx`
-- `src/app/admin/products/[slug]/data-flow/pipeline-data.json`
+- [08-kafka.md](08-kafka.md)
+- `apps/web/src/app/api/admin/products/[slug]/data-flow/route.ts`
+- `apps/web/src/lib/dataflow/kafka-data-flow-source.ts`
+- `apps/web/src/lib/dataflow/types.ts`
+- `apps/web/src/app/admin/products/[slug]/data-flow/page.tsx`
+- `apps/web/src/components/admin/nav/product-tabs.tsx`
+- `apps/web/src/app/admin/products/[slug]/data-flow/pipeline-data.json`

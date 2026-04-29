@@ -31,12 +31,19 @@ Docker é uma ferramenta que "empacota" aplicações em **containers** - ambient
 
 ## 🏗️ **ARQUITETURA**
 
-O **Silo** usa **1 container** (e opcionalmente um Postgres):
+O **Silo** no monorepo usa **2 containers principais** (e opcionalmente um Postgres):
 
-1. **`silo`** (porta 3000) - Aplicação Next.js (frontend + APIs + uploads locais)
-2. **`db`** (opcional) - PostgreSQL (via Docker Compose, recomendado apenas quando você não usa Postgres gerenciado)
+1. **`web`** (porta 3000) — Aplicação Next.js (`apps/web`): frontend, API Routes, Server Actions, uploads locais.
+2. **`worker`** — Consumer Kafka (`apps/worker`): Node.js puro, sem React, sem Next.js.
+3. **`db`** (opcional) — PostgreSQL via Docker Compose, recomendado apenas quando você não usa Postgres gerenciado.
 
-Consumers Kafka REST Proxy podem ser executados em containers separados usando `docker-compose.kafka.yml`. Eles não acessam brokers diretamente; todo consumo e produção de DLQ passa pelo REST Proxy.
+Consumers Kafka REST Proxy também podem ser executados em containers separados usando `docker-compose.kafka.yml`. Eles não acessam brokers diretamente; todo consumo e produção de DLQ passa pelo REST Proxy.
+
+**Dockerfiles:**
+- `apps/web/Dockerfile` — build do Next.js usando `turbo prune web --docker`
+- `apps/worker/Dockerfile` — build do worker usando `turbo prune worker --docker`
+
+O build de ambos usa o contexto da raiz do monorepo para que o Turborepo possa resolver os pacotes internos (`@silo/database`, `@silo/core`, etc.).
 
 ---
 
@@ -223,7 +230,7 @@ KAFKA_DLQ_PREFIX=dlq.
 DATABASE_URL=postgresql://silo:uma_senha_forte@db:5432/silo
 ```
 
-Detalhes do contrato e dos comandos estão em `docs/KAFKA.md`.
+Detalhes do contrato e dos comandos estão em [08-kafka.md](08-kafka.md).
 
 ---
 

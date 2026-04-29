@@ -270,5 +270,5 @@ Com isso, o comportamento visual da coluna `Radares` permanece estavel.
 
 - JSON fake atual: `src/app/admin/monitoring/radars.json`
 - Tela de consumo: `src/app/admin/monitoring/page.tsx`
-- API geral do projeto: `docs/API.md`
-- Padrao de documentacao semelhante: `docs/DATAFLOW.md`
+- API geral do projeto: [06-api.md](06-api.md)
+- Padrão de documentação semelhante: [09-dataflow.md](09-dataflow.md)

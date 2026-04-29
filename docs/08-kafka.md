@@ -10,9 +10,9 @@ Enquanto o REST Proxy real não estiver disponível, as telas administrativas us
 
 - `/admin/monitoring`: cards de produtos e turnos usam dados derivados dos pipelines Kafka REST/simulados.
 - `/admin/products/:slug/data-flow`: Gantt de fluxo de dados por produto, data e turno.
-- `src/scripts/kafka/consumer.ts`: worker REST Proxy-only para consumir tópicos e persistir efeitos no banco.
+- `apps/worker/src/index.ts`: worker REST Proxy-only para consumir tópicos e persistir efeitos no banco.
 
-O acesso das telas passa por `src/lib/dataflow/kafkaDataFlowSource.ts`. O worker usa `src/lib/kafkaRest.ts` para consumir, commitar offsets e publicar em DLQ via REST Proxy.
+O acesso das telas passa por `apps/web/src/lib/dataflow/kafka-data-flow-source.ts`. O worker usa `apps/worker/src/kafka-rest.ts` para consumir, commitar offsets e publicar em DLQ via REST Proxy.
 
 ---
 
@@ -61,24 +61,30 @@ Descrição:
 Pré-requisitos:
 
 ```bash
-npm ci
+npm install
 npm run db:migrate
 ```
 
-Exemplo em PowerShell:
+Exemplo em PowerShell (via Turborepo):
 
 ```powershell
 $env:KAFKA_REST_PROXY_URL = "http://rest-proxy:8082"
 $env:KAFKA_TOPIC = "model.products"
 $env:KAFKA_GROUP_ID = "silo-consumer-group"
 $env:KAFKA_DLQ_PREFIX = "dlq."
-npm run kafka:consumer
+npm run dev -w worker
+```
+
+Em produção (container):
+
+```bash
+npm run start -w worker
 ```
 
 O worker também aceita o tópico como primeiro argumento CLI quando `KAFKA_TOPIC` não estiver definido.
 
 ```bash
-npm run kafka:consumer -- model.products
+npm run dev -w worker -- model.products
 ```
 
 ---
@@ -105,7 +111,7 @@ services:
 
 ## Contrato do fluxo de dados
 
-O valor da mensagem de data-flow deve seguir o contrato abaixo. Os detalhes completos ficam em `docs/DATAFLOW.md`.
+O valor da mensagem de data-flow deve seguir o contrato abaixo. Os detalhes completos ficam em [09-dataflow.md](09-dataflow.md).
 
 ```json
 {

@@ -38,7 +38,7 @@ KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.
 
 Enquanto `KAFKA_REST_PROXY_USE_MOCK_DATA=true`, a tela funciona sem o proxy real. Para tentar ler do Kafka REST Proxy, defina `KAFKA_REST_PROXY_USE_MOCK_DATA=false` e configure `KAFKA_REST_PROXY_URL`.
 
-Mais detalhes do contrato estão em `docs/KAFKA.md` e `docs/DATAFLOW.md`.
+Mais detalhes do contrato estão em [08-kafka.md](08-kafka.md) e [09-dataflow.md](09-dataflow.md).
 
 ---
 

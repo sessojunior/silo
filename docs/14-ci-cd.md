@@ -13,14 +13,18 @@ O objetivo e simples:
 
 ## Estrutura criada
 
-Arquivos adicionados para suportar o fluxo:
+Arquivos que suportam o fluxo:
 
 - [../.gitlab-ci.yml](../.gitlab-ci.yml)
 - [../docker-compose.deploy.yml](../docker-compose.deploy.yml)
 - [../scripts/gitlab/deploy.sh](../scripts/gitlab/deploy.sh)
+- `apps/web/Dockerfile` — imagem da aplicação web (usa `turbo prune web --docker`)
+- `apps/worker/Dockerfile` — imagem do consumer Kafka (usa `turbo prune worker --docker`)
 
-O arquivo [../docker-compose.yml](../docker-compose.yml) continua sendo o compose de desenvolvimento/local, com o banco `db` opcional via profile.
-O arquivo de deploy usa imagem preconstruida e pressupoe um Postgres externo ou gerenciado.
+O arquivo [../docker-compose.yml](../docker-compose.yml) é o compose de desenvolvimento/local.
+O arquivo de deploy usa imagem pré-construída e pressupõe um Postgres externo ou gerenciado.
+
+Ver [12-docker.md](12-docker.md) para detalhes de arquitetura Docker.
 
 ---
 

@@ -6,9 +6,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "kafka:consumer": "tsx src/scripts/kafka/consumer.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
+    "kafka:consumer": "tsx src/scripts/kafka/consumer.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
@@ -34,7 +34,7 @@
     "drizzle-orm": "^0.45.1",
     "easymde": "^2.20.0",
     "gantt-task-react": "^0.3.9",
-    "next": "^16.1.6",
+    "next": "^16.2.4",
     "nodemailer": "^8.0.0",
     "pg": "^8.18.0",
     "react": "^19.2.4",
@@ -69,5 +69,11 @@
   },
   "optionalDependencies": {
     "@esbuild/linux-x64": "0.25.4"
+  },
+  "overrides": {
+    "gantt-task-react": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }

@@ -21,20 +21,30 @@ Documentação sobre padrões, convenções e boas práticas do projeto SILO.
 
 ### **Imports**
 
-**✅ SEMPRE** usar alias `@/` para imports internos:
+No monorepo, imports seguem duas regras simples:
+
+- **Pacotes compartilhados** (`@silo/*`): use o nome do pacote.
+- **Código interno ao app** (`apps/web`): use o alias `@/`.
 
 ```typescript
-// ✅ Correto
-import { sendEmail } from "@/lib/sendEmail";
-import { db } from "@/lib/db";
-import { User } from "@/types";
+// ✅ Correto — pacotes do monorepo
+import { db } from "@silo/database";
+import { authUser } from "@silo/database/schema";
+import { Button } from "@silo/ui/components/Button";
+import { formatDate } from "@silo/core/date";
+import type { User } from "@silo/types";
 
-// ❌ Incorreto
+// ✅ Correto — código específico do apps/web (usa @/)
+import { config } from "@/lib/config";
+import { getAuthUser } from "@/lib/auth/token";
+import { MyPageComponent } from "@/components/admin/MyPageComponent";
+
+// ❌ Incorreto — nunca use paths relativos cross-package
+import { db } from "../../packages/database/src";
 import { sendEmail } from "../../../lib/sendEmail";
-import { db } from "../db";
 ```
 
-**Centralizar configurações:**
+**Centralizar configurações do web:**
 
 ```typescript
 // ✅ Correto
@@ -52,15 +62,19 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// 2. Bibliotecas externas
+// 2. Pacotes do monorepo
+import { db } from "@silo/database";
+import { Button } from "@silo/ui/components/Button";
+import { formatDate } from "@silo/core/date";
+
+// 3. Bibliotecas externas
 import { z } from "zod";
 
-// 3. Imports internos (com @/)
-import { Button } from "@/components/ui/Button";
-import { db } from "@/lib/db";
+// 4. Imports internos ao app (com @/)
+import { config } from "@/lib/config";
 
-// 4. Tipos
-import type { User } from "@/types";
+// 5. Tipos
+import type { AuthUser } from "@silo/database/schema";
 ```
 
 ---
@@ -144,8 +158,11 @@ Todas as funções exportadas devem ter tipos:
 
 ```typescript
 // ✅ Correto
-import type { AuthUser } from "@/lib/db/schema";
-import { authUser } from "@/lib/db/schema";
+import { db } from "@silo/database";
+import { authUser } from "@silo/database/schema";
+import type { InferSelectModel } from "drizzle-orm";
+
+type AuthUser = InferSelectModel<typeof authUser>;
 
 export function getUserByEmail(email: string): Promise<AuthUser | null> {
   return db.query.authUser.findFirst({
@@ -176,14 +193,16 @@ npm run lint
 
 **✅ SEMPRE** usar timezone de São Paulo:
 
-Arquivo: `src/lib/dateConfig.ts`
-
 ```typescript
-export const timezone = "America/Sao_Paulo";
+// ✅ Correto
+import { timezone } from "@silo/core/date-config";
+import { formatDate } from "@silo/core/date";
+
+// ❌ Incorreto
+import { timezone } from "@/lib/dateConfig";
 ```
 
-O projeto centraliza utilitários em `src/lib/dateUtils.ts` e evita dependências extras para timezone,
-usando `toLocaleString(..., { timeZone: 'America/Sao_Paulo' })` de forma consistente.
+O projeto centraliza utilitários de data em `packages/core/src/date-utils.ts` e `packages/core/src/date-config.ts`.
 
 ---
 
@@ -360,7 +379,7 @@ function isValidDomain(email: string): boolean {
 ### **Estrutura de Rotas**
 
 ```text
-src/app/api/
+apps/web/src/app/api/
 ├── (user)/              (route group: não aparece na URL)
 │   ├── user-profile/
 │   └── user-preferences/
@@ -382,7 +401,8 @@ Ex.: `src/app/api/(user)/user-profile/route.ts` atende em `/api/user-profile`.
 ### **Handler Pattern**
 
 ```typescript
-import { getAuthUser } from "@/lib/auth/token";
+import { db } from "@silo/database";
+import { getAuthUser } from "@/lib/auth/token"; // web-specific
 
 export async function GET(request: NextRequest) {
   try {
@@ -416,8 +436,8 @@ export async function GET(request: NextRequest) {
 ### **Queries Drizzle**
 
 ```typescript
-import { db } from "@/lib/db";
-import { authUser } from "@/lib/db/schema";
+import { db } from "@silo/database";
+import { authUser } from "@silo/database/schema";
 import { eq } from "drizzle-orm";
 
 // SELECT
@@ -445,8 +465,8 @@ await db.delete(authUser).where(eq(authUser.id, userId));
 ### **Transações**
 
 ```typescript
-import { db } from "@/lib/db";
-import { authUser, userProfile } from "@/lib/db/schema";
+import { db } from "@silo/database";
+import { authUser, userProfile } from "@silo/database/schema";
 
 await db.transaction(async (tx) => {
   await tx.insert(authUser).values(user);

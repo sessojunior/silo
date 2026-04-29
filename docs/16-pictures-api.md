@@ -295,5 +295,5 @@ Com isso, o comportamento visual dos indicadores e do accordion permanece estave
 - JSON fake atual: `src/app/admin/monitoring/pictures.json`
 - Tela de consumo: `src/app/admin/monitoring/page.tsx`
 - Componente de renderizacao: `src/components/admin/monitoring/PicturePagesAccordion.tsx`
-- API geral do projeto: `docs/API.md`
-- Padrao de documentacao semelhante: `docs/RADARS.md`
+- API geral do projeto: [06-api.md](06-api.md)
+- Padrão de documentação semelhante: [15-radars-api.md](15-radars-api.md)

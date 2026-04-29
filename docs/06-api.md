@@ -1279,7 +1279,7 @@ Response:
 
 ## 🩺 **MONITORAMENTO**
 
-Endpoints para gestão e consulta de páginas de visualização e radares. Os cards de produtos exibidos em `/admin/monitoring` são montados pela camada Kafka REST/simulada documentada em `docs/KAFKA.md` e `docs/DATAFLOW.md`.
+Endpoints para gestão e consulta de páginas de visualização e radares. Os cards de produtos exibidos em `/admin/monitoring` são montados pela camada Kafka REST/simulada documentada em [08-kafka.md](08-kafka.md) e [09-dataflow.md](09-dataflow.md).
 
 ### **Páginas e Figuras**
 

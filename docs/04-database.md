@@ -22,7 +22,8 @@ O **Silo** utiliza **PostgreSQL** com **Drizzle ORM** para gerenciamento do banc
 
 - **Database:** PostgreSQL
 - **ORM:** Drizzle ORM
-- **Schema (fonte de verdade):** `src/lib/db/schema.ts`
+- **Pacote:** `@silo/database` (`packages/database/`)
+- **Schema (fonte de verdade):** `packages/database/src/schema/index.ts`
 
 ---
 
@@ -45,7 +46,7 @@ O **Silo** utiliza **PostgreSQL** com **Drizzle ORM** para gerenciamento do banc
 
 O schema do banco muda junto com o código. Para evitar divergência, a referência oficial é sempre o arquivo:
 
-- `src/lib/db/schema.ts`
+- `packages/database/src/schema/index.ts`
 
 Pontos práticos:
 
@@ -57,7 +58,7 @@ Exemplo de tipagem:
 
 ```typescript
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { authUser } from "@/lib/db/schema";
+import { authUser } from "@silo/database/schema";
 
 export type AuthUser = InferSelectModel<typeof authUser>;
 export type NewAuthUser = InferInsertModel<typeof authUser>;
@@ -127,11 +128,12 @@ npm run db:push
 
 ### **Arquivos de Migração**
 
-Localizados em `/drizzle/` com versionamento automático:
+Localizados em `packages/database/drizzle/` com versionamento automático:
 
 ```text
-drizzle/
-├── 0000_redundant_korg.sql
+packages/database/drizzle/
+├── 0000_tranquil_demogoblin.sql
+├── 0001_kafka_processed_messages.sql
 └── meta/
     ├── _journal.json
     └── 0000_snapshot.json
@@ -286,6 +288,8 @@ Types gerados automaticamente:
 ```typescript
 export type AuthUser = typeof authUser.$inferSelect;
 export type NewAuthUser = typeof authUser.$inferInsert;
+// Importando de @silo/database/schema em qualquer app ou package
+import { authUser } from "@silo/database/schema";
 ```
 
 ### **7. JSONB para Dados Flexíveis**

@@ -16,7 +16,7 @@ Siga exatamente na ordem:
 ### 2) Abrir o terminal na pasta do projeto
 
 ```bash
-cd C:\INPE\silo
+cd /caminho/para/silo-sessojunior
 ```
 
 ### 2.1) Criar a rede Docker (Frontend)
@@ -75,13 +75,13 @@ docker compose --profile db up -d --build
 
 O que acontece aqui:
 
-1. **Build**: Monta o container do Silo.
-2. **Start**: O container inicia e executa automaticamente:
+1. **Build**: Monta os containers `web` e `worker` a partir de `apps/web/Dockerfile` e `apps/worker/Dockerfile`.
+2. **Start**: O container `web` inicia e executa automaticamente:
    - `npm run db:migrate` (Cria as tabelas se não existirem)
-   - `npm run db:seed` (Cria o usuário admin `Mario Junior` se o banco estiver vazio)
+   - `npm run db:seed` (Cria o usuário admin se o banco estiver vazio)
    - `npm run start` (Inicia o servidor Next.js)
 
-Tudo isso acontece de forma automática graças ao script `entrypoint.sh`. Esse arquivo executa migrações, seed e inicia a aplicação.
+Tudo isso acontece de forma automática graças ao script `apps/web/entrypoint.sh`.
 
 ### 6) Ver se está rodando
 
@@ -134,7 +134,7 @@ Uploads são arquivos persistidos em um volume do Docker:
 Para conferir dentro do container:
 
 ```bash
-docker compose exec silo sh -c "ls -la /app/uploads"
+docker compose exec web sh -c "ls -la /app/uploads"
 ```
 
 ---
@@ -144,7 +144,8 @@ docker compose exec silo sh -c "ls -la /app/uploads"
 ```bash
 docker compose ps
 docker compose logs -f
-docker compose logs -f silo
+docker compose logs -f web
+docker compose logs -f worker
 docker compose logs -f db
 docker ps
 docker stats
@@ -184,7 +185,8 @@ Docker Compose é um “maestro” que, a partir de uma única receita (o arquiv
 
 No Silo:
 
-- `app` → a aplicação
+- `web` → a aplicação Next.js
+- `worker` → consumer Kafka
 - `db` → o banco de dados
 
 O `--profile db` liga o banco junto.
@@ -223,12 +225,11 @@ docker system prune -a
 
 ### Container reiniciando ou falha no Entrypoint
 
-Se o container do `app` ficar reiniciando ou falhar logo após o build, verifique os logs:
+Se o container do `web` ou `worker` ficar reiniciando ou falhar logo após o build, verifique os logs:
 
 ```bash
-docker compose logs silo
+docker compose logs web
+docker compose logs worker
 ```
 
-Se o erro for relacionado a **módulos não encontrados** (`drizzle-kit not found`, `tsx not found`, `dotenv not found`) ou **reinstalação do TypeScript** a cada boot, verifique o `package.json`.
-
-As ferramentas de migração, seed e configuração (`drizzle-kit`, `tsx`, `dotenv`, `typescript`) devem estar listadas em **`dependencies`** (e não `devDependencies`), pois o Dockerfile remove dependências de desenvolvimento em produção.
+Se o erro for relacionado a **módulos não encontrados** ou dependências faltando, verifique se os pacotes internos (`@silo/database`, `@silo/core`, etc.) estão corretamente declarados no `package.json` do app afetado. O build Docker usa `turbo prune` para incluir apenas o que cada app precisa.

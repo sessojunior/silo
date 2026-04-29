@@ -29,7 +29,7 @@ O sistema usa **SMTP** para envio de emails institucionais:
 
 ### **Variáveis de Ambiente**
 
-O projeto centraliza a leitura em `src/lib/config.ts` e usa estas variáveis:
+O projeto centraliza a leitura em `apps/web/src/lib/config.ts` e usa estas variáveis:
 
 ```bash
 # .env
@@ -73,7 +73,7 @@ SMTP_PASSWORD=senha-do-app
 
 ### **Arquivo de Configuração**
 
-Arquivo: `src/lib/config.ts`
+Arquivo: `apps/web/src/lib/config.ts`
 
 ```typescript
 import { config } from "@/lib/config";
@@ -87,18 +87,18 @@ const { host, port, secure, username, password, from } = config.email;
 
 ### **Código OTP**
 
-Arquivo: `src/lib/email/templates.ts`
+Arquivo: `packages/core/src/email/templates.ts`
 
 Os templates são gerados por `generateEmailTemplate(...)` e tipados em:
 
-- `src/lib/email/types.ts`
+- `packages/core/src/email/types.ts`
 
 ### **Envio de Email**
 
-Arquivo: `src/lib/sendEmail.ts`
+Arquivo: `packages/core/src/send-email.ts`
 
 ```typescript
-import { sendEmail } from "@/lib/sendEmail";
+import { sendEmail } from "@silo/core/send-email";
 
 await sendEmail({
   to: "destinatario@inpe.br",
@@ -123,7 +123,7 @@ node -e 'const nodemailer = require(\"nodemailer\"); const transporter = nodemai
 ### **Enviar Email de Teste**
 
 ```typescript
-import { sendEmail } from "@/lib/sendEmail";
+import { sendEmail } from "@silo/core/send-email";
 
 await sendEmail({
   to: "destinatario@inpe.br",
