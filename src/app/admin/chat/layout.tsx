@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { useChat } from "@/context/ChatContext";
-import ChatSidebar from "@/components/admin/chat/ChatSidebar";
-import ChatArea from "@/components/admin/chat/ChatArea";
+import { useChat } from "@/context/chat-context";
+import ChatSidebar from "@/components/admin/chat/chat-sidebar";
+import ChatArea from "@/components/admin/chat/chat-area";
 
 export default function ChatLayout() {
   const pathname = usePathname();

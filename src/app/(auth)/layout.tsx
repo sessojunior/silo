@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import type { CSSProperties } from "react";
 
-import AuthToggleTheme from "@/components/auth/AuthToggleTheme";
-import AuthImageSlider from "@/components/auth/AuthImageSlider";
+import AuthToggleTheme from "@/components/auth/auth-toggle-theme";
+import AuthImageSlider from "@/components/auth/auth-image-slider";
 
-import Toast from "@/components/ui/Toast";
+import Toast from "@/components/ui/toast";
 import { config as appConfig } from "@/lib/config";
 
 export const metadata: Metadata = {

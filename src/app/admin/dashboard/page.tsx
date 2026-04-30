@@ -1,9 +1,9 @@
 "use client";
 
-import { formatDateTimeShortBR, getTodayDate, formatDate, getDaysAgo } from "@/lib/dateUtils";
-import ChartColumn from "@/components/admin/dashboard/ChartColumn";
-import ChartLine from "@/components/admin/dashboard/ChartLine";
-import ChartDonut from "@/components/admin/dashboard/ChartDonut";
+import { formatDateTimeShortBR, getTodayDate, formatDate, getDaysAgo } from "@/lib/date-utils";
+import ChartColumn from "@/components/admin/dashboard/chart-column";
+import ChartLine from "@/components/admin/dashboard/chart-line";
+import ChartDonut from "@/components/admin/dashboard/chart-donut";
 import { isRealIncident } from "@/lib/constants";
 import {
   STATUS_DEFINITIONS,
@@ -11,15 +11,15 @@ import {
   ProductStatus,
   getStatusClasses as getCentralizedStatusClasses,
   DEFAULT_STATUS,
-} from "@/lib/productStatus";
+} from "@/lib/product-status";
 import { config } from "@/lib/config";
 import type { ApiResponse as HttpResponse } from "@/lib/api-response";
 
-import Stats from "@/components/admin/dashboard/Stats";
-import Radial from "@/components/admin/dashboard/Radial";
-import Project from "@/components/admin/dashboard/Project";
-import Product from "@/components/admin/dashboard/Product";
-import ProductSkeleton from "@/components/admin/dashboard/ProductSkeleton";
+import Stats from "@/components/admin/dashboard/stats";
+import Radial from "@/components/admin/dashboard/radial";
+import Project from "@/components/admin/dashboard/project";
+import Product from "@/components/admin/dashboard/product";
+import ProductSkeleton from "@/components/admin/dashboard/product-skeleton";
 import Link from "next/link";
 
 type ProductDateStatus = {

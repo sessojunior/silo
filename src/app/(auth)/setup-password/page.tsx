@@ -9,16 +9,16 @@ import {
 import { config } from "@/lib/config";
 import { toast } from "@/lib/toast";
 import type { ApiResponse } from "@/lib/api-response";
-import { useFocusOnFieldError } from "@/hooks/useFocusOnFieldError";
+import { useFocusOnFieldError } from "@/hooks/use-focus-on-field-error";
 
-import AuthHeader from "@/components/auth/AuthHeader";
-import AuthLink from "@/components/auth/AuthLink";
+import AuthHeader from "@/components/auth/auth-header";
+import AuthLink from "@/components/auth/auth-link";
 
-import Label from "@/components/ui/Label";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import InputPasswordHints from "@/components/ui/InputPasswordHints";
-import Pin from "@/components/ui/Pin";
+import Label from "@/components/ui/label";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import InputPasswordHints from "@/components/ui/input-password-hints";
+import Pin from "@/components/ui/pin";
 
 export default function SetupPasswordPage() {
   const [loading, setLoading] = useState(false);

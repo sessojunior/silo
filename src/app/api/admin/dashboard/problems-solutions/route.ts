@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { productProblem, productSolution } from "@/lib/db/schema";
 import { gte } from "drizzle-orm";
-import { formatDateBR } from "@/lib/dateUtils";
+import { formatDateBR } from "@/lib/date-utils";
 import { requireAdminAuthUser } from "@/lib/auth/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
 

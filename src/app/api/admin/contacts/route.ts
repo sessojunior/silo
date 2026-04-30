@@ -10,7 +10,7 @@ import {
   deleteUploadFile,
   isSafeFilename,
   isUploadKind,
-} from "@/lib/localUploads";
+} from "@/lib/local-uploads";
 import {
   parseRequestFormData,
   parseRequestJson,

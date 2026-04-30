@@ -16,7 +16,11 @@ import {
   clearRateLimitForEmail,
   getRateLimitStatus,
   recordRateLimit,
-} from "@/lib/rateLimit";
+} from "@/lib/rate-limit";
+import {
+  isDatabaseAvailable,
+  isDatabaseInfrastructureUnavailable,
+} from "@/lib/db";
 
 const getRequestIp = (req: NextRequest): string => {
   const forwardedFor = req.headers.get("x-forwarded-for");
@@ -97,6 +101,10 @@ export async function POST(req: NextRequest) {
     const parsedBody = await parseRequestJson(req, LoginPasswordSchema);
     if (!parsedBody.ok) return parsedBody.response;
     const { email, password } = parsedBody.data;
+
+    if (!(await isDatabaseAvailable())) {
+      return errorResponse("Serviço de autenticação indisponível no momento.", 503);
+    }
 
     const ip = getRequestIp(req);
     const rate = await getRateLimitStatus({
@@ -181,6 +189,12 @@ export async function POST(req: NextRequest) {
       responseHeaders,
     );
   } catch (error) {
+    if (isDatabaseInfrastructureUnavailable(error)) {
+      console.warn("⚠️ [API_LOGIN_PASSWORD] Infraestrutura de autenticação indisponível.", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return errorResponse("Serviço de autenticação indisponível no momento.", 503);
+    }
     console.error("❌ [API_LOGIN_PASSWORD] Erro ao entrar:", { error });
     return errorResponse("Erro ao entrar.", 500);
   }

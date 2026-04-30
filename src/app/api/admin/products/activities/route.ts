@@ -5,8 +5,8 @@ import { db } from "@/lib/db";
 import { productActivity } from "@/lib/db/schema";
 import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
-import { formatDate } from "@/lib/dateUtils";
-import { recordProductActivityHistory } from "@/lib/productActivityHistory";
+import { formatDate } from "@/lib/date-utils";
+import { recordProductActivityHistory } from "@/lib/product-activity-history";
 
 export async function POST(req: NextRequest) {
   try {

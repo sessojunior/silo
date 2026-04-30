@@ -18,17 +18,17 @@ import {
 } from "@/lib/utils";
 
 import { toast } from "@/lib/toast";
-import { useAuthFormState } from "@/hooks/useAuthFormState";
+import { useAuthFormState } from "@/hooks/use-auth-form-state";
 
-import AuthHeader from "@/components/auth/AuthHeader";
-import AuthDivider from "@/components/auth/AuthDivider";
-import AuthLink from "@/components/auth/AuthLink";
+import AuthHeader from "@/components/auth/auth-header";
+import AuthDivider from "@/components/auth/auth-divider";
+import AuthLink from "@/components/auth/auth-link";
 
-import Label from "@/components/ui/Label";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import InputPasswordHints from "@/components/ui/InputPasswordHints";
-import Pin from "@/components/ui/Pin";
+import Label from "@/components/ui/label";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import InputPasswordHints from "@/components/ui/input-password-hints";
+import Pin from "@/components/ui/pin";
 
 const signUpCooldown = createSessionResendCooldown("sign-up-email");
 const verificationCooldown = createSessionResendCooldown(

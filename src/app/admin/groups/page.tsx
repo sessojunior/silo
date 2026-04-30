@@ -3,20 +3,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "@/lib/toast";
 import { config } from "@/lib/config";
-import { formatDateBR } from "@/lib/dateUtils";
-import { useUser } from "@/context/UserContext";
+import { formatDateBR } from "@/lib/date-utils";
+import { useUser } from "@/context/user-context";
 
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import GroupFormOffcanvas from "@/components/admin/groups/GroupFormOffcanvas";
-import GroupDeleteDialog from "@/components/admin/groups/GroupDeleteDialog";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import Select from "@/components/ui/select";
+import GroupFormOffcanvas from "@/components/admin/groups/group-form-offcanvas";
+import GroupDeleteDialog from "@/components/admin/groups/group-delete-dialog";
 import GroupUsersSection, {
   GroupUsersSectionRef,
-} from "@/components/admin/groups/GroupUsersSection";
-import UserSelectorOffcanvas from "@/components/admin/groups/UserSelectorOffcanvas";
+} from "@/components/admin/groups/group-users-section";
+import UserSelectorOffcanvas from "@/components/admin/groups/user-selector-offcanvas";
 import { Group } from "@/lib/db/schema";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 export default function GroupsPage() {
   const [groups, setGroups] = useState<Group[]>([]);

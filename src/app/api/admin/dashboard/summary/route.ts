@@ -2,8 +2,8 @@ import { db } from "@/lib/db";
 import { productActivity, productProblemCategory } from "@/lib/db/schema";
 import { gte, and, isNotNull, inArray, ne } from "drizzle-orm";
 import { NO_INCIDENTS_CATEGORY_ID } from "@/lib/constants";
-import { INCIDENT_STATUS } from "@/lib/productStatus";
-import { getDaysAgo } from "@/lib/dateUtils";
+import { INCIDENT_STATUS } from "@/lib/product-status";
+import { getDaysAgo } from "@/lib/date-utils";
 import { requireAdminAuthUser } from "@/lib/auth/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
 

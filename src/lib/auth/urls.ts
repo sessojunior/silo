@@ -11,5 +11,7 @@ export const getAuthClientBaseURL = (): string => {
 
 export const getAuthServerBaseURL = (): string | undefined => {
   const origin = config.appOrigin;
-  return origin.length > 0 ? origin : undefined;
+  if (origin.length > 0) return origin;
+  if (config.nodeEnv !== "production") return "http://localhost:3000";
+  return undefined;
 };

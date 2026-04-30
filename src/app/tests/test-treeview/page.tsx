@@ -1,6 +1,6 @@
 "use client";
 
-import TreeView, { type TreeNode } from "@/components/ui/TreeView";
+import TreeView, { type TreeNode } from "@/components/ui/tree-view";
 
 const treeData: TreeNode[] = [
   {

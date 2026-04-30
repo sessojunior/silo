@@ -4,19 +4,19 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "@/lib/toast";
 import { config } from "@/lib/config";
 import { useParams, useRouter } from "next/navigation";
-import { formatDateBR } from "@/lib/dateUtils";
+import { formatDateBR } from "@/lib/date-utils";
 import { ProjectFormData, ActivityFormData } from "@/types/projects";
 import type { ApiResponse } from "@/lib/api-response";
 
-import ActivityMiniKanban from "@/components/admin/projects/ActivityMiniKanban";
-import ProjectFormOffcanvas from "@/components/admin/projects/ProjectFormOffcanvas";
-import ActivityFormOffcanvas from "@/components/admin/projects/ActivityFormOffcanvas";
-import ProjectInfoCard from "@/components/admin/projects/ProjectInfoCard";
-import ProjectProgressCard from "@/components/admin/projects/ProjectProgressCard";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import ActivityMiniKanban from "@/components/admin/projects/activity-mini-kanban";
+import ProjectFormOffcanvas from "@/components/admin/projects/project-form-offcanvas";
+import ActivityFormOffcanvas from "@/components/admin/projects/activity-form-offcanvas";
+import ProjectInfoCard from "@/components/admin/projects/project-info-card";
+import ProjectProgressCard from "@/components/admin/projects/project-progress-card";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import Select from "@/components/ui/select";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 // Interfaces para tipos de dados
 interface Project {

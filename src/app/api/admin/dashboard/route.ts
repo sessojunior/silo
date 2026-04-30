@@ -2,8 +2,8 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 import { db } from "@/lib/db";
 import { product, productActivity } from "@/lib/db/schema";
 import { eq, gte } from "drizzle-orm";
-import { formatDate, getMonthsAgo, getDaysAgo } from "@/lib/dateUtils";
-import { INCIDENT_STATUS } from "@/lib/productStatus";
+import { formatDate, getMonthsAgo, getDaysAgo } from "@/lib/date-utils";
+import { INCIDENT_STATUS } from "@/lib/product-status";
 import { requireAdminAuthUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";

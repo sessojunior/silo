@@ -4,7 +4,7 @@ import { requirePermissionAuthUser } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { formatDate } from "@/lib/dateUtils";
+import { formatDate } from "@/lib/date-utils";
 
 // GET - Buscar histórico de status de um produto específico
 export async function GET(

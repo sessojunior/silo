@@ -1,8 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import Button from "@/components/admin/nav/Button";
-import Content from "@/components/admin/nav/Content";
+import Button from "@/components/admin/nav/button";
+import Content from "@/components/admin/nav/content";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

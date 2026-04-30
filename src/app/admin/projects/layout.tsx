@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
-import Button from "@/components/admin/nav/Button";
+import Button from "@/components/admin/nav/button";
 import { config } from "@/lib/config";
 import type { ApiResponse } from "@/lib/api-response";
 

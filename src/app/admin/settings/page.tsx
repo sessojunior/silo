@@ -9,17 +9,17 @@ import {
 } from "@/lib/auth/validate";
 import { toast } from "@/lib/toast";
 
-import Label from "@/components/ui/Label";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Pin from "@/components/ui/Pin";
-import Select from "@/components/ui/Select";
-import Switch from "@/components/ui/Switch";
-import PhotoUploadLocal from "@/components/ui/PhotoUploadLocal";
-import InputPasswordHints from "@/components/ui/InputPasswordHints";
+import Label from "@/components/ui/label";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import Pin from "@/components/ui/pin";
+import Select from "@/components/ui/select";
+import Switch from "@/components/ui/switch";
+import PhotoUploadLocal from "@/components/ui/photo-upload-local";
+import InputPasswordHints from "@/components/ui/input-password-hints";
 
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useUser } from "@/context/UserContext";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useUser } from "@/context/user-context";
 
 type TabType = "profile" | "preferences" | "security";
 

@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { config } from "@/lib/config";
-import InputCheckbox from "@/components/ui/InputCheckbox";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useUser } from "@/context/UserContext";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import InputCheckbox from "@/components/ui/input-checkbox";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useUser } from "@/context/user-context";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface Step {
   icon: string;

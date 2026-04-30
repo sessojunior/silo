@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import { toast } from "@/lib/toast";
 
 // import PageHeader from '@/components/layout/PageHeader'
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import Avatar from "@/components/ui/Avatar";
-import ContactFormOffcanvas from "@/components/admin/contacts/ContactFormOffcanvas";
-import ContactDeleteDialog from "@/components/admin/contacts/ContactDeleteDialog";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import Select from "@/components/ui/select";
+import Avatar from "@/components/ui/avatar";
+import ContactFormOffcanvas from "@/components/admin/contacts/contact-form-offcanvas";
+import ContactDeleteDialog from "@/components/admin/contacts/contact-delete-dialog";
 import { Contact } from "@/lib/db/schema";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import { config } from "@/lib/config";
 
 export default function ContactsPage() {

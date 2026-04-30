@@ -8,7 +8,7 @@ import {
   projectTaskUser,
 } from "@/lib/db/schema";
 import { eq, gte, lte, and } from "drizzle-orm";
-import { getToday, getDaysAgo, formatDate } from "@/lib/dateUtils";
+import { getToday, getDaysAgo, formatDate } from "@/lib/date-utils";
 import { requirePermissionAuthUser } from "@/lib/permissions";
 import { successResponse, errorResponse } from "@/lib/api-response";
 

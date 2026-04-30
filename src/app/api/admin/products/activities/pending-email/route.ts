@@ -9,9 +9,9 @@ import {
 } from "@/lib/api-response";
 import { db } from "@/lib/db";
 import { authUser, product } from "@/lib/db/schema";
-import { buildProductActivityPendingEmailSubject } from "@/lib/productActivityPendingEmail";
+import { buildProductActivityPendingEmailSubject } from "@/lib/product-activity-pending-email";
 import { requirePermissionAuthUser } from "@/lib/permissions";
-import { sendEmail } from "@/lib/sendEmail";
+import { sendEmail } from "@/lib/send-email";
 
 export const runtime = "nodejs";
 

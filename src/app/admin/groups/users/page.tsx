@@ -2,19 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "@/lib/toast";
-import { formatDateBR } from "@/lib/dateUtils";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useUser } from "@/context/UserContext";
+import { formatDateBR } from "@/lib/date-utils";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useUser } from "@/context/user-context";
 import { config } from "@/lib/config";
 
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Avatar from "@/components/ui/Avatar";
-import Select from "@/components/ui/Select";
-import UserFormOffcanvas from "@/components/admin/users/UserFormOffcanvas";
-import UserDeleteDialog from "@/components/admin/users/UserDeleteDialog";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import Avatar from "@/components/ui/avatar";
+import Select from "@/components/ui/select";
+import UserFormOffcanvas from "@/components/admin/users/user-form-offcanvas";
+import UserDeleteDialog from "@/components/admin/users/user-delete-dialog";
 import { AuthUser, Group } from "@/lib/db/schema";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 // Interface para usuário com informações do grupo
 interface UserWithGroup extends AuthUser {

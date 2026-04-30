@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react";
 import { toast } from "@/lib/toast";
 import { config } from "@/lib/config";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import Offcanvas from "@/components/ui/Offcanvas";
-import Dialog from "@/components/ui/Dialog";
-import ProductForm from "./components/ProductForm";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import Select from "@/components/ui/select";
+import Offcanvas from "@/components/ui/offcanvas";
+import Dialog from "@/components/ui/dialog";
+import ProductForm from "./components/product-form";
 import type { Product } from "@/lib/db/schema";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import type { ApiResponse } from "@/lib/api-response";
 
 export default function SettingsProductsPage() {

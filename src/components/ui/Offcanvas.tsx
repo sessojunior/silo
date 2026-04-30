@@ -3,7 +3,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "clsx";
-import Button from "@/components/ui/Button";
+import Button from "@/components/ui/button";
 
 const WIDTH_CLASS_MAP: Record<string, string> = {
   sm: "md:w-[320px]",

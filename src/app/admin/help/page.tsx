@@ -3,13 +3,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "@/lib/toast";
 import { config } from "@/lib/config";
-import Button from "@/components/ui/Button";
+import Button from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import { getMarkdownClasses } from "@/lib/markdown";
-import Offcanvas from "@/components/ui/Offcanvas";
-import Label from "@/components/ui/Label";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import MarkdownEditor from "@/components/ui/MarkdownEditor";
+import Offcanvas from "@/components/ui/offcanvas";
+import Label from "@/components/ui/label";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import MarkdownEditor from "@/components/ui/markdown-editor";
 
 interface HelpDoc {
   id: string;

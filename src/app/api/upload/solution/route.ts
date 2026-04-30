@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { storeImageAsWebp } from "@/lib/localUploads";
+import { storeImageAsWebp } from "@/lib/local-uploads";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 export const runtime = "nodejs";

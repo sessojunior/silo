@@ -4,7 +4,7 @@ import { useState } from "react";
 import { clsx } from "clsx"; // Usado para juntar classes condicionalmente
 import { twMerge } from "tailwind-merge"; // Junta classes do Tailwind com priorização de estilos
 import ReactMarkdown from "react-markdown";
-import Button from "@/components/ui/Button";
+import Button from "@/components/ui/button";
 import { getMarkdownClasses } from "@/lib/markdown";
 
 export type Chapter = {

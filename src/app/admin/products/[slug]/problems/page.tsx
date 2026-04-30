@@ -2,23 +2,23 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "@/lib/toast";
-import { formatDateBR } from "@/lib/dateUtils";
+import { formatDateBR } from "@/lib/date-utils";
 import { ProductProblem, ProductProblemImage } from "@/lib/db/schema";
 import {
   ProductProblemWithCategory,
   SolutionWithDetails,
 } from "@/types/products";
-import Lightbox from "@/components/ui/Lightbox";
-import ProblemFormOffcanvas from "@/components/admin/products/ProblemFormOffcanvas";
-import SolutionFormModal from "@/components/admin/products/SolutionFormModal";
-import DeleteSolutionDialog from "@/components/admin/products/DeleteSolutionDialog";
-import { ProblemsListColumn } from "@/components/admin/products/ProblemsListColumn";
-import { ProblemDetailColumn } from "@/components/admin/products/ProblemDetailColumn";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import { ProblemSolutionsSection } from "@/components/admin/products/ProblemSolutionsSection";
-import ProblemCategoryOffcanvas from "@/components/admin/products/ProblemCategoryOffcanvas";
+import Lightbox from "@/components/ui/lightbox";
+import ProblemFormOffcanvas from "@/components/admin/products/problem-form-offcanvas";
+import SolutionFormModal from "@/components/admin/products/solution-form-modal";
+import DeleteSolutionDialog from "@/components/admin/products/delete-solution-dialog";
+import { ProblemsListColumn } from "@/components/admin/products/problems-list-column";
+import { ProblemDetailColumn } from "@/components/admin/products/problem-detail-column";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import { ProblemSolutionsSection } from "@/components/admin/products/problem-solutions-section";
+import ProblemCategoryOffcanvas from "@/components/admin/products/problem-category-offcanvas";
 import { config } from "@/lib/config";
 
 export default function ProblemsPage() {

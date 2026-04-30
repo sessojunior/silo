@@ -6,7 +6,7 @@ import {
   isSafeFilename,
   isUploadKind,
   readUploadFile,
-} from "@/lib/localUploads";
+} from "@/lib/local-uploads";
 import { getAuthUser } from "@/lib/auth/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { errorResponse, successResponse } from "@/lib/api-response";

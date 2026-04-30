@@ -22,7 +22,7 @@ import {
   clearRateLimitForEmail,
   getRateLimitStatus,
   recordRateLimit,
-} from "@/lib/rateLimit";
+} from "@/lib/rate-limit";
 import { randomUUID } from "crypto";
 
 const VerifyOtpSchema = z.object({

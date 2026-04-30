@@ -15,7 +15,7 @@ import {
 } from "@/lib/auth/rate-limits";
 import { db } from "@/lib/db";
 import { authUser, authVerification } from "@/lib/db/schema";
-import { getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
+import { getRateLimitStatus, recordRateLimit } from "@/lib/rate-limit";
 
 const ForgetPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email(),

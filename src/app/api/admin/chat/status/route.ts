@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { requireAuthUser } from "@/lib/auth/server";
-import { getNowTimestamp } from "@/lib/dateUtils";
+import { getNowTimestamp } from "@/lib/date-utils";
 
 /**
  * API endpoint para receber notificações sobre mudanças no status do chat

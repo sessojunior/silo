@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import Button from "@/components/admin/nav/Button";
+import Button from "@/components/admin/nav/button";
 import { config } from "@/lib/config";
 
 interface ReportsLayoutProps {

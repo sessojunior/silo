@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 import { errorResponse, successResponse } from "@/lib/api-response";
-import { getProductDataFlowPipelinesFromKafkaRest } from "@/lib/dataflow/kafkaDataFlowSource";
+import { getProductDataFlowPipelinesFromKafkaRest } from "@/lib/dataflow/kafka-data-flow-source";
 import { requirePermissionAuthUser } from "@/lib/permissions";
 
 export const runtime = "nodejs";

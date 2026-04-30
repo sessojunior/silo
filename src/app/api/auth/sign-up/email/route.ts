@@ -16,7 +16,7 @@ import {
 } from "@/lib/auth/validate";
 import { db } from "@/lib/db";
 import { authVerification } from "@/lib/db/schema";
-import { getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
+import { getRateLimitStatus, recordRateLimit } from "@/lib/rate-limit";
 import { eq } from "drizzle-orm";
 
 const getRequestIp = (req: NextRequest): string => {

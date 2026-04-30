@@ -19,8 +19,8 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { formatDateBR } from "@/lib/dateUtils";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { formatDateBR } from "@/lib/date-utils";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 // Types
 interface Task {

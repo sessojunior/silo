@@ -3,8 +3,8 @@ import { db } from "@/lib/db";
 import { product } from "@/lib/db/schema";
 import { ReactNode } from "react";
 import { eq } from "drizzle-orm";
-import ProductTabs from "@/components/admin/nav/ProductTabs";
-import Content from "@/components/admin/nav/Content";
+import ProductTabs from "@/components/admin/nav/product-tabs";
+import Content from "@/components/admin/nav/content";
 
 interface Props {
   children: ReactNode;

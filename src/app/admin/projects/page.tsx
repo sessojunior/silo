@@ -3,20 +3,20 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
-import { formatDateBR } from "@/lib/dateUtils";
+import { formatDateBR } from "@/lib/date-utils";
 import { ProjectFormData } from "@/types/projects";
 import type { ApiResponse as HttpResponse } from "@/lib/api-response";
 import ReactMarkdown from "react-markdown";
 import { getMarkdownClasses } from "@/lib/markdown";
 
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import Offcanvas from "@/components/ui/Offcanvas";
-import ProjectStatsCards from "@/components/admin/projects/ProjectStatsCards";
-import ProjectFormOffcanvas from "@/components/admin/projects/ProjectFormOffcanvas";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import ProjectDeleteDialog from "@/components/admin/projects/ProjectDeleteDialog";
+import Button from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import Select from "@/components/ui/select";
+import Offcanvas from "@/components/ui/offcanvas";
+import ProjectStatsCards from "@/components/admin/projects/project-stats-cards";
+import ProjectFormOffcanvas from "@/components/admin/projects/project-form-offcanvas";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import ProjectDeleteDialog from "@/components/admin/projects/project-delete-dialog";
 
 import { Project } from "@/types/projects";
 

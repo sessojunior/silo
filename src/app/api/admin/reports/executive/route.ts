@@ -12,7 +12,7 @@ import {
   project,
 } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { getToday, getDaysAgo, formatDate } from "@/lib/dateUtils";
+import { getToday, getDaysAgo, formatDate } from "@/lib/date-utils";
 import { requirePermissionAuthUser } from "@/lib/permissions";
 
 export async function GET(request: NextRequest) {

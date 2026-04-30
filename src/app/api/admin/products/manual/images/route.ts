@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from "@/lib/api-response";
 import { requirePermissionAuthUser } from "@/lib/permissions";
 import path from "path";
 import { promises as fs } from "fs";
-import { deleteUploadFile, isSafeFilename } from "@/lib/localUploads";
+import { deleteUploadFile, isSafeFilename } from "@/lib/local-uploads";
 
 export const runtime = "nodejs";
 

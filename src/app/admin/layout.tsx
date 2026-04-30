@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth/server";
-import { ChatProvider } from "@/context/ChatContext";
-import { UserProvider } from "@/context/UserContext";
+import { ChatProvider } from "@/context/chat-context";
+import { UserProvider } from "@/context/user-context";
 
-import { SidebarProvider } from "@/context/SidebarContext";
-import { LogoutProvider } from "@/context/LogoutContext";
+import { SidebarProvider } from "@/context/sidebar-context";
+import { LogoutProvider } from "@/context/logout-context";
 
-import Sidebar from "@/components/admin/sidebar/Sidebar";
-import Topbar from "@/components/admin/topbar/Topbar";
-import BodyScrollLock from "@/components/admin/BodyScrollLock";
-import Toast from "@/components/ui/Toast";
-import ThemeInitializer from "@/components/admin/ThemeInitializer";
+import Sidebar from "@/components/admin/sidebar/sidebar";
+import Topbar from "@/components/admin/topbar/topbar";
+import BodyScrollLock from "@/components/admin/body-scroll-lock";
+import Toast from "@/components/ui/toast";
+import ThemeInitializer from "@/components/admin/theme-initializer";
 
 export const metadata: Metadata = {
   title: "Administração do Silo",

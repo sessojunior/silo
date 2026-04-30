@@ -2,8 +2,8 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { product, productActivity } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { getToday, getDaysAgo, formatDate } from "@/lib/dateUtils";
-import { INCIDENT_STATUS, ProductStatus } from "@/lib/productStatus";
+import { getToday, getDaysAgo, formatDate } from "@/lib/date-utils";
+import { INCIDENT_STATUS, ProductStatus } from "@/lib/product-status";
 import { requirePermissionAuthUser } from "@/lib/permissions";
 import { successResponse, errorResponse } from "@/lib/api-response";
 

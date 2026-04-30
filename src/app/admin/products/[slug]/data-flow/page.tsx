@@ -5,9 +5,9 @@ import { Gantt, Task, ViewMode } from "gantt-task-react";
 import "gantt-task-react/dist/index.css";
 import { useParams, useSearchParams } from "next/navigation";
 
-import Dialog from "@/components/ui/Dialog";
+import Dialog from "@/components/ui/dialog";
 import { config } from "@/lib/config";
-import { ProductStatus, getStatusLabel } from "@/lib/productStatus";
+import { ProductStatus, getStatusLabel } from "@/lib/product-status";
 import type { GroupedPipelineData, GroupedPipelineDataFile } from "@/lib/dataflow/types";
 import groupedPipelineDataJson from "./pipeline-data.json";
 

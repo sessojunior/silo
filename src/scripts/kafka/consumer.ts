@@ -12,8 +12,8 @@ import {
   subscribeRest,
   type RestConsumerInstance,
   type RestRecord,
-} from "@/lib/kafkaRest";
-import { getHandlerForTopic } from "@/lib/kafka/topicHandlers";
+} from "@/lib/kafka-rest";
+import { getHandlerForTopic } from "@/lib/kafka/topic-handlers";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

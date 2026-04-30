@@ -1,17 +1,17 @@
 "use client";
 
-import { useSidebar } from "@/context/SidebarContext";
-import { useChat } from "@/context/ChatContext";
-import SidebarHeader from "@/components/admin/sidebar/SidebarHeader";
-import SidebarFooter from "@/components/admin/sidebar/SidebarFooter";
-import SidebarMenu from "@/components/admin/sidebar/SidebarMenu";
+import { useSidebar } from "@/context/sidebar-context";
+import { useChat } from "@/context/chat-context";
+import SidebarHeader from "@/components/admin/sidebar/sidebar-header";
+import SidebarFooter from "@/components/admin/sidebar/sidebar-footer";
+import SidebarMenu from "@/components/admin/sidebar/sidebar-menu";
 import type { Product } from "@/lib/db/schema";
 import type { ApiResponse } from "@/lib/api-response";
 import type { Project } from "@/types/projects";
 import { useState, useEffect } from "react";
 import { config } from "@/lib/config";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/context/user-context";
 
 export type SidebarMenuProps = {
   id: string;

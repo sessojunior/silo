@@ -1,6 +1,6 @@
 "use client";
 
-import Button from "@/components/admin/nav/Button";
+import Button from "@/components/admin/nav/button";
 
 interface ContactsLayoutProps {
   children: React.ReactNode;

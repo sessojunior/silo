@@ -1,4 +1,4 @@
-import type { ProductStatus } from "@/lib/productStatus";
+import type { ProductStatus } from "@/lib/product-status";
 
 export type DataFlowNodeType = "task" | "product";
 

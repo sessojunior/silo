@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from "react";
 
-import ProductTimeline from "@/components/admin/dashboard/ProductTimeline";
-import ProductTurn from "@/components/admin/dashboard/ProductTurn";
-import ProductCalendar from "@/components/admin/dashboard/ProductCalendar";
-import Modal from "@/components/ui/Modal";
-import ProductActivityOffcanvas from "@/components/admin/dashboard/ProductActivityOffcanvas";
-import ProductStatusHistoryOffcanvas from "@/components/admin/dashboard/ProductStatusHistoryOffcanvas";
+import ProductTimeline from "@/components/admin/dashboard/product-timeline";
+import ProductTurn from "@/components/admin/dashboard/product-turn";
+import ProductCalendar from "@/components/admin/dashboard/product-calendar";
+import Modal from "@/components/ui/modal";
+import ProductActivityOffcanvas from "@/components/admin/dashboard/product-activity-offcanvas";
+import ProductStatusHistoryOffcanvas from "@/components/admin/dashboard/product-status-history-offcanvas";
 import {
   STATUS_DEFINITIONS,
   ProductStatus,
@@ -16,7 +16,7 @@ import {
   getStatusColor,
   getStatusClasses as getCentralizedStatusClasses,
   DEFAULT_STATUS,
-} from "@/lib/productStatus";
+} from "@/lib/product-status";
 
 interface ProductDateStatus {
   id?: string;

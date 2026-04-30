@@ -1,4 +1,4 @@
-import CircleProgress from "@/components/admin/dashboard/CircleProgress";
+import CircleProgress from "@/components/admin/dashboard/circle-progress";
 
 export default function Radial({
   name,

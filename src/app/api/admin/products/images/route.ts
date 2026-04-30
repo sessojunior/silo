@@ -9,7 +9,7 @@ import {
   deleteUploadFile,
   isSafeFilename,
   isUploadKind,
-} from "@/lib/localUploads";
+} from "@/lib/local-uploads";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function GET(req: NextRequest) {

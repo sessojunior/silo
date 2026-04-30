@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireAuthUser } from "@/lib/auth/server";
-import { deleteUserProfileImage } from "@/lib/profileImage";
+import { deleteUserProfileImage } from "@/lib/profile-image";
 import { db } from "@/lib/db";
 import { authUser } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -10,7 +10,7 @@ import {
   isSafeFilename,
   isUploadKind,
   storeImageAsWebp,
-} from "@/lib/localUploads";
+} from "@/lib/local-uploads";
 import { successResponse, errorResponse } from "@/lib/api-response";
 
 // Faz o upload da imagem de perfil do usuário

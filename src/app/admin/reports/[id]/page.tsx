@@ -1,4 +1,4 @@
-import { ReportViewPage } from "@/components/admin/reports/ReportViewPage";
+import { ReportViewPage } from "@/components/admin/reports/report-view-page";
 
 interface ReportPageProps {
   params: Promise<{

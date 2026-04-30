@@ -1,17 +1,17 @@
 "use client";
 
-import TopbarDropdown from "@/components/admin/topbar/TopbarDropdown";
-import TopbarButton from "@/components/admin/topbar/TopbarButton";
-import TopbarDivider from "@/components/admin/topbar/TopbarDivider";
-import ChatNotificationButton from "@/components/admin/topbar/ChatNotificationButton";
-import TopbarTitle from "@/components/admin/topbar/TopbarTitle";
-import ServerClock from "@/components/admin/topbar/ServerClock";
-import { useSidebar } from "@/context/SidebarContext";
+import TopbarDropdown from "@/components/admin/topbar/topbar-dropdown";
+import TopbarButton from "@/components/admin/topbar/topbar-button";
+import TopbarDivider from "@/components/admin/topbar/topbar-divider";
+import ChatNotificationButton from "@/components/admin/topbar/chat-notification-button";
+import TopbarTitle from "@/components/admin/topbar/topbar-title";
+import ServerClock from "@/components/admin/topbar/server-clock";
+import { useSidebar } from "@/context/sidebar-context";
 import { useState, useEffect } from "react";
 import { config } from "@/lib/config";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import type { ApiResponse } from "@/lib/api-response";
-import { useAdminPageTitle } from "@/hooks/useAdminPageTitle";
+import { useAdminPageTitle } from "@/hooks/use-admin-page-title";
 
 export type AccountLinkProps = {
   id: string;

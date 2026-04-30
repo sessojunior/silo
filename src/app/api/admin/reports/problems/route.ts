@@ -8,7 +8,7 @@ import {
   productSolution,
 } from "@/lib/db/schema";
 import { eq, and, gte, lte, ne, inArray, sql } from "drizzle-orm";
-import { getToday, getDaysAgo, formatDate } from "@/lib/dateUtils";
+import { getToday, getDaysAgo, formatDate } from "@/lib/date-utils";
 import {
   NO_INCIDENTS_CATEGORY_ID,
   NO_INCIDENTS_CATEGORY_NAME,

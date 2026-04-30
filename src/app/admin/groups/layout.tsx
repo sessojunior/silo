@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
-import ProductTabs from "@/components/admin/nav/ProductTabs";
-import Content from "@/components/admin/nav/Content";
+import ProductTabs from "@/components/admin/nav/product-tabs";
+import Content from "@/components/admin/nav/content";
 
 interface Props {
   children: ReactNode;

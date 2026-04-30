@@ -9,8 +9,8 @@ import {
   parseRequestJson,
   successResponse,
 } from "@/lib/api-response";
-import { isRateLimited, recordRateLimit } from "@/lib/rateLimit";
-import { sendEmail } from "@/lib/sendEmail";
+import { isRateLimited, recordRateLimit } from "@/lib/rate-limit";
+import { sendEmail } from "@/lib/send-email";
 import type { EmailTemplateData } from "@/lib/email/types";
 import { randomUUID, randomInt } from "crypto";
 import { z } from "zod";

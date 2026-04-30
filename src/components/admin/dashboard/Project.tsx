@@ -1,4 +1,4 @@
-import ProgressBar from "@/components/admin/dashboard/ProgressBar";
+import ProgressBar from "@/components/admin/dashboard/progress-bar";
 
 export default function Project({
   name,

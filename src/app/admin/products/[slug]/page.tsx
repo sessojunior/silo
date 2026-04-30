@@ -5,29 +5,29 @@ import { useParams } from "next/navigation";
 
 // Removido @dnd-kit - usando HTML5 drag & drop nativo
 
-import { type TreeNode, type TreeNodeData } from "@/components/ui/TreeView";
-// import { type Section } from '@/components/ui/Accordion' // Removido - não usado
+import { type TreeNode, type TreeNodeData } from "@/components/ui/tree-view";
+// import { type Section } from '@/components/ui/accordion' // Removido - não usado
 
 import { toast } from "@/lib/toast";
-import { type ProductDependencyItem } from "@/components/admin/products/ProductDependencyMenuBuilder";
+import { type ProductDependencyItem } from "@/components/admin/products/product-dependency-menu-builder";
 
 // Novos componentes Offcanvas e Dialog extraídos
-import DependencyManagementOffcanvas from "@/components/admin/products/DependencyManagementOffcanvas";
-import DependencyItemFormOffcanvas from "@/components/admin/products/DependencyItemFormOffcanvas";
-import ManualEditorOffcanvas from "@/components/admin/products/ManualEditorOffcanvas";
-import ProductManualSection from "@/components/admin/products/ProductManualSection";
-import DeleteDependencyDialog from "@/components/admin/products/DeleteDependencyDialog";
+import DependencyManagementOffcanvas from "@/components/admin/products/dependency-management-offcanvas";
+import DependencyItemFormOffcanvas from "@/components/admin/products/dependency-item-form-offcanvas";
+import ManualEditorOffcanvas from "@/components/admin/products/manual-editor-offcanvas";
+import ProductManualSection from "@/components/admin/products/product-manual-section";
+import DeleteDependencyDialog from "@/components/admin/products/delete-dependency-dialog";
 
 // Componentes ETAPA 2 - Sistema de Contatos
 
-import ContactSelectorOffcanvas from "@/components/admin/products/ContactSelectorOffcanvas";
+import ContactSelectorOffcanvas from "@/components/admin/products/contact-selector-offcanvas";
 
 // Componente coluna esquerda (dependências) - ETAPA 1 REFATORAÇÃO
-import ProductDependenciesColumn from "@/components/admin/products/ProductDependenciesColumn";
+import ProductDependenciesColumn from "@/components/admin/products/product-dependencies-column";
 
 // Componente coluna direita (detalhes do produto) - ETAPA 2 REFATORAÇÃO
-import ProductDetailsColumn from "@/components/admin/products/ProductDetailsColumn";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import ProductDetailsColumn from "@/components/admin/products/product-details-column";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import { config } from "@/lib/config";
 
 // Função utilitária para converter ProductDependency para TreeNode (compatível com TreeView)

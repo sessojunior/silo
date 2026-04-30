@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import ProductDependencyMenuBuilder, {
   type ProductDependencyItem,
-} from "@/components/admin/products/ProductDependencyMenuBuilder";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+} from "@/components/admin/products/product-dependency-menu-builder";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 export default function TesteMenuPage() {
   const [isMounted, setIsMounted] = useState(false);

@@ -1,22 +1,22 @@
-import MonitoringPageClient from "@/components/admin/monitoring/MonitoringPageClient";
+import MonitoringPageClient from "@/components/admin/monitoring/monitoring-page-client";
 import { db } from "@/lib/db";
 import { product, picturePage, pictureLink, radarGroup, radar } from "@/lib/db/schema";
 import type { PicturePage as DBPicturePage, PictureLink as DBPictureLink } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { seedPictures } from "@/lib/db/seedPictures";
-import { getMonitoringProductsFromKafkaRest } from "@/lib/dataflow/kafkaDataFlowSource";
+import { seedPictures } from "@/lib/db/seed-pictures";
+import { getMonitoringProductsFromKafkaRest } from "@/lib/dataflow/kafka-data-flow-source";
 
 import { 
   DbRadarGroup,
   DbRadar,
-} from "@/components/admin/monitoring/MonitoringPageClient";
-import { SeedPicturePage } from "@/lib/db/seedTypes";
+} from "@/components/admin/monitoring/monitoring-page-client";
+import { SeedPicturePage } from "@/lib/db/seed-types";
 import type { 
   PicturePage, 
   PictureLink,
   PictureLinkStatus,
   PictureCheckMode,
-} from "@/components/admin/monitoring/PicturePagesAccordion";
+} from "@/components/admin/monitoring/picture-pages-accordion";
 
 type ActiveProduct = {
   slug: string;

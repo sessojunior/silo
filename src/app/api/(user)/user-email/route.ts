@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { authUser } from "@/lib/db/schema";
 import { requireAuthUser } from "@/lib/auth/server";
 import { isValidEmail } from "@/lib/auth/validate";
-import { sendEmail } from "@/lib/sendEmail";
+import { sendEmail } from "@/lib/send-email";
 import {
   parseRequestJson,
   successResponse,

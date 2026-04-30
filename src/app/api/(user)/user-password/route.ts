@@ -5,7 +5,7 @@ import { authAccount } from "@/lib/db/schema";
 import { requireAuthUser } from "@/lib/auth/server";
 import { hashPassword } from "@/lib/auth/hash";
 import { isValidPassword } from "@/lib/auth/validate";
-import { sendEmail } from "@/lib/sendEmail";
+import { sendEmail } from "@/lib/send-email";
 import {
   errorResponse,
   parseRequestJson,

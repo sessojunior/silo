@@ -16,7 +16,7 @@ import {
 import { isValidDomain, isValidEmail } from "@/lib/auth/validate";
 import { db } from "@/lib/db";
 import { authUser, authVerification } from "@/lib/db/schema";
-import { getRateLimitStatus, recordRateLimit } from "@/lib/rateLimit";
+import { getRateLimitStatus, recordRateLimit } from "@/lib/rate-limit";
 
 const emailInputSchema = z
   .string()

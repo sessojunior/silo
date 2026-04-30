@@ -3,8 +3,8 @@ import { eq, and, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { requirePermissionAuthUser } from "@/lib/permissions";
-import { recordBulkTaskHistory, recordTaskHistory } from "@/lib/taskHistory";
-import { syncActivityStatus } from "@/lib/db/activityStatusSync";
+import { recordBulkTaskHistory, recordTaskHistory } from "@/lib/task-history";
+import { syncActivityStatus } from "@/lib/db/activity-status-sync";
 import {
   parseRequestJson,
   successResponse,

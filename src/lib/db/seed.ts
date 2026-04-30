@@ -24,15 +24,15 @@ import {
   generateProblems,
   generateSolutions,
   projectActivitiesData,
-} from "./seedData";
-import { seedPictures } from "./seedPictures";
-import { seedMonitoringProducts } from "./seedProducts";
-import { seedRadars } from "./seedRadars";
+} from "./seed-data";
+import { seedPictures } from "./seed-pictures";
+import { seedMonitoringProducts } from "./seed-products";
+import { seedRadars } from "./seed-radars";
 import { 
   SeedRadarGroup, 
   SeedPicturePage, 
   SeedMonitoringProduct 
-} from "./seedTypes";
+} from "./seed-types";
 
 // === TIPAGENS DO SCHEMA ===
 type ProductDependency = typeof schema.productDependency.$inferInsert;

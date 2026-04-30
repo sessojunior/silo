@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { errorResponse } from "@/lib/api-response";
 import { config } from "@/lib/config";
 import { auth } from "@/lib/auth/server";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
@@ -6,6 +7,10 @@ import { postLoginRedirectPath } from "@/lib/auth/urls";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
+  if (!config.googleClientId || !config.googleClientSecret) {
+    return errorResponse("Login com Google indisponível neste ambiente.", 503);
+  }
+
   const from = req.nextUrl.searchParams.get("from");
   const originPath = from === "register" ? "/register" : "/login";
 

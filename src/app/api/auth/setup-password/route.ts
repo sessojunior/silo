@@ -12,7 +12,7 @@ import {
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { isValidPassword } from "@/lib/auth/validate";
-import { clearRateLimitForEmail } from "@/lib/rateLimit";
+import { clearRateLimitForEmail } from "@/lib/rate-limit";
 
 const SetupPasswordSchema = z.object({
   email: z.string().trim().toLowerCase().email(),

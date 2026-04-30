@@ -1,4 +1,4 @@
-import ProgressBarMultiple from "@/components/admin/dashboard/ProgressBarMultiple";
+import ProgressBarMultiple from "@/components/admin/dashboard/progress-bar-multiple";
 
 export interface StatItem {
   name: string;

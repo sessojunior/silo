@@ -21,7 +21,7 @@ import { isValidDomain } from "@/lib/auth/validate";
 import {
   getProfileImagePath,
   uploadProfileImageFromUrl,
-} from "@/lib/profileImage";
+} from "@/lib/profile-image";
 import { addUserToDefaultGroup } from "@/lib/auth/user-groups";
 import {
   AUTH_SESSION_DURATION_SECONDS,
@@ -127,6 +127,8 @@ const logSessionSnapshot = (params: {
 
 const authBaseURL = getAuthServerBaseURL();
 const authBasePath = config.getPublicPath(authApiPath);
+const isGoogleAuthEnabled =
+  config.googleClientId.length > 0 && config.googleClientSecret.length > 0;
 
 export const auth = betterAuth({
   ...(authBaseURL ? { baseURL: authBaseURL } : {}),
@@ -147,8 +149,8 @@ export const auth = betterAuth({
   account: {
     storeStateStrategy: "cookie",
     accountLinking: {
-      enabled: true,
-      trustedProviders: ["google"],
+      enabled: isGoogleAuthEnabled,
+      trustedProviders: isGoogleAuthEnabled ? ["google"] : [],
     },
   },
   trustedOrigins: resolveTrustedOrigins(),
@@ -186,23 +188,27 @@ export const auth = betterAuth({
       verify: ({ hash, password }) => verifyPassword(password, hash),
     },
   },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      mapProfileToUser: (profile) => {
-        const rawEmail =
-          typeof (profile as { email?: unknown }).email === "string"
-            ? (profile as { email: string }).email
-            : null;
-        const email = rawEmail ? rawEmail.trim().toLowerCase() : null;
-        return email ? { email } : {};
-      },
-      ...(config.googleCallbackUrl
-        ? { redirectURI: config.googleCallbackUrl }
-        : {}),
-    },
-  },
+  ...(isGoogleAuthEnabled
+    ? {
+        socialProviders: {
+          google: {
+            clientId: config.googleClientId,
+            clientSecret: config.googleClientSecret,
+            mapProfileToUser: (profile) => {
+              const rawEmail =
+                typeof (profile as { email?: unknown }).email === "string"
+                  ? (profile as { email: string }).email
+                  : null;
+              const email = rawEmail ? rawEmail.trim().toLowerCase() : null;
+              return email ? { email } : {};
+            },
+            ...(config.googleCallbackUrl
+              ? { redirectURI: config.googleCallbackUrl }
+              : {}),
+          },
+        },
+      }
+    : {}),
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       const isEmailPasswordSignIn = ctx.path === "/sign-in/email";
@@ -345,7 +351,7 @@ export const auth = betterAuth({
           return;
         }
 
-        const { sendEmail } = await import("@/lib/sendEmail");
+        const { sendEmail } = await import("@/lib/send-email");
 
         const subject =
           type === "forget-password"

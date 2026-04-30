@@ -22,7 +22,7 @@ import {
   clearRateLimitForEmail,
   getRateLimitStatus,
   recordRateLimit,
-} from "@/lib/rateLimit";
+} from "@/lib/rate-limit";
 
 const emailInputSchema = z
   .string()

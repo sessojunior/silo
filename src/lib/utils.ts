@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { formatDateBR as formatDateBRFromUtils } from "./dateUtils";
+import { formatDateBR as formatDateBRFromUtils } from "./date-utils";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

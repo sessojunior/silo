@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "@/lib/toast";
 import { notFound, useParams } from "next/navigation";
-import { getToday } from "@/lib/dateUtils";
+import { getToday } from "@/lib/date-utils";
 import { config } from "@/lib/config";
-import KanbanBoard from "@/components/admin/projects/KanbanBoard";
-import TaskFormOffcanvas from "@/components/admin/projects/TaskFormOffcanvas";
-import TaskHistoryModal from "@/components/admin/projects/TaskHistoryModal";
+import KanbanBoard from "@/components/admin/projects/kanban-board";
+import TaskFormOffcanvas from "@/components/admin/projects/task-form-offcanvas";
+import TaskHistoryModal from "@/components/admin/projects/task-history-modal";
 import { ProjectTask } from "@/lib/db/schema";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 // Interface estendida para ProjectTask com campos da API
 interface ProjectTaskWithUsers extends ProjectTask {

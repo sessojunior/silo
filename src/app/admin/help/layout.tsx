@@ -1,7 +1,7 @@
 "use client";
 
-import Button from "@/components/admin/nav/Button";
-import ActionButton from "@/components/ui/Button";
+import Button from "@/components/admin/nav/button";
+import ActionButton from "@/components/ui/button";
 
 interface HelpLayoutProps {
   children: React.ReactNode;
