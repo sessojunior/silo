@@ -72,6 +72,15 @@ interface Project {
   name: string;
 }
 
+type TaskUserApiItem = {
+  id: string;
+  role: string;
+  assignedAt: string;
+  name: string;
+  email: string;
+  image: string | null;
+};
+
 interface Activity {
   id: string;
   name: string;
@@ -261,9 +270,43 @@ export default function TaskKanbanPage() {
 
   // Função para abrir formulário de edição de tarefa
   const handleEditTask = useCallback((task: KanbanTask) => {
-    setTaskToEdit(task);
-    setInitialTaskStatus(task.status);
-    setTaskFormOpen(true);
+    void (async () => {
+      try {
+        const response = await fetch(
+          config.getApiUrl(`/api/admin/tasks/${task.id}/users`),
+          { cache: "no-store" },
+        );
+
+        const result = (await response.json()) as ApiResponse<TaskUserApiItem[]>;
+        const taskUsers = response.ok && result.success && Array.isArray(result.data)
+          ? result.data
+          : [];
+
+        const assignedUsers = taskUsers.map((user) => user.id);
+        const assignedUsersDetails = taskUsers.map((user) => ({
+          id: user.id,
+          name: user.name,
+          role: user.role,
+          email: user.email,
+          image: user.image,
+        }));
+
+        setTaskToEdit({
+          ...task,
+          assignedUsers,
+          assignedUsersDetails,
+        });
+      } catch (error) {
+        console.error(
+          "❌ [PAGE_PROJECT_ACTIVITY] Erro ao carregar usuários da tarefa:",
+          { error },
+        );
+        setTaskToEdit(task);
+      } finally {
+        setInitialTaskStatus(task.status);
+        setTaskFormOpen(true);
+      }
+    })();
   }, []);
 
   // Função para abrir modal de histórico da tarefa
