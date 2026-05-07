@@ -87,25 +87,21 @@ const { host, port, secure, username, password, from } = config.email;
 
 ### **Código OTP**
 
-Arquivo: `packages/core/src/email/templates.ts`
+Arquivo: `packages/engine/src/email/send-email-template.ts`
 
-Os templates são gerados por `generateEmailTemplate(...)` e tipados em:
-
-- `packages/core/src/email/types.ts`
+Os templates são gerados por `sendEmailTemplate(...)` e tipados nos contratos compartilhados do `@silo/engine`.
 
 ### **Envio de Email**
 
-Arquivo: `packages/core/src/send-email.ts`
+Arquivo: `packages/engine/src/email/send-email-template.ts`
 
 ```typescript
-import { sendEmail } from "@silo/core/send-email";
+import { sendEmailTemplate } from "@silo/engine/email/send-email-template";
 
-await sendEmail({
-  to: "destinatario@inpe.br",
-  subject: "Código de verificação",
-  template: "otpCode",
-  data: { code: "347AE", type: "sign-in" },
-  text: "Utilize o código 347AE para fazer login.",
+const html = sendEmailTemplate({
+  code: "347AE",
+  type: "sign-in",
+  appName: "SILO",
 });
 ```
 
@@ -123,12 +119,12 @@ node -e 'const nodemailer = require(\"nodemailer\"); const transporter = nodemai
 ### **Enviar Email de Teste**
 
 ```typescript
-import { sendEmail } from "@silo/core/send-email";
+import { sendEmailTemplate } from "@silo/engine/email/send-email-template";
 
-await sendEmail({
-  to: "destinatario@inpe.br",
-  subject: "Teste SMTP",
-  text: "Este é um teste.",
+const html = sendEmailTemplate({
+  code: "ABCDE",
+  type: "sign-in",
+  appName: "SILO",
 });
 ```
 

@@ -12,39 +12,71 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  silo:
-    build: .
-    image: silo-img
-    container_name: silo-app
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: silo-api
+    container_name: silo-api
     ports:
-      - "8084:3000"
+      - "3001:3001"
     environment:
-      # Ambiente e banco
       NODE_ENV: ${NODE_ENV:-production}
-      DATABASE_URL_DEV: ${DATABASE_URL_DEV}
       DATABASE_URL_PROD: ${DATABASE_URL_PROD}
-
-      # URLs do sistema
-      APP_URL_DEV: ${APP_URL_DEV:-http://localhost:3000}
-      APP_URL_PROD: ${APP_URL_PROD:-https://fortuna.cptec.inpe.br}
-      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-
-      # Google OAuth
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-
-      # Email SMTP
+      APP_URL_DEV: ${APP_URL_DEV:-http://localhost:3000}
+      APP_URL_PROD: ${APP_URL_PROD:-http://localhost:3000}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USERNAME: ${SMTP_USERNAME}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
-
-      # Fuso horário
+      KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL}
+      KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH}
+      PRODUCT_FLOW_API_KEY: ${PRODUCT_FLOW_API_KEY}
       TZ: America/Sao_Paulo
     volumes:
       - uploads_data:/app/uploads
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    image: silo-worker
+    container_name: silo-worker
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL_PROD: ${DATABASE_URL_PROD}
+      KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL}
+      KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH}
+      KAFKA_TOPICS: ${KAFKA_TOPICS}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-worker}
+      KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq}
+      TZ: America/Sao_Paulo
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: silo-web
+    container_name: silo-web
+    ports:
+      - "8084:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      API_URL: http://api:3001
+      APP_URL_DEV: ${APP_URL_DEV:-http://localhost:3000}
+      APP_URL_PROD: ${APP_URL_PROD:-http://localhost:3000}
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+      TZ: America/Sao_Paulo
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - api
     restart: unless-stopped
     networks:
       - frontend
@@ -54,8 +86,8 @@ volumes:
   postgres_data:
   uploads_data:
 
-
 networks:
   frontend:
     external: true
     name: frontend
+

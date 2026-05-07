@@ -1,6 +1,6 @@
 ---
-description: "Use when working with Next.js routes, layouts, components, Server Actions, Route Handlers, Metadata API, or any file inside apps/web/src/. Covers Next.js 16 App Router conventions for this project."
-applyTo: "apps/web/src/**/*.{ts,tsx}"
+description: "Use when working with Next.js routes, layouts, components, Server Actions, Route Handlers, Metadata API, or any file inside apps/web/. Covers Next.js 16 App Router conventions for this project."
+applyTo: "apps/web/**/*.{ts,tsx}"
 ---
 
 # Next.js 16 — App Router (SILO)
@@ -53,10 +53,10 @@ export function Counter() {
 
 ## Route Handlers (API Routes)
 
-Localização: `apps/web/src/app/api/**/*.ts` — arquivo `route.ts`.
+Localização: `apps/web/app/api/**/*.ts` — arquivo `route.ts`.
 
 ```typescript
-// apps/web/src/app/api/admin/products/route.ts
+// apps/web/app/api/admin/products/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -88,7 +88,8 @@ export async function GET(
 "use server";
 
 export async function updateProduct(formData: FormData) {
-  const name = formData.get("name") as string;
+  const name = formData.get("name");
+  if (typeof name !== "string" || !name) throw new Error("Nome inválido.");
   await db.update(products).set({ name }).where(eq(products.id, id));
   revalidatePath("/admin/products");
 }

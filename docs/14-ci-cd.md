@@ -153,7 +153,7 @@ O job de deploy usa o arquivo [../scripts/gitlab/deploy.sh](../scripts/gitlab/de
 5. Subir os containers com `docker compose`.
 6. Verificar se a aplicacao respondeu na rota de health.
 
-O healthcheck usa a rota [../src/app/health/route.ts](../src/app/health/route.ts) dentro do proprio container, o que evita depender de rede externa para validar o deploy.
+O healthcheck usa a rota [../apps/web/src/app/health/route.ts](../apps/web/src/app/health/route.ts) dentro do proprio container, o que evita depender de rede externa para validar o deploy.
 
 ---
 

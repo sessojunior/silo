@@ -225,7 +225,7 @@ KAFKA_REST_PROXY_USE_MOCK_DATA=true
 
 Com esse valor, o sistema:
 
-- usa `src/app/admin/products/[slug]/data-flow/pipeline-data.json` como base;
+- usa `apps/web/src/app/admin/products/[slug]/data-flow/pipeline-data.json` como base;
 - adapta snapshots existentes para o `slug` solicitado quando não houver match exato;
 - gera mensagens no formato Kafka/ecFlow;
 - passa essas mensagens pelo mesmo mapper usado para dados reais.
@@ -245,7 +245,7 @@ KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.
 Com o modo mock ativo, este comando valida a conversão para `bam`, data `2026-03-06`, turno `18`:
 
 ```powershell
-npx tsx -e "void (async () => { const mod = await import('./src/lib/dataflow/kafkaDataFlowSource.ts'); const fn = mod.default.getProductDataFlowPipelinesFromKafkaRest; const pipelines = await fn({ slug: 'bam', date: '2026-03-06', turn: '18' }); const first = pipelines[0]; console.log(JSON.stringify({ count: pipelines.length, model: first?.model, date: first?.date, turn: first?.turn, status: first?.status, groups: first?.groups.length, firstTask: first?.groups[0]?.tasks[0] }, null, 2)); })();"
+npx tsx -e "void (async () => { const mod = await import('./apps/web/src/lib/dataflow/kafka-data-flow-source.ts'); const fn = mod.default.getProductDataFlowPipelinesFromKafkaRest; const pipelines = await fn({ slug: 'bam', date: '2026-03-06', turn: '18' }); const first = pipelines[0]; console.log(JSON.stringify({ count: pipelines.length, model: first?.model, date: first?.date, turn: first?.turn, status: first?.status, groups: first?.groups.length, firstTask: first?.groups[0]?.tasks[0] }, null, 2)); })();"
 ```
 
 Resultado esperado resumido:

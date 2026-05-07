@@ -1,0 +1,11 @@
+{
+  "extends": "@silo/config/typescript/base.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "noEmit": false,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

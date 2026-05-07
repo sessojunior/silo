@@ -245,33 +245,42 @@ export const auth = betterAuth({
 
 ## 🔒 **SEGURANÇA E VALIDAÇÃO**
 
-### 🚨 **ALERTA CRÍTICO: Prefetch em Links de Logout**
+### 🚨 **ALERTA CRÍTICO: Logout via POST**
 
-**⚠️ IMPORTANTE:** O Next.js prefetcha automaticamente links visíveis na página. Links para `/api/logout` SEMPRE devem ter `prefetch={false}` ou usar `button` ao invés de `Link`.
+**⚠️ IMPORTANTE:** O logout é executado por `POST` em `/api/auth/sign-out`. Não use `Link` para esta ação; dispare o `fetch` dentro de um `button`.
 
 **Problema:**
 
-- Next.js prefetcha links automaticamente quando aparecem na viewport
-- Se um link apontar para `/api/logout`, pode fazer logout automático sem clique do usuário
-- Bug crítico que causa deslogamento imediato após login
+- Logout precisa acontecer de forma explícita, após confirmação do usuário
+- Navegação com `Link` não representa uma ação válida de logout
+- O fluxo correto evita chamadas acidentais e deixa o redirecionamento no front
 
 **Solução:**
 
 ```typescript
 // ✅ CORRETO
-<Link href='/api/logout' prefetch={false}>Sair</Link>
+<button
+  onClick={async () => {
+    await fetch("/api/auth/sign-out", {
+      method: "POST",
+      credentials: "include",
+    });
 
-// ✅ CORRETO - Alternativa com button
-<button onClick={() => window.location.href='/api/logout'}>Sair</button>
+    window.location.href = "/login";
+  }}
+>
+  Sair
+</button>
 
-// ❌ ERRADO - Causa logout automático!
-<Link href='/api/logout'>Sair</Link>
+// ❌ ERRADO
+<Link href='/api/auth/sign-out'>Sair</Link>
 ```
 
 **Componentes afetados:**
 
 - `apps/web/src/components/admin/sidebar/SidebarFooter.tsx`
 - `apps/web/src/components/admin/topbar/TopbarDropdown.tsx`
+- `apps/web/src/context/logout-context.tsx`
 - Componentes genéricos (`Button`, `NavButton`, etc.) devem automaticamente desabilitar prefetch para URLs que começam com `/api/`
 
 **Regra geral:** Se `href.startsWith('/api/')`, SEMPRE usar `prefetch={false}`.

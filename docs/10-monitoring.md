@@ -99,10 +99,10 @@ Assim, o operador pode identificar rapidamente um problema no monitoramento e ab
 
 Arquivos principais:
 
-- `src/app/admin/monitoring/page.tsx`
-- `src/lib/dataflow/kafkaDataFlowSource.ts`
-- `src/components/admin/monitoring/MonitoringPageClient.tsx`
-- `src/components/admin/monitoring/ProductMonitoringCards.tsx`
+- `apps/web/src/app/admin/monitoring/page.tsx`
+- `apps/web/src/lib/dataflow/kafka-data-flow-source.ts`
+- `apps/web/src/components/admin/monitoring/monitoring-page-client.tsx`
+- `apps/web/src/components/admin/monitoring/product-monitoring-cards.tsx`
 
 ---
 

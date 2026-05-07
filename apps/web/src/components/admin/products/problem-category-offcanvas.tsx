@@ -1,0 +1,265 @@
+import { useEffect, useState } from "react";
+import Offcanvas from "@/components/ui/offcanvas";
+import Button from "@/components/ui/button";
+import Dialog from "@/components/ui/dialog";
+import { toast } from "@silo/engine/format/toast";
+import ProblemCategoryFormOffcanvas from "@/components/admin/products/problem-category-form-offcanvas";
+import LoadingSpinner from "@/components/ui/loading-spinner";
+import { config } from "@/lib/config";
+
+interface Category {
+  id: string;
+  name: string;
+  color: string | null;
+  isSystem?: boolean;
+  usageCount: number;
+}
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+export default function ProblemCategoryOffcanvas({ open, onClose }: Props) {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Category | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    cat: Category | null;
+  }>({ open: false, cat: null });
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        config.getApiUrl("/api/admin/products/problems/categories"),
+      );
+      const json = await res.json();
+      if (res.ok) {
+        // Buscar informações de uso para cada categoria (incluindo "Não houve incidentes")
+        const categoriesWithUsage = await Promise.all(
+          (json.data || []).map(async (cat: Category) => {
+            try {
+              const usageRes = await fetch(
+                config.getApiUrl(
+                  `/api/admin/incidents/usage?incidentId=${cat.id}`,
+                ),
+              );
+              const usageJson = await usageRes.json();
+              if (usageJson.success) {
+                return {
+                  ...cat,
+                  usageCount: usageJson.data.usageCount,
+                };
+              }
+            } catch (error) {
+              console.error(
+                "? [COMPONENT_PROBLEM_CATEGORY] Erro ao buscar uso da categoria:",
+                { error },
+              );
+            }
+            return { ...cat, usageCount: 0 };
+          }),
+        );
+
+        setCategories(categoriesWithUsage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (open) load();
+  }, [open]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+
+  const handleEdit = (cat: Category) => {
+    // Bloquear edição de categorias do sistema
+    if (cat.isSystem) {
+      toast({
+        type: "error",
+        title: "Esta categoria é do sistema e não pode ser editada.",
+      });
+      return;
+    }
+    setEditing(cat);
+    setFormOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.cat) return;
+
+    // Bloquear exclusão de categorias do sistema
+    if (deleteDialog.cat.isSystem) {
+      toast({
+        type: "error",
+        title: "Esta categoria é do sistema e não pode ser excluída.",
+      });
+      setDeleteDialog({ open: false, cat: null });
+      return;
+    }
+
+    const res = await fetch(
+      config.getApiUrl(
+        `/api/admin/products/problems/categories?id=${deleteDialog.cat.id}`,
+      ),
+      { method: "DELETE" },
+    );
+    const json = await res.json();
+    if (res.ok && json.success) {
+      toast({ type: "success", title: "Categoria excluída" });
+      setDeleteDialog({ open: false, cat: null });
+      load();
+    } else {
+      toast({ type: "error", title: json.message || "Erro ao excluir" });
+    }
+  };
+
+  return (
+    <>
+      <Offcanvas
+        title="Gerenciar categorias de problemas"
+        open={open}
+        onClose={onClose}
+        side="right"
+        width="lg"
+        footerActions={
+          <Button style="bordered" onClick={onClose}>
+            Fechar
+          </Button>
+        }
+      >
+        <div>
+          {/* Botão cadastrar quando já existem itens */}
+          {categories.length > 0 && (
+            <div className="flex items-center pb-4 mb-4 border-b border-dashed border-zinc-200 dark:border-zinc-700">
+              <Button style="bordered" onClick={openCreate}>
+                Cadastrar categoria
+              </Button>
+            </div>
+          )}
+
+          {/* Lista */}
+          <div className="flex flex-col gap-2 max-h-full overflow-y-auto pb-2">
+            {loading && (
+              <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400 py-12">
+                <LoadingSpinner
+                  text="Carregando categorias..."
+                  size="md"
+                  variant="centered"
+                />
+              </div>
+            )}
+            {!loading && categories.length === 0 && (
+              <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400 py-12">
+                <span className="icon-[lucide--tag] size-12 text-zinc-300 dark:text-zinc-700"></span>
+                <p className="text-center">Nenhuma categoria cadastrada.</p>
+                <Button style="bordered" onClick={openCreate}>
+                  Cadastrar
+                </Button>
+              </div>
+            )}
+            {!loading &&
+              categories.map((cat) => {
+                const isProtected = cat.isSystem || cat.usageCount > 0;
+                return (
+                  <div
+                    key={cat.id}
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 dark:bg-zinc-900/50 dark:border-zinc-700 dark:hover:bg-zinc-900 transition-colors p-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="size-3 rounded-full"
+                        style={{ backgroundColor: cat.color || "#64748B" }}
+                      ></span>
+                      <span className="text-base">{cat.name}</span>
+                      {cat.isSystem && (
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                          Sistema
+                        </span>
+                      )}
+                      {cat.usageCount > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                          {cat.usageCount} uso{cat.usageCount > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        title={
+                          cat.isSystem
+                            ? "Categoria do sistema - não pode ser editada"
+                            : "Editar"
+                        }
+                        onClick={() => handleEdit(cat)}
+                        disabled={cat.isSystem}
+                        className={`inline-flex items-center justify-center size-8 rounded-full transition-colors ${cat.isSystem ? "text-zinc-300 cursor-not-allowed dark:text-zinc-600" : "text-zinc-500 hover:bg-blue-50 hover:text-blue-600 dark:text-zinc-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"}`}
+                      >
+                        <span className="icon-[lucide--pencil] size-4"></span>
+                      </button>
+                      <button
+                        title={
+                          isProtected
+                            ? "Categoria protegida - não pode ser excluída"
+                            : "Excluir"
+                        }
+                        onClick={() => setDeleteDialog({ open: true, cat })}
+                        disabled={!!isProtected}
+                        className={`inline-flex items-center justify-center size-8 rounded-full transition-colors ${isProtected ? "text-zinc-300 cursor-not-allowed dark:text-zinc-600" : "text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-900/30 dark:hover:text-red-500"}`}
+                      >
+                        <span className="icon-[lucide--trash] size-4"></span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      </Offcanvas>
+
+      {/* Dialog de exclusão */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, cat: null })}
+        title="Excluir categoria"
+      >
+        <div className="p-6">
+          <p className="text-base text-zinc-600 dark:text-zinc-400 mb-6">
+            Tem certeza que deseja excluir &quot;{deleteDialog.cat?.name}&quot;?
+            Essa ação não pode ser desfeita.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              style="bordered"
+              onClick={() => setDeleteDialog({ open: false, cat: null })}
+            >
+              Cancelar
+            </Button>
+            <Button
+              style="filled"
+              className="bg-red-600 hover:bg-red-700"
+              onClick={confirmDelete}
+            >
+              Excluir
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Offcanvas formulário */}
+      <ProblemCategoryFormOffcanvas
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        category={editing}
+        onSaved={load}
+      />
+    </>
+  );
+}

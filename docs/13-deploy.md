@@ -232,4 +232,4 @@ docker compose logs web
 docker compose logs worker
 ```
 
-Se o erro for relacionado a **módulos não encontrados** ou dependências faltando, verifique se os pacotes internos (`@silo/database`, `@silo/core`, etc.) estão corretamente declarados no `package.json` do app afetado. O build Docker usa `turbo prune` para incluir apenas o que cada app precisa.
+Se o erro for relacionado a **módulos não encontrados** ou dependências faltando, verifique se os pacotes internos (`@silo/database`, `@silo/engine`, etc.) estão corretamente declarados no `package.json` do app afetado. O build Docker usa `turbo prune` para incluir apenas o que cada app precisa.

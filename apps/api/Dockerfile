@@ -1,0 +1,46 @@
+FROM node:22-alpine AS base
+RUN apk update && apk upgrade && rm -rf /var/cache/apk/*
+
+# ─── Prune monorepo for api ──────────────────────────────────────────────────
+FROM base AS pruner
+WORKDIR /app
+RUN npm install -g turbo@latest
+COPY . .
+RUN turbo prune @silo/api --docker
+
+# ─── Install dependencies ────────────────────────────────────────────────────
+FROM base AS installer
+WORKDIR /app
+COPY --from=pruner /app/out/json/ .
+RUN npm ci --legacy-peer-deps
+
+# ─── Build ───────────────────────────────────────────────────────────────────
+FROM base AS builder
+WORKDIR /app
+COPY --from=installer /app/node_modules ./node_modules
+COPY --from=pruner /app/out/full/ .
+ENV NODE_ENV=production
+RUN npm run build -w @silo/api
+
+# ─── Runtime ─────────────────────────────────────────────────────────────────
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 apiuser
+
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+# Copy @silo/database package for runtime migrations
+COPY --from=builder /app/packages/db ./packages/db
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+RUN mkdir -p uploads && chown apiuser:nodejs uploads
+COPY entrypoint-api.sh ./entrypoint.sh
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
+
+USER apiuser
+EXPOSE 3001
+
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["node", "apps/api/dist/index.js"]

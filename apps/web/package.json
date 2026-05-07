@@ -1,0 +1,66 @@
+{
+  "name": "@silo/web",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build && node ./scripts/prepare-standalone-assets.mjs",
+    "start": "node .next/standalone/apps/web/server.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@silo/engine": "*",
+    "arctic": "^3.7.0",
+    "better-auth": "^1.4.18",
+    "classnames": "^2.5.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^17.2.3",
+    "easymde": "^2.20.0",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.6",
+    "gantt-task-react": "^0.3.9",
+    "lottie-react": "^2.4.1",
+    "next": "^16.2.4",
+    "react": "^19.2.4",
+    "react-dnd-menu-builder": "^0.0.8",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "react-simplemde-editor": "^5.2.0",
+    "sharp": "^0.34.5",
+    "tailwind-merge": "^3.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@iconify/json": "^2.2.435",
+    "@iconify/tailwind4": "^1.2.1",
+    "@silo/config": "*",
+    "@tailwindcss/forms": "^0.5.11",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^25.2.0",
+    "@types/react": "^19.2.11",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.1.6",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
+    "tailwindcss": "^4.1.18"
+  },
+  "optionalDependencies": {
+    "@esbuild/linux-x64": "0.25.4"
+  },
+  "overrides": {
+    "gantt-task-react": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
+  }
+}

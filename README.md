@@ -64,7 +64,7 @@ O **Silo** centraliza e estrutura operações críticas em uma única plataforma
 
 ### **Opção 1: Docker (Recomendado)**
 
-Para um guia passo a passo detalhado, consulte [**docs/DEPLOY.md**](./docs/DEPLOY.md).
+Para um guia passo a passo detalhado, consulte [**docs/13-deploy.md**](./docs/13-deploy.md).
 
 ```bash
 # 1. Configurar variáveis de ambiente
@@ -109,18 +109,18 @@ npm run dev
 
 📘 **Documentação técnica detalhada disponível em:**
 
-- 🎯 [**Objetivos Estratégicos**](./docs/OBJETIVOS.md) - Visão e metas do sistema
-- 📡 [**APIs e Endpoints**](./docs/API.md) - Todas as APIs do sistema
-- 🔐 [**Autenticação**](./docs/AUTH.md) - Login, OAuth, segurança
-- 🗄️ [**Banco de Dados**](./docs/DATABASE.md) - Schema, relacionamentos, migrações
-- 🐳 [**Docker e Deploy**](./docs/DOCKER.md) - Containerização, produção
-- 📧 [**Configuração SMTP**](./docs/SMTP.md) - Servidor de email
-- 📋 [**Sistema de Logs**](./docs/LOGS.md) - Padrões de logging
-- 📐 [**Padrões de Código**](./docs/PATTERNS.md) - Convenções e boas práticas
-- 🔄 [**Data Flow**](./docs/DATAFLOW.md) - Fluxo de dados por produto/data/turno via Kafka REST Proxy
-- 📡 [**Kafka REST Proxy**](./docs/KAFKA.md) - Operação Kafka REST-only, consumer, DLQ e contrato de mensagens
-- 📡 [**Radares (API)**](./docs/RADARS.md) - Proposta de API para monitoramento de radares por grupos
-- 🖼️ [**Páginas e Figuras (API)**](./docs/PICTURES.md) - Proposta de API para monitoramento de paginas e figuras da previsao do tempo
+- 🎯 [**Objetivos Estratégicos**](./docs/01-project.md) - Visão e metas do sistema
+- 📡 [**APIs e Endpoints**](./docs/06-api.md) - Todas as APIs do sistema
+- 🔐 [**Autenticação**](./docs/05-auth.md) - Login, OAuth, segurança
+- 🗄️ [**Banco de Dados**](./docs/04-database.md) - Schema, relacionamentos, migrações
+- 🐳 [**Docker e Deploy**](./docs/12-docker.md) - Containerização, produção
+- 📧 [**Configuração SMTP**](./docs/07-smtp.md) - Servidor de email
+- 📋 [**Sistema de Logs**](./docs/11-logs.md) - Padrões de logging
+- 📐 [**Padrões de Código**](./docs/03-patterns.md) - Convenções e boas práticas
+- 🔄 [**Data Flow**](./docs/09-dataflow.md) - Fluxo de dados por produto/data/turno via Kafka REST Proxy
+- 📡 [**Kafka REST Proxy**](./docs/08-kafka.md) - Operação Kafka REST-only, consumer, DLQ e contrato de mensagens
+- 📡 [**Radares (API)**](./docs/15-radars-api.md) - Proposta de API para monitoramento de radares por grupos
+- 🖼️ [**Páginas e Figuras (API)**](./docs/16-pictures-api.md) - Proposta de API para monitoramento de paginas e figuras da previsao do tempo
 
 ---
 
@@ -133,23 +133,22 @@ npm run dev
 - **Upload/Arquivos:** Route Handlers do Next (Sharp)
 - **UI:** Tailwind CSS 4 + Design System customizado
 - **Auth:** Better Auth + sessão via cookie HTTP-only + Google OAuth
-- **Charts:** ApexCharts 5.3.6
+- **Charts:** Apache ECharts
 
 ### **Estrutura**
 
 ```text
 silo/
-├── src/
-│   ├── app/            # App Router (rotas e APIs)
-│   ├── components/    # Componentes React
-│   ├── context/       # Contextos globais
-│   ├── hooks/         # Hooks customizados
-│   ├── lib/           # DB, auth, utils, config
-│   └── types/          # Tipos TypeScript
-├── public/            # Arquivos estáticos
-├── uploads/           # (Runtime) Volume Docker gerenciado
-├── drizzle/           # Migrações do banco
-└── docs/              # Documentação completa
+├── apps/
+│   ├── web/        # Next.js — frontend + API Routes + Server Actions
+│   ├── api/        # Express REST API — autenticação e recursos
+│   └── worker/     # Consumer Kafka (Node.js)
+├── packages/
+│   ├── db/         # Drizzle ORM — schema, migrations, conexão
+│   ├── engine/     # Núcleo: config, domínio, contratos, kafka, dataflow
+│   └── config/     # ESLint, TypeScript, Tailwind compartilhados
+├── docs/           # Documentação completa
+└── scripts/        # Deploy e GitLab CI
 ```
 
 ### **Container Next.js (`app`)**
@@ -318,28 +317,34 @@ Exemplos práticos (mesmo build, só mudando env):
 - ✅ Proteções contra auto-modificação
 - ✅ CORS aplicado apenas nas rotas de leitura de uploads (quando necessário)
 
-### 🚨 **ALERTA CRÍTICO: Prefetch em Links de Logout**
+### 🚨 **ALERTA CRÍTICO: Logout via POST**
 
-**⚠️ NUNCA use `Link` do Next.js sem `prefetch={false}` em rotas de API destrutivas!**
-
-O Next.js prefetcha automaticamente links visíveis na tela. Se um link apontar para `/api/logout`, o Next.js pode fazer logout automático do usuário sem que ele clique, causando bugs graves que levam horas para debugar.
+**⚠️ NUNCA use `Link` para disparar logout.** O fluxo correto usa `POST /api/auth/sign-out` dentro de um `button`, e o front redireciona para `/login` depois da resposta.
 
 **Solução:**
 
 ```typescript
-// ✅ CORRETO - Desabilita prefetch para APIs
-<Link href='/api/logout' prefetch={false}>Sair</Link>
+// ✅ CORRETO
+<button
+  onClick={async () => {
+    await fetch('/api/auth/sign-out', {
+      method: 'POST',
+      credentials: 'include',
+    });
 
-// ✅ CORRETO - Usar button ao invés de Link
-<button onClick={() => router.push('/api/logout')}>Sair</button>
+    window.location.href = '/login';
+  }}
+>
+  Sair
+</button>
 
-// ❌ ERRADO - Pode causar logout automático!
-<Link href='/api/logout'>Sair</Link>
+// ❌ ERRADO
+<Link href='/api/auth/sign-out'>Sair</Link>
 ```
 
 **Onde aplicar:**
 
-- Todos os componentes com links de logout (`SidebarFooter`, `TopbarDropdown`)
+- Todos os componentes com logout (`SidebarFooter`, `TopbarDropdown`, `LogoutContext`)
 - Componentes genéricos que podem renderizar links para APIs (`Button`, `NavButton`, `TopbarButton`, `AuthLink`, `SidebarMenu`)
 
 **Regra:** Se o `href` começar com `/api/`, SEMPRE usar `prefetch={false}` ou usar `button` + `router.push()`.

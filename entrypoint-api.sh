@@ -1,0 +1,57 @@
+#!/bin/sh
+set -e
+
+echo "🚀 Iniciando entrypoint do Silo API..."
+
+export DRIZZLE_TELEMETRY_DISABLED=1
+
+echo "⏳ Aguardando banco de dados ficar acessível..."
+MAX_RETRIES=30
+COUNT=0
+
+while :; do
+  if node - <<'NODE'
+const { Client } = require('pg');
+(async () => {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: false,
+    connectionTimeoutMillis: 3000,
+  });
+  try {
+    await client.connect();
+    await client.query('SELECT 1');
+    await client.end();
+    process.exit(0);
+  } catch (e) {
+    try { await client.end(); } catch {}
+    process.exit(1);
+  }
+})();
+NODE
+  then
+    echo "✅ Banco de dados acessível!"
+    break
+  fi
+
+  COUNT=$((COUNT+1))
+  if [ "$COUNT" -ge "$MAX_RETRIES" ]; then
+    echo "❌ Timeout aguardando banco. Abortando."
+    exit 1
+  fi
+
+  sleep 2
+done
+
+echo "📦 Executando migrações..."
+# The DATABASE_URL is set, but packages/db drizzle.config expects DATABASE_URL_PROD in production.
+# Override via DRIZZLE_DATABASE_URL (takes precedence in drizzle.config.ts).
+export DRIZZLE_DATABASE_URL="${DATABASE_URL}"
+npm run db:migrate -w @silo/database
+
+echo "✅ Iniciando API..."
+if [ $# -eq 0 ]; then
+  exec node dist/index.js
+else
+  exec "$@"
+fi

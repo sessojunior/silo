@@ -10,10 +10,15 @@ O projeto usa **Turborepo** para orquestração e **npm workspaces** para gerenc
 
 ```
 apps/web          ──┐
-apps/worker       ──┤──► packages/database
-                    ├──► packages/core
-                    ├──► packages/types
-apps/web          ──┘──► packages/ui
+apps/api          ──┤──► packages/db      (@silo/database)
+apps/worker       ──┘──► packages/engine  (@silo/engine)
+
+Fluxo de dados principal:
+web -> api -> db
+     ↓
+   engine
+     ↓
+   worker
 ```
 
 **Regra de ouro:** pacotes nunca importam de apps. O grafo de dependência é sempre unidirecional: apps → packages.
@@ -23,7 +28,7 @@ apps/web          ──┘──► packages/ui
 ## Pacotes (`packages/`)
 
 ### `@silo/database`
-- **Caminho:** `packages/database/`
+- **Caminho:** `packages/db/`
 - **Responsabilidade:** Fonte única de verdade do banco. Schema Drizzle, conexão PostgreSQL, migrations, seed.
 - **Exports:**
   - `@silo/database` → `src/index.ts` (instância `db` e helpers)
@@ -31,37 +36,34 @@ apps/web          ──┘──► packages/ui
 - **Scripts:** `db:generate`, `db:push`, `db:migrate`, `db:seed`, `db:studio`
 - **Variáveis:** `DATABASE_URL_DEV` / `DATABASE_URL_PROD`
 
-### `@silo/core`
-- **Caminho:** `packages/core/`
-- **Responsabilidade:** Utilitários compartilhados sem dependência de React ou Next.js.
-- **Exports:**
-  - `@silo/core/date` → manipulação de datas (`date-fns`, `date-fns-tz`)
-  - `@silo/core/date-config` → configuração de locale e timezone
-  - `@silo/core/email` → templates de e-mail
-  - `@silo/core/send-email` → wrapper Nodemailer
-  - `@silo/core/utils` → utilitários genéricos
-  - `@silo/core/validation` → schemas Zod reutilizáveis
-  - `@silo/core/markdown` → parsing Markdown
-  - `@silo/core/constants` → constantes de domínio
-  - `@silo/core/product-status` → lógica de status de produtos
-  - `@silo/core/product-activity` → histórico de atividade de produtos
-  - `@silo/core/task-history` → histórico de tarefas
-  - `@silo/core/api-response` → helpers de resposta de API
+### `@silo/engine`
+- **Caminho:** `packages/engine/`
+- **Responsabilidade:** Núcleo único do sistema. Contém toda a lógica compartilhada que não é banco.
+- **Exports (subpaths):**
+  - `@silo/engine/config` → configuração global (env vars via Zod)
+  - `@silo/engine/constants` → constantes de domínio
+  - `@silo/engine/date` → manipulação de datas (`date-fns`, `date-fns-tz`)
+  - `@silo/engine/validation` → schemas Zod reutilizáveis
+  - `@silo/engine/auth/hash` → hash e verificação de senha
+  - `@silo/engine/email/send-email-template` → envio de e-mails
+  - `@silo/engine/kafka/rest-client` → cliente Kafka REST Proxy
+  - `@silo/engine/dataflow/types` → tipos do módulo DataFlow
+  - `@silo/engine/dataflow/helpers` → helpers de normalização DataFlow
+  - `@silo/engine/domain/product-status` → lógica de status de produtos
+  - `@silo/engine/domain/scheduling` → tipos, disponibilidade e detecção de conflitos por turno
+  - `@silo/engine/contracts/api-response` → helper de resposta de API
+  - `@silo/engine/contracts/kafka-events` → eventos Kafka
+  - `@silo/engine/contracts/dto/*` → DTOs de request/response por recurso
 
-### `@silo/types`
-- **Caminho:** `packages/types/`
-- **Responsabilidade:** Interfaces e tipos TypeScript de domínio que não dependem do banco.
-- **Export:** `@silo/types` → `src/index.ts`
-- **Conteúdo:** Enums de domínio, tipos de eventos Kafka, DTOs genéricos.
+  ### Quando usar cada contrato
 
-### `@silo/ui`
-- **Caminho:** `packages/ui/`
-- **Responsabilidade:** Design System. Apenas componentes burros (sem fetch, sem banco).
-- **Exports:**
-  - `@silo/ui/components/*` → componentes React
-  - `@silo/ui/hooks/*` → hooks de UI puros
-  - `@silo/ui/styles.css` → CSS global
-- **Peer dependencies:** `react`, `react-dom`
+  - `@silo/database/schema` é para persistência e consultas Drizzle; não é contrato HTTP.
+  - `@silo/engine/validation` é para validar a borda com Zod antes de chamar services ou banco.
+  - `@silo/engine/contracts/dto/*` é para payloads que cruzam fronteiras entre app, service e API.
+  - `@silo/engine/contracts/api-response` é para o envelope compartilhado das respostas HTTP.
+  - Regra prática: schema descreve banco, DTO descreve transporte e contrato descreve interoperabilidade.
+
+O nome técnico atual do submódulo continua sendo `scheduling`, mas a linguagem pública do domínio deve falar em turnos de execução, disponibilidade, bloqueios, exceções e conflitos.
 
 ### `@silo/typescript-config`
 - **Caminho:** `packages/config/typescript-config/`
@@ -69,7 +71,7 @@ apps/web          ──┘──► packages/ui
 
 ### `@silo/eslint-config`
 - **Caminho:** `packages/config/eslint-config/`
-- **Arquivos:** `library.js`, `next.js`
+- **Arquivos:** `library.mjs`, `next.mjs`
 
 ### `@silo/tailwind-config`
 - **Caminho:** `packages/config/tailwind-config/`
@@ -80,7 +82,8 @@ apps/web          ──┘──► packages/ui
 
 ### `apps/web` — Next.js App Router
 - **Responsabilidade:** Frontend, API Routes, Server Actions, autenticação.
-- **Dependências internas:** `@silo/database`, `@silo/core`, `@silo/types`, `@silo/ui`
+- **Dependências internas:** `@silo/engine`
+- **Regra:** não acessa banco diretamente; usa API (`apps/api`) para persistência.
 - **Libs específicas (não extraídas para packages):**
   - `src/lib/auth/` — configuração Better Auth (acoplada ao Next.js)
   - `src/lib/config.ts` — variáveis de ambiente do web
@@ -93,9 +96,15 @@ apps/web          ──┘──► packages/ui
 - **Scripts:** `dev`, `build`, `start`, `lint`
 - **Config principal:** `apps/web/next.config.ts`
 
+### `apps/api` — Express REST API
+- **Responsabilidade:** Endpoints REST de autenticação e recursos
+- **Dependências internas:** `@silo/database`, `@silo/engine`
+- **Entry point:** `src/index.ts`
+- **Não tem React. Não tem Next.js.**
+
 ### `apps/worker` — Consumer Kafka
 - **Responsabilidade:** Consumo de tópicos Kafka via REST Proxy, persistência no banco.
-- **Dependências internas:** `@silo/database`, `@silo/core`
+- **Dependências internas:** `@silo/database`, `@silo/engine`
 - **Entry point:** `src/index.ts`
 - **Scripts:** `dev` (tsx watch), `build` (tsc), `start` (node dist/index.js)
 - **Não tem React. Não tem Next.js.**
@@ -108,17 +117,9 @@ O Next.js não transpila pacotes externos por padrão. Em `apps/web/next.config.
 
 ```typescript
 const nextConfig = {
-  transpilePackages: ["@silo/ui", "@silo/core", "@silo/database"],
+  transpilePackages: ["@silo/engine"],
 };
-```
 
-O Tailwind em `apps/web` deve incluir o diretório do `@silo/ui` no `content`:
-
-```typescript
-content: [
-  "./src/**/*.{js,ts,jsx,tsx,mdx}",
-  "../../packages/ui/src/**/*.{js,ts,jsx,tsx,mdx}",
-],
 ```
 
 ---
@@ -133,7 +134,7 @@ Ver `env.example` na raiz para todas as variáveis disponíveis.
 
 ## Turbo tasks
 
-Declaradas em `turbo.json`. O Turborepo garante que `packages/database` seja buildado antes de `apps/web` e `apps/worker`.
+Declaradas em `turbo.json`. O Turborepo garante que `packages/db` seja buildado antes dos apps dependentes.
 
 ```
 build  → dependsOn: ["^build"]  → outputs: [".next/**", "dist/**"]
@@ -152,6 +153,6 @@ npm install <pacote> -w web
 # Instalar pacote npm no worker
 npm install <pacote> -w worker
 
-# Instalar pacote npm no @silo/ui
-npm install <pacote> -w @silo/ui
+# Instalar pacote npm no @silo/engine
+npm install <pacote> -w @silo/engine
 ```

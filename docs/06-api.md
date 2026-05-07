@@ -205,27 +205,21 @@ Response: Redirect para /admin/welcome
 ### **Logout**
 
 ```http
-GET /api/logout
-
-Response: Redirect para /login
+POST /api/auth/sign-out
 ```
 
-**⚠️ ALERTA CRÍTICO - Prefetch em Links de Logout:**
+Resposta: encerra a sessão do Better Auth e limpa os cookies de autenticação.
 
-**NUNCA use `Link` sem `prefetch={false}` para este endpoint!** O Next.js prefetcha links automaticamente, causando logout automático do usuário sem clique.
+**Uso no front:**
 
 ```typescript
-// ✅ CORRETO
-<Link href='/api/logout' prefetch={false}>Sair</Link>
-
-// ✅ CORRETO
-<button onClick={() => window.location.href='/api/logout'}>Sair</button>
-
-// ❌ ERRADO - Causa logout automático!
-<Link href='/api/logout'>Sair</Link>
+await fetch("/api/auth/sign-out", {
+  method: "POST",
+  credentials: "include",
+});
 ```
 
-**Este bug levou horas de debug para identificar. SEMPRE desabilite prefetch em links para APIs destrutivas.**
+**Importante:** o redirecionamento para `/login` deve acontecer no front depois da chamada concluída.
 
 ---
 
@@ -507,6 +501,41 @@ Regras:
 
 - Grupos `admin` possuem acesso total e não podem ter permissões alteradas.
 - Permissões padrão imutáveis não podem ser removidas e são restauradas automaticamente.
+
+---
+
+## 🧪 **MAPA DE VALIDAÇÃO DA SPRINT 8**
+
+Para a fase de validação, a API fica organizada em blocos para smoke ou integração mínima:
+
+- Auth e sessão: `/api/auth/*`, `/api/check-admin`, `/api/server-time`
+- Autoatendimento: `/api/users/profile`, `/api/users/preferences`, `/api/users/password`, `/api/users/email`, `/api/users/email-change`, `/api/users/profile-image`
+- CRUD administrativo: `/api/users`, `/api/groups`, `/api/projects`, `/api/products`, `/api/contacts`, `/api/incidents`
+- Produtos estendidos: `/api/products/*` com `activities`, `availability-exceptions`, `manual`, `problems`, `solutions`, `dependencies` e `data-flow`
+- Dashboards e relatórios: `/api/dashboard/*` e `/api/reports/*`
+- Chat e interação: `/api/chat/*`
+- Upload e mídia: `/api/upload/*`, `/api/help/images`, `/api/incidents/images`, `/api/projects/images`
+- Integrações e automações: `/api/product-flow/receive` e `/api/monitoring/*`
+
+Critérios mínimos por bloco:
+
+- rotas protegidas retornam `401` ou `403` quando esperado;
+- payloads inválidos retornam `400` com envelope consistente;
+- fluxos CRUD respondem com `success`, `data` e `message` quando aplicável;
+- rotas públicas continuam respondendo sem depender de sessão;
+- contratos compartilhados do engine continuam sendo respeitados.
+
+### Como executar o smoke local
+
+```bash
+npm run api:smoke -- --inventory
+API_SMOKE_BASE_URL=http://localhost:3001 npm run api:smoke
+API_SMOKE_EMAIL=seu-email API_SMOKE_PASSWORD=sua-senha API_SMOKE_EXPECT_ADMIN=true npm run api:smoke
+```
+
+Sem credenciais, o smoke valida `health`, `server-time` e as negações básicas das rotas protegidas. Com credenciais, ele também valida a sessão, o perfil e as preferências; com `API_SMOKE_EXPECT_ADMIN=true`, valida os blocos administrativos.
+
+Na mesma execução com `API_SMOKE_EXPECT_ADMIN=true`, o runner também faz um roundtrip controlado de upload em `avatars` com limpeza imediata do arquivo criado, valida as leituras principais de `help` e `products-extended` usando o primeiro produto retornado pela API e cobre escritas seguras em `availability-exceptions`, `contacts`, `dependencies`, `problems`, `solutions`, `projects`, `groups`, permissões de grupo, `users`, `incidents`, `monitoring`, `tasks` e os fluxos de `auth-custom` com cleanup explícito e fallback observado para `login-google` quando o provedor não está disponível.
 
 ### **Gerenciar Contatos**
 
@@ -1355,4 +1384,4 @@ Todas as APIs seguem este padrão:
 
 ---
 
-**🎯 Para detalhes técnicos de implementação, consulte o código fonte em `src/app/api/`**
+**🎯 Para detalhes técnicos de implementação, consulte o código fonte em `apps/web/src/app/api/`**

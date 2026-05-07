@@ -88,9 +88,9 @@ console.log("ℹ️ [API] Mensagem enviada"); // contexto genérico demais
 
 Recomendação prática (padrão usado no projeto):
 
-- `src/app/api/...` → `API_...` (ex.: `API_PRODUCTS_ACTIVITIES`, `API_USER_PROFILE`)
-- `src/lib/...` → `LIB_...` (ex.: `LIB_SEND_EMAIL`, `LIB_PROFILE_IMAGE`) ou um nome curto (ex.: `INIT`)
-- `src/components/...` → `COMPONENT_...` (ex.: `COMPONENT_PRODUCT_ACTIVITY`)
+- `apps/web/src/app/api/...` → `API_...` (ex.: `API_PRODUCTS_ACTIVITIES`, `API_USER_PROFILE`)
+- `apps/web/src/lib/...` → `LIB_...` (ex.: `LIB_SEND_EMAIL`, `LIB_PROFILE_IMAGE`) ou um nome curto (ex.: `INIT`)
+- `apps/web/src/components/...` → `COMPONENT_...` (ex.: `COMPONENT_PRODUCT_ACTIVITY`)
 
 ### **Detalhes**
 
@@ -271,27 +271,36 @@ useEffect(() => {
 
 ## 🎯 **BEST PRACTICES**
 
-### 🚨 **ALERTA: Logs de Debug de Prefetch**
+### 🚨 **ALERTA: Logs de Debug de Logout**
 
-Ao debugar problemas de autenticação/logout automático, verifique logs relacionados a:
+Ao debugar problemas de autenticação/logout inesperado, verifique logs relacionados a:
 
-- Prefetch automático do Next.js em links
-- Chamadas não solicitadas para `/api/logout`
-- Requisições GET para `/api/logout` sem ação do usuário
+- Chamadas inesperadas de `POST /api/auth/sign-out`
+- Chamadas duplicadas de logout por clique repetido ou handler duplicado
+- Requisições `401` logo após o logout, que indicam sessão encerrada corretamente
 
 **Exemplo de bug que pode aparecer nos logs:**
 
 ```
-GET /api/logout (sem clique do usuário)
-GET /api/user-profile 401 (usuário foi deslogado)
+POST /api/auth/sign-out (sem clique do usuário)
+GET /api/user-profile 401 (sessão encerrada)
 ```
 
-**Causa:** Link para `/api/logout` sem `prefetch={false}`.
+**Causa:** handler de logout disparado fora da interação do usuário.
 
-**Solução:** Sempre desabilitar prefetch em links de API:
+**Solução:** disparar o logout somente no `onClick` do botão de confirmação:
 
 ```typescript
-<Link href='/api/logout' prefetch={false}>Sair</Link>
+<button
+  onClick={async () => {
+    await fetch("/api/auth/sign-out", {
+      method: "POST",
+      credentials: "include",
+    });
+  }}
+>
+  Sair
+</button>
 ```
 
 ## 🎯 **BEST PRACTICES**

@@ -104,7 +104,8 @@ services:
       KAFKA_TOPIC: silo.dataflow.bam
       KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-consumer-group}
       KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL_DEV: ${DATABASE_URL_DEV}
+      DATABASE_URL_PROD: ${DATABASE_URL_PROD}
 ```
 
 ---
@@ -246,7 +247,7 @@ curl -X DELETE http://rest-proxy:8082/consumers/my-dlq-group/instances/dlq-reade
 ### Mapper simulado usado pela UI
 
 ```powershell
-npx tsx -e "void (async () => { const mod = await import('./src/lib/dataflow/kafkaDataFlowSource.ts'); const fn = mod.default.getProductDataFlowPipelinesFromKafkaRest; const pipelines = await fn({ slug: 'bam', date: '2026-03-06', turn: '18' }); const first = pipelines[0]; console.log(JSON.stringify({ count: pipelines.length, model: first?.model, date: first?.date, turn: first?.turn, status: first?.status, groups: first?.groups.length, firstTask: first?.groups[0]?.tasks[0] }, null, 2)); })();"
+npx tsx -e "void (async () => { const mod = await import('./apps/web/src/lib/dataflow/kafka-data-flow-source.ts'); const fn = mod.default.getProductDataFlowPipelinesFromKafkaRest; const pipelines = await fn({ slug: 'bam', date: '2026-03-06', turn: '18' }); const first = pipelines[0]; console.log(JSON.stringify({ count: pipelines.length, model: first?.model, date: first?.date, turn: first?.turn, status: first?.status, groups: first?.groups.length, firstTask: first?.groups[0]?.tasks[0] }, null, 2)); })();"
 ```
 
 Resultado esperado resumido:
@@ -270,7 +271,7 @@ Resultado esperado resumido:
 4. Confira que existe apenas uma entrada no banco:
 
 ```bash
-psql "$DATABASE_URL" -c "SELECT count(*) FROM kafka_processed_messages WHERE topic='model.products' AND message_id='test-1';"
+psql "${DATABASE_URL_DEV:-$DATABASE_URL_PROD}" -c "SELECT count(*) FROM kafka_processed_messages WHERE topic='model.products' AND message_id='test-1';"
 ```
 
 O resultado deve ser `1`.

@@ -1,27 +1,63 @@
 services:
-  silo:
-    image: ${SILO_IMAGE:?SILO_IMAGE nao definido}
-    container_name: ${SILO_CONTAINER_NAME:-silo-app}
+  api:
+    image: ${SILO_API_IMAGE:?SILO_API_IMAGE nao definido}
+    container_name: ${SILO_API_CONTAINER:-silo-api}
     ports:
-      - "${SILO_PORT:-8084}:3000"
+      - "3001:3001"
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      DATABASE_URL_DEV: ${DATABASE_URL_DEV}
-      DATABASE_URL_PROD: ${DATABASE_URL_PROD}
-      APP_URL_DEV: ${APP_URL_DEV:-http://localhost:3000}
-      APP_URL_PROD: ${APP_URL_PROD:-https://fortuna.cptec.inpe.br}
-      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      NODE_ENV: production
+      DATABASE_URL_PROD: ${DATABASE_URL_PROD:?DATABASE_URL_PROD nao definido}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET nao definido}
+      APP_URL_DEV: ${APP_URL_DEV}
+      APP_URL_PROD: ${APP_URL_PROD}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USERNAME: ${SMTP_USERNAME}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
+      KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL}
+      KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH}
+      PRODUCT_FLOW_API_KEY: ${PRODUCT_FLOW_API_KEY}
       TZ: America/Sao_Paulo
     volumes:
       - uploads_data:/app/uploads
+    restart: unless-stopped
+
+  worker:
+    image: ${SILO_WORKER_IMAGE:?SILO_WORKER_IMAGE nao definido}
+    container_name: ${SILO_WORKER_CONTAINER:-silo-worker}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL_PROD: ${DATABASE_URL_PROD:?DATABASE_URL_PROD nao definido}
+      KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL}
+      KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH}
+      KAFKA_TOPICS: ${KAFKA_TOPICS}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-worker}
+      KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq}
+      TZ: America/Sao_Paulo
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  web:
+    image: ${SILO_WEB_IMAGE:?SILO_WEB_IMAGE nao definido}
+    container_name: ${SILO_WEB_CONTAINER:-silo-web}
+    ports:
+      - "${SILO_PORT:-8084}:3000"
+    environment:
+      NODE_ENV: production
+      API_URL: http://api:3001
+      APP_URL_DEV: ${APP_URL_DEV}
+      APP_URL_PROD: ${APP_URL_PROD}
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET nao definido}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      TZ: America/Sao_Paulo
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - api
     restart: unless-stopped
     networks:
       - frontend

@@ -30,9 +30,8 @@ No monorepo, imports seguem duas regras simples:
 // ✅ Correto — pacotes do monorepo
 import { db } from "@silo/database";
 import { authUser } from "@silo/database/schema";
-import { Button } from "@silo/ui/components/Button";
-import { formatDate } from "@silo/core/date";
-import type { User } from "@silo/types";
+import { formatDate } from "@silo/engine/date";
+import type { CreateUserDto } from "@silo/engine/contracts/dto/users";
 
 // ✅ Correto — código específico do apps/web (usa @/)
 import { config } from "@/lib/config";
@@ -40,7 +39,7 @@ import { getAuthUser } from "@/lib/auth/token";
 import { MyPageComponent } from "@/components/admin/MyPageComponent";
 
 // ❌ Incorreto — nunca use paths relativos cross-package
-import { db } from "../../packages/database/src";
+import { db } from "../../packages/db/src";
 import { sendEmail } from "../../../lib/sendEmail";
 ```
 
@@ -49,9 +48,10 @@ import { sendEmail } from "../../../lib/sendEmail";
 ```typescript
 // ✅ Correto
 import { config } from "@/lib/config";
+const apiUrl = config.getApiUrl("/api/auth/get-session");
 
 // ❌ Incorreto
-const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const apiUrl = process.env.API_URL;
 ```
 
 ### **Organização de Imports**
@@ -64,8 +64,7 @@ import Link from "next/link";
 
 // 2. Pacotes do monorepo
 import { db } from "@silo/database";
-import { Button } from "@silo/ui/components/Button";
-import { formatDate } from "@silo/core/date";
+import { formatDate } from "@silo/engine/date";
 
 // 3. Bibliotecas externas
 import { z } from "zod";
@@ -195,14 +194,13 @@ npm run lint
 
 ```typescript
 // ✅ Correto
-import { timezone } from "@silo/core/date-config";
-import { formatDate } from "@silo/core/date";
+import { TIMEZONE, formatDate } from "@silo/engine/date";
 
 // ❌ Incorreto
 import { timezone } from "@/lib/dateConfig";
 ```
 
-O projeto centraliza utilitários de data em `packages/core/src/date-utils.ts` e `packages/core/src/date-config.ts`.
+O projeto centraliza utilitários de data em `packages/engine/src/date/`.
 
 ---
 
@@ -258,11 +256,9 @@ export const config = {
 
   get databaseUrl(): string {
     const isProd = process.env.NODE_ENV === "production";
-    const primary = isProd
+    const url = isProd
       ? process.env.DATABASE_URL_PROD
       : process.env.DATABASE_URL_DEV;
-    const fallback = process.env.DATABASE_URL;
-    const url = primary || fallback;
 
     if (!url && isProd) {
       throw new Error("DATABASE_URL_PROD deve ser configurada em produção");
@@ -277,40 +273,38 @@ export const config = {
 
 ## ⚛️ **COMPONENTES REACT**
 
-### 🚨 **ALERTA CRÍTICO: Prefetch em Links para APIs**
+### 🚨 **ALERTA CRÍTICO: Logout via POST**
 
-**⚠️ REGRA OBRIGATÓRIA:** Links do Next.js que apontam para rotas de API (`/api/*`) SEMPRE devem ter `prefetch={false}` ou usar `button` ao invés de `Link`.
+**⚠️ REGRA OBRIGATÓRIA:** O logout do sistema é executado por `POST` em `/api/auth/sign-out`. Não use `Link` para essa ação; use `button` com `fetch`.
 
 **Por quê?**
 
-- Next.js prefetcha automaticamente links visíveis na viewport
-- Prefetch de `/api/logout` executa logout sem clique do usuário
-- Bug crítico que causa deslogamento imediato após login
-- Muito difícil de identificar (levou horas de debug)
+- Logout precisa ser uma ação explícita do usuário
+- O redirecionamento para `/login` deve acontecer depois da resposta da API
+- A confirmação antes da chamada evita disparos acidentais
 
 **Solução padrão:**
 
 ```typescript
-// Componentes genéricos devem detectar e desabilitar automaticamente
-const isApiRoute = href.startsWith('/api/')
-const prefetch = isApiRoute ? false : undefined
+<button
+  onClick={async () => {
+    await fetch("/api/auth/sign-out", {
+      method: "POST",
+      credentials: "include",
+    });
 
-return <Link href={href} prefetch={prefetch}>...</Link>
+    window.location.href = "/login";
+  }}
+>
+  Sair
+</button>
 ```
 
 **Onde aplicar:**
 
-- Todos os componentes que renderizam links (`Button`, `NavButton`, `TopbarButton`, `AuthLink`, `SidebarMenu`)
-- Links específicos de logout (`SidebarFooter`, `TopbarDropdown`)
-
-**Alternativa com button:**
-
-```typescript
-// Para ações destrutivas como logout, considere usar button
-<button onClick={() => window.location.href='/api/logout'}>
-  Sair
-</button>
-```
+- `SidebarFooter`
+- `TopbarDropdown`
+- `LogoutContext`
 
 ### **Tipos de Props**
 
@@ -396,7 +390,7 @@ apps/web/src/app/api/
 ```
 
 Observação: pastas entre parênteses (ex.: `(user)`) são apenas organização interna e não fazem parte do path público.
-Ex.: `src/app/api/(user)/user-profile/route.ts` atende em `/api/user-profile`.
+Ex.: `apps/web/src/app/api/(user)/user-profile/route.ts` atende em `/api/user-profile`.
 
 ### **Handler Pattern**
 

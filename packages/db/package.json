@@ -1,0 +1,31 @@
+{
+  "name": "@silo/database",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
+    "db:push": "drizzle-kit push --config drizzle.config.ts",
+    "db:studio": "drizzle-kit studio --config drizzle.config.ts",
+    "db:seed": "tsx src/seed.ts",
+    "db:reset": "tsx src/reset.ts"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "drizzle-orm": "^0.45.1",
+    "pg": "^8.18.0"
+  },
+  "devDependencies": {
+    "@silo/config": "*",
+    "@types/node": "^25.2.0",
+    "@types/pg": "^8.16.0",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "^5.9.3"
+  }
+}

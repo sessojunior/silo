@@ -1,6 +1,6 @@
 ---
 description: "Use when working with database schema, Drizzle ORM queries, migrations, transactions, or any file that imports from @silo/database. Covers schema conventions, query patterns, and migration workflow."
-applyTo: ["packages/database/**/*.{ts,sql}", "apps/web/src/lib/db/**/*.ts", "apps/worker/src/**/*.ts"]
+applyTo: "packages/db/**/*.{ts,sql}"
 ---
 
 # Banco de Dados — Drizzle ORM (SILO)
@@ -20,7 +20,6 @@ import { authUser, product, project } from "@silo/database/schema";
 
 // Tipagem via Drizzle
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { authUser } from "@silo/database/schema";
 
 export type AuthUser = InferSelectModel<typeof authUser>;
 export type NewAuthUser = InferInsertModel<typeof authUser>;
@@ -87,12 +86,12 @@ await db.transaction(async (tx) => {
 
 ## Schema — fonte de verdade
 
-O schema fica em `packages/database/src/schema/index.ts`. **Nunca** modifique o banco diretamente.
+O schema fica em `packages/db/src/schema/index.ts`. **Nunca** modifique o banco diretamente.
 
 Fluxo para alterar o schema:
-1. Editar `packages/database/src/schema/index.ts`
+1. Editar `packages/db/src/schema/index.ts`
 2. Gerar migration: `npm run db:generate`
-3. Revisar o SQL gerado em `packages/database/drizzle/`
+3. Revisar o SQL gerado em `packages/db/drizzle/`
 4. Aplicar: `npm run db:migrate`
 
 ---
@@ -113,4 +112,4 @@ npm run db:studio     # interface visual (Drizzle Studio)
 - Sempre use `returning()` após `insert` ou `update` quando precisar do registro resultante.
 - Prefira a **query API** (`db.query.*`) para joins complexos com relações definidas no schema.
 - Use `eq`, `and`, `or`, `isNull`, `inArray` do `drizzle-orm` — nunca SQL raw sem necessidade.
-- Nunca exponha tipos de banco diretamente na API — mapeie para tipos de domínio em `@silo/types`.
+- Nunca exponha tipos de banco diretamente na API — mapeie para contratos em `@silo/engine/contracts/*`.

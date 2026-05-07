@@ -1,6 +1,6 @@
 # Radares via API
 
-Guia técnico para substituir o JSON fake de monitoramento de radares por API, mantendo o mesmo contrato de dados usado hoje em `src/app/admin/monitoring/radars.json`.
+Guia técnico para substituir o JSON fake de monitoramento de radares por API, mantendo o mesmo contrato de dados usado hoje em `apps/web/src/app/admin/monitoring/radars.json`.
 
 ---
 
@@ -139,8 +139,8 @@ Observacao:
 
 Estado atual:
 
-- fonte local: `src/app/admin/monitoring/radars.json`
-- consumo na tela: `src/app/admin/monitoring/page.tsx`
+- fonte local: `apps/web/src/app/admin/monitoring/radars.json`
+- consumo na tela: `apps/web/src/app/admin/monitoring/page.tsx`
 
 Migracao para API (passo a passo):
 
@@ -268,7 +268,7 @@ Com isso, o comportamento visual da coluna `Radares` permanece estavel.
 
 ## Referencias Internas
 
-- JSON fake atual: `src/app/admin/monitoring/radars.json`
-- Tela de consumo: `src/app/admin/monitoring/page.tsx`
+- JSON fake atual: `apps/web/src/app/admin/monitoring/radars.json`
+- Tela de consumo: `apps/web/src/app/admin/monitoring/page.tsx`
 - API geral do projeto: [06-api.md](06-api.md)
 - Padrão de documentação semelhante: [09-dataflow.md](09-dataflow.md)

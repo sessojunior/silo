@@ -1,6 +1,6 @@
 # Paginas e Figuras via API
 
-Guia tecnico para substituir o JSON fake de paginas e figuras por API, mantendo o mesmo contrato de dados usado hoje em `src/app/admin/monitoring/pictures.json`.
+Guia tecnico para substituir o JSON fake de paginas e figuras por API, mantendo o mesmo contrato de dados usado hoje em `apps/web/src/app/admin/monitoring/pictures.json`.
 
 ---
 
@@ -156,9 +156,9 @@ Observacao:
 
 Estado atual:
 
-- fonte local: `src/app/admin/monitoring/pictures.json`
-- consumo da secao: `src/app/admin/monitoring/page.tsx`
-- renderizacao da lista: `src/components/admin/monitoring/PicturePagesAccordion.tsx`
+- fonte local: `apps/web/src/app/admin/monitoring/pictures.json`
+- consumo da secao: `apps/web/src/app/admin/monitoring/page.tsx`
+- renderizacao da lista: `apps/web/src/components/admin/monitoring/picture-pages-accordion.tsx`
 
 Migracao para API (passo a passo):
 
@@ -292,8 +292,8 @@ Com isso, o comportamento visual dos indicadores e do accordion permanece estave
 
 ## Referencias Internas
 
-- JSON fake atual: `src/app/admin/monitoring/pictures.json`
-- Tela de consumo: `src/app/admin/monitoring/page.tsx`
-- Componente de renderizacao: `src/components/admin/monitoring/PicturePagesAccordion.tsx`
+- JSON fake atual: `apps/web/src/app/admin/monitoring/pictures.json`
+- Tela de consumo: `apps/web/src/app/admin/monitoring/page.tsx`
+- Componente de renderizacao: `apps/web/src/components/admin/monitoring/picture-pages-accordion.tsx`
 - API geral do projeto: [06-api.md](06-api.md)
 - Padrão de documentação semelhante: [15-radars-api.md](15-radars-api.md)

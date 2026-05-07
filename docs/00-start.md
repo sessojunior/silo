@@ -12,12 +12,11 @@ O projeto usa **Turborepo + npm workspaces** (monorepo):
 silo/
 ├── apps/
 │   ├── web/        # Next.js App Router (frontend + API Routes + Server Actions)
+│   ├── api/        # Express API (auth, casos de uso, persistência)
 │   └── worker/     # Consumer Kafka (Node.js puro, sem React)
 ├── packages/
-│   ├── database/   # Drizzle ORM — schema, migrations, conexão (@silo/database)
-│   ├── core/       # Utilitários compartilhados — datas, email, validação (@silo/core)
-│   ├── types/      # Tipagens TypeScript de domínio (@silo/types)
-│   ├── ui/         # Design System — componentes React puros (@silo/ui)
+│   ├── db/         # Drizzle ORM — schema, migrations, conexão (@silo/database)
+│   ├── engine/     # Core de regras e contratos compartilhados (@silo/engine)
 │   └── config/
 │       ├── eslint-config/      # @silo/eslint-config
 │       ├── typescript-config/  # @silo/typescript-config
@@ -54,8 +53,9 @@ silo/
 ## Regras fundamentais
 
 - **Apps dependem de pacotes. Pacotes nunca importam de apps.**
-- Todo import de banco usa `@silo/database`. Nunca `../../packages/database`.
-- Todo import de utilitário usa `@silo/core/*`. Nunca paths relativos cross-package.
+- O frontend (`apps/web`) não acessa banco direto: fluxo é `web -> api -> db`.
+- Todo import de banco usa `@silo/database`. Nunca `../../packages/db`.
+- Todo import de contratos/regras compartilhadas usa `@silo/engine/*`.
 - Arquivos de código seguem **kebab-case**. Componentes React seguem **PascalCase**.
 - Variáveis de ambiente vivem em `.env` na raiz. Validação via Zod no boot de cada app.
 
@@ -77,8 +77,8 @@ npm run build
 npm run db:migrate
 
 # Rodar apenas o worker
-npm run dev -w worker
+npm run dev -w @silo/worker
 
 # Rodar apenas a web
-npm run dev -w web
+npm run dev -w @silo/web
 ```

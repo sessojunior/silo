@@ -43,7 +43,7 @@ Consumers Kafka REST Proxy também podem ser executados em containers separados 
 - `apps/web/Dockerfile` — build do Next.js usando `turbo prune web --docker`
 - `apps/worker/Dockerfile` — build do worker usando `turbo prune worker --docker`
 
-O build de ambos usa o contexto da raiz do monorepo para que o Turborepo possa resolver os pacotes internos (`@silo/database`, `@silo/core`, etc.).
+O build de ambos usa o contexto da raiz do monorepo para que o Turborepo possa resolver os pacotes internos (`@silo/database`, `@silo/engine`, etc.).
 
 ---
 
@@ -227,7 +227,8 @@ KAFKA_REST_PROXY_URL=http://rest-proxy:8082
 KAFKA_REST_PROXY_AUTH=
 KAFKA_GROUP_ID=silo-consumer-group
 KAFKA_DLQ_PREFIX=dlq.
-DATABASE_URL=postgresql://silo:uma_senha_forte@db:5432/silo
+DATABASE_URL_DEV=postgresql://silo:uma_senha_forte@db:5432/silo
+DATABASE_URL_PROD=postgresql://silo:uma_senha_forte@db:5432/silo
 ```
 
 Detalhes do contrato e dos comandos estão em [08-kafka.md](08-kafka.md).

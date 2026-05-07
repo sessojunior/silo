@@ -22,8 +22,8 @@ O **Silo** utiliza **PostgreSQL** com **Drizzle ORM** para gerenciamento do banc
 
 - **Database:** PostgreSQL
 - **ORM:** Drizzle ORM
-- **Pacote:** `@silo/database` (`packages/database/`)
-- **Schema (fonte de verdade):** `packages/database/src/schema/index.ts`
+- **Pacote:** `@silo/database` (`packages/db/`)
+- **Schema (fonte de verdade):** `packages/db/src/schema/index.ts`
 
 ---
 
@@ -46,7 +46,7 @@ O **Silo** utiliza **PostgreSQL** com **Drizzle ORM** para gerenciamento do banc
 
 O schema do banco muda junto com o código. Para evitar divergência, a referência oficial é sempre o arquivo:
 
-- `packages/database/src/schema/index.ts`
+- `packages/db/src/schema/index.ts`
 
 Pontos práticos:
 
@@ -128,10 +128,10 @@ npm run db:push
 
 ### **Arquivos de Migração**
 
-Localizados em `packages/database/drizzle/` com versionamento automático:
+Localizados em `packages/db/drizzle/` com versionamento automático:
 
 ```text
-packages/database/drizzle/
+packages/db/drizzle/
 ├── 0000_tranquil_demogoblin.sql
 ├── 0001_kafka_processed_messages.sql
 └── meta/

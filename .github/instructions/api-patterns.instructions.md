@@ -1,6 +1,6 @@
 ---
 description: "Use when creating or modifying API Route Handlers, Server Actions, validating request data, or handling API errors. Covers the SILO API response contract and authentication patterns."
-applyTo: "apps/web/src/app/api/**/*.ts"
+applyTo: "apps/web/app/api/**/*.ts"
 ---
 
 # API Patterns — Route Handlers (SILO)
@@ -9,24 +9,50 @@ Referência completa: [docs/06-api.md](../../docs/06-api.md)
 
 ---
 
+## Arquitetura das rotas
+
+```
+apps/web/app/api/
+  admin/[...path]/route.ts  # catch-all proxy → apps/api (autentica no api)
+  auth/                     # login, logout, OTP — lógica local no web
+  (user)/                   # rotas do perfil do usuário autenticado
+  upload/                   # upload de imagens
+  product-flow/             # fluxo de produto
+```
+
+As rotas em `/api/admin/*` **não acessam o banco diretamente** — são um proxy reverso para `apps/api`.  
+As rotas em `/api/auth/*` e `/api/(user)/*` têm lógica local e podem chamar `apps/api` via fetch.
+
+---
+
 ## Contrato de resposta
 
-O projeto usa dois padrões de resposta:
+Tipo definido em `@/lib/api-response`:
 
 ```typescript
-// 1) Padrão geral — /api/admin/*
-type ApiResponse<T> = {
+type ApiResponse<T = unknown> = {
+  ok?: boolean;
   success: boolean;
   data?: T;
   error?: string;
   message?: string;
+  field?: string;
+  meta?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    [key: string]: unknown;
+  };
 };
+```
 
-// 2) Padrão de formulário — /api/auth/*, /api/user-*
-type FormResponse = {
-  field: string | null;  // campo com erro, ou null se erro geral
-  message: string;
-};
+Helpers disponíveis em `@/lib/api-response`:
+
+```typescript
+import { errorResponse } from "@/lib/api-response";
+
+return errorResponse("Não autorizado.", 401);           // Response JSON com success: false
+return NextResponse.json({ success: true, data }, { status: 200 });
 ```
 
 ---
@@ -34,48 +60,34 @@ type FormResponse = {
 ## Template de Route Handler
 
 ```typescript
-// apps/web/src/app/api/admin/products/route.ts
+// apps/web/app/api/(user)/profile/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@silo/database";
-import { product } from "@silo/database/schema";
-import { getAuthUser } from "@/lib/auth/token";
+import { requireAuthUser } from "@/lib/auth/server";
+import { errorResponse } from "@/lib/api-response";
 import { z } from "zod";
 
 const schema = z.object({
   name: z.string().min(1),
-  description: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "Não autorizado" },
-        { status: 401 }
-      );
-    }
+    const authResult = await requireAuthUser();
+    if (!authResult.ok) return authResult.response;
+    const { user } = authResult;
 
     const body = await request.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: parsed.error.issues[0].message },
-        { status: 400 }
-      );
+      return errorResponse(parsed.error.issues[0].message, 400);
     }
 
-    const [newProduct] = await db.insert(product)
-      .values({ ...parsed.data, createdBy: user.id })
-      .returning();
+    // lógica aqui...
 
-    return NextResponse.json({ success: true, data: newProduct }, { status: 201 });
+    return NextResponse.json({ success: true, data: { id: user.id } }, { status: 200 });
   } catch (error) {
-    console.error("❌ [POST /api/admin/products]", { error });
-    return NextResponse.json(
-      { success: false, error: "Erro interno do servidor" },
-      { status: 500 }
-    );
+    console.error("❌ [POST /api/(user)/profile]", { error });
+    return errorResponse("Erro interno do servidor.", 500);
   }
 }
 ```
@@ -85,7 +97,7 @@ export async function POST(request: NextRequest) {
 ## Segmentos dinâmicos
 
 ```typescript
-// apps/web/src/app/api/admin/products/[id]/route.ts
+// apps/web/app/api/(user)/profile/[id]/route.ts
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -100,19 +112,21 @@ export async function GET(
 ## Autenticação em Route Handlers
 
 ```typescript
-import { getAuthUser } from "@/lib/auth/token";
+import { getAuthUser, requireAuthUser, requireAdminAuthUser } from "@/lib/auth/server";
 
-const user = await getAuthUser(request);
-if (!user) {
-  return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
-}
+// Retorna o usuário ou null (sem lançar)
+const user = await getAuthUser();
+if (!user) return errorResponse("Não autorizado.", 401);
 
-// Verificar permissão de admin
-import { checkAdminPermission } from "@/lib/permissions/check";
-const isAdmin = await checkAdminPermission(user.id);
-if (!isAdmin) {
-  return NextResponse.json({ success: false, error: "Acesso negado" }, { status: 403 });
-}
+// Guard: retorna response pronta se não autenticado
+const authResult = await requireAuthUser();
+if (!authResult.ok) return authResult.response;
+const { user } = authResult;
+
+// Guard admin: verifica autenticação + permissão de admin via apps/api
+const adminResult = await requireAdminAuthUser();
+if (!adminResult.ok) return adminResult.response;
+const { user } = adminResult;
 ```
 
 ---
@@ -130,10 +144,7 @@ const schema = z.object({
 
 const parsed = schema.safeParse(await request.json());
 if (!parsed.success) {
-  return NextResponse.json(
-    { success: false, error: parsed.error.issues[0].message },
-    { status: 400 }
-  );
+  return errorResponse(parsed.error.issues[0].message, 400);
 }
 const { name, email, role } = parsed.data;
 ```
@@ -152,26 +163,12 @@ console.warn("⚠️ [PRODUTO] Tentativa sem permissão", { userId: user.id });
 
 ---
 
-## Rate limiting
-
-```typescript
-import { rateLimit } from "@/lib/rate-limit";
-
-const allowed = await rateLimit(request, { max: 10, window: 60 });
-if (!allowed) {
-  return NextResponse.json(
-    { success: false, error: "Muitas tentativas. Aguarde." },
-    { status: 429 }
-  );
-}
-```
-
----
-
 ## Regras
 
 - Sempre use `try/catch` em todos os Route Handlers.
 - Valide input no início, antes de qualquer operação de banco.
 - Nunca exponha detalhes internos de erro para o cliente (stack traces, queries, etc.).
-- Use status HTTP corretos: `200`, `201`, `400`, `401`, `403`, `404`, `500`.
+- Use status HTTP corretos: `200`, `201`, `400`, `401`, `403`, `404`, `429`, `500`.
 - Nunca use `process.env` diretamente — use `@/lib/config`.
+- `getAuthUser()` não recebe parâmetros — usa `headers()` do Next.js internamente.
+- Para verificar admin, use `requireAdminAuthUser()` — nunca implemente a lógica inline.

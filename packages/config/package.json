@@ -1,0 +1,15 @@
+{
+  "name": "@silo/config",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "exports": {
+    "./eslint/next": "./eslint-config/next.mjs",
+    "./eslint/node": "./eslint-config/node.mjs",
+    "./eslint/library": "./eslint-config/library.mjs",
+    "./typescript/base.json": "./typescript-config/base.json",
+    "./typescript/nextjs.json": "./typescript-config/nextjs.json",
+    "./typescript/react-library.json": "./typescript-config/react-library.json",
+    "./tailwind": "./tailwind-config/tailwind.config.ts"
+  }
+}
