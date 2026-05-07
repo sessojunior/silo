@@ -7,6 +7,7 @@ import {
   markPresenceOfflineOnDisconnect,
   touchPresenceOnConnect,
 } from "../services/chat-service.js";
+import { getChatAccessState } from "../middleware/permissions.js";
 import {
   CHAT_REALTIME_PATH,
   type ChatRealtimeServerMessage,
@@ -125,6 +126,12 @@ class ChatRealtimeHub {
     const user = this.socketState.get(socket)?.user;
     if (!user) {
       socket.close(1008, "Usuário não autenticado.");
+      return;
+    }
+
+    const access = await getChatAccessState(user.id);
+    if (!access.canViewChat) {
+      socket.close(1008, "Acesso ao chat negado.");
       return;
     }
 

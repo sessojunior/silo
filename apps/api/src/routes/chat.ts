@@ -3,6 +3,7 @@ import type { Request as ExpressRequest, Response as ExpressResponse } from "exp
 import { z } from "zod";
 
 import { authMiddleware } from "../middleware/auth.js";
+import { requireChatAccess } from "../middleware/permissions.js";
 import {
   broadcastChatRealtimeEvent,
 } from "../realtime/chat-realtime.js";
@@ -26,6 +27,8 @@ import {
 } from "@silo/engine/contracts/dto/chat-realtime";
 
 const router = Router();
+
+router.use(authMiddleware, requireChatAccess());
 
 const conversationTargetQueryBaseSchema = z.object({
   groupId: z.string().trim().min(1).optional(),

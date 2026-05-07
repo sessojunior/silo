@@ -178,14 +178,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const shouldReconnectRealtime = useRef(true);
   const loadSidebarDataRef = useRef<(() => Promise<void>) | null>(null);
 
-  const handleUnauthorized = useCallback((status: number): boolean => {
-    if (status !== 401) return false;
-    if (hasUnauthorizedRedirected.current) return true;
-    hasUnauthorizedRedirected.current = true;
-    window.location.href = config.getPublicPath("/login");
-    return true;
-  }, []);
-
   const getConversationTargetId = useCallback(
     (message: ChatMessage): string | null => {
       if (message.receiverGroupId) {
@@ -352,9 +344,27 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setRealtimeStatus("error");
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event: CloseEvent) => {
         realtimeSocket.current = null;
         setRealtimeStatus("disconnected");
+
+        if (event.code === 1008) {
+          if (realtimeReconnectTimer.current) {
+            window.clearTimeout(realtimeReconnectTimer.current);
+            realtimeReconnectTimer.current = null;
+          }
+
+          shouldReconnectRealtime.current = false;
+          realtimeReconnectAttempt.current = 0;
+          setGroups([]);
+          setUsers([]);
+          setMessages({});
+          setTotalUnread(0);
+          setCurrentPresence("invisible");
+          setLastSync(null);
+          setIsLoading(false);
+          return;
+        }
 
         if (!shouldReconnectRealtime.current || !currentUser) {
           return;
@@ -381,7 +391,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [applyRealtimeEvent, currentUser]);
 
+  const clearChatState = useCallback(() => {
+    setGroups([]);
+    setUsers([]);
+    setMessages({});
+    setTotalUnread(0);
+    setCurrentPresence("invisible");
+    setLastSync(null);
+  }, []);
+
   const disconnectRealtime = useCallback(() => {
+    shouldReconnectRealtime.current = false;
+
     if (realtimeReconnectTimer.current) {
       window.clearTimeout(realtimeReconnectTimer.current);
       realtimeReconnectTimer.current = null;
@@ -392,9 +413,28 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       realtimeSocket.current = null;
     }
 
+    clearChatState();
     setRealtimeStatus("disconnected");
     setIsLoading(false);
-  }, []);
+    realtimeReconnectAttempt.current = 0;
+  }, [clearChatState]);
+
+  const handleUnauthorized = useCallback(
+    (status: number): boolean => {
+      if (status !== 401 && status !== 403) return false;
+
+      disconnectRealtime();
+
+      if (status === 401) {
+        if (hasUnauthorizedRedirected.current) return true;
+        hasUnauthorizedRedirected.current = true;
+        window.location.href = config.getPublicPath("/login");
+      }
+
+      return true;
+    },
+    [disconnectRealtime],
+  );
 
   // === FUNÇÕES PRINCIPAIS ===
 

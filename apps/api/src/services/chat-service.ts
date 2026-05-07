@@ -4,7 +4,7 @@
  */
 
 import { db } from "@silo/database";
-import { chatMessage, chatUserPresence, authUser, group, userGroup, groupPermission } from "@silo/database/schema";
+import { chatMessage, chatUserPresence, authUser, group } from "@silo/database/schema";
 import { and, or, isNull, isNotNull, eq, lt, gt, desc, ne, inArray, count } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { getNowTimestamp } from "@silo/engine/date";
@@ -12,6 +12,7 @@ import type {
   ChatConversationTargetType,
   ChatPresenceStatus,
 } from "@silo/engine/contracts/dto/chat-realtime";
+import { getChatAccessState } from "../middleware/permissions";
 
 export interface ChatMessageRow {
   id: string;
@@ -453,21 +454,8 @@ export async function getPresenceAll(): Promise<ChatPresenceRow[]> {
  * Busca os dados do sidebar do chat
  */
 export async function getChatSidebar(userId: string): Promise<ChatSidebarResult> {
-  const userGroupsRows = await db
-    .select({ groupId: userGroup.groupId })
-    .from(userGroup)
-    .where(eq(userGroup.userId, userId));
-
-  const groupIds = userGroupsRows.map((groupRow) => groupRow.groupId);
-  const perms = groupIds.length
-    ? await db
-        .select({ resource: groupPermission.resource, action: groupPermission.action })
-        .from(groupPermission)
-        .where(and(inArray(groupPermission.groupId, groupIds), eq(groupPermission.resource, "chat")))
-    : [];
-
-  const canViewChat = perms.some((permission) => permission.action === "view_private" || permission.action === "view_group");
-  if (!canViewChat) {
+  const access = await getChatAccessState(userId);
+  if (!access.canViewChat) {
     return { canViewChat: false, groups: [], users: [], totalUnread: 0 };
   }
 
