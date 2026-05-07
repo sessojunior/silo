@@ -9,7 +9,7 @@ export default function SidebarLogo() {
     "/images/logo-horizontal-dark.png",
   );
 
-  const VERSION = "26.3.30.1"; // Formato da versão é "Ano.Mês.Dia.Contagem"
+  const VERSION = "26.5.17.3"; // Formato da versão é "Ano.Mês.Dia.Contagem"
 
   return (
     <div className="flex items-center gap-3">
