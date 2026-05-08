@@ -6,6 +6,7 @@
  */
 
 import { config } from "@/lib/config";
+import { readApiResponse } from "@/lib/api-response";
 import type { ApiResponse } from "@silo/engine/contracts/api-response";
 
 export function getApiUrl(path: string): string {
@@ -23,7 +24,7 @@ export async function apiGet<T = unknown>(
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     cache: "no-store",
   });
-  return res.json() as Promise<ApiResponse<T>>;
+  return readApiResponse<T>(res);
 }
 
 export async function apiPost<T = unknown>(
@@ -39,5 +40,5 @@ export async function apiPost<T = unknown>(
     body: JSON.stringify(body),
     cache: "no-store",
   });
-  return res.json() as Promise<ApiResponse<T>>;
+  return readApiResponse<T>(res);
 }

@@ -92,6 +92,39 @@ export const config = {
       .filter(Boolean);
   },
 
+  get ollama() {
+    const defaultUrl =
+      this.nodeEnv === "production"
+        ? "http://ollama:11434"
+        : "http://localhost:11434";
+    const rawUrl = (process.env.OLLAMA_URL || defaultUrl).trim();
+    const rawModel = (process.env.OLLAMA_MODEL || "qwen2.5:7b-instruct-q4_K_M").trim();
+
+    const timeoutMsRaw = Number.parseInt(process.env.OLLAMA_TIMEOUT_MS || "30000", 10);
+    const maxConcurrentRequestsRaw = Number.parseInt(
+      process.env.OLLAMA_MAX_CONCURRENT_REQUESTS || "1",
+      10,
+    );
+
+    let url = defaultUrl;
+    try {
+      url = new URL(rawUrl).toString().replace(/\/$/, "");
+    } catch {
+      url = defaultUrl;
+    }
+
+    return {
+      url,
+      model: rawModel.length > 0 ? rawModel : "qwen2.5:7b-instruct-q4_K_M",
+      timeoutMs:
+        Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 30000,
+      maxConcurrentRequests:
+        Number.isFinite(maxConcurrentRequestsRaw) && maxConcurrentRequestsRaw > 0
+          ? maxConcurrentRequestsRaw
+          : 1,
+    };
+  },
+
   get productFlowApiKey(): string {
     return (process.env.PRODUCT_FLOW_API_KEY ?? "").trim();
   },

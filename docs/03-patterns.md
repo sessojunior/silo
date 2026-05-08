@@ -14,6 +14,24 @@ Documentação sobre padrões, convenções e boas práticas do projeto SILO.
 6. [Componentes React](#-componentes-react)
 7. [APIs](#-apis)
 8. [Banco de Dados](#-banco-de-dados)
+9. [Linha e Final de Arquivo](#-linha-e-final-de-arquivo)
+
+---
+
+## 🧾 **LINHA E FINAL DE ARQUIVO**
+
+O repositório usa LF como padrão para código, scripts, compose e documentação. Isso fica centralizado em dois arquivos:
+
+- `.gitattributes` garante que o Git normalize textos com `eol=lf` e mantenha CRLF apenas em arquivos Windows explícitos, como `.bat` e `.cmd`.
+- `.editorconfig` orienta o editor a salvar com LF e inserir newline final automaticamente.
+
+Na prática:
+
+- Arquivos de código e script devem permanecer em LF.
+- Se um arquivo já estiver aberto no editor com CRLF, salve novamente após o `.editorconfig` ser aplicado.
+- Evite introduzir CRLF manualmente em shell scripts, compose, TS, MD, YAML e SQL.
+
+Essa política mantém o mesmo comportamento em Windows e Linux sem depender de configuração local de cada máquina.
 
 ---
 

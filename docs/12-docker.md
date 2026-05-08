@@ -36,12 +36,21 @@ O **Silo** no monorepo usa **2 containers principais** (e opcionalmente um Postg
 1. **`web`** (porta 3000) — Aplicação Next.js (`apps/web`): frontend, API Routes, Server Actions, uploads locais.
 2. **`worker`** — Consumer Kafka (`apps/worker`): Node.js puro, sem React, sem Next.js.
 3. **`db`** (opcional) — PostgreSQL via Docker Compose, recomendado apenas quando você não usa Postgres gerenciado.
+4. **`ollama`** — Serviço local de LLM usado pela API para o assistente de IA.
 
 Consumers Kafka REST Proxy também podem ser executados em containers separados usando `docker-compose.kafka.yml`. Eles não acessam brokers diretamente; todo consumo e produção de DLQ passa pelo REST Proxy.
+
+O assistente de IA usa o caminho **Web -> API do SILO -> Ollama -> Qwen**. O browser nunca chama o Ollama diretamente.
+
+No boot da stack, um container `ollama-init` faz o `ollama pull` do modelo configurado antes da API subir. Isso evita deixar o download grande dentro do `command` do servidor Ollama e torna a inicialização mais previsível em produção.
+
+Por padrão, o deploy usa `OLLAMA_IMAGE=ollama/ollama:0.30.0-rc7`, que foi a imagem que você já baixou e validou na máquina local.
 
 **Dockerfiles:**
 - `apps/web/Dockerfile` — build do Next.js usando `turbo prune web --docker`
 - `apps/worker/Dockerfile` — build do worker usando `turbo prune worker --docker`
+
+O serviço `ollama` deve manter o volume `ollama_data` para persistir os modelos baixados entre reinicializações.
 
 O build de ambos usa o contexto da raiz do monorepo para que o Turborepo possa resolver os pacotes internos (`@silo/database`, `@silo/engine`, etc.).
 
@@ -112,6 +121,12 @@ KAFKA_TOPICS=
 KAFKA_DLQ_PREFIX=dlq.
 KAFKA_PROCESS_RETRY_COUNT=3
 KAFKA_RETRY_BACKOFF_MS=1000
+
+# Assistente de IA / Ollama
+OLLAMA_URL=http://ollama:11434
+OLLAMA_MODEL=qwen2.5:7b-instruct-q4_K_M
+OLLAMA_TIMEOUT_MS=30000
+OLLAMA_MAX_CONCURRENT_REQUESTS=1
 ```
 
 Observações:
@@ -168,14 +183,15 @@ cp env.example .env
 # 3. Construir e executar containers (Aplicação + Banco)
 npm run deploy
 
-# Ou manualmente:
-# docker compose --profile db up -d --build
+# Não execute o compose manualmente no fluxo normal; o `npm run deploy` já faz isso por baixo.
 
 # Isso vai:
 # 1. Baixar as imagens necessárias
 # 2. Construir os containers do Silo e do Banco
 # 3. Rodar migrações e seed automaticamente (entrypoint.sh)
 # 4. Iniciar a aplicação
+
+# O compose manual fica só para debugging avançado.
 
 # ✅ Aguarde a mensagem: "ready - started server on..."
 # ✅ Acesse: http://localhost:3000<BASE_PATH>
@@ -192,7 +208,13 @@ docker compose logs -f
 
 ### **Subir Postgres junto (profile db)**
 
-O comando padrão já inclui o profile `db` para garantir que o banco suba junto:
+O comando padrão já inclui o profile `db` para garantir que o banco suba junto. Na prática, rode apenas:
+
+```bash
+npm run deploy
+```
+
+Se você realmente precisar depurar o Compose, aí sim pode usar o comando manual abaixo:
 
 ```bash
 docker compose --profile db up -d --build

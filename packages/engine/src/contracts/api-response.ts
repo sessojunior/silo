@@ -17,14 +17,14 @@ export type ApiResponse<T = unknown> = {
   };
 };
 
-export const parseApiResponse = (value: unknown): ApiResponse => {
+export const parseApiResponse = <T = unknown>(value: unknown): ApiResponse<T> => {
   if (
     value !== null &&
     typeof value === "object" &&
     "success" in value &&
     typeof (value as Record<string, unknown>).success === "boolean"
   ) {
-    return value as ApiResponse;
+    return value as ApiResponse<T>;
   }
   return {
     success: false,
@@ -34,7 +34,7 @@ export const parseApiResponse = (value: unknown): ApiResponse => {
   };
 };
 
-export const readApiResponse = async (res: Response): Promise<ApiResponse> => {
+export const readApiResponse = async <T = unknown>(res: Response): Promise<ApiResponse<T>> => {
   let payload: unknown;
   try {
     payload = await res.json();
@@ -46,5 +46,5 @@ export const readApiResponse = async (res: Response): Promise<ApiResponse> => {
       message: "Resposta inválida.",
     };
   }
-  return parseApiResponse(payload);
+  return parseApiResponse<T>(payload);
 };

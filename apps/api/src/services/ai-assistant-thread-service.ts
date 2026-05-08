@@ -8,6 +8,7 @@ import {
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type {
   AiAssistantCreateThreadResponseDto,
+  AiAssistantGenerationDto,
   AiAssistantMessageRequestDto,
   AiAssistantMessageResponseDto,
   AiAssistantThreadDetailResponseDto,
@@ -49,6 +50,22 @@ const buildThreadTitle = (content: string): string => {
 
 const buildMessagePreview = (content: string): string =>
   truncateText(content, MESSAGE_PREVIEW_MAX_LENGTH);
+
+const normalizeGenerationMetadata = (
+  generation: AiAssistantGenerationDto | undefined,
+): {
+  provider: string | null;
+  model: string | null;
+  generationStatus: string | null;
+  latencyMs: number | null;
+  errorMessage: string | null;
+} => ({
+  provider: generation?.provider ?? null,
+  model: generation?.model ?? null,
+  generationStatus: generation?.status ?? null,
+  latencyMs: generation?.latencyMs ?? null,
+  errorMessage: generation?.errorMessage ?? null,
+});
 
 const formatAssistantReply = (data: AiAssistantMessageResponseDto): string => {
   const lines = [data.answer.trim()];
@@ -197,6 +214,7 @@ export async function sendAssistantMessage(
     threadId: requestedThreadId,
     content: request.content,
   });
+  const generationMetadata = normalizeGenerationMetadata(generatedResponse.generation);
   const messageContent = formatAssistantReply(generatedResponse);
   const now = new Date();
   const nextThreadTitle = existingThread
@@ -235,6 +253,11 @@ export async function sendAssistantMessage(
           senderType: "assistant",
           senderUserId: null,
           senderName: ASSISTANT_SENDER_NAME,
+          provider: generationMetadata.provider,
+          model: generationMetadata.model,
+          generationStatus: generationMetadata.generationStatus,
+          latencyMs: generationMetadata.latencyMs,
+          errorMessage: generationMetadata.errorMessage,
           content: messageContent,
           metadata: {
             scope: generatedResponse.scope,
@@ -242,6 +265,7 @@ export async function sendAssistantMessage(
             refusalReason: generatedResponse.refusalReason,
             suggestedQuestions: generatedResponse.suggestedQuestions,
             citations: generatedResponse.citations,
+            generation: generationMetadata,
             contextSummary: generatedResponse.contextSummary,
           },
         },
@@ -264,6 +288,11 @@ export async function sendAssistantMessage(
         senderType: "assistant",
         senderUserId: null,
         senderName: ASSISTANT_SENDER_NAME,
+        provider: generationMetadata.provider,
+        model: generationMetadata.model,
+        generationStatus: generationMetadata.generationStatus,
+        latencyMs: generationMetadata.latencyMs,
+        errorMessage: generationMetadata.errorMessage,
         content: messageContent,
         metadata: {
           scope: generatedResponse.scope,
@@ -271,6 +300,7 @@ export async function sendAssistantMessage(
           refusalReason: generatedResponse.refusalReason,
           suggestedQuestions: generatedResponse.suggestedQuestions,
           citations: generatedResponse.citations,
+          generation: generationMetadata,
           contextSummary: generatedResponse.contextSummary,
         },
       },

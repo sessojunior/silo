@@ -501,6 +501,70 @@ async function runUploadRoundtrip(context) {
   }
 }
 
+async function runAiAssistantRoundtrip(context) {
+  const examplesResult = await request("/api/ai-assistant/examples", {
+    method: "GET",
+    headers: context.cookie ? { cookie: context.cookie } : undefined,
+  });
+
+  assert.equal(examplesResult.response.status, 200, "GET /api/ai-assistant/examples: esperado 200");
+  assert.equal(examplesResult.body.success, true);
+  assert.ok(examplesResult.body.data);
+  assert.ok(Array.isArray(examplesResult.body.data.examples));
+
+  const createThreadResult = await requestJson(
+    "/api/ai-assistant/threads",
+    "POST",
+    {},
+    context,
+  );
+
+  assert.equal(createThreadResult.response.status, 201, "POST /api/ai-assistant/threads: esperado 201");
+  assert.equal(createThreadResult.body.success, true);
+  assert.ok(createThreadResult.body.data);
+
+  const threadId = createThreadResult.body.data.thread.id;
+  assert.equal(typeof threadId, "string");
+
+  const question = `Quais problemas e pendências merecem atenção agora? ${makeSmokeToken("assistant")}`;
+  const messageResult = await requestJson(
+    "/api/ai-assistant/messages",
+    "POST",
+    {
+      threadId,
+      content: question,
+    },
+    context,
+  );
+
+  assert.equal(messageResult.response.status, 200, "POST /api/ai-assistant/messages: esperado 200");
+  assert.equal(messageResult.body.success, true);
+  assert.ok(messageResult.body.data);
+  assert.equal(typeof messageResult.body.data.answer, "string");
+  assert.equal(typeof messageResult.body.data.messageContent, "string");
+  assert.equal(messageResult.body.data.threadId, threadId);
+  assert.ok(messageResult.body.data.generation);
+  assert.equal(typeof messageResult.body.data.generation.provider, "string");
+  assert.equal(typeof messageResult.body.data.generation.model, "string");
+
+  const detailResult = await request(`/api/ai-assistant/threads/${encodeURIComponent(threadId)}`, {
+    method: "GET",
+    headers: context.cookie ? { cookie: context.cookie } : undefined,
+  });
+
+  assert.equal(detailResult.response.status, 200, "GET /api/ai-assistant/threads/:id: esperado 200");
+  assert.equal(detailResult.body.success, true);
+  assert.ok(detailResult.body.data);
+  assert.equal(detailResult.body.data.thread.id, threadId);
+  assert.equal(detailResult.body.data.thread.messageCount, 2);
+  assert.equal(Array.isArray(detailResult.body.data.messages), true);
+  assert.equal(detailResult.body.data.messages.length, 2);
+  assert.equal(detailResult.body.data.messages[0].content, question);
+  assert.equal(typeof detailResult.body.data.messages[1].content, "string");
+
+  console.log("✓ Assistente de IA roundtrip persistido");
+}
+
 async function loadSmokeProduct(context) {
   const { response, body } = await request("/api/products?limit=1", {
     method: "GET",
@@ -2442,6 +2506,7 @@ async function main() {
     }
 
     await runUploadRoundtrip(context);
+    await runAiAssistantRoundtrip(context);
     await runProductsExtendedChecks(context);
     await runProjectsWriteRoundtrip(context);
     await runGroupsAndUsersWriteRoundtrip(context);

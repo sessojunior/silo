@@ -49,6 +49,7 @@ set -eu
 
 cd "$DEPLOY_PATH"
 export SILO_IMAGE="$DEPLOY_IMAGE"
+export OLLAMA_IMAGE="${OLLAMA_IMAGE:-ollama/ollama:0.30.0-rc7}"
 export HEALTHCHECK_URL="http://127.0.0.1:3000${DEPLOY_BASE_PATH%/}/health"
 
 docker compose -f "$DEPLOY_COMPOSE_FILE" pull

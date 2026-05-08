@@ -21,9 +21,10 @@ Documentação completa de todas as APIs do sistema SILO, incluindo endpoints, c
 6. [Projetos e Kanban](#-projetos-e-kanban)
 7. [Dashboard e Relatórios](#-dashboard-e-relatórios)
 8. [Chat](#-chat)
-9. [Upload de Arquivos](#-upload-de-arquivos)
-10. [Monitoramento](#-monitoramento)
-11. [Padrão de Resposta](#-padrão-de-resposta)
+9. [Assistente de IA](#-assistente-de-ia)
+10. [Upload de Arquivos](#-upload-de-arquivos)
+11. [Monitoramento](#-monitoramento)
+12. [Padrão de Resposta](#-padrão-de-resposta)
 
 ---
 
@@ -1211,6 +1212,64 @@ POST /api/admin/chat/sync
   "groupId": "group-123"
 }
 ```
+
+---
+
+## 🧠 **ASSISTENTE DE IA**
+
+O assistente é consumido pelo frontend em `apps/web` via as rotas administrativas e a geração fica na API do SILO. O browser nunca chama o Ollama diretamente.
+
+### **Base de rotas**
+
+```http
+GET /api/admin/ai-assistant/examples
+GET /api/admin/ai-assistant/threads
+POST /api/admin/ai-assistant/threads
+GET /api/admin/ai-assistant/threads/[threadId]
+POST /api/admin/ai-assistant/messages
+```
+
+### **Exemplos e contexto**
+
+```http
+GET /api/admin/ai-assistant/examples
+
+Response:
+{
+  "success": true,
+  "data": {
+    "guidance": "...",
+    "scopePolicy": "...",
+    "examples": [ ... ]
+  }
+}
+```
+
+### **Enviando mensagem**
+
+```http
+POST /api/admin/ai-assistant/messages
+Content-Type: application/json
+
+{
+  "threadId": "550e8400-e29b-41d4-a716-446655440000",
+  "content": "Quais problemas ocorreram com mais frequência na última semana?"
+}
+```
+
+### **Persistência**
+
+As mensagens são salvas nas tabelas `ai_assistant_thread` e `ai_assistant_message`. Cada resposta do assistente grava também metadados de geração com `provider`, `model`, `status` e `latencyMs` para auditoria e fallback. A configuração padrão do runtime usa o modelo quantizado `qwen2.5:7b-instruct-q4_K_M`.
+
+### **Resposta do assistente**
+
+O retorno do `POST /api/admin/ai-assistant/messages` usa o envelope padrão `{ success, data }` e inclui:
+
+- `answer`
+- `citations`
+- `suggestedQuestions`
+- `contextSummary`
+- `generation` com os dados do modelo usado
 
 ---
 

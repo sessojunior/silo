@@ -2,7 +2,7 @@ import "./infra/load-env";
 import { createServer } from "node:http";
 import cors from "cors";
 import express from "express";
-import { config } from "@silo/engine/config";
+import { config, configValidation } from "@silo/engine/config";
 import authRouter from "./routes/auth";
 import authCustomRouter from "./routes/auth-custom";
 import productsRouter from "./routes/products";
@@ -26,6 +26,7 @@ import { rateLimit } from "./middleware/rate-limit";
 import { initializeChatRealtime } from "./realtime/chat-realtime.js";
 
 const app = express();
+configValidation.validateProductionConfig();
 const PORT = config.apiPort;
 
 const corsOrigins = config.apiCorsOrigins;

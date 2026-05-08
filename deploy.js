@@ -1,5 +1,7 @@
 import { spawnSync } from "child_process";
 
+process.env.OLLAMA_IMAGE ??= "ollama/ollama:0.30.0-rc7";
+
 /**
  * Executa um comando no shell do sistema operacional.
  * @param {string} command - O comando principal (ex: docker)

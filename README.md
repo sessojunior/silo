@@ -72,12 +72,11 @@ cp env.example .env
 
 # Edite o arquivo .env com suas configurações
 
-# 2. Executar Deploy (Funciona em Windows e Linux)
-# O comando `npm run deploy` internamente executa `docker compose --profile db up -d --build`
+# 2. Executar Deploy (Funciona em Windows, Linux e macOS)
+# Para deploy, rode apenas `npm run deploy`
 npm run deploy
 
-# Ou execute manualmente:
-# docker compose --profile db up -d --build
+# O compose manual fica só para troubleshooting avançado
 
 # ✅ Acesse:
 # - Se NEXT_PUBLIC_BASE_PATH='/silo' → http://localhost:3000/silo

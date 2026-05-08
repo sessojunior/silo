@@ -34,11 +34,25 @@ const FALLBACK_EXAMPLES: AiAssistantExampleDto[] = [
     scope: "models",
   },
   {
+    id: "model-issues",
+    title: "Problemas por modelo",
+    prompt: "Qual modelo está acumulando mais problemas nesta semana?",
+    description: "Cruza problemas recorrentes, disponibilidade e impacto recente.",
+    scope: "problems",
+  },
+  {
     id: "pending",
     title: "Pendências",
     prompt: "Quais pendências estão mais críticas agora?",
     description: "Mostra projetos, tarefas e avanço do trabalho.",
     scope: "pending",
+  },
+  {
+    id: "effectiveness",
+    title: "Eficácia de intervenção",
+    prompt: "A intervenção realizada foi eficaz e eficiente?",
+    description: "Compara o período atual com o anterior e indica a tendência.",
+    scope: "models",
   },
   {
     id: "reports",
@@ -53,6 +67,13 @@ const FALLBACK_EXAMPLES: AiAssistantExampleDto[] = [
     prompt: "Quais categorias de problema mais cresceram na última semana?",
     description: "Cruza incidências, categorias e tendência.",
     scope: "problems",
+  },
+  {
+    id: "projects",
+    title: "Projetos em andamento",
+    prompt: "Quais projetos estão em andamento e como acelerar os mais lentos?",
+    description: "Aponta gargalos, progresso e ações prioritárias.",
+    scope: "projects",
   },
 ];
 

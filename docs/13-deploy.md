@@ -61,17 +61,13 @@ POSTGRES_PORT=5432
 
 ### 5) Subir tudo com banco e volumes
 
-Execute o script de deploy automatizado (funciona em Windows, Linux e Mac):
+Execute apenas o script de deploy automatizado. Este é o comando oficial para Windows, Linux e Mac:
 
 ```bash
 npm run deploy
 ```
 
-Ou, se preferir o comando manual:
-
-```bash
-docker compose --profile db up -d --build
-```
+Não use o `docker compose --profile db up -d --build` no fluxo normal. Ele é um detalhe interno do `npm run deploy` e só serve para troubleshooting avançado.
 
 O que acontece aqui:
 
@@ -82,6 +78,8 @@ O que acontece aqui:
    - `npm run start` (Inicia o servidor Next.js)
 
 Tudo isso acontece de forma automática graças ao script `apps/web/entrypoint.sh`.
+
+3. **Orquestração**: o `npm run deploy` já chama o Docker Compose correto por baixo, então não é necessário montar os comandos manualmente.
 
 ### 6) Ver se está rodando
 

@@ -554,6 +554,12 @@ async function seed() {
     checkTableData("chat_messages", () =>
       db.select().from(schema.chatMessage).limit(1),
     ),
+    checkTableData("ai_assistant_thread", () =>
+      db.select().from(schema.aiAssistantThread).limit(1),
+    ),
+    checkTableData("ai_assistant_message", () =>
+      db.select().from(schema.aiAssistantMessage).limit(1),
+    ),
   ]);
 
   const [
@@ -566,6 +572,8 @@ async function seed() {
     helpCheck,
     presenceCheck,
     messagesCheck,
+    assistantThreadsCheck,
+    assistantMessagesCheck,
   ] = tableChecks;
 
   console.log(`📊 Status das tabelas:`);
@@ -595,6 +603,12 @@ async function seed() {
   );
   console.log(
     `   - Mensagens Chat: ${messagesCheck.hasData ? `✅ COM DADOS (${messagesCheck.count})` : "🔄 VAZIA"}`,
+  );
+  console.log(
+    `   - Threads IA: ${assistantThreadsCheck.hasData ? `✅ COM DADOS (${assistantThreadsCheck.count})` : "🔄 VAZIA"}`,
+  );
+  console.log(
+    `   - Mensagens IA: ${assistantMessagesCheck.hasData ? `✅ COM DADOS (${assistantMessagesCheck.count})` : "🔄 VAZIA"}`,
   );
 
   // Variáveis para controle de fluxo
@@ -1745,6 +1759,116 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
       }
     } else {
       console.log("⚠️ Nenhuma tarefa encontrada para criar histórico");
+    }
+
+    // === 14. CRIAR CONVERSA EXEMPLO DO ASSISTENTE DE IA ===
+    if (!assistantThreadsCheck.hasData && !assistantMessagesCheck.hasData) {
+      console.log("🔵 Criando conversa exemplo do assistente de IA...");
+
+      const assistantOwner = userId
+        ? await db
+            .select({ id: schema.authUser.id, name: schema.authUser.name })
+            .from(schema.authUser)
+            .where(eq(schema.authUser.id, userId))
+            .limit(1)
+        : await db
+            .select({ id: schema.authUser.id, name: schema.authUser.name })
+            .from(schema.authUser)
+            .where(eq(schema.authUser.isActive, true))
+            .limit(1);
+
+      const assistantOwnerRow = assistantOwner[0];
+
+      if (assistantOwnerRow) {
+        const [productRows, problemRows, projectRows, taskRows] = await Promise.all([
+          db.select({ id: schema.product.id }).from(schema.product),
+          db.select({ id: schema.productProblem.id }).from(schema.productProblem),
+          db.select({ id: schema.project.id }).from(schema.project),
+          db.select({ id: schema.projectTask.id }).from(schema.projectTask),
+        ]);
+
+        const assistantThreadId = randomUUID();
+        const seedTimestamp = new Date();
+        const userPrompt = "Quais problemas e pendências merecem atenção agora?";
+        const assistantAnswer = [
+          `Neste seed existem ${productRows.length} produtos, ${problemRows.length} problemas, ${projectRows.length} projetos e ${taskRows.length} tarefas para análise inicial.`,
+          "Eu começaria pelos problemas recorrentes, pelas pendências de projeto e pelos produtos com menor disponibilidade observada no período.",
+          "Se quiser, eu posso detalhar por produto, por categoria ou por período de tempo.",
+        ].join("\n\n");
+
+        await db.insert(schema.aiAssistantThread).values({
+          id: assistantThreadId,
+          userId: assistantOwnerRow.id,
+          title: "Análise inicial da operação",
+          lastMessagePreview: assistantAnswer.slice(0, 120),
+          messageCount: 2,
+          lastMessageAt: seedTimestamp,
+          createdAt: seedTimestamp,
+          updatedAt: seedTimestamp,
+        });
+
+        await db.insert(schema.aiAssistantMessage).values([
+          {
+            id: randomUUID(),
+            threadId: assistantThreadId,
+            senderType: "user",
+            senderUserId: assistantOwnerRow.id,
+            senderName: assistantOwnerRow.name,
+            content: userPrompt,
+            metadata: {
+              source: "seed",
+            },
+            createdAt: seedTimestamp,
+            updatedAt: seedTimestamp,
+          },
+          {
+            id: randomUUID(),
+            threadId: assistantThreadId,
+            senderType: "assistant",
+            senderUserId: null,
+            senderName: "Assistente de IA",
+            provider: "seed",
+            model: "demo",
+            generationStatus: "success",
+            latencyMs: 0,
+            errorMessage: null,
+            content: assistantAnswer,
+            metadata: {
+              scope: "reports",
+              isInScope: true,
+              refusalReason: null,
+              suggestedQuestions: [
+                "Quais produtos estão mais críticos?",
+                "Quais pendências precisam de prioridade?",
+                "Quais problemas mais se repetiram na última semana?",
+              ],
+              citations: [
+                {
+                  label: "Seed de operação",
+                  detail: `${productRows.length} produtos, ${problemRows.length} problemas, ${projectRows.length} projetos e ${taskRows.length} tarefas`,
+                },
+              ],
+              generation: {
+                provider: "seed",
+                model: "demo",
+                status: "success",
+                latencyMs: 0,
+                errorMessage: null,
+              },
+              contextSummary:
+                "Conversa de demonstração criada pelo seed para validar o histórico do assistente de IA.",
+            },
+            createdAt: seedTimestamp,
+            updatedAt: seedTimestamp,
+          },
+        ]);
+
+        console.log("✅ Conversa exemplo do assistente de IA criada!");
+      } else {
+        console.log("⚠️ Nenhum usuário disponível para semear conversa do assistente.");
+      }
+    } else {
+      console.log("⚠️ Assistente de IA já possui dados, pulando seed...");
     }
 
     console.log("✅ Seed finalizado com sucesso!");

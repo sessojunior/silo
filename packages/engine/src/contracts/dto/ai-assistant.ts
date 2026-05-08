@@ -102,6 +102,16 @@ export const AiAssistantCitationSchema = z.object({
 
 export type AiAssistantCitationDto = z.infer<typeof AiAssistantCitationSchema>;
 
+export const AiAssistantGenerationSchema = z.object({
+  provider: z.string(),
+  model: z.string(),
+  status: z.enum(["success", "fallback", "error"]),
+  latencyMs: z.number().int().nonnegative(),
+  errorMessage: z.string().optional().nullable(),
+});
+
+export type AiAssistantGenerationDto = z.infer<typeof AiAssistantGenerationSchema>;
+
 export const AiAssistantMessageResponseSchema = z.object({
   threadId: z.string(),
   thread: AiAssistantThreadSummarySchema.optional(),
@@ -112,6 +122,7 @@ export const AiAssistantMessageResponseSchema = z.object({
   answer: z.string(),
   suggestedQuestions: z.array(z.string()),
   citations: z.array(AiAssistantCitationSchema),
+  generation: AiAssistantGenerationSchema.optional(),
   contextSummary: z.string(),
 });
 
