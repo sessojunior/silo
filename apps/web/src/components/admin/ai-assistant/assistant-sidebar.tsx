@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type {
   AiAssistantExampleDto,
   AiAssistantThreadSummaryDto,
-} from "@silo/engine/contracts";
+} from "@silo/engine/contracts/dto/ai-assistant";
 import Avatar from "@/components/ui/avatar";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 

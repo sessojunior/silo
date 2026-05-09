@@ -4,7 +4,7 @@ import type {
   AiAssistantCitationDto,
   AiAssistantGenerationDto,
   AiAssistantScope,
-} from "@silo/engine/contracts";
+} from "@silo/engine/contracts/dto/ai-assistant";
 import { config } from "@silo/engine/config";
 import { chatWithOllama, type OllamaChatMessage } from "../infra/llm/ollama-client.js";
 

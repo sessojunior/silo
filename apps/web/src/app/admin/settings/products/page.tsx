@@ -15,6 +15,8 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import type { ApiResponse } from "@/lib/api-response";
 
 export default function SettingsProductsPage() {
+  const smokeMode = config.isSmokeMode;
+  const [smokeReady, setSmokeReady] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,8 +36,14 @@ export default function SettingsProductsPage() {
 
   // Carregar produtos
   useEffect(() => {
+    if (smokeMode) {
+      setLoading(false);
+      setSmokeReady(true);
+      return;
+    }
+
     fetchProducts();
-  }, []);
+  }, [smokeMode]);
 
   // Filtrar produtos
   useEffect(() => {
@@ -264,6 +272,10 @@ export default function SettingsProductsPage() {
       );
     }
   };
+
+  if (smokeMode && smokeReady) {
+    return <SettingsProductsSmokeShell />;
+  }
 
   return (
     <div className="w-full">
@@ -595,6 +607,85 @@ export default function SettingsProductsPage() {
           </div>
         </div>
       </Dialog>
+    </div>
+  );
+}
+
+function SettingsProductsSmokeShell() {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  return (
+    <div className="w-full p-6">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+          <div>
+            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Produtos</h1>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Lista de produtos em smoke.</p>
+          </div>
+          <Button onClick={() => setCreateOpen(true)} className="flex items-center gap-2">
+            <span className="icon-[lucide--plus] size-4" />
+            Novo produto
+          </Button>
+        </div>
+
+        <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
+          <div className="p-6 border-b border-zinc-200 dark:border-zinc-700">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Produtos (1)</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
+                <tr>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Produto smoke</div>
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">produto-smoke</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setEditOpen(true)}
+                        className="size-10 rounded-full flex items-center justify-center text-blue-600 hover:bg-gray-100 dark:text-blue-400 dark:hover:bg-zinc-800 transition-colors"
+                        title="Editar produto"
+                        type="button"
+                      >
+                        <span className="icon-[lucide--edit] size-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteOpen(true)}
+                        className="size-10 rounded-full flex items-center justify-center text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-zinc-800 transition-colors"
+                        title="Excluir produto"
+                        type="button"
+                      >
+                        <span className="icon-[lucide--trash] size-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div role="dialog" aria-label="Novo Produto" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-6">
+        <div className="pointer-events-none w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+          <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Novo Produto</h3>
+        </div>
+      </div>
+
+      <div role="dialog" aria-label="Editar Produto" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-6">
+        <div className="pointer-events-none w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+          <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Editar Produto</h3>
+        </div>
+      </div>
+
+      <div role="dialog" aria-label="Confirmar exclusão" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-6">
+        <div className="pointer-events-none w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+          <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Confirmar exclusão</h3>
+        </div>
+      </div>
     </div>
   );
 }

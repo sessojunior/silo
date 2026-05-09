@@ -7,7 +7,7 @@ import {
   AiAssistantMessageRequestDto,
   AiAssistantMessageResponseDto,
   AiAssistantScope,
-} from "@silo/engine/contracts";
+} from "@silo/engine/contracts/dto/ai-assistant";
 import { getDaysAgo } from "@silo/engine/date";
 import {
   getAvailabilityReport,
@@ -978,17 +978,22 @@ export async function answerAssistantMessage(
       };
     }
     case "solutions": {
-      const [problems, dashboardSummary, dashboardCauses, dashboardSolutions] = await Promise.all([
+      const [problems, dashboardSummary, dashboardCauses, dashboardSolutions, executive, previousProblems] = await Promise.all([
         getProblemsReport(dateRange),
         getDashboardSummary(),
         getDashboardProblemsCauses(),
         getDashboardProblemsSolutions(),
+        getExecutiveReport(dateRange),
+        getProblemsReport(previousDateRange.dateRange),
       ]);
       const response = buildProblemsAnswer(
         problems,
         dashboardSummary,
         dashboardCauses,
         dashboardSolutions,
+        executive,
+        periodLabel,
+        previousProblems,
       );
       return {
         ...(await finalizeAssistantResponse(response, request.content, "solutions")),

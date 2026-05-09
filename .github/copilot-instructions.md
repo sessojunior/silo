@@ -42,6 +42,7 @@ docs/         # Documentação completa (leia docs/00-start.md primeiro)
 5. `@silo/database` expõe apenas `db`, `schema` e helpers de banco — sem lógica de negócio.
 6. Arquivos de código seguem **kebab-case**. Componentes React seguem **PascalCase**.
 7. Variáveis de ambiente vivem em `.env` na raiz. Validação via Zod no boot de cada app. Nunca `process.env` direto — use `@/lib/config`.
+8. A versão exibida no web fica somente em `apps/web/src/lib/config.ts` como literal `appVersion`. Não usar env var, CI, `package.json` ou outra fonte para esse valor.
 
 ---
 

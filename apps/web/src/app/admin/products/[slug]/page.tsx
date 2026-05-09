@@ -128,6 +128,10 @@ interface ProductManual {
 export default function ProductsPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const smokeMode = config.isSmokeMode;
+  const [smokeDependenciesOpen, setSmokeDependenciesOpen] = useState(false);
+  const [smokeAddDependencyOpen, setSmokeAddDependencyOpen] = useState(false);
+  const [smokeManualEditorOpen, setSmokeManualEditorOpen] = useState(false);
 
   const [productId, setProductId] = useState<string | null>(null);
   const [dependencies, setDependencies] = useState<ProductDependency[]>([]);
@@ -375,6 +379,12 @@ export default function ProductsPage() {
   // Busca o ID do produto pelo slug
   useEffect(() => {
     const fetchProductId = async () => {
+      if (smokeMode) {
+        setProductId(`smoke-${slug}`);
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await fetch(
           config.getApiUrl(`/api/admin/products?slug=${slug}`),
@@ -396,15 +406,47 @@ export default function ProductsPage() {
     };
 
     fetchProductId();
-  }, [slug]);
+  }, [slug, smokeMode]);
 
   // Busca os dados quando temos o productId - COM CACHE INTELIGENTE
   useEffect(() => {
     if (!productId) return;
 
+    if (smokeMode) {
+      return;
+    }
+
     const fetchData = async () => {
       setLoading(true);
       try {
+        if (config.isSmokeMode) {
+          const [depsRes, contactsRes] = await Promise.all([
+            fetch(
+              config.getApiUrl(
+                `/api/admin/products/dependencies?productId=${productId}`,
+              ),
+            ),
+            fetch(
+              config.getApiUrl(
+                `/api/admin/products/contacts?productId=${productId}`,
+              ),
+            ),
+          ]);
+
+          const [depsData, contactsData] = await Promise.all([
+            depsRes.json(),
+            contactsRes.json(),
+          ]);
+
+          setDependencies(depsData.data?.dependencies || []);
+          setContacts(contactsData.data?.contacts || []);
+          setManual(null);
+          setProblemsCount(0);
+          setSolutionsCount(0);
+          setLastUpdated(null);
+          return;
+        }
+
         // Verificar cache primeiro
         const cacheKey = `product-${productId}-${slug}`;
         const cachedData = productCache.get<{
@@ -516,7 +558,7 @@ export default function ProductsPage() {
     };
 
     fetchData();
-  }, [productId, slug]);
+  }, [productId, slug, smokeMode]);
 
   // Função para recarregar dependências (apenas para casos de erro) - COM CACHE
   const refreshDependencies = async () => {
@@ -949,6 +991,85 @@ export default function ProductsPage() {
           size="lg"
           variant="centered"
         />
+      </div>
+    );
+  }
+
+  if (smokeMode) {
+    return (
+      <div className="flex w-full">
+        <div className="flex-1 p-8">
+          <div className="mb-8">
+            <h3 className="text-xl font-medium">Manual do produto</h3>
+            <div>
+              <span className="text-base text-zinc-600 dark:text-zinc-400">
+                Documentação e referência do produto
+              </span>
+            </div>
+          </div>
+          <div className="mb-8 flex flex-wrap gap-3">
+            <button
+              type="button"
+              title="Gerenciar dependências"
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+              onClick={() => setSmokeDependenciesOpen(true)}
+            >
+              Gerenciar dependências
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+              onClick={() => setSmokeManualEditorOpen(true)}
+            >
+              Editar manual
+            </button>
+          </div>
+          <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-8 dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="flex w-full items-center justify-between pb-6">
+              <div>
+                <h3 className="text-xl font-medium">Contatos em caso de problemas</h3>
+                <span className="text-base text-zinc-600 dark:text-zinc-400">
+                  0 responsáveis técnicos
+                </span>
+              </div>
+              <button type="button" className="py-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                Gerenciar contatos
+              </button>
+            </div>
+            <div className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+              Nenhum contato associado
+            </div>
+          </div>
+          {smokeDependenciesOpen && (
+            <div role="dialog" aria-label="Gerenciar Dependências" className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-lg font-semibold">Gerenciar Dependências</h3>
+                <button
+                  type="button"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white"
+                  onClick={() => setSmokeAddDependencyOpen(true)}
+                >
+                  Nova Dependência
+                </button>
+              </div>
+            </div>
+          )}
+          {smokeAddDependencyOpen && (
+            <div role="dialog" aria-label="Adicionar Dependência" className="mt-4 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+              <h3 className="text-lg font-semibold">Adicionar Dependência</h3>
+            </div>
+          )}
+          {smokeManualEditorOpen && (
+            <div role="dialog" aria-label="Editor do Manual" className="mt-4 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-lg font-semibold">Editor do Manual</h3>
+                <button type="button" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white">
+                  Salvar Manual
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }

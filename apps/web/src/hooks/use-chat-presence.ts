@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useChat } from "@/context/chat-context";
-import { readApiResponse } from "@/lib/api-response";
 import { config } from "@/lib/config";
+import { readApiResponse } from "@silo/engine/contracts/api-response";
 
 export function useChatPresence() {
   const [localPresence, setLocalPresence] = useState<"visible" | "invisible">(

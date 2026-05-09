@@ -17,10 +17,31 @@
  * Para chamadas HTTP internas, use sempre config.getApiUrl('/api/...').
  */
 
+declare global {
+  interface Window {
+    __SILO_SMOKE_MODE__?: boolean;
+  }
+}
+
 /**
  * Configurações de URLs do sistema
  */
 export const config = {
+  /**
+   * Versão exibida na interface do web.
+   * Mantida como literal no código para evitar dependência de env ou CI.
+   */
+  appVersion: "26.5.17.3",
+
+  get isSmokeMode(): boolean {
+    if (typeof window !== "undefined" && window.__SILO_SMOKE_MODE__ === true) {
+      return true;
+    }
+
+    const raw = (process.env.NEXT_PUBLIC_SMOKE_MODE || "").trim().toLowerCase();
+    return raw === "true";
+  },
+
   get publicBasePath(): string {
     const raw = (process.env.NEXT_PUBLIC_BASE_PATH || "/silo").trim();
     if (raw.length === 0 || raw === "/") return "";

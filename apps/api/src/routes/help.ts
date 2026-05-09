@@ -10,7 +10,7 @@ const router = Router();
 router.get("/", authMiddleware, requirePermission("help", "list"), async (_req, res) => {
   try {
     const helpDoc = await helpService.getHelp();
-    res.json({ success: true, data: helpDoc });
+    res.json({ success: true, data: helpDoc.data });
   } catch (err) {
     console.error("❌ [API_HELP] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao carregar documentação" });

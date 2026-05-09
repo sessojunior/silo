@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { config } from "@silo/engine/config";
+import { respondServiceError as respondProductServiceError } from "../lib/respond-service-error.js";
 import * as productService from "../services/product-service.js";
 
 const router = Router();
@@ -33,13 +34,12 @@ router.post("/receive", async (req: Request, res: Response) => {
     }
 
     const result = await productService.appendProductFlowEntry({ productId, slug, payload });
-    if ("error" in result) {
-      const status = "status" in result && typeof result.status === "number" ? result.status : 400;
-      respondProductFlowError(res, status, result.error);
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao processar fluxo de produto.");
       return;
     }
 
-    respondProductFlowSuccess(res, result.entry);
+    respondProductFlowSuccess(res, result.data.entry);
   } catch (error) {
     console.error("[PRODUCT_FLOW] Error receiving flow payload:", error);
     respondProductFlowError(res, 500, "Erro interno do servidor.");

@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "@silo/engine/format/toast";
 import { config } from "@/lib/config";
-import { readApiResponse } from "@/lib/api-response";
+import { readApiResponse } from "@silo/engine/contracts/api-response";
 import Button from "@/components/ui/button";
 import Dialog from "@/components/ui/dialog";
 import Input from "@/components/ui/input";

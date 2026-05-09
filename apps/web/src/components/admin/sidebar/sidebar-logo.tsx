@@ -9,8 +9,6 @@ export default function SidebarLogo() {
     "/images/logo-horizontal-dark.png",
   );
 
-  const VERSION = "26.5.17.3"; // Formato da versão é "Ano.Mês.Dia.Contagem"
-
   return (
     <div className="flex items-center gap-3">
       <Image
@@ -27,7 +25,12 @@ export default function SidebarLogo() {
         height={258}
         className="hidden h-10 w-auto dark:block"
       />
-      <div className="text-zinc-500 dark:text-zinc-400 text-xs mt-1" title="Versão do Silo no formato Ano.Mês.Dia.Hora.Minuto.">v{VERSION}</div>
+      <div
+        className="mt-1 text-xs text-zinc-500 dark:text-zinc-400"
+        title="Versão do Silo"
+      >
+        v{appConfig.appVersion}
+      </div>
     </div>
   );
 }

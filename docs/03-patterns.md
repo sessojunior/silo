@@ -35,6 +35,16 @@ Essa política mantém o mesmo comportamento em Windows e Linux sem depender de 
 
 ---
 
+## 🚪 **ENTRYPOINTS E BARRELS**
+
+Quando uma feature ou domínio começar a acumular vários routers, componha um entrypoint explícito e monte apenas esse ponto no bootstrap da aplicação.
+
+- Prefira arquivos como `auth-router.ts` e `products-router.ts` para agrupar módulos do mesmo domínio.
+- Mantenha barrels públicos finos; se um índice começar a exportar demais, troque para subpaths explícitos.
+- Evite múltiplos mounts soltos do mesmo domínio no bootstrap principal quando um router composto resolver a organização.
+
+---
+
 ## 📦 **IMPORTS E ESTRUTURA**
 
 ### **Imports**
@@ -523,6 +533,30 @@ export function Component() {
   )
 }
 ```
+
+---
+
+## 📘 **PLAYBOOK CURTO POR DOMÍNIO**
+
+### **Auth**
+
+- Separe cada fluxo em um arquivo explícito quando houver mais de uma responsabilidade.
+- Valide a entrada na borda e mantenha services só com regra de negócio.
+- Monte o bootstrap com um entrypoint composto, não com mounts espalhados.
+
+### **Products**
+
+- Mantenha rotas base e rotas estendidas compondo um único ponto de montagem.
+- Extraia blocos grandes para services com nomes de domínio claros.
+- Prefira DTOs e contratos explícitos quando o payload atravessar fronteiras.
+
+### **Uploads**
+
+- Deixe o handler fino e concentre a regra de armazenamento em helpers próprios.
+- Valide metadados antes de tocar no filesystem.
+- Separe leitura, escrita e limpeza para evitar handlers monolíticos.
+
+Esses três domínios devem seguir o mesmo padrão: entrypoints explícitos, validação na borda e barrels finos.
 
 ---
 

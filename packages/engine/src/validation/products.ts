@@ -106,3 +106,14 @@ export const productCreateSchema = productBaseSchema;
 export const productUpdateSchema = productBaseSchema.extend({
   id: z.string().min(1, "ID do produto é obrigatório"),
 });
+
+export const productListQuerySchema = z.object({
+  slug: z.string().trim().optional(),
+  name: z.string().trim().optional(),
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().optional(),
+});
+
+export const productDeleteQuerySchema = z.object({
+  id: z.string().trim().min(1, "ID do produto é obrigatório."),
+});

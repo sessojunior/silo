@@ -33,6 +33,11 @@ export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
   const [data, setData] = useState<ApiResponse | null>(null);
 
   useEffect(() => {
+    if (config.isSmokeMode) {
+      setData(null);
+      return;
+    }
+
     async function load() {
       try {
         const res = await fetch(
@@ -150,7 +155,7 @@ export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
 
   return (
     <div className="w-full max-w-lg">
-      {hasChartData && (
+      {hasChartData && !config.isSmokeMode && (
         <ReactECharts
           key={refresh}
           option={options}
@@ -159,6 +164,7 @@ export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
           lazyUpdate
         />
       )}
+      {config.isSmokeMode && <div className="h-[360px] w-full" />}
     </div>
   );
 }

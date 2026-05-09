@@ -3,6 +3,7 @@ import type { Response as ExpressResponse } from "express";
 import path from "path";
 import { authMiddleware } from "../middleware/auth.js";
 import { requireAdmin } from "../middleware/permissions.js";
+import { respondServiceError as respondIncidentServiceError } from "../lib/respond-service-error.js";
 import {
   listIncidents,
   createIncident,
@@ -16,28 +17,6 @@ import {
 
 const router = Router();
 router.use(authMiddleware);
-
-type IncidentServiceErrorResult = {
-  error: unknown;
-  status?: number;
-};
-
-const respondIncidentServiceError = (
-  res: ExpressResponse,
-  result: unknown,
-  fallbackMessage: string,
-): boolean => {
-  if (typeof result !== "object" || result === null || !("error" in result)) {
-    return false;
-  }
-
-  const errorResult = result as IncidentServiceErrorResult;
-  res.status(typeof errorResult.status === "number" ? errorResult.status : 400).json({
-    success: false,
-    error: typeof errorResult.error === "string" ? errorResult.error : fallbackMessage,
-  });
-  return true;
-};
 
 const respondIncidentBadRequest = (res: ExpressResponse, message: string): void => {
   res.status(400).json({ success: false, error: message });
@@ -63,8 +42,12 @@ router.post("/", requireAdmin(), async (req, res) => {
   }
   try {
     const result = await createIncident({ name, color });
-    if ("error" in result) { respondIncidentServiceError(res, result, "Erro interno ao criar incidente"); return; }
-    res.json({ success: true, data: result });
+    if (!result.ok) {
+      respondIncidentServiceError(res, result, "Erro interno ao criar incidente");
+      return;
+    }
+    const { data } = result;
+    res.json({ success: true, data });
   } catch (err) {
     console.error("❌ [INCIDENTS] POST:", err);
     res.status(500).json({ success: false, error: "Erro interno ao criar incidente" });
@@ -80,7 +63,10 @@ router.put("/", requireAdmin(), async (req, res) => {
   }
   try {
     const result = await updateIncident({ id, name, color });
-    if ("error" in result) { respondIncidentServiceError(res, result, "Erro interno ao atualizar incidente"); return; }
+    if (!result.ok) {
+      respondIncidentServiceError(res, result, "Erro interno ao atualizar incidente");
+      return;
+    }
     res.json({ success: true, message: "Incidente atualizado com sucesso" });
   } catch (err) {
     console.error("❌ [INCIDENTS] PUT:", err);
@@ -97,7 +83,10 @@ router.delete("/", requireAdmin(), async (req, res) => {
   }
   try {
     const result = await deleteIncident(id);
-    if ("error" in result) { respondIncidentServiceError(res, result, "Erro interno ao excluir incidente"); return; }
+    if (!result.ok) {
+      respondIncidentServiceError(res, result, "Erro interno ao excluir incidente");
+      return;
+    }
     res.json({ success: true, data: { success: true } });
   } catch (err) {
     console.error("❌ [INCIDENTS] DELETE:", err);
@@ -119,9 +108,9 @@ router.get("/usage", requireAdmin(), async (req, res) => {
     res.json({
       success: true,
       data: {
-        inUse: result.inUse,
-        usageCount: result.usageCount,
-        usageDetails: result.usageDetails,
+        inUse: result.data.inUse,
+        usageCount: result.data.usageCount,
+        usageDetails: result.data.usageDetails,
       },
     });
   } catch (err) {
@@ -152,8 +141,11 @@ router.post("/images", requireAdmin(), async (req, res) => {
       return;
     }
     const result = await createIncidentImage({ image: base64, filename });
-    if ("error" in result) { respondIncidentServiceError(res, result, "Erro ao salvar imagem"); return; }
-    res.json({ success: true, data: { filename: result.filename, url: result.url } });
+    if (!result.ok) {
+      respondIncidentServiceError(res, result, "Erro ao salvar imagem");
+      return;
+    }
+    res.json({ success: true, data: { filename: result.data.filename, url: result.data.url } });
   } catch (err) {
     console.error("❌ [API_INCIDENTS] POST /images:", err);
     res.status(500).json({ success: false, error: "Erro ao salvar imagem" });
@@ -169,7 +161,10 @@ router.delete("/images", requireAdmin(), async (req, res) => {
       return;
     }
     const result = await deleteIncidentImage(filename);
-    if ("error" in result) { respondIncidentServiceError(res, result, "Erro ao excluir imagem"); return; }
+    if (!result.ok) {
+      respondIncidentServiceError(res, result, "Erro ao excluir imagem");
+      return;
+    }
     res.json({ success: true, message: "Imagem excluída com sucesso" });
   } catch (err) {
     console.error("❌ [API_INCIDENTS] DELETE /images:", err);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ApiResponse } from "@/lib/api-response";
+import { config } from "@/lib/config";
 
 export default function ServerClock({ apiUrl }: { apiUrl: string }) {
   // Placeholder estável para o primeiro render SSR/CSR e evitar mismatch.
@@ -11,6 +12,13 @@ export default function ServerClock({ apiUrl }: { apiUrl: string }) {
 
 
   useEffect(() => {
+    if (config.isSmokeMode) {
+      const now = new Date();
+      setDate(now.toLocaleDateString("pt-BR"));
+      setTime(now.toLocaleTimeString("pt-BR", { hour12: false }));
+      return;
+    }
+
     let offset = 0;
     let interval: NodeJS.Timeout | undefined;
 

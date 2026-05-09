@@ -12,6 +12,36 @@ export const DEFAULT_GROUP_PERMISSIONS: Array<{ resource: string; action: string
   { resource: "productActivities", action: "list" },
 ];
 
+type GroupServiceSuccess<T> = {
+  ok: true;
+  data: T;
+  message?: string;
+};
+
+type GroupServiceError = {
+  ok: false;
+  error: string;
+  status?: number;
+  field?: string;
+};
+
+const success = <T>(data: T, message?: string): GroupServiceSuccess<T> => ({
+  ok: true,
+  data,
+  ...(message ? { message } : {}),
+});
+
+const failure = (
+  error: string,
+  status?: number,
+  extra?: Omit<GroupServiceError, "ok" | "error" | "status">,
+): GroupServiceError => ({
+  ok: false,
+  error,
+  ...(typeof status === "number" ? { status } : {}),
+  ...(extra ?? {}),
+});
+
 export async function listGroups(opts: { search?: string; status?: string }) {
   const { search, status } = opts;
   const conditions = [];
@@ -41,11 +71,11 @@ export async function createGroup(data: {
   isDefault?: boolean;
 }) {
   if (data.role === "admin") {
-    return { error: 'Não é possível criar grupos com permissões de administrador.', field: "role" };
+    return failure('Não é possível criar grupos com permissões de administrador.', 400, { field: "role" });
   }
 
   const existing = await db.select().from(group).where(eq(group.name, data.name.trim())).limit(1);
-  if (existing.length > 0) return { error: "Já existe um grupo com este nome.", field: "name" };
+  if (existing.length > 0) return failure("Já existe um grupo com este nome.", 400, { field: "name" });
 
   if (data.isDefault) {
     await db.update(group).set({ isDefault: false, updatedAt: sql`NOW()` }).where(eq(group.isDefault, true));
@@ -73,7 +103,7 @@ export async function createGroup(data: {
     }
   });
 
-  return newGroup;
+  return success(newGroup);
 }
 
 export async function updateGroup(data: {
@@ -87,30 +117,30 @@ export async function updateGroup(data: {
   isDefault?: boolean;
 }) {
   const existing = await db.select().from(group).where(eq(group.id, data.id)).limit(1);
-  if (existing.length === 0) return { error: "Grupo não encontrado.", status: 404 };
+  if (existing.length === 0) return failure("Grupo não encontrado.", 404);
 
   const g = existing[0];
 
   if (g.role === "admin") {
-    if (data.active === false) return { error: "Não é possível desativar o grupo de administradores.", field: "active" };
-    if (data.isDefault === true) return { error: "Não é possível tornar grupos administrativos como padrão.", field: "isDefault" };
+    if (data.active === false) return failure("Não é possível desativar o grupo de administradores.", 400, { field: "active" });
+    if (data.isDefault === true) return failure("Não é possível tornar grupos administrativos como padrão.", 400, { field: "isDefault" });
   }
 
   if (g.name === "Administradores" && data.name.trim() !== "Administradores") {
-    return { error: "Não é possível alterar o nome do grupo Administradores.", field: "name" };
+    return failure("Não é possível alterar o nome do grupo Administradores.", 400, { field: "name" });
   }
 
   const duplicate = await db.select().from(group).where(and(eq(group.name, data.name.trim()), not(eq(group.id, data.id)))).limit(1);
-  if (duplicate.length > 0) return { error: "Já existe outro grupo com este nome.", field: "name" };
+  if (duplicate.length > 0) return failure("Já existe outro grupo com este nome.", 400, { field: "name" });
 
   if (data.isDefault === false) {
     const currentDefaults = await db.select().from(group).where(eq(group.isDefault, true));
     if (currentDefaults.length === 1 && currentDefaults[0].id === data.id) {
-      return { error: "Não é possível desmarcar o último grupo padrão.", field: "isDefault" };
+      return failure("Não é possível desmarcar o último grupo padrão.", 400, { field: "isDefault" });
     }
   }
 
-  if (data.role === "admin") return { error: 'Não é possível alterar um grupo para ter permissões de administrador.', field: "role" };
+  if (data.role === "admin") return failure('Não é possível alterar um grupo para ter permissões de administrador.', 400, { field: "role" });
 
   if (data.isDefault) {
     await db.update(group).set({ isDefault: false, updatedAt: sql`NOW()` }).where(eq(group.isDefault, true));
@@ -128,12 +158,12 @@ export async function updateGroup(data: {
   };
 
   await db.update(group).set(updatedData).where(eq(group.id, data.id));
-  return { id: data.id, ...updatedData };
+  return success({ id: data.id, ...updatedData });
 }
 
 export async function getGroupPermissions(groupId: string) {
   const existingGroup = await db.select({ id: group.id, role: group.role }).from(group).where(eq(group.id, groupId)).limit(1);
-  if (!existingGroup.length) return { error: "Grupo não encontrado.", status: 404 };
+  if (!existingGroup.length) return failure("Grupo não encontrado.", 404);
 
   const rows = await db.select({ resource: groupPermission.resource, action: groupPermission.action }).from(groupPermission).where(eq(groupPermission.groupId, groupId));
   const existingSet = new Set(rows.map((r) => `${r.resource}:${r.action}`));
@@ -158,7 +188,7 @@ export async function getGroupPermissions(groupId: string) {
     return acc;
   }, {});
 
-  return { permissions };
+  return success({ permissions });
 }
 
 export async function updateGroupPermission(params: {
@@ -169,14 +199,14 @@ export async function updateGroupPermission(params: {
 }) {
   const { groupId, resource, action, enabled } = params;
   const existingGroup = await db.select({ id: group.id, role: group.role }).from(group).where(eq(group.id, groupId)).limit(1);
-  if (!existingGroup.length) return { error: "Grupo não encontrado.", status: 404 };
+  if (!existingGroup.length) return failure("Grupo não encontrado.", 404);
   if (existingGroup[0].role === "admin") {
-    return { error: "Não é possível alterar permissões do grupo administrador.", status: 400 };
+    return failure("Não é possível alterar permissões do grupo administrador.", 400);
   }
 
   const isImmutable = DEFAULT_GROUP_PERMISSIONS.some((p) => p.resource === resource && p.action === action);
   if (!enabled && isImmutable) {
-    return { error: "Esta permissão é obrigatória e não pode ser desativada.", status: 400 };
+    return failure("Esta permissão é obrigatória e não pode ser desativada.", 400);
   }
 
   if (enabled) {
@@ -190,19 +220,19 @@ export async function updateGroupPermission(params: {
     await db.delete(groupPermission).where(and(eq(groupPermission.groupId, groupId), eq(groupPermission.resource, resource), eq(groupPermission.action, action)));
   }
 
-  return { ok: true, data: { groupId, resource, action, enabled }, message: "Permissão atualizada com sucesso." };
+  return success({ groupId, resource, action, enabled }, "Permissão atualizada com sucesso.");
 }
 
 export async function removeUserFromGroup(userId: string, groupId: string) {
   await db.delete(userGroup).where(and(eq(userGroup.userId, userId), eq(userGroup.groupId, groupId)));
-  return { ok: true };
+  return success(null);
 }
 
 export async function deleteGroup(id: string) {
   const existing = await db.select().from(group).where(eq(group.id, id)).limit(1);
-  if (existing.length === 0) return { error: "Grupo não encontrado.", status: 404 };
-  if (existing[0].isDefault) return { error: "Não é possível excluir o grupo padrão.", status: 400 };
-  if (existing[0].role === "admin") return { error: "Não é possível excluir o grupo de administradores.", status: 400 };
+  if (existing.length === 0) return failure("Grupo não encontrado.", 404);
+  if (existing[0].isDefault) return failure("Não é possível excluir o grupo padrão.", 400);
+  if (existing[0].role === "admin") return failure("Não é possível excluir o grupo de administradores.", 400);
 
   await db.transaction(async (tx) => {
     const defaultGroup = await tx.select().from(group).where(eq(group.isDefault, true)).orderBy(desc(group.updatedAt)).limit(1);
@@ -226,5 +256,5 @@ export async function deleteGroup(id: string) {
     await tx.delete(group).where(eq(group.id, id));
   });
 
-  return { ok: true };
+  return success(null);
 }

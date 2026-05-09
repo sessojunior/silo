@@ -9,7 +9,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { config } from "@/lib/config";
 import Button from "@/components/ui/button";
 import Offcanvas from "@/components/ui/offcanvas";
-import { readApiResponse } from "@/lib/api-response";
+import { readApiResponse } from "@silo/engine/contracts/api-response";
 
 interface ReportViewPageProps {
   reportId: string;

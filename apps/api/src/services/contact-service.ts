@@ -17,6 +17,34 @@ export const isSafeFilename = (filename: string): boolean => {
   return path.basename(filename) === filename;
 };
 
+type ContactServiceSuccess<T> = {
+  ok: true;
+  data: T;
+};
+
+type ContactServiceError = {
+  ok: false;
+  error: string;
+  status?: number;
+  field?: string;
+};
+
+const success = <T>(data: T): ContactServiceSuccess<T> => ({
+  ok: true,
+  data,
+});
+
+const failure = (
+  error: string,
+  status?: number,
+  extra?: Omit<ContactServiceError, "ok" | "error" | "status">,
+): ContactServiceError => ({
+  ok: false,
+  error,
+  ...(typeof status === "number" ? { status } : {}),
+  ...(extra ?? {}),
+});
+
 export async function deleteContactImageFile(imageUrl: string): Promise<void> {
   try {
     const uploadsDir = path.join(process.cwd(), "public");
@@ -58,21 +86,21 @@ export async function listContacts(opts: { search?: string; status?: string }) {
 
 export async function createContact(data: { name: string; role: string; team: string; email: string; phone?: string | null; imageUrl?: string | null; active: boolean }) {
   const existing = await db.select().from(contact).where(eq(contact.email, data.email));
-  if (existing.length > 0) return { error: "Este email já está em uso", field: "email" };
+  if (existing.length > 0) return failure("Este email já está em uso", 400, { field: "email" });
 
   const id = randomUUID();
   await db.insert(contact).values({ id, name: data.name, role: data.role, team: data.team, email: data.email, phone: data.phone ?? null, image: data.imageUrl ?? null, active: data.active });
-  return { id };
+  return success({ id });
 }
 
 export async function updateContact(data: { id: string; name: string; role: string; team: string; email: string; phone?: string | null; imageUrl?: string | null; active: boolean; removeImage?: boolean }) {
   const existing = await db.select().from(contact).where(eq(contact.id, data.id)).limit(1);
-  if (existing.length === 0) return { error: "Contato não encontrado.", status: 404 };
+  if (existing.length === 0) return failure("Contato não encontrado.", 404);
 
   const curr = existing[0];
   if (data.email !== curr.email) {
     const emailCheck = await db.select().from(contact).where(and(eq(contact.email, data.email), ne(contact.id, data.id))).limit(1);
-    if (emailCheck.length > 0) return { error: "Este email já está em uso", field: "email" };
+    if (emailCheck.length > 0) return failure("Este email já está em uso", 400, { field: "email" });
   }
 
   let imagePath = curr.image;
@@ -83,17 +111,17 @@ export async function updateContact(data: { id: string; name: string; role: stri
   }
 
   await db.update(contact).set({ name: data.name, role: data.role, team: data.team, email: data.email, phone: data.phone ?? null, image: imagePath, active: data.active, updatedAt: new Date() }).where(eq(contact.id, data.id));
-  return { ok: true };
+  return success(null);
 }
 
 export async function deleteContact(id: string) {
   const existing = await db.select().from(contact).where(eq(contact.id, id)).limit(1);
-  if (existing.length === 0) return { error: "Contato não encontrado.", status: 404 };
+  if (existing.length === 0) return failure("Contato não encontrado.", 404);
 
   const curr = existing[0];
   await db.delete(productContact).where(eq(productContact.contactId, id));
   await db.delete(contact).where(eq(contact.id, id));
 
   if (curr.image) await deleteContactImageFile(curr.image);
-  return { ok: true };
+  return success(null);
 }

@@ -5,12 +5,12 @@
  */
 import { Router } from "express";
 import type { Request } from "express";
-import type { Response as ExpressResponse } from "express";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/permissions.js";
 import { z } from "zod";
 import path from "path";
 import { promises as fs } from "fs";
+import { respondServiceError as respondProductServiceError } from "../lib/respond-service-error.js";
 import { deleteUploadFile, isSafeFilename, isUploadKind } from "../infra/uploads.js";
 import {
   createProductDependency,
@@ -59,35 +59,6 @@ import {
 const router = Router();
 router.use(authMiddleware);
 
-type ProductServiceErrorResult = {
-  error: unknown;
-  status?: number;
-  field?: string;
-  data?: unknown;
-};
-
-const respondProductServiceError = (
-  res: ExpressResponse,
-  result: unknown,
-  fallbackMessage: string,
-): boolean => {
-  if (typeof result !== "object" || result === null || !("error" in result)) {
-    return false;
-  }
-
-  const errorResult = result as ProductServiceErrorResult;
-  const payload: { success: false; error: string; field?: string; data?: unknown } = {
-    success: false,
-    error: typeof errorResult.error === "string" ? errorResult.error : fallbackMessage,
-  };
-
-  if (typeof errorResult.field === "string") payload.field = errorResult.field;
-  if (errorResult.data !== undefined) payload.data = errorResult.data;
-
-  res.status(typeof errorResult.status === "number" ? errorResult.status : 400).json(payload);
-  return true;
-};
-
 const AvailabilityQuerySchema = z.object({
   productId: z.string().trim().min(1, "Produto é obrigatório."),
   date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida."),
@@ -106,12 +77,12 @@ router.get("/activities/availability", requirePermission("productActivities", "u
 
   try {
     const result = await getProductActivityAvailability(parsed.data);
-    if ("error" in result) {
+    if (!result.ok) {
       respondProductServiceError(res, result, "Erro ao verificar disponibilidade.");
       return;
     }
 
-    res.json({ success: true, data: result });
+    res.json({ success: true, data: result.data });
   } catch (err) {
     console.error("❌ [PRODUCTS/ACTIVITIES/AVAILABILITY] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao verificar disponibilidade." });
@@ -135,9 +106,12 @@ router.post("/activities", requirePermission("productActivities", "create"), asy
       intervention: intervention || null,
       problemCategoryId: problemCategoryId || null,
     });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao salvar atividade."); return; }
-
-    res.json({ success: true, data: result.activity, message: result.action === "created" ? "Atividade criada com sucesso" : "Atividade atualizada com sucesso" });
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao salvar atividade.");
+      return;
+    }
+    const { activity, action } = result.data;
+    res.json({ success: true, data: activity, message: action === "created" ? "Atividade criada com sucesso" : "Atividade atualizada com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/ACTIVITIES] POST:", err);
     res.status(500).json({ success: false, error: "Erro ao salvar atividade." });
@@ -157,8 +131,11 @@ router.put("/activities", requirePermission("productActivities", "update"), asyn
       intervention: intervention || null,
       problemCategoryId: problemCategoryId || null,
     });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao atualizar atividade."); return; }
-    res.json({ success: true, data: result.activity, message: "Atividade atualizada com sucesso" });
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao atualizar atividade.");
+      return;
+    }
+    res.json({ success: true, data: result.data.activity, message: "Atividade atualizada com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/ACTIVITIES] PUT:", err);
     res.status(500).json({ success: false, error: "Erro ao atualizar atividade." });
@@ -210,7 +187,7 @@ const AvailabilityExceptionDeleteSchema = z.object({
 router.get("/activities/pending-email", requirePermission("productActivities", "update"), async (_req, res) => {
   try {
     const result = await listProductActivityPendingEmailRecipients();
-    res.json({ success: true, data: { items: result.items, total: result.total } });
+    res.json({ success: true, data: { items: result.data.items, total: result.data.total } });
   } catch (err) {
     console.error("❌ [PRODUCTS/ACTIVITIES/PENDING-EMAIL] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao carregar destinatários." });
@@ -232,8 +209,11 @@ router.post("/activities/pending-email", requirePermission("productActivities", 
       message: data.message,
     });
 
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao enviar pendências."); return; }
-    res.json({ success: true, data: { sent: result.sent }, message: result.sent === 1 ? "Pendência enviada com sucesso." : "Pendências enviadas com sucesso." });
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao enviar pendências.");
+      return;
+    }
+    res.json({ success: true, data: { sent: result.data.sent }, message: result.data.sent === 1 ? "Pendência enviada com sucesso." : "Pendências enviadas com sucesso." });
   } catch (err) {
     console.error("❌ [PRODUCTS/ACTIVITIES/PENDING-EMAIL] POST:", err);
     res.status(500).json({ success: false, error: "Erro ao enviar pendências." });
@@ -249,12 +229,12 @@ router.get("/availability-exceptions", requirePermission("productActivities", "u
 
   try {
     const result = await listProductAvailabilityExceptions(parsed.data);
-    if ("error" in result) {
+    if (!result.ok) {
       respondProductServiceError(res, result, "Erro ao carregar exceções de disponibilidade.");
       return;
     }
 
-    res.json({ success: true, data: { items: result.items, total: result.items.length } });
+    res.json({ success: true, data: { items: result.data.items, total: result.data.items.length } });
   } catch (err) {
     console.error("❌ [PRODUCTS/AVAILABILITY-EXCEPTIONS] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao carregar exceções de disponibilidade." });
@@ -276,16 +256,12 @@ router.post("/availability-exceptions", requirePermission("productActivities", "
       description: parsed.data.description ?? null,
     });
 
-    if ("error" in result) {
+    if (!result.ok) {
       respondProductServiceError(res, result, "Erro ao salvar exceção de disponibilidade.");
       return;
     }
-
-    res.json({
-      success: true,
-      data: result.exception,
-      message: result.action === "created" ? "Exceção criada com sucesso." : "Exceção atualizada com sucesso.",
-    });
+    const { exception, action } = result.data;
+    res.json({ success: true, data: exception, message: action === "created" ? "Exceção criada com sucesso." : "Exceção atualizada com sucesso." });
   } catch (err) {
     console.error("❌ [PRODUCTS/AVAILABILITY-EXCEPTIONS] POST:", err);
     res.status(500).json({ success: false, error: "Erro ao salvar exceção de disponibilidade." });
@@ -301,8 +277,7 @@ router.delete("/availability-exceptions", requirePermission("productActivities",
     }
 
     const result = await deleteProductAvailabilityException(parsed.data.id);
-    if ("error" in result) {
-      respondProductServiceError(res, result, "Erro ao remover exceção de disponibilidade.");
+    if (respondProductServiceError(res, result, "Erro ao remover exceção de disponibilidade.")) {
       return;
     }
 
@@ -320,7 +295,7 @@ router.get("/contacts", requirePermission("contacts", "list"), async (req: Reque
     const productId = typeof req.query.productId === "string" ? req.query.productId : undefined;
     if (!productId) { res.status(400).json({ success: false, error: "ProductId é obrigatório" }); return; }
     const result = await listProductContacts(productId);
-    res.json({ success: true, data: { contacts: result.contacts, total: result.contacts.length } });
+    res.json({ success: true, data: { contacts: result.data.contacts, total: result.data.contacts.length } });
   } catch (err) {
     console.error("❌ [PRODUCTS/CONTACTS] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar contatos." });
@@ -344,7 +319,7 @@ router.delete("/contacts", requirePermission("contacts", "delete"), async (req: 
     const { associationId } = req.body;
     if (!associationId) { res.status(400).json({ success: false, error: "AssociationId é obrigatório" }); return; }
     const result = await deleteProductContactAssociation(associationId);
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao remover associação."); return; }
+    if (respondProductServiceError(res, result, "Erro ao remover associação.")) { return; }
     res.json({ success: true, message: "Associação removida com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/CONTACTS] DELETE:", err);
@@ -357,7 +332,7 @@ router.get("/dependencies", requirePermission("productDependencies", "list"), as
     const productId = typeof req.query.productId === "string" ? req.query.productId : undefined;
     if (!productId) { res.status(400).json({ success: false, error: "ProductId é obrigatório" }); return; }
     const dependencies = await listProductDependencies(productId);
-    res.json({ success: true, data: { dependencies } });
+    res.json({ success: true, data: { dependencies: dependencies.data } });
   } catch (err) {
     console.error("❌ [PRODUCTS/DEPENDENCIES] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar dependências." });
@@ -369,8 +344,11 @@ router.post("/dependencies", requirePermission("productDependencies", "create"),
     const { productId, name, icon, description, parentId } = req.body;
     if (!productId || !name) { res.status(400).json({ success: false, error: "ProductId e nome são obrigatórios" }); return; }
     const result = await createProductDependency({ productId, name, icon, description, parentId });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao criar dependência."); return; }
-    const { dependency: dep } = result;
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao criar dependência.");
+      return;
+    }
+    const { dependency: dep } = result.data;
     res.status(201).json({ success: true, data: { dependency: dep }, message: "Dependência criada com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/DEPENDENCIES] POST:", err);
@@ -383,8 +361,11 @@ router.put("/dependencies", requirePermission("productDependencies", "update"), 
     const { id, name, icon, description, parentId, newPosition } = req.body;
     if (!id || !name) { res.status(400).json({ success: false, error: "ID e nome são obrigatórios" }); return; }
     const result = await updateProductDependency({ id, name, icon, description, parentId, newPosition });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao atualizar dependência."); return; }
-    const { dependency: updated } = result;
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao atualizar dependência.");
+      return;
+    }
+    const { dependency: updated } = result.data;
     res.json({ success: true, data: { dependency: updated }, message: "Dependência atualizada com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/DEPENDENCIES] PUT:", err);
@@ -397,7 +378,7 @@ router.delete("/dependencies", requirePermission("productDependencies", "delete"
     const { id } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID é obrigatório" }); return; }
     const result = await deleteProductDependency(id);
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao excluir dependência."); return; }
+    if (respondProductServiceError(res, result, "Erro ao excluir dependência.")) { return; }
     res.json({ success: true, message: "Dependência excluída com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/DEPENDENCIES] DELETE:", err);
@@ -410,7 +391,7 @@ router.put("/dependencies/reorder", requirePermission("productDependencies", "re
     const { productId, items } = req.body as { productId: string; items: Array<{ id: string; parentId: string | null; treePath: string; treeDepth: number; sortKey: string }> };
     if (!productId || !Array.isArray(items)) { res.status(400).json({ success: false, error: "ProductId e items são obrigatórios" }); return; }
     const result = await reorderProductDependencies(productId, items);
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao reordenar dependências."); return; }
+    if (respondProductServiceError(res, result, "Erro ao reordenar dependências.")) { return; }
     res.json({ success: true, message: "Dependências reordenadas com sucesso!" });
   } catch (err) {
     console.error("❌ [PRODUCTS/DEPENDENCIES/REORDER] PUT:", err);
@@ -425,8 +406,11 @@ router.get("/manual", requirePermission("productManual", "view"), async (req: Re
     const productSlug = typeof req.query.productSlug === "string" ? req.query.productSlug : undefined;
     const productId = typeof req.query.productId === "string" ? req.query.productId : undefined;
     const result = await getProductManual({ productSlug, productId });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao buscar manual."); return; }
-    const { manual } = result;
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao buscar manual.");
+      return;
+    }
+    const { manual } = result.data;
     res.json({ success: true, data: manual });
   } catch (err) {
     console.error("❌ [PRODUCTS/MANUAL] GET:", err);
@@ -439,8 +423,11 @@ router.put("/manual", requirePermission("productManual", "update"), async (req: 
     const { productId, description } = req.body;
     if (!productId || !description) { res.status(400).json({ success: false, error: "ProductId e description são obrigatórios" }); return; }
     const result = await upsertProductManual({ productId, description });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao salvar manual."); return; }
-    const { manual } = result;
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao salvar manual.");
+      return;
+    }
+    const { manual } = result.data;
     res.json({ success: true, data: manual, message: "Manual salvo com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/MANUAL] PUT:", err);
@@ -491,8 +478,11 @@ router.get("/problems", requirePermission("productProblems", "list"), async (req
     const limit = parseInt(typeof req.query.limit === "string" ? req.query.limit : "20");
     if (!slug) { res.status(400).json({ success: false, error: "Parâmetro slug é obrigatório." }); return; }
     const result = await listProductProblems({ slug, page, limit });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao buscar problemas."); return; }
-    res.json({ success: true, data: { items: result.items } });
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao buscar problemas.");
+      return;
+    }
+    res.json({ success: true, data: { items: result.data.items } });
   } catch (err) {
     console.error("❌ [PRODUCTS/PROBLEMS] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar problemas." });
@@ -507,7 +497,7 @@ router.post("/problems", requirePermission("productProblems", "create"), async (
     if (title.trim().length < 5) { res.status(400).json({ success: false, error: "O título deve ter pelo menos 5 caracteres." }); return; }
     if (description.trim().length < 20) { res.status(400).json({ success: false, error: "A descrição deve ter pelo menos 20 caracteres." }); return; }
     const result = await createProductProblem({ productId, userId: user.id, title, description, problemCategoryId });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao cadastrar problema."); return; }
+    if (respondProductServiceError(res, result, "Erro ao cadastrar problema.")) { return; }
     res.status(201).json({ success: true, message: "Problema cadastrado com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/PROBLEMS] POST:", err);
@@ -522,7 +512,7 @@ router.put("/problems", requirePermission("productProblems", "update"), async (r
     if (title.trim().length < 5) { res.status(400).json({ success: false, error: "O título deve ter pelo menos 5 caracteres." }); return; }
     if (description.trim().length < 20) { res.status(400).json({ success: false, error: "A descrição deve ter pelo menos 20 caracteres." }); return; }
     const result = await updateProductProblem({ id, title, description, problemCategoryId });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao atualizar problema."); return; }
+    if (respondProductServiceError(res, result, "Erro ao atualizar problema.")) { return; }
     res.json({ success: true, message: "Problema atualizado com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/PROBLEMS] PUT:", err);
@@ -535,7 +525,7 @@ router.delete("/problems", requirePermission("productProblems", "delete"), async
     const { id } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID obrigatório." }); return; }
     const result = await deleteProductProblem(id);
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao excluir problema."); return; }
+    if (respondProductServiceError(res, result, "Erro ao excluir problema.")) { return; }
     res.json({ success: true, message: "Problema excluído com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/PROBLEMS] DELETE:", err);
@@ -549,7 +539,7 @@ router.get("/problems/categories", requirePermission("productProblems", "list"),
   try {
     const search = typeof req.query.search === "string" ? req.query.search : "";
     const result = await listProductProblemCategories(search);
-    res.json({ success: true, data: result.items });
+    res.json({ success: true, data: result.data.items });
   } catch (err) {
     console.error("❌ [PRODUCTS/PROBLEMS/CATEGORIES] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao listar categorias." });
@@ -561,8 +551,11 @@ router.post("/problems/categories", requirePermission("productProblems", "create
     const { name, color } = req.body;
     if (!name || name.trim().length < 2) { res.status(400).json({ success: false, error: "Nome é obrigatório e deve ter pelo menos 2 caracteres." }); return; }
     const result = await createProductProblemCategory({ name, color });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao criar categoria."); return; }
-    res.status(201).json({ success: true, data: result.category, message: "Categoria criada com sucesso" });
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao criar categoria.");
+      return;
+    }
+    res.status(201).json({ success: true, data: result.data.category, message: "Categoria criada com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/PROBLEMS/CATEGORIES] POST:", err);
     res.status(500).json({ success: false, error: "Erro ao criar categoria." });
@@ -575,7 +568,7 @@ router.put("/problems/categories", requirePermission("productProblems", "update"
     if (!id) { res.status(400).json({ success: false, error: "ID obrigatório." }); return; }
     if (!name || name.trim().length < 2) { res.status(400).json({ success: false, error: "Nome é obrigatório e deve ter pelo menos 2 caracteres." }); return; }
     const result = await updateProductProblemCategory({ id, name, color });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao atualizar categoria."); return; }
+    if (respondProductServiceError(res, result, "Erro ao atualizar categoria.")) { return; }
     res.json({ success: true, message: "Categoria atualizada com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/PROBLEMS/CATEGORIES] PUT:", err);
@@ -588,7 +581,7 @@ router.delete("/problems/categories", requirePermission("productProblems", "dele
     const id = typeof req.query.id === "string" ? req.query.id : undefined;
     if (!id) { res.status(400).json({ success: false, error: "ID obrigatório." }); return; }
     const result = await deleteProductProblemCategory(id);
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao excluir categoria."); return; }
+    if (respondProductServiceError(res, result, "Erro ao excluir categoria.")) { return; }
     res.json({ success: true, message: "Categoria excluída com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/PROBLEMS/CATEGORIES] DELETE:", err);
@@ -603,7 +596,7 @@ router.get("/images", requirePermission("productProblems", "list"), async (req: 
     const problemId = typeof req.query.problemId === "string" ? req.query.problemId : undefined;
     if (!problemId) { res.status(400).json({ success: false, error: "Parâmetro problemId é obrigatório." }); return; }
     const result = await listProductProblemImages(problemId);
-    res.json({ success: true, data: { items: result.items } });
+    res.json({ success: true, data: { items: result.data.items } });
   } catch (err) {
     console.error("❌ [PRODUCTS/IMAGES] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar imagens." });
@@ -616,7 +609,7 @@ router.post("/images", requirePermission("productProblems", "update"), async (re
     const description = typeof req.body.description === "string" ? req.body.description : "";
     if (!imageUrl || !productProblemId) { res.status(400).json({ success: false, error: "Arquivo e productProblemId são obrigatórios." }); return; }
     const result = await createProductProblemImage({ productProblemId, image: imageUrl, description });
-    res.status(201).json({ success: true, data: { image: result.image.image }, message: "Imagem enviada com sucesso" });
+    res.status(201).json({ success: true, data: { image: result.data.image.image }, message: "Imagem enviada com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/IMAGES] POST:", err);
     res.status(500).json({ success: false, error: "Erro ao fazer upload." });
@@ -628,8 +621,11 @@ router.delete("/images", requirePermission("productProblems", "update"), async (
     const { id } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID da imagem é obrigatório." }); return; }
     const result = await deleteProductProblemImage(id);
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao excluir imagem."); return; }
-    const img = result.image;
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao excluir imagem.");
+      return;
+    }
+    const img = result.data.image;
     try {
       const imgPath = img.image;
       const uploadsPrefix = "/uploads/";
@@ -656,7 +652,7 @@ router.get("/solutions", requirePermission("productSolutions", "list"), async (r
     const problemId = typeof req.query.problemId === "string" ? req.query.problemId : undefined;
     if (!problemId) { res.status(400).json({ success: false, error: "Parâmetro problemId é obrigatório." }); return; }
     const result = await listProductSolutions(problemId);
-    res.json({ success: true, data: { items: result.items } });
+    res.json({ success: true, data: { items: result.data.items } });
   } catch (err) {
     console.error("❌ [PRODUCTS/SOLUTIONS] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar soluções." });
@@ -689,7 +685,7 @@ router.put("/solutions", requirePermission("productSolutions", "update"), async 
     const removeImage = req.body.removeImage === true || req.body.removeImage === "true";
     if (!id || description.length < 2) { res.status(400).json({ success: false, error: "ID e descrição são obrigatórios (mín. 2 caracteres)." }); return; }
     const result = await updateProductSolution({ userId: user.id, id, description, imageUrl, removeImage });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao atualizar solução."); return; }
+    if (respondProductServiceError(res, result, "Erro ao atualizar solução.")) { return; }
     res.json({ success: true, message: "Solução atualizada com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/SOLUTIONS] PUT:", err);
@@ -703,7 +699,7 @@ router.delete("/solutions", requirePermission("productSolutions", "delete"), asy
     const { id } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID obrigatório." }); return; }
     const result = await deleteProductSolution({ userId: user.id, id });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao excluir solução."); return; }
+    if (respondProductServiceError(res, result, "Erro ao excluir solução.")) { return; }
     res.json({ success: true, message: "Solução excluída com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/SOLUTIONS] DELETE:", err);
@@ -716,7 +712,7 @@ router.post("/solutions/count", requirePermission("productSolutions", "list"), a
     const { problemIds } = req.body;
     if (!problemIds || !Array.isArray(problemIds) || problemIds.length === 0) { res.status(400).json({ success: false, error: "Array problemIds é obrigatório e não pode estar vazio." }); return; }
     const counts = await countProductSolutions(problemIds as string[]);
-    res.json({ success: true, data: counts });
+    res.json({ success: true, data: counts.data });
   } catch (err) {
     console.error("❌ [PRODUCTS/SOLUTIONS/COUNT] POST:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar contagens." });
@@ -728,8 +724,7 @@ router.get("/solutions/summary", requirePermission("productSolutions", "list"), 
     const productSlug = typeof req.query.productSlug === "string" ? req.query.productSlug : undefined;
     if (!productSlug) { res.status(400).json({ success: false, error: "Parâmetro productSlug é obrigatório." }); return; }
     const result = await getProductSolutionsSummary(productSlug);
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao buscar summary."); return; }
-    res.json({ success: true, data: { totalSolutions: result.totalSolutions, lastUpdated: result.lastUpdated } });
+    res.json({ success: true, data: { totalSolutions: result.data.totalSolutions, lastUpdated: result.data.lastUpdated } });
   } catch (err) {
     console.error("❌ [PRODUCTS/SOLUTIONS/SUMMARY] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar summary." });
@@ -743,7 +738,7 @@ router.get("/solutions/images", requirePermission("productSolutions", "list"), a
     const solutionId = typeof req.query.solutionId === "string" ? req.query.solutionId : undefined;
     if (!solutionId) { res.status(400).json({ success: false, error: "Parâmetro solutionId é obrigatório." }); return; }
     const result = await listProductSolutionImages(solutionId);
-    res.json({ success: true, data: { items: result.items } });
+    res.json({ success: true, data: { items: result.data.items } });
   } catch (err) {
     console.error("❌ [PRODUCTS/SOLUTIONS/IMAGES] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar imagens." });
@@ -757,7 +752,12 @@ router.post("/solutions/images", requirePermission("productSolutions", "update")
     const description = (req.body.description as string | null) || "";
     if (!imageUrl || !productSolutionId) { res.status(400).json({ success: false, error: "Arquivo e productSolutionId são obrigatórios." }); return; }
     const result = await createProductSolutionImage({ productSolutionId, image: imageUrl, description });
-    res.status(201).json({ success: true, data: { image: result.image.image }, message: "Imagem enviada com sucesso" });
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao fazer upload.");
+      return;
+    }
+    const { image } = result.data;
+    res.status(201).json({ success: true, data: { image: image.image }, message: "Imagem enviada com sucesso" });
   } catch (err) {
     console.error("❌ [PRODUCTS/SOLUTIONS/IMAGES] POST:", err);
     res.status(500).json({ success: false, error: "Erro ao fazer upload." });
@@ -769,8 +769,11 @@ router.delete("/solutions/images", requirePermission("productSolutions", "update
     const { id } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID da imagem é obrigatório." }); return; }
     const result = await deleteProductSolutionImage(id);
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao excluir imagem."); return; }
-    const img = result.image;
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao excluir imagem.");
+      return;
+    }
+    const { image: img } = result.data;
     try {
       const imgPath = img.image;
       const uploadsPrefix = "/uploads/";
@@ -800,8 +803,11 @@ router.get("/:productId/history", requirePermission("productActivities", "list")
       date: typeof req.query.date === "string" ? req.query.date : null,
       turn: typeof req.query.turn === "string" ? req.query.turn : null,
     });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao buscar histórico."); return; }
-    res.json({ success: true, data: { history: result.history } });
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao buscar histórico.");
+      return;
+    }
+    res.json({ success: true, data: { history: result.data.history } });
   } catch (err) {
     console.error("❌ [PRODUCTS/:productId/HISTORY] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar histórico." });
@@ -817,8 +823,11 @@ router.get("/:productId/data-flow", requirePermission("products", "list"), async
       date: typeof req.query.date === "string" ? req.query.date : null,
       turn: typeof req.query.turn === "string" ? req.query.turn : null,
     });
-    if ("error" in result) { respondProductServiceError(res, result, "Erro ao buscar data-flow."); return; }
-    res.json({ success: true, data: { pipelines: result.pipelines } });
+    if (!result.ok) {
+      respondProductServiceError(res, result, "Erro ao buscar data-flow.");
+      return;
+    }
+    res.json({ success: true, data: { pipelines: result.data.pipelines } });
   } catch (err) {
     console.error("❌ [PRODUCTS/:productId/DATA-FLOW] GET:", err);
     res.status(500).json({ success: false, error: "Erro ao buscar data flow." });

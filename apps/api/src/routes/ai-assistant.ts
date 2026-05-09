@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { AiAssistantMessageRequestSchema } from "@silo/engine/contracts";
+import { AiAssistantMessageRequestSchema } from "@silo/engine/contracts/dto/ai-assistant";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/permissions.js";
 import {

@@ -8,6 +8,34 @@ import { deleteUploadFile, getUploadsRoot, isSafeFilename, storeBufferAsWebp } f
 
 const NO_INCIDENTS_CATEGORY_ID = "no_incidents";
 
+type IncidentServiceSuccess<T> = {
+  ok: true;
+  data: T;
+};
+
+type IncidentServiceError = {
+  ok: false;
+  error: string;
+  status?: number;
+  field?: string;
+};
+
+const success = <T>(data: T): IncidentServiceSuccess<T> => ({
+  ok: true,
+  data,
+});
+
+const failure = (
+  error: string,
+  status?: number,
+  extra?: Omit<IncidentServiceError, "ok" | "error" | "status">,
+): IncidentServiceError => ({
+  ok: false,
+  error,
+  ...(typeof status === "number" ? { status } : {}),
+  ...(extra ?? {}),
+});
+
 export async function listIncidents() {
   return db
     .select()
@@ -23,7 +51,7 @@ export async function createIncident(data: { name: string; color?: string }) {
     .from(productProblemCategory)
     .where(eq(productProblemCategory.name, name))
     .limit(1);
-  if (existing.length > 0) return { error: "Nome de incidente já existe." };
+  if (existing.length > 0) return failure("Nome de incidente já existe.", 400);
 
   const newIncident = {
     id: randomUUID(),
@@ -33,13 +61,13 @@ export async function createIncident(data: { name: string; color?: string }) {
     sortOrder: 999,
   };
   await db.insert(productProblemCategory).values(newIncident);
-  return newIncident;
+  return success(newIncident);
 }
 
 export async function updateIncident(data: { id: string; name: string; color?: string }) {
   const { id, name, color } = data;
   if (id === NO_INCIDENTS_CATEGORY_ID) {
-    return { error: "Não é possível editar esta categoria.", status: 400 };
+    return failure("Não é possível editar esta categoria.", 400);
   }
 
   const existing = await db
@@ -47,13 +75,13 @@ export async function updateIncident(data: { id: string; name: string; color?: s
     .from(productProblemCategory)
     .where(and(eq(productProblemCategory.name, name.trim()), ne(productProblemCategory.id, id)))
     .limit(1);
-  if (existing.length > 0) return { error: "Nome de incidente já existe." };
+  if (existing.length > 0) return failure("Nome de incidente já existe.", 400);
 
   await db
     .update(productProblemCategory)
     .set({ name: name.trim(), color: color || "#6B7280", updatedAt: new Date() })
     .where(eq(productProblemCategory.id, id));
-  return { ok: true };
+  return success(null);
 }
 
 export async function deleteIncident(id: string) {
@@ -63,9 +91,9 @@ export async function deleteIncident(id: string) {
     .where(eq(productProblemCategory.id, id))
     .limit(1);
 
-  if (category.length === 0) return { error: "Incidente não encontrado.", status: 404 };
+  if (category.length === 0) return failure("Incidente não encontrado.", 404);
   if (category[0].isSystem) {
-    return { error: `"${category[0].name}" é uma categoria do sistema e não pode ser excluída.`, status: 400 };
+    return failure(`"${category[0].name}" é uma categoria do sistema e não pode ser excluída.`, 400);
   }
 
   const usageInActivities = await db.select({ id: productActivity.id }).from(productActivity).where(eq(productActivity.problemCategoryId, id));
@@ -76,11 +104,11 @@ export async function deleteIncident(id: string) {
     const message = totalUsage === 1
       ? "Este incidente está sendo usado em 1 registro e não pode ser excluído."
       : `Este incidente está sendo usado em ${totalUsage} registros e não pode ser excluído.`;
-    return { error: message, status: 400 };
+    return failure(message, 400);
   }
 
   await db.delete(productProblemCategory).where(eq(productProblemCategory.id, id));
-  return { ok: true };
+  return success(null);
 }
 
 export async function getIncidentUsage(id: string) {
@@ -88,14 +116,14 @@ export async function getIncidentUsage(id: string) {
   const usageInProblems = await db.select({ id: productProblem.id }).from(productProblem).where(eq(productProblem.problemCategoryId, id));
   const totalUsage = usageInActivities.length + usageInProblems.length;
 
-  return {
+  return success({
     inUse: totalUsage > 0,
     usageCount: totalUsage,
     usageDetails: {
       activities: usageInActivities.length,
       problems: usageInProblems.length,
     },
-  };
+  });
 }
 
 type IncidentImageItem = {
@@ -133,26 +161,26 @@ export async function listIncidentImages(): Promise<{ items: IncidentImageItem[]
   return { items };
 }
 
-export async function createIncidentImage(data: { image: string; filename: string }): Promise<{ filename: string; url: string } | { error: string; status?: number }> {
+export async function createIncidentImage(data: { image: string; filename: string }): Promise<IncidentServiceSuccess<{ filename: string; url: string }> | IncidentServiceError> {
   if (!isSafeFilename(data.filename)) {
-    return { error: "Nome de arquivo inválido", status: 400 };
+    return failure("Nome de arquivo inválido", 400);
   }
 
   const buffer = Buffer.from(data.image.replace(/^data:[^;]+;base64,/, ""), "base64");
   const stored = await storeBufferAsWebp("incidents", data.filename, buffer);
 
   if (typeof stored !== "string") {
-    return { error: stored.error, status: 400 };
+    return failure(stored.error, 400);
   }
 
-  return { filename: stored, url: `/uploads/incidents/${stored}` };
+  return success({ filename: stored, url: `/uploads/incidents/${stored}` });
 }
 
-export async function deleteIncidentImage(filename: string): Promise<{ ok: true } | { error: string; status?: number }> {
+export async function deleteIncidentImage(filename: string): Promise<IncidentServiceSuccess<null> | IncidentServiceError> {
   if (!isSafeFilename(filename)) {
-    return { error: "Nome de arquivo inválido", status: 400 };
+    return failure("Nome de arquivo inválido", 400);
   }
 
   await deleteUploadFile("incidents", filename);
-  return { ok: true };
+  return success(null);
 }

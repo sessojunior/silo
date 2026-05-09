@@ -1,6 +1,6 @@
 "use client";
 
-import type { AiAssistantExampleDto } from "@silo/engine/contracts";
+import type { AiAssistantExampleDto } from "@silo/engine/contracts/dto/ai-assistant";
 
 type AssistantEmptyStateProps = {
   examples: AiAssistantExampleDto[];

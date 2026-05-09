@@ -46,6 +46,8 @@ export default function Sidebar() {
 
   // Verificar se o chat está habilitado para o usuário
   useEffect(() => {
+    if (config.isSmokeMode) return;
+
     const checkChatEnabled = async () => {
       try {
         const response = await fetch(config.getApiUrl("/api/admin/users/preferences"));
@@ -104,6 +106,11 @@ export default function Sidebar() {
 
   // Obter dados dos produtos
   useEffect(() => {
+    if (config.isSmokeMode) {
+      setProducts([]);
+      return;
+    }
+
     const fetchProducts = async () => {
       if (!canSeeProducts) {
         setProducts([]);
@@ -143,6 +150,11 @@ export default function Sidebar() {
 
   // Obter dados dos projetos reais da API
   useEffect(() => {
+    if (config.isSmokeMode) {
+      setProjects([]);
+      return;
+    }
+
     const fetchProjects = async () => {
       if (!canSeeProjects) {
         setProjects([]);

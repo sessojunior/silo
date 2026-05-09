@@ -9,6 +9,28 @@ import {
 import { asc, eq, ilike, or, and, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
+export type ProjectServiceSuccess<T> = {
+  ok: true;
+  data: T;
+};
+
+export type ProjectServiceError = {
+  ok: false;
+  error: string;
+  status?: number;
+};
+
+const success = <T>(data: T): ProjectServiceSuccess<T> => ({
+  ok: true,
+  data,
+});
+
+const failure = (error: string, status?: number): ProjectServiceError => ({
+  ok: false,
+  error,
+  ...(typeof status === "number" ? { status } : {}),
+});
+
 export async function listProjects(opts: {
   search?: string;
   status?: string;
@@ -29,9 +51,15 @@ export async function listProjects(opts: {
   if (status && status !== "all") conditions.push(eq(project.status, status));
   if (priority && priority !== "all") conditions.push(eq(project.priority, priority));
 
-  if (conditions.length === 0) return db.select().from(project).orderBy(asc(project.name));
-  if (conditions.length === 1) return db.select().from(project).where(conditions[0]).orderBy(asc(project.name));
-  return db.select().from(project).where(and(...conditions)).orderBy(asc(project.name));
+  if (conditions.length === 0) {
+    return success(await db.select().from(project).orderBy(asc(project.name)));
+  }
+
+  if (conditions.length === 1) {
+    return success(await db.select().from(project).where(conditions[0]).orderBy(asc(project.name)));
+  }
+
+  return success(await db.select().from(project).where(and(...conditions)).orderBy(asc(project.name)));
 }
 
 export async function createProject(data: {
@@ -56,7 +84,7 @@ export async function createProject(data: {
       status: data.status,
     })
     .returning();
-  return rows[0];
+  return success(rows[0]);
 }
 
 export async function updateProject(data: {
@@ -83,13 +111,13 @@ export async function updateProject(data: {
     })
     .where(eq(project.id, data.id))
     .returning();
-  if (rows.length === 0) return { error: "Projeto não encontrado.", status: 404 };
-  return rows[0];
+  if (rows.length === 0) return failure("Projeto não encontrado.", 404);
+  return success(rows[0]);
 }
 
 export async function deleteProject(id: string) {
   const existing = await db.select().from(project).where(eq(project.id, id)).limit(1);
-  if (existing.length === 0) return { error: "Projeto não encontrado.", status: 404 };
+  if (existing.length === 0) return failure("Projeto não encontrado.", 404);
 
   await db.transaction(async (tx) => {
     const tasks = await tx.select({ id: projectTask.id }).from(projectTask).where(eq(projectTask.projectId, id));
@@ -104,15 +132,15 @@ export async function deleteProject(id: string) {
     await tx.delete(project).where(eq(project.id, id));
   });
 
-  return { ok: true };
+  return success(null);
 }
 
 // ── Project Activities ──────────────────────────────────────────────────────
 
 export async function listProjectActivities(projectId: string) {
   const existingProject = await db.select().from(project).where(eq(project.id, projectId)).limit(1);
-  if (existingProject.length === 0) return { error: "Projeto não encontrado.", status: 404 };
-  return db.select().from(projectActivity).where(eq(projectActivity.projectId, projectId)).orderBy(projectActivity.createdAt);
+  if (existingProject.length === 0) return failure("Projeto não encontrado.", 404);
+  return success(await db.select().from(projectActivity).where(eq(projectActivity.projectId, projectId)).orderBy(projectActivity.createdAt));
 }
 
 export async function createProjectActivity(projectId: string, data: {
@@ -126,7 +154,7 @@ export async function createProjectActivity(projectId: string, data: {
   status?: string;
 }) {
   const existingProject = await db.select().from(project).where(eq(project.id, projectId)).limit(1);
-  if (existingProject.length === 0) return { error: "Projeto não encontrado.", status: 404 };
+  if (existingProject.length === 0) return failure("Projeto não encontrado.", 404);
 
   const rows = await db
     .insert(projectActivity)
@@ -142,7 +170,7 @@ export async function createProjectActivity(projectId: string, data: {
       status: (data.status || "todo") as "todo" | "progress" | "done" | "blocked",
     })
     .returning();
-  return rows[0];
+  return success(rows[0]);
 }
 
 export async function updateProjectActivity(projectId: string, data: {
@@ -171,14 +199,14 @@ export async function updateProjectActivity(projectId: string, data: {
     })
     .where(and(eq(projectActivity.id, data.id), eq(projectActivity.projectId, projectId)))
     .returning();
-  if (rows.length === 0) return { error: "Atividade não encontrada.", status: 404 };
-  return rows[0];
+  if (rows.length === 0) return failure("Atividade não encontrada.", 404);
+  return success(rows[0]);
 }
 
 export async function deleteProjectActivity(projectId: string, activityId: string) {
   const result = await db
     .delete(projectActivity)
     .where(and(eq(projectActivity.id, activityId), eq(projectActivity.projectId, projectId)));
-  if (!result.rowCount) return { error: "Atividade não encontrada.", status: 404 };
-  return { ok: true };
+  if (!result.rowCount) return failure("Atividade não encontrada.", 404);
+  return success(null);
 }

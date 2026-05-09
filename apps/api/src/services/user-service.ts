@@ -25,6 +25,35 @@ const EMAIL_CHANGE_OTP_LENGTH = 6;
 
 interface UserGroupInput { groupId: string; }
 
+type UserServiceSuccess<T> = {
+  ok: true;
+  data: T;
+};
+
+type UserServiceError = {
+  ok: false;
+  error: string;
+  status?: number;
+  field?: string;
+  data?: unknown;
+};
+
+const success = <T>(data: T): UserServiceSuccess<T> => ({
+  ok: true,
+  data,
+});
+
+const failure = (
+  error: string,
+  status?: number,
+  extra?: Omit<UserServiceError, "ok" | "error" | "status">,
+): UserServiceError => ({
+  ok: false,
+  error,
+  ...(typeof status === "number" ? { status } : {}),
+  ...(extra ?? {}),
+});
+
 export async function listUsers(opts: { search?: string; status?: string; groupId?: string }) {
   const { search, status, groupId } = opts;
   const conditions = [];
@@ -69,17 +98,17 @@ export async function createUser(data: {
   isActive?: boolean;
 }, headers: IncomingHttpHeaders) {
   const userGroups: UserGroupInput[] = data.groups || (data.groupId ? [{ groupId: data.groupId }] : []);
-  if (userGroups.length === 0) return { error: "Pelo menos um grupo é obrigatório.", field: "groups" };
+  if (userGroups.length === 0) return failure("Pelo menos um grupo é obrigatório.", 400, { field: "groups" });
 
   const existingUser = await db.select().from(authUser).where(eq(authUser.email, data.email)).limit(1);
-  if (existingUser.length > 0) return { error: "Já existe um usuário com este email.", field: "email" };
+  if (existingUser.length > 0) return failure("Já existe um usuário com este email.", 400, { field: "email" });
 
   const groupIds = userGroups.map((ug) => ug.groupId);
   const existingGroups = await db.select().from(group).where(inArray(group.id, groupIds));
   if (existingGroups.length !== groupIds.length) {
     const foundIds = existingGroups.map((g) => g.id);
     const missing = groupIds.filter((id) => !foundIds.includes(id));
-    return { error: `Grupos não encontrados: ${missing.join(", ")}`, field: "groups" };
+    return failure(`Grupos não encontrados: ${missing.join(", ")}`, 400, { field: "groups" });
   }
 
   const userId = randomUUID();
@@ -106,7 +135,7 @@ export async function createUser(data: {
     }
   }
 
-  return { user: newUser };
+  return success(newUser);
 }
 
 export async function updateUser(data: {
@@ -119,21 +148,21 @@ export async function updateUser(data: {
   groupId?: string;
 }) {
   const existing = await db.select().from(authUser).where(eq(authUser.id, data.id)).limit(1);
-  if (existing.length === 0) return { error: "Usuário não encontrado.", status: 404 };
+  if (existing.length === 0) return failure("Usuário não encontrado.", 404);
 
   const normalizedEmail = data.email.trim().toLowerCase();
   const emailConflict = await db.select({ id: authUser.id }).from(authUser).where(and(eq(authUser.email, normalizedEmail), ne(authUser.id, data.id))).limit(1);
-  if (emailConflict.length > 0) return { error: "Já existe um usuário com este email.", field: "email" };
+  if (emailConflict.length > 0) return failure("Já existe um usuário com este email.", 400, { field: "email" });
 
   const userGroups: UserGroupInput[] = data.groups || (data.groupId ? [{ groupId: data.groupId }] : []);
-  if (userGroups.length === 0) return { error: "Pelo menos um grupo é obrigatório.", field: "groups" };
+  if (userGroups.length === 0) return failure("Pelo menos um grupo é obrigatório.", 400, { field: "groups" });
 
   const groupIds = userGroups.map((ug) => ug.groupId);
   const existingGroups = await db.select().from(group).where(inArray(group.id, groupIds));
   if (existingGroups.length !== groupIds.length) {
     const foundIds = existingGroups.map((g) => g.id);
     const missing = groupIds.filter((id) => !foundIds.includes(id));
-    return { error: `Grupos não encontrados: ${missing.join(", ")}`, field: "groups" };
+    return failure(`Grupos não encontrados: ${missing.join(", ")}`, 400, { field: "groups" });
   }
 
   const updateData = {
@@ -150,12 +179,12 @@ export async function updateUser(data: {
     await tx.insert(userGroup).values(userGroups.map((ug) => ({ userId: data.id, groupId: ug.groupId })));
   });
 
-  return { id: data.id, name: updateData.name, email: updateData.email };
+  return success({ id: data.id, name: updateData.name, email: updateData.email });
 }
 
 export async function deleteUser(id: string) {
   const existing = await db.select().from(authUser).where(eq(authUser.id, id)).limit(1);
-  if (existing.length === 0) return { error: "Usuário não encontrado.", status: 404 };
+  if (existing.length === 0) return failure("Usuário não encontrado.", 404);
 
   const userGroupsQuery = await db.select({ role: group.role }).from(userGroup).innerJoin(group, eq(group.id, userGroup.groupId)).where(eq(userGroup.userId, id));
   const isAdminUser = userGroupsQuery.some((g) => g.role === "admin");
@@ -165,7 +194,7 @@ export async function deleteUser(id: string) {
     if (adminGroupIds.length > 0) {
       const adminUsers = await db.select({ userId: userGroup.userId }).from(userGroup).where(inArray(userGroup.groupId, adminGroupIds));
       const uniqueAdminUsers = new Set(adminUsers.map((u) => u.userId));
-      if (uniqueAdminUsers.size <= 1) return { error: "Não é possível excluir o último administrador do sistema.", status: 400 };
+      if (uniqueAdminUsers.size <= 1) return failure("Não é possível excluir o último administrador do sistema.", 400);
     }
   }
 
@@ -180,12 +209,12 @@ export async function deleteUser(id: string) {
     await tx.delete(authUser).where(eq(authUser.id, id));
   });
 
-  return { ok: true };
+  return success(null);
 }
 
 export async function resendPasswordSetup(userId: string) {
   const targetUser = await db.select().from(authUser).where(eq(authUser.id, userId)).limit(1);
-  if (targetUser.length === 0) return { error: "Usuário não encontrado.", status: 404 };
+  if (targetUser.length === 0) return failure("Usuário não encontrado.", 404);
 
   const account = await db
     .select()
@@ -194,14 +223,14 @@ export async function resendPasswordSetup(userId: string) {
     .limit(1);
 
   if (account.length > 0 && account[0].password) {
-    return { error: "Este usuário já possui senha definida.", status: 400 };
+    return failure("Este usuário já possui senha definida.", 400);
   }
 
   await auth.api.sendVerificationOTP({
     body: { email: targetUser[0].email, type: "forget-password" },
   });
 
-  return { ok: true };
+  return success(null);
 }
 
 export async function getCurrentUserProfile(userId: string) {
@@ -211,7 +240,7 @@ export async function getCurrentUserProfile(userId: string) {
     .where(eq(authUser.id, userId))
     .limit(1);
 
-  if (userRows.length === 0) return { error: "Usuário não encontrado", status: 404 };
+  if (userRows.length === 0) return failure("Usuário não encontrado", 404);
 
   const userProfileRow = await db.query.userProfile.findFirst({ where: eq(userProfile.userId, userId) });
   const groups = await getUserGroups(userId);
@@ -226,14 +255,14 @@ export async function getCurrentUserProfile(userId: string) {
     where: and(eq(authAccount.userId, userId), eq(authAccount.providerId, "google")),
   });
 
-  return {
+  return success({
     user: userRows[0],
     userProfile: userProfileRow ?? {},
     googleId: googleAccount?.accountId ?? null,
     groups,
     permissions: permSummary,
     isAdmin: isAdmin(groups),
-  };
+  });
 }
 
 export async function updateCurrentUserProfile(userId: string, data: {
@@ -251,7 +280,7 @@ export async function updateCurrentUserProfile(userId: string, data: {
     .where(eq(authUser.id, userId))
     .returning();
 
-  if (!updatedUser) return { error: "Erro ao atualizar nome", status: 500 };
+  if (!updatedUser) return failure("Erro ao atualizar nome", 500);
 
   const existingProfile = await db.query.userProfile.findFirst({ where: eq(userProfile.userId, userId) });
   if (!existingProfile) {
@@ -279,12 +308,12 @@ export async function updateCurrentUserProfile(userId: string, data: {
       .where(eq(userProfile.userId, userId));
   }
 
-  return { ok: true };
+  return success(null);
 }
 
 export async function getCurrentUserPreferences(userId: string) {
   const prefs = await db.query.userPreferences.findFirst({ where: eq(userPreferences.userId, userId) });
-  return { userPreferences: prefs ?? {} };
+  return success({ userPreferences: prefs ?? {} });
 }
 
 export async function updateCurrentUserPreferences(userId: string, chatEnabled: boolean) {
@@ -295,7 +324,7 @@ export async function updateCurrentUserPreferences(userId: string, chatEnabled: 
     await db.update(userPreferences).set({ chatEnabled }).where(eq(userPreferences.userId, userId));
   }
 
-  return { ok: true };
+  return success(null);
 }
 
 export async function updateCurrentUserProfileImageUrl(userId: string, imageUrl: string) {
@@ -305,9 +334,9 @@ export async function updateCurrentUserProfileImageUrl(userId: string, imageUrl:
     .where(eq(authUser.id, userId))
     .returning();
 
-  if (!updatedUser) return { error: "Erro ao atualizar URL da imagem", status: 500 };
+  if (!updatedUser) return failure("Erro ao atualizar URL da imagem", 500);
 
-  return { ok: true, imageUrl };
+  return success({ imageUrl });
 }
 
 export async function updateCurrentUserPassword(userId: string, password: string) {
@@ -317,7 +346,7 @@ export async function updateCurrentUserPassword(userId: string, password: string
     .where(eq(authUser.id, userId))
     .limit(1);
 
-  if (userRows.length === 0) return { error: "Usuário não encontrado.", status: 404 };
+  if (userRows.length === 0) return failure("Usuário não encontrado.", 404);
 
   const hashedPassword = await hashPassword(password);
   const updatedAccount = await db
@@ -351,7 +380,7 @@ export async function updateCurrentUserPassword(userId: string, password: string
     }
   }
 
-  return { ok: true };
+  return success(null);
 }
 
 export async function updateCurrentUserEmail(userId: string, newEmail: string) {
@@ -361,11 +390,11 @@ export async function updateCurrentUserEmail(userId: string, newEmail: string) {
     .where(eq(authUser.id, userId))
     .limit(1);
 
-  if (userRows.length === 0) return { error: "Usuário não encontrado", status: 404 };
+  if (userRows.length === 0) return failure("Usuário não encontrado", 404);
 
   const currentEmail = userRows[0].email;
   if (currentEmail === newEmail) {
-    return { error: "O e-mail informado é o mesmo que o atual.", field: "email", status: 400 };
+    return failure("O e-mail informado é o mesmo que o atual.", 400, { field: "email" });
   }
 
   const emailConflict = await db
@@ -375,7 +404,7 @@ export async function updateCurrentUserEmail(userId: string, newEmail: string) {
     .limit(1);
 
   if (emailConflict.length > 0) {
-    return { error: "Já existe um usuário com este email.", field: "email", status: 400 };
+    return failure("Já existe um usuário com este email.", 400, { field: "email" });
   }
 
   const updatedUser = await db
@@ -384,7 +413,7 @@ export async function updateCurrentUserEmail(userId: string, newEmail: string) {
     .where(eq(authUser.id, userId))
     .returning();
 
-  if (updatedUser.length === 0) return { error: "Erro ao atualizar e-mail", status: 500 };
+  if (updatedUser.length === 0) return failure("Erro ao atualizar e-mail", 500);
 
   if (currentEmail) {
     await sendEmail({
@@ -400,7 +429,7 @@ export async function updateCurrentUserEmail(userId: string, newEmail: string) {
     text: `O seu e-mail no Silo foi alterado de ${currentEmail} para ${newEmail}.`,
   });
 
-  return { ok: true, email: newEmail };
+  return success({ email: newEmail });
 }
 
 export async function requestCurrentUserEmailChange(userId: string, newEmail: string) {
@@ -410,11 +439,11 @@ export async function requestCurrentUserEmailChange(userId: string, newEmail: st
     .where(eq(authUser.id, userId))
     .limit(1);
 
-  if (userRows.length === 0) return { error: "Usuário não encontrado", status: 404 };
+  if (userRows.length === 0) return failure("Usuário não encontrado", 404);
 
   const currentEmail = userRows[0].email;
   if (currentEmail === newEmail) {
-    return { error: "O e-mail informado é o mesmo que o atual.", field: "email", status: 400 };
+    return failure("O e-mail informado é o mesmo que o atual.", 400, { field: "email" });
   }
 
   const emailConflict = await db
@@ -424,7 +453,7 @@ export async function requestCurrentUserEmailChange(userId: string, newEmail: st
     .limit(1);
 
   if (emailConflict.length > 0) {
-    return { error: "Este e-mail já está sendo usado.", field: "email", status: 400 };
+    return failure("Este e-mail já está sendo usado.", 400, { field: "email" });
   }
 
   const otp = String(randomInt(0, 10 ** EMAIL_CHANGE_OTP_LENGTH)).padStart(EMAIL_CHANGE_OTP_LENGTH, "0");
@@ -449,10 +478,10 @@ export async function requestCurrentUserEmailChange(userId: string, newEmail: st
 
   if ("error" in emailResult) {
     await db.delete(authVerification).where(eq(authVerification.identifier, identifier));
-    return { error: "Não foi possível enviar o código de verificação.", status: 500 };
+    return failure("Não foi possível enviar o código de verificação.", 500);
   }
 
-  return { ok: true };
+  return success(null);
 }
 
 export async function confirmCurrentUserEmailChange(userId: string, newEmail: string, code: string) {
@@ -462,12 +491,12 @@ export async function confirmCurrentUserEmailChange(userId: string, newEmail: st
   });
 
   if (!verification || verification.expiresAt < new Date()) {
-    return { error: "Código expirado ou inválido.", status: 400 };
+    return failure("Código expirado ou inválido.", 400);
   }
 
   const [storedOtp] = verification.value.split(":").slice(0, 1);
   if (storedOtp !== code) {
-    return { error: "Código incorreto.", status: 400 };
+    return failure("Código incorreto.", 400);
   }
 
   const emailConflict = await db
@@ -477,7 +506,7 @@ export async function confirmCurrentUserEmailChange(userId: string, newEmail: st
     .limit(1);
 
   if (emailConflict.length > 0) {
-    return { error: "Este e-mail já está sendo usado.", field: "email", status: 400 };
+    return failure("Este e-mail já está sendo usado.", 400, { field: "email" });
   }
 
   const updatedUser = await db
@@ -486,11 +515,11 @@ export async function confirmCurrentUserEmailChange(userId: string, newEmail: st
     .where(eq(authUser.id, userId))
     .returning();
 
-  if (updatedUser.length === 0) return { error: "Erro ao confirmar alteração de e-mail", status: 500 };
+  if (updatedUser.length === 0) return failure("Erro ao confirmar alteração de e-mail", 500);
 
   await db.delete(authVerification).where(eq(authVerification.identifier, verificationIdentifier));
 
-  return { ok: true };
+  return success(null);
 }
 
 export async function updateCurrentUserProfileImage(userId: string, file: { originalname: string; buffer: Buffer }) {
@@ -500,7 +529,7 @@ export async function updateCurrentUserProfileImage(userId: string, file: { orig
     .where(eq(authUser.id, userId))
     .limit(1);
 
-  if (currentUserData.length === 0) return { error: "Usuário não encontrado", status: 404 };
+  if (currentUserData.length === 0) return failure("Usuário não encontrado", 404);
 
   const currentImageUrl = currentUserData[0].image ?? null;
   if (currentImageUrl) {
@@ -526,7 +555,7 @@ export async function updateCurrentUserProfileImage(userId: string, file: { orig
     .where(eq(authUser.id, userId))
     .returning();
 
-  if (updatedUser.length === 0) return { error: "Erro ao atualizar imagem", status: 500 };
+  if (updatedUser.length === 0) return failure("Erro ao atualizar imagem", 500);
 
-  return { ok: true, imageUrl };
+  return success({ imageUrl });
 }

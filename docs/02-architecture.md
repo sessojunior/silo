@@ -55,6 +55,8 @@ web -> api -> db
   - `@silo/engine/contracts/kafka-events` → eventos Kafka
   - `@silo/engine/contracts/dto/*` → DTOs de request/response por recurso
 
+  O barrel raiz de contracts deve permanecer fino. Use `@silo/engine/contracts` apenas para exports realmente centrais e prefira subpaths explícitos quando o conjunto de contratos crescer.
+
   ### Quando usar cada contrato
 
   - `@silo/database/schema` é para persistência e consultas Drizzle; não é contrato HTTP.

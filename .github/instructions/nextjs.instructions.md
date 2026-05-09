@@ -118,6 +118,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 ---
 
+## Versão da Aplicação
+
+- A versão exibida na interface do `apps/web` fica centralizada em `apps/web/src/lib/config.ts` como `config.appVersion`.
+- Não usar `process.env`, build args, variáveis de CI, `package.json` ou metadata de Git para esse valor.
+- Quando a UI mudar e a versão precisar acompanhar, atualizar o mesmo arquivo no mesmo change.
+- O sidebar deve consumir `config.appVersion` diretamente, sem helper extra, contexto ou hook.
+
+---
+
 ## Navegação
 
 ```typescript

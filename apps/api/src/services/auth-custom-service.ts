@@ -21,6 +21,37 @@ const SIGN_UP_COOLDOWN_SECONDS = 90;
 const SIGN_UP_BURST_LIMIT = 8;
 const SIGN_UP_BURST_WINDOW_SECONDS = 10 * 60;
 
+type AuthServiceSuccess<T> = {
+  ok: true;
+  data: T;
+};
+
+type AuthServiceError = {
+  ok: false;
+  error: string;
+  status?: number;
+  field?: string;
+  data?: unknown;
+  retryAfterSeconds?: number;
+  resetFlow?: boolean;
+};
+
+const success = <T>(data: T): AuthServiceSuccess<T> => ({
+  ok: true,
+  data,
+});
+
+const failure = (
+  error: string,
+  status?: number,
+  extra?: Omit<AuthServiceError, "ok" | "error" | "status">,
+): AuthServiceError => ({
+  ok: false,
+  error,
+  ...(typeof status === "number" ? { status } : {}),
+  ...(extra ?? {}),
+});
+
 const getBetterAuthErrorCode = (error: unknown): string | null => {
   if (typeof error !== "object" || error === null) return null;
   const body = (error as { body?: unknown }).body;
@@ -56,7 +87,7 @@ export async function loginWithGoogle(params: {
   const { from, headers } = params;
 
   if (!config.googleClientId || !config.googleClientSecret) {
-    return { error: "Login com Google indisponível neste ambiente.", status: 503 };
+    return failure("Login com Google indisponível neste ambiente.", 503);
   }
 
   const appUrl = (config.appUrl || "http://localhost:3000/silo").replace(/\/$/, "");
@@ -65,7 +96,7 @@ export async function loginWithGoogle(params: {
   const callbackURL = `${appUrl}/admin/dashboard`;
 
   const result = await auth.api.signInSocial({ body: { provider: "google", callbackURL, errorCallbackURL }, headers, asResponse: true });
-  return { ok: true, response: result, fallbackRedirect: `${appUrl}/login` };
+  return success({ response: result, fallbackRedirect: `${appUrl}/login` });
 }
 
 export async function getCurrentSession(headers: Record<string, string>) {
@@ -95,7 +126,7 @@ export async function createSignUpEmail(params: {
     windowInSeconds: SIGN_UP_COOLDOWN_SECONDS,
   });
   if (cooldown.isLimited) {
-    return { error: "Aguarde para tentar novamente.", status: 429, retryAfterSeconds: cooldown.retryAfterSeconds };
+    return failure("Aguarde para tentar novamente.", 429, { retryAfterSeconds: cooldown.retryAfterSeconds });
   }
 
   const burst = await getRateLimitStatus({
@@ -106,7 +137,7 @@ export async function createSignUpEmail(params: {
     windowInSeconds: SIGN_UP_BURST_WINDOW_SECONDS,
   });
   if (burst.isLimited) {
-    return { error: "Muitas tentativas. Aguarde.", status: 429, retryAfterSeconds: burst.retryAfterSeconds };
+    return failure("Muitas tentativas. Aguarde.", 429, { retryAfterSeconds: burst.retryAfterSeconds });
   }
 
   const response = await auth.api.signUpEmail({ body: { name, email, password }, headers, asResponse: true });
@@ -119,12 +150,12 @@ export async function createSignUpEmail(params: {
     const code = normalizeErrorKey(payload?.code);
     const messageCode = normalizeErrorKey(payload?.message);
     if (response.status === 409 || code === "USER_ALREADY_EXISTS" || messageCode === "USER_ALREADY_EXISTS") {
-      return { error: "Este e-mail já está em uso. Use outro e-mail.", field: "email", status: 400 };
+      return failure("Este e-mail já está em uso. Use outro e-mail.", 400, { field: "email" });
     }
     if (response.status >= 500) {
-      return { error: "Serviço de autenticação temporariamente indisponível.", status: 503 };
+      return failure("Serviço de autenticação temporariamente indisponível.", 503);
     }
-    return { error: payload?.message ?? "Erro ao criar conta.", status: response.status };
+    return failure(payload?.message ?? "Erro ao criar conta.", response.status);
   }
 
   await auth.api.sendVerificationOTP({ body: { email, type: "email-verification" }, headers });
@@ -132,7 +163,7 @@ export async function createSignUpEmail(params: {
   await recordRateLimit({ email, ip, route: "sign-up-email-cooldown", windowInSeconds: SIGN_UP_COOLDOWN_SECONDS });
   await recordRateLimit({ email, ip, route: "sign-up-email-burst", windowInSeconds: SIGN_UP_BURST_WINDOW_SECONDS });
 
-  return { ok: true, cooldownSeconds: SIGN_UP_COOLDOWN_SECONDS };
+  return success({ cooldownSeconds: SIGN_UP_COOLDOWN_SECONDS });
 }
 
 export async function sendForgetPasswordOtp(params: {
@@ -152,7 +183,7 @@ export async function sendForgetPasswordOtp(params: {
       windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
     });
     if (st.isLimited) {
-      return { error: "Aguarde para tentar novamente.", field: "email", status: 429, retryAfterSeconds: st.retryAfterSeconds };
+      return failure("Aguarde para tentar novamente.", 429, { field: "email", retryAfterSeconds: st.retryAfterSeconds });
     }
     await recordRateLimit({
       email: "unknown",
@@ -160,7 +191,7 @@ export async function sendForgetPasswordOtp(params: {
       route: "forget-password-wrong-email",
       windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
     });
-    return { error: "E-mail inexistente.", field: "email", status: 404 };
+    return failure("E-mail inexistente.", 404, { field: "email" });
   }
 
   const cooldown = await getRateLimitStatus({
@@ -171,7 +202,7 @@ export async function sendForgetPasswordOtp(params: {
     windowInSeconds: FORGET_PASSWORD_COOLDOWN_SECONDS,
   });
   if (cooldown.isLimited) {
-    return { error: "Aguarde para reenviar o código.", status: 429, retryAfterSeconds: cooldown.retryAfterSeconds };
+    return failure("Aguarde para reenviar o código.", 429, { retryAfterSeconds: cooldown.retryAfterSeconds });
   }
 
   const attemptsId = `forget-password:attempts:${email}`;
@@ -179,7 +210,7 @@ export async function sendForgetPasswordOtp(params: {
   await auth.api.sendVerificationOTP({ body: { email, type: "forget-password" }, headers });
   await recordRateLimit({ email, ip, route: "forget-password-send-otp-cooldown", windowInSeconds: FORGET_PASSWORD_COOLDOWN_SECONDS });
 
-  return { ok: true, email, cooldownSeconds: FORGET_PASSWORD_COOLDOWN_SECONDS };
+  return success({ email, cooldownSeconds: FORGET_PASSWORD_COOLDOWN_SECONDS });
 }
 
 export async function verifyForgetPasswordOtp(params: {
@@ -193,11 +224,11 @@ export async function verifyForgetPasswordOtp(params: {
 
   const lockout = await getRateLimitStatus({ email, ip, route: LOCKOUT_ROUTE, limit: 1, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
   if (lockout.isLimited) {
-    return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: lockout.retryAfterSeconds };
+    return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: lockout.retryAfterSeconds });
   }
 
   const user = await db.query.authUser.findFirst({ where: eq(authUser.email, email) });
-  if (!user) return { error: "E-mail inexistente.", field: "email", status: 404 };
+  if (!user) return failure("E-mail inexistente.", 404, { field: "email" });
 
   const attemptsId = `forget-password:attempts:${email}`;
   const attemptsRow = await db.query.authVerification.findFirst({ where: eq(authVerification.identifier, attemptsId) });
@@ -207,7 +238,7 @@ export async function verifyForgetPasswordOtp(params: {
     if (attemptsRow) await db.delete(authVerification).where(eq(authVerification.id, attemptsRow.id));
   } else if (parseAttempts(attemptsRow.value) >= OTP_MAX_ATTEMPTS) {
     await recordRateLimit({ email, ip, route: LOCKOUT_ROUTE, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
-    return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS };
+    return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS });
   }
 
   let verified = false;
@@ -217,7 +248,7 @@ export async function verifyForgetPasswordOtp(params: {
   } catch (err) {
     if (isOtpTooManyAttempts(err)) {
       await recordRateLimit({ email, ip, route: LOCKOUT_ROUTE, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
-      return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS };
+      return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS });
     }
     if (!isOtpInvalidOrExpired(err)) throw err;
   }
@@ -233,15 +264,15 @@ export async function verifyForgetPasswordOtp(params: {
     }
     if (next >= OTP_MAX_ATTEMPTS) {
       await recordRateLimit({ email, ip, route: LOCKOUT_ROUTE, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
-      return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS };
+      return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS });
     }
-    return { error: "Código inválido ou expirado.", field: "code", status: 400 };
+    return failure("Código inválido ou expirado.", 400, { field: "code" });
   }
 
   if (attemptsRow) await db.delete(authVerification).where(eq(authVerification.id, attemptsRow.id));
   else await db.delete(authVerification).where(eq(authVerification.identifier, attemptsId));
   await clearRateLimitForEmail({ email });
-  return { ok: true };
+  return success(null);
 }
 
 export async function sendSignUpEmailOtp(params: {
@@ -261,7 +292,7 @@ export async function sendSignUpEmailOtp(params: {
       windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
     });
     if (st.isLimited) {
-      return { error: "Aguarde para tentar novamente.", field: "email", status: 429, retryAfterSeconds: st.retryAfterSeconds };
+      return failure("Aguarde para tentar novamente.", 429, { field: "email", retryAfterSeconds: st.retryAfterSeconds });
     }
     await recordRateLimit({
       email: "unknown",
@@ -269,7 +300,7 @@ export async function sendSignUpEmailOtp(params: {
       route: "sign-up-email-verification-wrong-email",
       windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
     });
-    return { error: "E-mail inexistente.", field: "email", status: 404 };
+    return failure("E-mail inexistente.", 404, { field: "email" });
   }
 
   const cooldown = await getRateLimitStatus({
@@ -280,14 +311,14 @@ export async function sendSignUpEmailOtp(params: {
     windowInSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS,
   });
   if (cooldown.isLimited) {
-    return { error: "Aguarde para reenviar o código.", status: 429, retryAfterSeconds: cooldown.retryAfterSeconds };
+    return failure("Aguarde para reenviar o código.", 429, { retryAfterSeconds: cooldown.retryAfterSeconds });
   }
 
   await db.delete(authVerification).where(eq(authVerification.identifier, `sign-up-email-verification:attempts:${email}`));
   await auth.api.sendVerificationOTP({ body: { email, type: "email-verification" }, headers });
   await recordRateLimit({ email, ip, route: "sign-up-email-verification-send-otp-cooldown", windowInSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS });
 
-  return { ok: true, cooldownSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS };
+  return success({ cooldownSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS });
 }
 
 export async function verifySignUpEmailOtp(params: {
@@ -303,11 +334,11 @@ export async function verifySignUpEmailOtp(params: {
 
   const lockout = await getRateLimitStatus({ email, ip, route: LOCKOUT_ROUTE, limit: 1, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
   if (lockout.isLimited) {
-    return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: lockout.retryAfterSeconds };
+    return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: lockout.retryAfterSeconds });
   }
 
   const user = await db.query.authUser.findFirst({ where: eq(authUser.email, email) });
-  if (!user) return { error: "E-mail inexistente.", field: "email", status: 404 };
+  if (!user) return failure("E-mail inexistente.", 404, { field: "email" });
 
   const attemptsId = `sign-up-email-verification:attempts:${email}`;
   const attemptsRow = await db.query.authVerification.findFirst({ where: eq(authVerification.identifier, attemptsId) });
@@ -317,7 +348,7 @@ export async function verifySignUpEmailOtp(params: {
     if (attemptsRow) await db.delete(authVerification).where(eq(authVerification.id, attemptsRow.id));
   } else if (parseAttempts(attemptsRow.value) >= OTP_MAX_ATTEMPTS) {
     await recordRateLimit({ email, ip, route: LOCKOUT_ROUTE, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
-    return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS };
+    return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS });
   }
 
   let verified = false;
@@ -327,7 +358,7 @@ export async function verifySignUpEmailOtp(params: {
   } catch (err) {
     if (isOtpTooManyAttempts(err)) {
       await recordRateLimit({ email, ip, route: LOCKOUT_ROUTE, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
-      return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS };
+      return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS });
     }
     if (!isOtpInvalidOrExpired(err)) throw err;
   }
@@ -340,9 +371,9 @@ export async function verifySignUpEmailOtp(params: {
     else await db.insert(authVerification).values({ id: randomUUID(), identifier: attemptsId, value: String(next), expiresAt, createdAt: now, updatedAt: now });
     if (next >= OTP_MAX_ATTEMPTS) {
       await recordRateLimit({ email, ip, route: LOCKOUT_ROUTE, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
-      return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS };
+      return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS });
     }
-    return { error: "Código inválido ou expirado.", field: "code", status: 400 };
+    return failure("Código inválido ou expirado.", 400, { field: "code" });
   }
 
   if (attemptsRow) await db.delete(authVerification).where(eq(authVerification.id, attemptsRow.id));
@@ -351,7 +382,7 @@ export async function verifySignUpEmailOtp(params: {
   if (!user.emailVerified) {
     await db.update(authUser).set({ emailVerified: true, isActive: true, updatedAt: new Date() }).where(eq(authUser.id, user.id));
     const defaultGroup = await db.query.group.findFirst({ where: eq(group.isDefault, true), orderBy: [desc(group.updatedAt)] });
-    if (!defaultGroup) return { error: "Grupo padrão não configurado no sistema.", status: 500 };
+    if (!defaultGroup) return failure("Grupo padrão não configurado no sistema.", 500);
     const existingUg = await db.query.userGroup.findFirst({ where: eq(userGroup.userId, user.id) });
     if (!existingUg) await db.insert(userGroup).values({ id: randomUUID(), userId: user.id, groupId: defaultGroup.id, joinedAt: new Date() });
   }
@@ -365,9 +396,9 @@ export async function verifySignUpEmailOtp(params: {
       let payload: { message?: string } | null = null;
       try { payload = await signInResp.clone().json() as { message?: string } | null; } catch {}
       if (signInResp.status >= 500) {
-        return { error: "Serviço de autenticação temporariamente indisponível.", status: 503 };
+        return failure("Serviço de autenticação temporariamente indisponível.", 503);
       }
-      return { error: payload?.message ?? "Erro ao entrar.", status: signInResp.status };
+      return failure(payload?.message ?? "Erro ao entrar.", signInResp.status);
     }
 
     responseCookies.push(...readSetCookieHeaders(signInResp.headers));
@@ -375,7 +406,7 @@ export async function verifySignUpEmailOtp(params: {
   }
 
   await clearRateLimitForEmail({ email });
-  return { ok: true, signedIn, setCookieHeaders: responseCookies };
+  return success({ signedIn, setCookieHeaders: responseCookies });
 }
 
 export async function sendLoginEmailOtp(params: {
@@ -395,7 +426,7 @@ export async function sendLoginEmailOtp(params: {
       windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
     });
     if (st.isLimited) {
-      return { error: "Aguarde para tentar novamente.", field: "email", status: 429, retryAfterSeconds: st.retryAfterSeconds };
+      return failure("Aguarde para tentar novamente.", 429, { field: "email", retryAfterSeconds: st.retryAfterSeconds });
     }
     await recordRateLimit({
       email: "unknown",
@@ -403,7 +434,7 @@ export async function sendLoginEmailOtp(params: {
       route: "login-email-wrong-email",
       windowInSeconds: AUTH_INVALID_EMAIL_WINDOW_SECONDS,
     });
-    return { error: "E-mail inexistente.", field: "email", status: 404 };
+    return failure("E-mail inexistente.", 404, { field: "email" });
   }
 
   const cooldown = await getRateLimitStatus({
@@ -414,14 +445,14 @@ export async function sendLoginEmailOtp(params: {
     windowInSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS,
   });
   if (cooldown.isLimited) {
-    return { error: "Aguarde para reenviar o código.", status: 429, retryAfterSeconds: cooldown.retryAfterSeconds };
+    return failure("Aguarde para reenviar o código.", 429, { retryAfterSeconds: cooldown.retryAfterSeconds });
   }
 
   await db.delete(authVerification).where(eq(authVerification.identifier, `login-email:attempts:${email}`));
   await auth.api.sendVerificationOTP({ body: { email, type: "sign-in" }, headers });
   await recordRateLimit({ email, ip, route: "login-email-send-otp-cooldown", windowInSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS });
 
-  return { ok: true, cooldownSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS };
+  return success({ cooldownSeconds: AUTH_OTP_RESEND_COOLDOWN_SECONDS });
 }
 
 export async function signInWithPassword(params: {
@@ -440,7 +471,7 @@ export async function signInWithPassword(params: {
     windowInSeconds: AUTH_INVALID_CREDENTIALS_WINDOW_SECONDS,
   });
   if (rate.isLimited) {
-    return { error: "Aguarde para tentar novamente.", field: "email", status: 429, retryAfterSeconds: rate.retryAfterSeconds };
+    return failure("Aguarde para tentar novamente.", 429, { field: "email", retryAfterSeconds: rate.retryAfterSeconds });
   }
 
   let response: globalThis.Response;
@@ -448,7 +479,7 @@ export async function signInWithPassword(params: {
     response = await auth.api.signInEmail({ body: { email, password }, headers, asResponse: true });
   } catch (signInErr) {
     if (typeof signInErr === "object" && signInErr !== null && isDatabaseInfrastructureUnavailable(signInErr)) {
-      return { error: "Serviço de autenticação temporariamente indisponível.", status: 503 };
+      return failure("Serviço de autenticação temporariamente indisponível.", 503);
     }
     throw signInErr;
   }
@@ -466,19 +497,19 @@ export async function signInWithPassword(params: {
       await recordRateLimit({ email, ip, route: "login-password", windowInSeconds: AUTH_INVALID_CREDENTIALS_WINDOW_SECONDS });
       const after = await getRateLimitStatus({ email, ip, route: "login-password", limit: AUTH_INVALID_CREDENTIALS_MAX_ATTEMPTS, windowInSeconds: AUTH_INVALID_CREDENTIALS_WINDOW_SECONDS });
       if (after.isLimited) {
-        return { error: "Aguarde para tentar novamente.", field: "email", status: 429, retryAfterSeconds: after.retryAfterSeconds };
+        return failure("Aguarde para tentar novamente.", 429, { field: "email", retryAfterSeconds: after.retryAfterSeconds });
       }
-      return { error: "E-mail ou senha inválidos.", field: "password", status: 401 };
+      return failure("E-mail ou senha inválidos.", 401, { field: "password" });
     }
 
     if (response.status >= 500) {
-      return { error: "Serviço de autenticação temporariamente indisponível.", status: 503 };
+      return failure("Serviço de autenticação temporariamente indisponível.", 503);
     }
-    return { error: payload?.message ?? "Erro ao entrar.", status: response.status };
+    return failure(payload?.message ?? "Erro ao entrar.", response.status);
   }
 
   await clearRateLimitForEmail({ email });
-  return { ok: true, signedIn: true, setCookieHeaders: readSetCookieHeaders(response.headers) };
+  return success({ signedIn: true, setCookieHeaders: readSetCookieHeaders(response.headers) });
 }
 
 export async function verifyLoginEmailOtp(params: {
@@ -498,11 +529,11 @@ export async function verifyLoginEmailOtp(params: {
     windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS,
   });
   if (lockout.isLimited) {
-    return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: lockout.retryAfterSeconds };
+    return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: lockout.retryAfterSeconds });
   }
 
   const user = await db.query.authUser.findFirst({ where: eq(authUser.email, email) });
-  if (!user) return { error: "E-mail inexistente.", field: "email", status: 404 };
+  if (!user) return failure("E-mail inexistente.", 404, { field: "email" });
 
   const attemptsId = `login-email:attempts:${email}`;
   const attemptsRow = await db.query.authVerification.findFirst({ where: eq(authVerification.identifier, attemptsId) });
@@ -512,7 +543,7 @@ export async function verifyLoginEmailOtp(params: {
     if (attemptsRow) await db.delete(authVerification).where(eq(authVerification.id, attemptsRow.id));
   } else if (parseAttempts(attemptsRow.value) >= OTP_MAX_ATTEMPTS) {
     await recordRateLimit({ email, ip, route: LOCKOUT_ROUTE, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
-    return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS };
+    return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS });
   }
 
   let signInRes: globalThis.Response | null = null;
@@ -532,7 +563,7 @@ export async function verifyLoginEmailOtp(params: {
       else {
         const s = r.status >= 500 ? 503 : r.status;
         const e = r.status >= 500 ? "Serviço de autenticação temporariamente indisponível." : (payload?.message ?? "Erro ao entrar.");
-        return { error: e, field: "code", status: s };
+        return failure(e, s, { field: "code" });
       }
     }
   } catch (err) {
@@ -543,14 +574,14 @@ export async function verifyLoginEmailOtp(params: {
 
   if (internalType === "too_many") {
     await recordRateLimit({ email, ip, route: LOCKOUT_ROUTE, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
-    return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS };
+    return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS });
   }
 
   if (signInRes) {
     if (attemptsRow) await db.delete(authVerification).where(eq(authVerification.id, attemptsRow.id));
     else await db.delete(authVerification).where(eq(authVerification.identifier, attemptsId));
     await clearRateLimitForEmail({ email });
-    return { ok: true, signedIn: true, setCookieHeaders: readSetCookieHeaders(signInRes.headers) };
+    return success({ signedIn: true, setCookieHeaders: readSetCookieHeaders(signInRes.headers) });
   }
 
   const row2 = await db.query.authVerification.findFirst({ where: eq(authVerification.identifier, attemptsId) });
@@ -561,10 +592,10 @@ export async function verifyLoginEmailOtp(params: {
 
   if (next >= OTP_MAX_ATTEMPTS) {
     await recordRateLimit({ email, ip, route: LOCKOUT_ROUTE, windowInSeconds: AUTH_OTP_LOCKOUT_SECONDS });
-    return { error: "Aguarde para reenviar o código.", field: "code", status: 429, retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS };
+    return failure("Aguarde para reenviar o código.", 429, { field: "code", retryAfterSeconds: AUTH_OTP_LOCKOUT_SECONDS });
   }
 
-  return { error: "Código inválido ou expirado.", field: "code", status: 400 };
+  return failure("Código inválido ou expirado.", 400, { field: "code" });
 }
 
 export async function completePasswordSetup(params: {
@@ -583,7 +614,7 @@ export async function completePasswordSetup(params: {
     if (attemptsRow.expiresAt < now) {
       await db.delete(authVerification).where(eq(authVerification.id, attemptsRow.id));
     } else if (parseAttempts(attemptsRow.value) >= OTP_MAX_ATTEMPTS) {
-      return { error: "Excesso tentativas inválidas. Comece novamente.", field: "code", status: 429, resetFlow: true as const };
+      return failure("Excesso tentativas inválidas. Comece novamente.", 429, { field: "code", resetFlow: true });
     }
   }
 
@@ -593,7 +624,7 @@ export async function completePasswordSetup(params: {
     verified = result?.success === true;
   } catch (err) {
     if (isOtpTooManyAttempts(err)) {
-      return { error: "Excesso tentativas inválidas. Comece novamente.", field: "code", status: 429, resetFlow: true as const };
+      return failure("Excesso tentativas inválidas. Comece novamente.", 429, { field: "code", resetFlow: true });
     }
     if (!isOtpInvalidOrExpired(err)) throw err;
   }
@@ -608,14 +639,14 @@ export async function completePasswordSetup(params: {
       await db.insert(authVerification).values({ id: randomUUID(), identifier: attemptsId, value: String(next), expiresAt, createdAt: now, updatedAt: now });
     }
     if (next >= OTP_MAX_ATTEMPTS) {
-      return { error: "Excesso tentativas inválidas. Comece novamente.", field: "code", status: 429, resetFlow: true as const };
+      return failure("Excesso tentativas inválidas. Comece novamente.", 429, { field: "code", resetFlow: true });
     }
-    return { error: "Código inválido ou expirado.", field: "code", status: 400 };
+    return failure("Código inválido ou expirado.", 400, { field: "code" });
   }
 
   await db.delete(authVerification).where(eq(authVerification.identifier, attemptsId));
   const user = await db.query.authUser.findFirst({ where: eq(authUser.email, email) });
-  if (!user) return { error: "Usuário não encontrado.", status: 404 };
+  if (!user) return failure("Usuário não encontrado.", 404);
 
   const hashedPwd = await hashPassword(password);
   const account = await db.query.authAccount.findFirst({ where: and(eq(authAccount.userId, user.id), eq(authAccount.providerId, "credential")) });
@@ -628,7 +659,7 @@ export async function completePasswordSetup(params: {
   if (!user.emailVerified) {
     await db.update(authUser).set({ emailVerified: true, isActive: true, updatedAt: new Date() }).where(eq(authUser.id, user.id));
     const defaultGroup = await db.query.group.findFirst({ where: eq(group.isDefault, true), orderBy: [desc(group.updatedAt)] });
-    if (!defaultGroup) return { error: "Grupo padrão não configurado no sistema.", status: 500 };
+    if (!defaultGroup) return failure("Grupo padrão não configurado no sistema.", 500);
     const existingUg = await db.query.userGroup.findFirst({ where: eq(userGroup.userId, user.id) });
     if (!existingUg) await db.insert(userGroup).values({ id: randomUUID(), userId: user.id, groupId: defaultGroup.id, joinedAt: new Date() });
   }
@@ -645,9 +676,9 @@ export async function completePasswordSetup(params: {
       } catch {}
 
       if (signInResp.status >= 500) {
-        return { error: "Serviço de autenticação temporariamente indisponível.", status: 503 };
+        return failure("Serviço de autenticação temporariamente indisponível.", 503);
       }
-      return { error: payload?.message ?? "Erro ao entrar.", status: signInResp.status };
+      return failure(payload?.message ?? "Erro ao entrar.", signInResp.status);
     }
 
     responseCookies.push(...readSetCookieHeaders(signInResp.headers));
@@ -655,5 +686,5 @@ export async function completePasswordSetup(params: {
   }
 
   await clearRateLimitForEmail({ email });
-  return { ok: true, signedIn, setCookieHeaders: responseCookies };
+  return success({ signedIn, setCookieHeaders: responseCookies });
 }

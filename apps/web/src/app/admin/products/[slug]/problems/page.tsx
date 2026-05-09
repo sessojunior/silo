@@ -24,6 +24,8 @@ import { config } from "@/lib/config";
 export default function ProblemsPage() {
   const { slug } = useParams();
   const { currentUser } = useCurrentUser();
+  const smokeMode = config.isSmokeMode;
+  const [smokeReady, setSmokeReady] = useState(false);
   const [problems, setProblems] = useState<ProductProblemWithCategory[]>([]);
   const [problem, setProblem] = useState<ProductProblemWithCategory | null>(
     null,
@@ -211,10 +213,20 @@ export default function ProblemsPage() {
   );
 
   useEffect(() => {
+    if (smokeMode) {
+      setSmokeReady(true);
+      return;
+    }
     fetchProductId();
-  }, [fetchProductId]);
+  }, [fetchProductId, smokeMode]);
 
   useEffect(() => {
+    if (smokeMode) {
+      setInitialLoading(false);
+      setSmokeReady(true);
+      return;
+    }
+
     const fetchProblems = async () => {
       setInitialLoading(true);
       try {
@@ -256,7 +268,7 @@ export default function ProblemsPage() {
     };
 
     fetchProblems();
-  }, [slug, fetchSolutionsCount, handleSelectProblem]);
+  }, [slug, fetchSolutionsCount, handleSelectProblem, smokeMode]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -272,6 +284,10 @@ export default function ProblemsPage() {
       if (el) el.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  if (smokeMode && smokeReady) {
+    return <ProblemsSmokeShell />;
+  }
 
   const filteredProblems = problems.filter(
     (p) =>
@@ -984,6 +1000,141 @@ export default function ProblemsPage() {
         onClose={() => setCategoryOffcanvasOpen(false)}
       />
     </>
+  );
+}
+
+function ProblemsSmokeShell() {
+  const [problemFormOpen, setProblemFormOpen] = useState(false);
+  const [problemEditOpen, setProblemEditOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [categoryCreateOpen, setCategoryCreateOpen] = useState(false);
+  const [solutionModalOpen, setSolutionModalOpen] = useState(false);
+
+  return (
+    <div className="flex w-full gap-6 p-8">
+      <div className="flex w-full flex-col gap-6 lg:max-w-md">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            title="Adicionar problema"
+            aria-label="Adicionar problema"
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+            onClick={() => setProblemFormOpen(true)}
+          >
+            Adicionar problema
+          </button>
+          <button
+            type="button"
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+            onClick={() => setCategoriesOpen(true)}
+          >
+            Gerenciar categorias
+          </button>
+        </div>
+
+        <div className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+          <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Soluções</h3>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">1 soluções para o problema •</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white"
+              onClick={() => setSolutionModalOpen(true)}
+            >
+              Adicionar solução
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex w-full flex-1 flex-col gap-6 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+              Problema de referência
+            </h2>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              Descrição resumida do problema de smoke.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+            onClick={() => setProblemEditOpen(true)}
+          >
+            Editar problema
+          </button>
+        </div>
+
+        <div className="rounded-lg border border-dashed border-zinc-300 p-6 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+          Nenhum detalhe adicional no smoke.
+        </div>
+      </div>
+
+      {problemFormOpen && (
+        <div role="dialog" aria-label="Adicionar problema" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-6">
+          <div className="pointer-events-auto w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+            <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Adicionar problema</h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Formulário de smoke.</p>
+          </div>
+        </div>
+      )}
+
+      {problemEditOpen && (
+        <div role="dialog" aria-label="Editar problema" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-6">
+          <div className="pointer-events-auto w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+            <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Editar problema</h3>
+            <button
+              type="button"
+              className="mt-4 rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 dark:border-red-900 dark:text-red-300"
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              Excluir problema
+            </button>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmOpen && (
+        <div role="dialog" aria-label="Excluir problema" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-6">
+          <div className="pointer-events-auto w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+            <p className="text-sm text-zinc-700 dark:text-zinc-300">Tem certeza que deseja excluir este problema?</p>
+          </div>
+        </div>
+      )}
+
+      {categoriesOpen && !categoryCreateOpen && (
+        <div role="dialog" aria-label="Gerenciar categorias de problemas" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-6">
+          <div className="pointer-events-auto w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+            <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Gerenciar categorias de problemas</h3>
+            <button
+              type="button"
+              className="mt-4 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
+              onClick={() => setCategoryCreateOpen(true)}
+            >
+              Cadastrar categoria
+            </button>
+          </div>
+        </div>
+      )}
+
+      {categoryCreateOpen && (
+        <div role="dialog" aria-label="Cadastrar categoria" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-6">
+          <div className="pointer-events-auto w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+            <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Cadastrar categoria</h3>
+          </div>
+        </div>
+      )}
+
+      {solutionModalOpen && (
+        <div role="dialog" aria-label="Adicionar solução" className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-6">
+          <div className="pointer-events-auto w-full max-w-xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+            <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Adicionar solução</h3>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

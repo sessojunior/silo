@@ -1,10 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-export {
+import {
+  buildApiErrorPayload,
+  buildApiSuccessPayload,
   parseApiResponse,
   readApiResponse,
   type ApiResponse,
 } from "@silo/engine/contracts/api-response";
+
+export { parseApiResponse, readApiResponse } from "@silo/engine/contracts/api-response";
+export { type ApiResponse } from "@silo/engine/contracts/api-response";
+
+type ParsedRequest<T> =
+  | { ok: true; data: T }
+  | { ok: false; response: NextResponse };
+
+function toFieldFromPath(path: Array<PropertyKey>): string | undefined {
+  const segments = path.map((segment) => String(segment).trim()).filter((segment) => segment.length > 0);
+  if (segments.length === 0) return undefined;
+  return segments.join(".");
+}
 
 /**
  * Retorna uma resposta de sucesso padronizada
@@ -21,13 +36,7 @@ export function successResponse<T>(
   headers?: HeadersInit,
 ) {
   return NextResponse.json(
-    {
-      ok: true,
-      success: true,
-      data,
-      message,
-      ...(meta && { meta }),
-    },
+    buildApiSuccessPayload(data, message, meta),
     { status, headers },
   );
 }
@@ -54,28 +63,13 @@ export function errorResponse(
       : undefined;
 
   return NextResponse.json(
-    {
-      ok: false,
-      success: false,
-      error,
-      message: error,
+    buildApiErrorPayload(error, {
       ...(field ? { field } : {}),
       ...(data !== undefined ? { data } : {}),
-    },
+    }),
     { status, headers },
   );
 }
-
-type ParsedRequest<T> =
-  | { ok: true; data: T }
-  | { ok: false; response: Response };
-
-const toFieldFromPath = (path: readonly PropertyKey[]): string | undefined => {
-  const first = path[0];
-  if (typeof first === "string" && first.length > 0) return first;
-  if (typeof first === "number") return String(first);
-  return undefined;
-};
 
 const toZodFirstIssue = (
   error: z.ZodError,

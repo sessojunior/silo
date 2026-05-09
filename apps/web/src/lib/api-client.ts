@@ -6,8 +6,8 @@
  */
 
 import { config } from "@/lib/config";
-import { readApiResponse } from "@/lib/api-response";
 import type { ApiResponse } from "@silo/engine/contracts/api-response";
+import { readApiResponse } from "@silo/engine/contracts/api-response";
 
 export function getApiUrl(path: string): string {
   return config.getApiUrl(path);

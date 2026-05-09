@@ -11,16 +11,16 @@ import {
   type AiAssistantThreadMessageDto,
   type AiAssistantThreadSummaryDto,
   type AiAssistantThreadsResponseDto,
-} from "@silo/engine/contracts";
+} from "@silo/engine/contracts/dto/ai-assistant";
 import type { ChatMessage } from "@/context/chat-context";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { config } from "@/lib/config";
-import { readApiResponse, type ApiResponse } from "@/lib/api-response";
 import Button from "@/components/ui/button";
 import { MessageInput } from "@/components/admin/chat/message-input";
 import { MessagesList } from "@/components/admin/chat/messages-list";
 import AssistantSidebar from "@/components/admin/ai-assistant/assistant-sidebar";
 import AssistantEmptyState from "@/components/admin/ai-assistant/assistant-empty-state";
+import { readApiResponse, type ApiResponse } from "@silo/engine/contracts/api-response";
 
 const ASSISTANT_SENDER_ID = "ai-assistant";
 const ASSISTANT_SENDER_NAME = "Assistente de IA";

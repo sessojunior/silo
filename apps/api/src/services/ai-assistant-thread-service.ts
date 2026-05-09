@@ -15,7 +15,7 @@ import type {
   AiAssistantThreadMessageDto,
   AiAssistantThreadSummaryDto,
   AiAssistantThreadsResponseDto,
-} from "@silo/engine/contracts";
+} from "@silo/engine/contracts/dto/ai-assistant";
 import {
   answerAssistantMessage as generateAssistantMessage,
   getAssistantExamples,

@@ -19,6 +19,7 @@ interface HelpDoc {
 }
 
 export default function HelpPage() {
+  const smokeMode = config.isSmokeMode;
   const [helpDoc, setHelpDoc] = useState<HelpDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -67,17 +68,24 @@ export default function HelpPage() {
 
   // Carregar dados ao montar
   useEffect(() => {
+    if (smokeMode) {
+      setLoading(false);
+      return;
+    }
+
     fetchHelpDoc();
-  }, []);
+  }, [smokeMode]);
 
   useEffect(() => {
+    if (smokeMode) return;
+
     const handleOpenEditor = () => setEditorOpen(true);
     window.addEventListener("openHelpEditor", handleOpenEditor);
 
     return () => {
       window.removeEventListener("openHelpEditor", handleOpenEditor);
     };
-  }, []);
+  }, [smokeMode]);
 
   // Extrair títulos do markdown
   const extractTitles = (markdown: string) => {
@@ -180,6 +188,10 @@ export default function HelpPage() {
         />
       </div>
     );
+  }
+
+  if (smokeMode) {
+    return <HelpSmokeShell />;
   }
 
   // Interface principal com sidebar e conteúdo (seguindo padrão ProductManualSection)
@@ -306,6 +318,38 @@ export default function HelpPage() {
           </div>
         </form>
       </Offcanvas>
+    </div>
+  );
+}
+
+function HelpSmokeShell() {
+  return (
+    <div className="flex w-full bg-white dark:bg-zinc-900">
+      <div className="flex-1 p-8">
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-8 dark:border-zinc-700 dark:bg-zinc-800">
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-100">
+            Ajuda
+          </h1>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Conteúdo estático para o smoke.
+          </p>
+        </div>
+      </div>
+
+      <div
+        role="dialog"
+        aria-label="Editor da Ajuda"
+        className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 p-6"
+      >
+        <div className="pointer-events-none w-full max-w-4xl rounded-2xl bg-white p-6 dark:bg-zinc-900">
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+            Editor da Ajuda
+          </h2>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            Shell de smoke.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

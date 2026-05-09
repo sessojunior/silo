@@ -20,7 +20,13 @@ type ProjectTaskDatabase = {
   insert: typeof db.insert;
 };
 
+type ProjectTaskSuccess<T> = {
+  ok: true;
+  data: T;
+};
+
 type ProjectTaskServiceError = {
+  ok: false;
   error: string;
   status: number;
   tasks?: ProjectTaskView[];
@@ -31,8 +37,10 @@ type ProjectTaskConflictError = ProjectTaskServiceError & {
   tasks: ProjectTaskView[];
 };
 
+type ProjectTaskGroups = ReturnType<typeof createTaskGroups>;
+
 type ReorderTasksResult =
-  | { tasks: ProjectTaskView[] }
+  | ProjectTaskSuccess<{ tasks: ProjectTaskView[] }>
   | ProjectTaskServiceError
   | ProjectTaskConflictError;
 
@@ -57,11 +65,11 @@ type ProjectTaskUpdateInput = ProjectTaskCreateInput & {
 };
 
 type ProjectTaskMutationResult =
-  | { task: ProjectTaskView }
+  | ProjectTaskSuccess<{ task: ProjectTaskView }>
   | ProjectTaskServiceError;
 
 type ProjectTaskDeleteResult =
-  | { ok: true }
+  | ProjectTaskSuccess<null>
   | ProjectTaskServiceError;
 
 const createTaskGroups = () => ({
@@ -308,11 +316,11 @@ export async function listProjectActivityTasks(projectId: string, activityId: st
   const activity = await findProjectActivity(db, projectId, activityId);
 
   if (!activity) {
-    return { error: "Atividade não encontrada.", status: 404 };
+    return { ok: false as const, error: "Atividade não encontrada.", status: 404 };
   }
 
   const tasks = await selectProjectActivityTasks(db, projectId, activityId);
-  const groupedTasks = createTaskGroups();
+  const groupedTasks: ProjectTaskGroups = createTaskGroups();
 
   for (const task of tasks) {
     const normalizedTask = normalizeTaskRow(task);
@@ -323,7 +331,7 @@ export async function listProjectActivityTasks(projectId: string, activityId: st
     groupedTasks[status].sort(sortTasksByPosition);
   }
 
-  return { tasks: groupedTasks };
+  return { ok: true as const, data: { tasks: groupedTasks } };
 }
 
 export async function createProjectActivityTask(
@@ -335,11 +343,11 @@ export async function createProjectActivityTask(
   const activity = await findProjectActivity(db, projectId, activityId);
 
   if (!activity) {
-    return { error: "Atividade não encontrada.", status: 404 };
+    return { ok: false as const, error: "Atividade não encontrada.", status: 404 };
   }
 
   if (data.projectId !== projectId || data.projectActivityId !== activityId) {
-    return { error: "Dados da tarefa inválidos.", status: 400 };
+    return { ok: false as const, error: "Dados da tarefa inválidos.", status: 400 };
   }
 
   const normalizedStatus = normalizeTaskStatus(data.status);
@@ -364,7 +372,7 @@ export async function createProjectActivityTask(
     return normalizeTaskRow(createdTask);
   });
 
-  return { task };
+  return { ok: true as const, data: { task } };
 }
 
 export async function updateProjectActivityTask(
@@ -376,11 +384,11 @@ export async function updateProjectActivityTask(
   const activity = await findProjectActivity(db, projectId, activityId);
 
   if (!activity) {
-    return { error: "Atividade não encontrada.", status: 404 };
+    return { ok: false as const, error: "Atividade não encontrada.", status: 404 };
   }
 
   if (data.projectId !== projectId || data.projectActivityId !== activityId) {
-    return { error: "Dados da tarefa inválidos.", status: 400 };
+    return { ok: false as const, error: "Dados da tarefa inválidos.", status: 400 };
   }
 
   const normalizedStatus = normalizeTaskStatus(data.status);
@@ -457,10 +465,10 @@ export async function updateProjectActivityTask(
   });
 
   if (!task) {
-    return { error: "Tarefa não encontrada.", status: 404 };
+    return { ok: false as const, error: "Tarefa não encontrada.", status: 404 };
   }
 
-  return { task };
+  return { ok: true as const, data: { task } };
 }
 
 export async function deleteProjectActivityTask(
@@ -471,7 +479,7 @@ export async function deleteProjectActivityTask(
   const activity = await findProjectActivity(db, projectId, activityId);
 
   if (!activity) {
-    return { error: "Atividade não encontrada.", status: 404 };
+    return { ok: false as const, error: "Atividade não encontrada.", status: 404 };
   }
 
   const result = await db.transaction(async (tx) => {
@@ -494,10 +502,10 @@ export async function deleteProjectActivityTask(
   });
 
   if (!result) {
-    return { error: "Tarefa não encontrada.", status: 404 };
+    return { ok: false as const, error: "Tarefa não encontrada.", status: 404 };
   }
 
-  return result;
+  return { ok: true as const, data: null };
 }
 
 export async function reorderProjectActivityTasks(
@@ -510,15 +518,15 @@ export async function reorderProjectActivityTasks(
   const activity = await findProjectActivity(db, projectId, activityId);
 
   if (!activity) {
-    return { error: "Atividade não encontrada.", status: 404 };
+    return { ok: false as const, error: "Atividade não encontrada.", status: 404 };
   }
 
   if (tasksBeforeMove.length === 0 || tasksAfterMove.length === 0) {
-    return { error: "Dados de movimentação inválidos.", status: 400 };
+    return { ok: false as const, error: "Dados de movimentação inválidos.", status: 400 };
   }
 
   if (tasksBeforeMove.length !== tasksAfterMove.length) {
-    return { error: "Dados de movimentação inválidos.", status: 400 };
+    return { ok: false as const, error: "Dados de movimentação inválidos.", status: 400 };
   }
 
   const normalizedBeforeMove = tasksBeforeMove.map((task) => ({
@@ -534,16 +542,16 @@ export async function reorderProjectActivityTasks(
   const afterMap = createPositionMap(normalizedAfterMove);
 
   if (!beforeMap || !afterMap) {
-    return { error: "Dados de movimentação inválidos.", status: 400 };
+    return { ok: false as const, error: "Dados de movimentação inválidos.", status: 400 };
   }
 
   if (beforeMap.size !== afterMap.size) {
-    return { error: "Dados de movimentação inválidos.", status: 400 };
+    return { ok: false as const, error: "Dados de movimentação inválidos.", status: 400 };
   }
 
   for (const taskId of beforeMap.keys()) {
     if (!afterMap.has(taskId)) {
-      return { error: "Dados de movimentação inválidos.", status: 400 };
+      return { ok: false as const, error: "Dados de movimentação inválidos.", status: 400 };
     }
   }
 
@@ -613,10 +621,10 @@ export async function reorderProjectActivityTasks(
       return toNormalizedTaskResponse(refreshedTasks);
     });
 
-    return { tasks: updatedTasks };
+    return { ok: true as const, data: { tasks: updatedTasks } };
   } catch (error) {
     if (error instanceof KanbanOutdatedError) {
-      return { error: "KANBAN_OUTDATED", status: 409, tasks: error.tasks };
+      return { ok: false as const, error: "KANBAN_OUTDATED", status: 409, tasks: error.tasks };
     }
 
     throw error;

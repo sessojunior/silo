@@ -5,7 +5,6 @@ import {
   fetchRecordsRest,
   subscribeRest,
 } from "@silo/engine/kafka/rest-client";
-import type { ProductStatus } from "@silo/engine/domain/product-status";
 import {
   clampProgress,
   normalizeModelKey,
@@ -25,6 +24,15 @@ import type {
   MonitoringProductItem,
   MonitoringProductsFile,
 } from "./types.js";
+import type { ProductStatus } from "@silo/engine/domain/product-status";
+import {
+  isFinishedStatus,
+  addMinutesIso,
+  toValidDateString,
+  minutesBetween,
+  productStatusToKafkaState,
+  stableDependencies,
+} from "./kafka-data-flow-transformers.js";
 
 const legacyPipelineData = pipelineDataJson as GroupedPipelineDataFile;
 const legacyMonitoringData = seedMonitoringProducts as unknown as MonitoringProductsFile;
@@ -33,45 +41,6 @@ type ActiveProduct = {
   slug: string;
   name: string;
 };
-
-function toValidDateString(value: unknown): string | null {
-  if (typeof value !== "string" || value.trim().length === 0) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return value;
-}
-
-function addMinutesIso(start: string, minutes: number): string {
-  const date = new Date(start);
-  date.setMinutes(date.getMinutes() + minutes);
-  return date.toISOString();
-}
-
-function minutesBetween(start?: string | null, end?: string | null): number | null {
-  if (!start || !end) return null;
-  const startDate = new Date(start), endDate = new Date(end);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
-  return Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 60000));
-}
-
-function stableDependencies(dependencies?: string[]): string[] {
-  if (!Array.isArray(dependencies)) return [];
-  return dependencies.map((d) => String(d ?? "").trim()).filter((d) => d.length > 0);
-}
-
-function productStatusToKafkaState(status: ProductStatus): string {
-  switch (status) {
-    case "completed": return "complete";
-    case "in_progress": return "active";
-    case "with_problems": case "run_again": return "failed";
-    case "not_run": case "suspended": case "under_support": return "aborted";
-    default: return "queued";
-  }
-}
-
-function isFinishedStatus(status: ProductStatus): boolean {
-  return status === "completed" || status === "with_problems" || status === "run_again";
-}
 
 function legacySnapshotToKafkaMessage(snapshot: GroupedPipelineData, requestedSlug: string): KafkaDataFlowMessage {
   const productSlug = requestedSlug || snapshot.model;

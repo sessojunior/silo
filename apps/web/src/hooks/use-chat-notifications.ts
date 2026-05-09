@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useChat } from "@/context/chat-context";
-import { readApiResponse } from "@/lib/api-response";
 import { config } from "@/lib/config";
+import { readApiResponse } from "@silo/engine/contracts/api-response";
 
 interface UnreadMessage {
   content: string;

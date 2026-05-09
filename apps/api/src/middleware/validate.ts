@@ -1,19 +1,46 @@
-import type { Request, Response, NextFunction } from "express";
-import { ZodSchema } from "zod";
+import type { NextFunction, Request, RequestHandler, Response } from "express";
+import { type ZodTypeAny } from "zod";
 
-export function validate(schema: ZodSchema) {
+type ValidateSource = "body" | "query" | "params";
+
+const toFieldName = (path: readonly PropertyKey[]): string | undefined => {
+  const field = path.map((segment) => String(segment)).join(".");
+  return field.length > 0 ? field : undefined;
+};
+
+const assignValidatedValue = (
+  req: Request,
+  source: ValidateSource,
+  value: unknown,
+): void => {
+  if (source === "body") {
+    req.body = value;
+    return;
+  }
+
+  Object.defineProperty(req, source, {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  });
+};
+
+export function validate(schema: ZodTypeAny, source: ValidateSource = "body"): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const result = schema.safeParse(req.body);
+    const input = req[source];
+    const result = schema.safeParse(input);
     if (!result.success) {
       const first = result.error.issues[0];
       res.status(400).json({
         success: false,
         error: first?.message ?? "Dados inválidos.",
-        field: (first?.path ?? []).join("."),
+        field: first ? toFieldName(first.path) : undefined,
       });
       return;
     }
-    req.body = result.data;
+
+    assignValidatedValue(req, source, result.data);
     next();
   };
 }

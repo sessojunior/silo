@@ -17,7 +17,7 @@ export default function SidebarFooter() {
             name={currentUser?.name || "Usuário"}
             size="md"
           />
-          <div className="w-[140px]">
+          <div className="w-35">
             <p className="truncate text-base leading-none font-medium text-zinc-700 dark:text-white">
               {currentUser?.name || "Usuário"}
             </p>

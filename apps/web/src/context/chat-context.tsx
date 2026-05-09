@@ -11,7 +11,7 @@ import React, {
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useUser } from "@/context/user-context";
 import { config } from "@/lib/config";
-import { readApiResponse, type ApiResponse } from "@/lib/api-response";
+import { readApiResponse, type ApiResponse } from "@silo/engine/contracts/api-response";
 import {
   type ChatRealtimeMessageDto,
   type ChatRealtimeServerMessage,
@@ -439,6 +439,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   // === FUNÇÕES PRINCIPAIS ===
 
   const loadSidebarData = useCallback(async () => {
+    if (config.isSmokeMode) {
+      setGroups([]);
+      setUsers([]);
+      setTotalUnread(0);
+      setLastSync(null);
+      return;
+    }
+
     if (sidebarRequestInFlight.current) return;
     sidebarRequestInFlight.current = true;
     try {
@@ -1223,6 +1231,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   // Inicializar chat e websocket realtime
   useEffect(() => {
+    if (config.isSmokeMode) {
+      shouldReconnectRealtime.current = false;
+      disconnectRealtime();
+      return;
+    }
+
     const shouldEnableRealtime =
       Boolean(currentUser) &&
       !userPreferencesLoading &&
