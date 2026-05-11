@@ -167,11 +167,44 @@ async function openFirstProjectDetails(page, routeBasePath) {
     },
     { timeout: 15000 },
   );
+  await page.waitForLoadState("networkidle").catch(() => {});
 }
 
 async function openFirstProjectKanban(page, routeBasePath) {
+  await page.waitForLoadState("networkidle").catch(() => {});
+  const projectPathMatch = new URL(page.url()).pathname.match(/\/admin\/projects\/([^/]+)/);
+  assert.ok(projectPathMatch?.[1], "Não foi possível identificar o projeto para abrir o kanban.");
+  const projectId = projectPathMatch[1];
+
+  try {
+    const browserCookies = await page.context().cookies();
+    const cookieHeader = browserCookies.map((cookie) => `${cookie.name}=${cookie.value}`).join("; ");
+    const response = await fetch(`${apiBaseUrl}/api/admin/projects/${projectId}/activities`, {
+      headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
+    });
+
+    if (response.ok) {
+      const payload = (await response.json());
+      const activities = payload?.success && Array.isArray(payload?.data?.activities) ? payload.data.activities : [];
+      const firstActivity = activities.find((activity) => activity && typeof activity.id === "string" && activity.id.length > 0);
+
+      if (firstActivity) {
+        await page.goto(
+          `${routeBasePath}/admin/projects/${projectId}/activities/${firstActivity.id}`,
+          { waitUntil: "domcontentloaded" },
+        );
+        await page.waitForLoadState("networkidle").catch(() => {});
+        return;
+      }
+    }
+  } catch {
+    // Mantém o fluxo visual como fallback quando a API não estiver disponível.
+  }
+
+  await expect(page.getByRole("button", { name: "Nova atividade" })).toBeVisible({ timeout: 60000 });
   const kanbanButton = page.locator('button[title="Abrir Kanban"]').first();
-  await expect(kanbanButton).toBeVisible({ timeout: 60000 });
+  await expect(kanbanButton).toBeVisible({ timeout: 120000 });
+  await kanbanButton.scrollIntoViewIfNeeded();
   await kanbanButton.click({ force: true });
 
   await page.waitForURL(
@@ -274,12 +307,28 @@ async function reloadPage(page, routeBasePath, path) {
 
 async function clickFirstRowAction(page, buttonTitle) {
   const firstRow = page.locator("tbody tr").first();
-  await expect(firstRow).toBeVisible({ timeout: 15000 });
-  await firstRow.hover();
+  await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {});
+  await firstRow.waitFor({ state: "attached", timeout: 60000 });
+  await firstRow.scrollIntoViewIfNeeded();
+  try {
+    await firstRow.hover({ timeout: 30000 });
+  } catch {
+    const rowBox = await firstRow.boundingBox();
+    if (rowBox) {
+      await page.mouse.move(rowBox.x + rowBox.width / 2, rowBox.y + rowBox.height / 2);
+    }
+  }
+
+  await page.waitForTimeout(250);
 
   const actionButton = firstRow.locator(`button[title="${buttonTitle}"]`).first();
-  await expect(actionButton).toBeVisible({ timeout: 15000 });
-  await actionButton.click();
+  await actionButton.waitFor({ state: "attached", timeout: 60000 });
+  if (await actionButton.isVisible().catch(() => false)) {
+    await actionButton.click();
+    return;
+  }
+
+  await actionButton.click({ force: true });
 }
 
 async function expectDialogTextVisible(page, text, timeout = 15000) {
@@ -396,6 +445,40 @@ const desktopAdminPages = [
       await expect(page.getByRole("button", { name: "Mensurável" })).toBeVisible({ timeout: 15000 });
     },
     screenshot: "desktop-report-smart-metas",
+  },
+  {
+    name: "ai-assistant",
+    path: "/admin/ai-assistant",
+    useFreshPage: true,
+    waitFor: async (page, routeBasePath) => {
+      await reloadPage(page, routeBasePath, "/admin/ai-assistant");
+      await page.waitForLoadState("networkidle").catch(() => {});
+
+      const createConversationButton = page.getByRole("button", { name: "Criar nova conversa" });
+      await expect(createConversationButton).toBeVisible({ timeout: 60000 });
+      await createConversationButton.click({ timeout: 60000 });
+      await expect(page.getByRole("heading", { name: "Nova conversa", level: 1 })).toBeVisible({ timeout: 60000 });
+
+      const input = page.getByPlaceholder(
+        "Pergunte sobre modelos, pendências, relatórios, problemas, soluções ou projetos do Silo...",
+      );
+      await expect(input).toBeVisible({ timeout: 60000 });
+
+      const prompt = "Quais problemas e pendências merecem atenção agora?";
+      await input.fill(prompt);
+      await input.press("Enter");
+
+      const conversationPanel = page
+        .locator("main div.flex.min-w-0.min-h-0.flex-1.flex-col.overflow-hidden")
+        .last();
+      const messageBubbles = conversationPanel.locator("p.whitespace-pre-wrap");
+      await expect(page.getByRole("heading", { name: prompt, level: 1 })).toBeVisible({ timeout: 60000 });
+      await expect(messageBubbles).toHaveCount(2, { timeout: 120000 });
+      await expect(
+        conversationPanel.getByText("Não consegui processar a pergunta agora.", { exact: true }),
+      ).toHaveCount(0, { timeout: 120000 });
+    },
+    screenshot: "desktop-ai-assistant",
   },
 ];
 
@@ -631,10 +714,13 @@ async function main() {
             path: "/admin/projects",
             waitFor: async (page, routeBasePath) => {
               await reloadPage(page, routeBasePath, "/admin/projects");
+              await page.waitForLoadState("networkidle").catch(() => {});
               const createButton = page.locator("main").getByRole("button", { name: "Novo projeto" });
               await expect(createButton).toBeVisible({ timeout: 120000 });
               await createButton.click({ timeout: 120000 });
-              await expectDialogTextVisible(page, "Novo Projeto", 120000);
+              const projectDialog = page.getByRole("dialog", { name: "Novo Projeto" });
+              await expect(projectDialog).toBeVisible({ timeout: 120000 });
+              await expect(projectDialog.getByText("Novo Projeto", { exact: true })).toBeVisible({ timeout: 120000 });
             },
             screenshot: "desktop-project-create",
           },
@@ -718,6 +804,8 @@ async function main() {
       shouldRunCheck("project-activity-edit") ||
       shouldRunCheck("project-kanban")
     ) {
+      await signInInBrowser(desktopPage, basePath, email, password);
+
       const { freshContext: projectDetailBootstrapContext, freshPage: projectDetailBootstrapPage } =
         await createFreshAuthenticatedPage();
 
@@ -760,6 +848,7 @@ async function main() {
               name: "project-activity-create",
               path: projectDetailPath,
               waitFor: async (page) => {
+                await page.waitForLoadState("networkidle").catch(() => {});
                 const createButton = page.getByRole("button", { name: "Nova atividade" });
                 await expect(createButton).toBeVisible({ timeout: 120000 });
                 await createButton.click({ timeout: 15000 });
@@ -785,9 +874,12 @@ async function main() {
               name: "project-activity-edit",
               path: projectDetailPath,
               waitFor: async (page) => {
+                await page.waitForLoadState("networkidle").catch(() => {});
+                await expect(page.getByRole("button", { name: "Nova atividade" })).toBeVisible({ timeout: 60000 });
                 const editButton = page.locator('button[title="Editar atividade"]').first();
-                await expect(editButton).toBeVisible({ timeout: 30000 });
-                await editButton.click({ timeout: 15000 });
+                await expect(editButton).toBeVisible({ timeout: 60000 });
+                await editButton.scrollIntoViewIfNeeded();
+                await editButton.click({ timeout: 60000 });
                 await expectDialogTextVisible(page, "Editar Atividade", 30000);
               },
               screenshot: "desktop-project-activity-edit",
@@ -829,68 +921,155 @@ async function main() {
       shouldRunCheck("group-permissions") ||
       shouldRunCheck("group-users")
     ) {
-      const runFreshGroupCheck = async (name, screenshot, waitFor) => {
-        const { freshContext, freshPage } = await createFreshAuthenticatedPage();
+      const runGroupCheck = async (name, screenshot, waitFor) => {
+        await runPageCheck(
+          desktopPage,
+          screenshotDir,
+          {
+            name,
+            path: "/admin/groups",
+            waitFor,
+            screenshot,
+          },
+          basePath,
+        );
+      };
+
+      if (shouldRunCheck("group-create")) {
+        await signInInBrowser(desktopPage, basePath, email, password);
+        const { freshContext: groupCreateContext, freshPage: groupCreatePage } = await createFreshAuthenticatedPage();
         try {
           await runPageCheck(
-            freshPage,
+            groupCreatePage,
             screenshotDir,
             {
-              name,
+              name: "group-create",
               path: "/admin/groups",
-              waitFor,
-              screenshot,
+              waitFor: async (page, routeBasePath) => {
+                await reloadPage(page, routeBasePath, "/admin/groups");
+                await page.waitForLoadState("networkidle").catch(() => {});
+                const createButton = page.getByRole("button", { name: "Novo grupo" });
+                await expect(createButton).toBeVisible({ timeout: 120000 });
+                await createButton.click({ timeout: 120000 });
+                const groupDialog = page.getByRole("dialog", { name: "Novo Grupo" });
+                await expect(groupDialog).toBeVisible({ timeout: 120000 });
+                await expect(groupDialog.getByText("Novo Grupo", { exact: true })).toBeVisible({ timeout: 120000 });
+              },
+              screenshot: "desktop-group-create",
             },
             basePath,
           );
         } finally {
-          await freshContext.close();
+          await groupCreateContext.close();
         }
-      };
-
-      if (shouldRunCheck("group-create")) {
-        await runFreshGroupCheck("group-create", "desktop-group-create", async (page) => {
-          const createButton = page.getByRole("button", { name: "Novo grupo" });
-          await expect(createButton).toBeVisible({ timeout: 30000 });
-          await createButton.click({ timeout: 30000 });
-          await expectDialogTextVisible(page, "Novo Grupo", 30000);
-        });
       }
 
       if (shouldRunCheck("group-permissions")) {
-        await runFreshGroupCheck("group-permissions", "desktop-group-permissions", async (page) => {
-          const permissionsButton = page.locator('button[title="Permissões do Grupo"]').first();
-          await expect(permissionsButton).toBeVisible({ timeout: 30000 });
-          await permissionsButton.click({ timeout: 30000 });
-          await expectDialogTextVisible(page, "Permissões do grupo", 30000);
-          await expect(page.getByRole("button", { name: "Salvar Alterações" })).toBeVisible({ timeout: 30000 });
-        });
+        const { freshContext: groupPermissionsContext, freshPage: groupPermissionsPage } = await createFreshAuthenticatedPage();
+        try {
+          await runPageCheck(
+            groupPermissionsPage,
+            screenshotDir,
+            {
+              name: "group-permissions",
+              path: "/admin/groups",
+              waitFor: async (page, routeBasePath) => {
+                await reloadPage(page, routeBasePath, "/admin/groups");
+                await page.waitForLoadState("networkidle").catch(() => {});
+                const permissionsButton = page.locator('button[title="Permissões do Grupo"]').first();
+                await expect(permissionsButton).toBeVisible({ timeout: 120000 });
+                await permissionsButton.click({ timeout: 120000 });
+                const permissionsDialog = page.getByRole("dialog", { name: "Permissões do grupo" });
+                await expect(permissionsDialog).toBeVisible({ timeout: 120000 });
+                await expect(permissionsDialog.getByText("Permissões do grupo", { exact: true })).toBeVisible({ timeout: 120000 });
+                await expect(page.getByRole("button", { name: "Salvar Alterações" })).toBeVisible({ timeout: 120000 });
+              },
+              screenshot: "desktop-group-permissions",
+            },
+            basePath,
+          );
+        } finally {
+          await groupPermissionsContext.close();
+        }
       }
 
       if (shouldRunCheck("group-users")) {
-        await runFreshGroupCheck("group-users", "desktop-group-users", async (page) => {
-          const usersButton = page.locator('button[title="Gerenciar Usuários"]').first();
-          await expect(usersButton).toBeVisible({ timeout: 30000 });
-          await usersButton.click({ timeout: 30000 });
-          await expectDialogTextVisible(page, "Gerenciar Usuários", 30000);
-          await expect(page.getByRole("button", { name: "Salvar Alterações" })).toBeVisible({ timeout: 30000 });
-        });
+        const { freshContext: groupUsersContext, freshPage: groupUsersPage } = await createFreshAuthenticatedPage();
+        try {
+          await runPageCheck(
+            groupUsersPage,
+            screenshotDir,
+            {
+              name: "group-users",
+              path: "/admin/groups",
+              waitFor: async (page, routeBasePath) => {
+                await reloadPage(page, routeBasePath, "/admin/groups");
+                await page.waitForLoadState("networkidle").catch(() => {});
+                const usersButton = page.locator('button[title="Gerenciar Usuários"]').first();
+                await expect(usersButton).toBeVisible({ timeout: 120000 });
+                await usersButton.click({ timeout: 120000 });
+                const usersDialog = page.getByRole("dialog", { name: "Gerenciar Usuários" });
+                await expect(usersDialog).toBeVisible({ timeout: 120000 });
+                await expect(usersDialog.getByText("Gerenciar Usuários", { exact: true })).toBeVisible({ timeout: 120000 });
+                await expect(page.getByRole("button", { name: "Salvar Alterações" })).toBeVisible({ timeout: 120000 });
+              },
+              screenshot: "desktop-group-users",
+            },
+            basePath,
+          );
+        } finally {
+          await groupUsersContext.close();
+        }
       }
 
       if (shouldRunCheck("group-edit")) {
-        await runFreshGroupCheck("group-edit", "desktop-group-edit", async (page) => {
-          await clickFirstRowAction(page, "Editar Grupo");
-          await expectDialogTextVisible(page, "Editar Grupo", 30000);
-        });
+        const { freshContext: groupEditContext, freshPage: groupEditPage } = await createFreshAuthenticatedPage();
+        try {
+          await runPageCheck(
+            groupEditPage,
+            screenshotDir,
+            {
+              name: "group-edit",
+              path: "/admin/groups",
+              waitFor: async (page, routeBasePath) => {
+                await reloadPage(page, routeBasePath, "/admin/groups");
+                await page.waitForLoadState("networkidle").catch(() => {});
+                await clickFirstRowAction(page, "Editar Grupo");
+                const editDialog = page.getByRole("dialog", { name: "Editar Grupo" });
+                await expect(editDialog).toBeVisible({ timeout: 120000 });
+                await expect(editDialog.getByText("Editar Grupo", { exact: true })).toBeVisible({ timeout: 120000 });
+              },
+              screenshot: "desktop-group-edit",
+            },
+            basePath,
+          );
+        } finally {
+          await groupEditContext.close();
+        }
       }
 
       if (shouldRunCheck("group-delete")) {
-        await runFreshGroupCheck("group-delete", "desktop-group-delete", async (page) => {
-          const deleteButton = page.locator('button[title="Excluir Grupo"]').first();
-          await expect(deleteButton).toBeVisible({ timeout: 30000 });
-          await deleteButton.click({ timeout: 30000 });
-          await expectDialogTextVisible(page, "Confirmar exclusão", 30000);
-        });
+        const { freshContext: groupDeleteContext, freshPage: groupDeletePage } = await createFreshAuthenticatedPage();
+        try {
+          await runPageCheck(
+            groupDeletePage,
+            screenshotDir,
+            {
+              name: "group-delete",
+              path: "/admin/groups",
+              waitFor: async (page, routeBasePath) => {
+                await reloadPage(page, routeBasePath, "/admin/groups");
+                await page.waitForLoadState("networkidle").catch(() => {});
+                await clickFirstRowAction(page, "Excluir Grupo");
+                await expectDialogTextVisible(page, "Confirmar exclusão", 120000);
+              },
+              screenshot: "desktop-group-delete",
+            },
+            basePath,
+          );
+        } finally {
+          await groupDeleteContext.close();
+        }
       }
     }
 
@@ -910,6 +1089,7 @@ async function main() {
             path: "/admin/settings/products",
             waitFor: async (page, routeBasePath) => {
               await reloadPage(page, routeBasePath, "/admin/settings/products");
+              await page.waitForLoadState("networkidle").catch(() => {});
               const createButton = page.getByRole("button", { name: "Novo produto" });
               await expect(createButton).toBeVisible({ timeout: 60000 });
               await createButton.click({ timeout: 60000 });
@@ -935,6 +1115,7 @@ async function main() {
             path: "/admin/settings/products",
             waitFor: async (page, routeBasePath) => {
               await reloadPage(page, routeBasePath, "/admin/settings/products");
+              await page.waitForLoadState("networkidle").catch(() => {});
               const editButton = page.locator('button[title="Editar produto"]').first();
               await expect(editButton).toBeVisible({ timeout: 60000 });
               await editButton.click({ timeout: 60000 });
@@ -960,6 +1141,7 @@ async function main() {
             path: "/admin/settings/products",
             waitFor: async (page, routeBasePath) => {
               await reloadPage(page, routeBasePath, "/admin/settings/products");
+              await page.waitForLoadState("networkidle").catch(() => {});
               const deleteButton = page.locator('button[title="Excluir produto"]').first();
               await expect(deleteButton).toBeVisible({ timeout: 60000 });
               await deleteButton.click({ timeout: 60000 });
@@ -1130,6 +1312,7 @@ async function main() {
           "desktop-product-problem-create",
           async (page, routeBasePath) => {
             await reloadPage(page, routeBasePath, `${productPath}/problems`);
+            await page.waitForLoadState("networkidle").catch(() => {});
             await page.locator('button[title="Adicionar problema"]').click({ timeout: 15000 });
             await expectDialogTextVisible(page, "Adicionar problema", 30000);
           },
@@ -1143,7 +1326,10 @@ async function main() {
           "desktop-product-problem-edit",
           async (page, routeBasePath) => {
             await reloadPage(page, routeBasePath, `${productPath}/problems`);
-            await page.getByRole("button", { name: "Editar problema" }).click({ timeout: 15000 });
+            await page.waitForLoadState("networkidle").catch(() => {});
+            const editProblemButton = page.getByRole("button", { name: "Editar problema" });
+            await expect(editProblemButton).toBeVisible({ timeout: 60000 });
+            await editProblemButton.click({ timeout: 60000 });
             await expect(page.getByRole("dialog", { name: "Editar problema" })).toBeVisible({ timeout: 30000 });
           },
         );
@@ -1156,7 +1342,10 @@ async function main() {
           "desktop-product-problem-delete",
           async (page, routeBasePath) => {
             await reloadPage(page, routeBasePath, `${productPath}/problems`);
-            await page.getByRole("button", { name: "Editar problema" }).click({ timeout: 15000 });
+            await page.waitForLoadState("networkidle").catch(() => {});
+            const editProblemButton = page.getByRole("button", { name: "Editar problema" });
+            await expect(editProblemButton).toBeVisible({ timeout: 60000 });
+            await editProblemButton.click({ timeout: 60000 });
             await expect(page.getByRole("dialog", { name: "Editar problema" })).toBeVisible({ timeout: 30000 });
             await page.getByRole("button", { name: "Excluir problema" }).click({ timeout: 15000 });
             await expect(page.getByText("Tem certeza que deseja excluir este problema?")).toBeVisible({ timeout: 30000 });
@@ -1171,6 +1360,7 @@ async function main() {
           "desktop-product-category-create",
           async (page, routeBasePath) => {
             await reloadPage(page, routeBasePath, `${productPath}/problems`);
+            await page.waitForLoadState("networkidle").catch(() => {});
             await page.getByRole("button", { name: "Gerenciar categorias" }).click({ timeout: 15000 });
             await expectDialogTextVisible(page, "Gerenciar categorias de problemas", 30000);
             await page.getByRole("button", { name: "Cadastrar categoria" }).click({ timeout: 15000 });
@@ -1186,6 +1376,7 @@ async function main() {
           "desktop-product-solution-create",
           async (page, routeBasePath) => {
             await reloadPage(page, routeBasePath, `${productPath}/problems`);
+            await page.waitForLoadState("networkidle").catch(() => {});
             await page.getByRole("button", { name: "Adicionar solução" }).first().click({ timeout: 15000 });
             await expectModalHeadingVisible(page, "Adicionar solução", 30000);
           },

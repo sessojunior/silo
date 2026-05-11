@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
+import { ChartEmptyState } from "@/components/ui/chart-empty-state";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 
 const ReactECharts = dynamic(
@@ -145,12 +146,16 @@ export default function ChartColumn({
 
   return (
     <div className="w-full max-w-lg">
-      <ReactECharts
-        option={options}
-        style={{ height: 320, width: "100%" }}
-        notMerge
-        lazyUpdate
-      />
+      {categories.length > 0 && data.length === categories.length ? (
+        <ReactECharts
+          option={options}
+          style={{ height: 320, width: "100%" }}
+          notMerge
+          lazyUpdate
+        />
+      ) : (
+        <ChartEmptyState height={320} />
+      )}
     </div>
   );
 }

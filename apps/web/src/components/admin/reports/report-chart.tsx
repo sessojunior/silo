@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
+import { ChartEmptyState } from "@/components/ui/chart-empty-state";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 
 const Chart = dynamic(
@@ -471,12 +472,7 @@ export function ReportChart({
       <div
         className={`bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-6 ${className}`}
       >
-        <div
-          className="flex items-center justify-center text-sm text-zinc-500 dark:text-zinc-400"
-          style={{ minHeight: height }}
-        >
-          Sem dados para exibir
-        </div>
+        <ChartEmptyState height={height} />
       </div>
     );
   }

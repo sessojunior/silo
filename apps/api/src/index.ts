@@ -20,7 +20,15 @@ app.use(
   }),
 );
 app.use(express.json());
-app.use(rateLimit({ windowMs: 60_000, max: 200 }));
+app.use(
+  "/api",
+  rateLimit({
+    windowMs: 60_000,
+    max: 200,
+    keyPrefix: "api",
+    skip: (req) => req.originalUrl.startsWith("/api/auth"),
+  }),
+);
 
 registerRoutes(app);
 

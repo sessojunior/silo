@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import type { ApiResponse as HttpResponse } from "@/lib/api-response";
+import { ChartEmptyState } from "@/components/ui/chart-empty-state";
 import { config } from "@/lib/config";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 
@@ -31,12 +32,16 @@ interface ApiResponse {
 export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
   const isDarkMode = useDarkMode();
   const [data, setData] = useState<ApiResponse | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
     if (config.isSmokeMode) {
       setData(null);
+      setHasFetched(true);
       return;
     }
+
+    let isActive = true;
 
     async function load() {
       try {
@@ -66,9 +71,18 @@ export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
           "❌ [COMPONENT_CHART_DONUT] Erro ao carregar causas de problemas:",
           { error },
         );
+      } finally {
+        if (isActive) {
+          setHasFetched(true);
+        }
       }
     }
+
     load();
+
+    return () => {
+      isActive = false;
+    };
   }, [refresh]);
 
   const labels = data?.labels ?? [];
@@ -155,7 +169,9 @@ export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
 
   return (
     <div className="w-full max-w-lg">
-      {hasChartData && !config.isSmokeMode && (
+      {!hasFetched ? (
+        <div className="h-90 w-full" aria-hidden="true" />
+      ) : hasChartData && !config.isSmokeMode ? (
         <ReactECharts
           key={refresh}
           option={options}
@@ -163,8 +179,9 @@ export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
           notMerge
           lazyUpdate
         />
+      ) : (
+        <ChartEmptyState height={360} />
       )}
-      {config.isSmokeMode && <div className="h-[360px] w-full" />}
     </div>
   );
 }

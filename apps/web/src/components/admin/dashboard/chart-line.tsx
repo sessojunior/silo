@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import type { ApiResponse as HttpResponse } from "@/lib/api-response";
+import { ChartEmptyState } from "@/components/ui/chart-empty-state";
 import { config } from "@/lib/config";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 
@@ -28,8 +29,11 @@ interface ChartApiResponse {
 export default function ChartLine({ refresh = 0 }: { refresh?: number }) {
   const isDarkMode = useDarkMode();
   const [chartData, setChartData] = useState<ChartApiResponse | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
+    let isActive = true;
+
     async function load() {
       try {
         const res = await fetch(
@@ -49,9 +53,18 @@ export default function ChartLine({ refresh = 0 }: { refresh?: number }) {
           "❌ [COMPONENT_CHART_LINE] Erro ao carregar dados do gráfico de problemas & soluções:",
           { error },
         );
+      } finally {
+        if (isActive) {
+          setHasFetched(true);
+        }
       }
     }
+
     load();
+
+    return () => {
+      isActive = false;
+    };
   }, [refresh]);
 
   const categories = chartData?.categories ?? [];
@@ -182,7 +195,9 @@ export default function ChartLine({ refresh = 0 }: { refresh?: number }) {
 
   return (
     <div className="w-full max-w-lg">
-      {hasChartData && (
+      {!hasFetched ? (
+        <div className="h-90 w-full" aria-hidden="true" />
+      ) : hasChartData ? (
         <ReactECharts
           key={refresh}
           option={options}
@@ -190,6 +205,8 @@ export default function ChartLine({ refresh = 0 }: { refresh?: number }) {
           notMerge
           lazyUpdate
         />
+      ) : (
+        <ChartEmptyState height={360} />
       )}
     </div>
   );

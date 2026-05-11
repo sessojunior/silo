@@ -306,7 +306,9 @@ export function isValidDomain(email: string): boolean {
 
 ### **Rate Limiting**
 
-Os rate limits são aplicados por combinação de email + IP + rota, com janelas curtas para reduzir abuso.
+Os rate limits dos fluxos sensíveis são aplicados por combinação de email + IP + rota, com janelas curtas para reduzir abuso.
+
+A API geral também usa um limitador global em [apps/api/src/middleware/rate-limit.ts](../apps/api/src/middleware/rate-limit.ts) que identifica a sessão do usuário pelo cookie `better-auth.session_token` quando ele existe e cai para IP apenas quando não há sessão autenticada. Isso evita que vários usuários atrás do mesmo IP compartilhem a mesma cota.
 
 **Regras atuais:**
 
@@ -316,7 +318,7 @@ Os rate limits são aplicados por combinação de email + IP + rota, com janelas
 - **Lockout de OTP:** 10s
 - **Cooldown de reenvio de OTP:** 90s
 
-Arquivo: `apps/web/src/lib/rate-limit.ts`
+Arquivo: [apps/api/src/infra/rate-limit-db.ts](../apps/api/src/infra/rate-limit-db.ts)
 
 ```typescript
 export async function isRateLimited(params: {
@@ -333,6 +335,11 @@ export async function recordRateLimit(params: {
   route: string;
 }): Promise<void>;
 ```
+
+Arquivo: [apps/api/src/middleware/rate-limit.ts](../apps/api/src/middleware/rate-limit.ts)
+
+- Limite global da API por sessão autenticada ou IP de fallback.
+- `apps/api/src/routes/auth.ts` e os fluxos do `auth-custom-service` continuam usando as regras específicas acima.
 
 **Endpoints Protegidos:**
 
