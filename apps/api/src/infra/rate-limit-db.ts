@@ -50,8 +50,8 @@ export async function getRateLimitStatus({
     return { isLimited: true, retryAfterSeconds };
   } catch (err) {
     if (isDatabaseInfrastructureUnavailable(err)) {
-      console.warn("⚠️ [RATE_LIMIT] DB unavailable, failing open:", (err as Error).message);
-      return { isLimited: false, retryAfterSeconds: 0 };
+      console.error("⛔ [RATE_LIMIT] DB unavailable, failing closed:", (err as Error).message);
+      return { isLimited: true, retryAfterSeconds: 60 };
     }
     throw err;
   }

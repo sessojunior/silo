@@ -262,7 +262,7 @@ export default function ProductActivityOffcanvas({
         }
 
         setAvailability(payload.data);
-      } catch (error) {
+      } catch {
         if (controller.signal.aborted) return;
         setAvailability(null);
       } finally {

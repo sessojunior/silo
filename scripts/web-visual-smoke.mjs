@@ -5,6 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import dotenv from "dotenv";
 import { chromium, expect } from "@playwright/test";
+import { buildAssistantPromptCorpus } from "./ai-assistant-smoke-corpus.mjs";
 
 dotenv.config();
 
@@ -48,7 +49,7 @@ function shouldRunCheck(name) {
 
 function parseAuthSetCookieHeader(setCookieHeader) {
   return setCookieHeader
-    .split(/, (?=better-auth\.)/)
+    .split(/,\s*(?=better-auth\.)/)
     .map((cookie) => cookie.trim())
     .filter(Boolean)
     .map((cookie) => {
@@ -64,6 +65,31 @@ function parseAuthSetCookieHeader(setCookieHeader) {
     .filter((cookie) => cookie !== null);
 }
 
+function buildCookieOverrideEntries(cookieOverride) {
+  const sessionCookies = cookieOverride
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .filter(Boolean)
+    .map((cookie) => {
+      const equalsIndex = cookie.indexOf("=");
+      if (equalsIndex <= 0) return null;
+
+      return {
+        name: cookie.slice(0, equalsIndex).trim(),
+        value: cookie.slice(equalsIndex + 1).trim(),
+      };
+    })
+    .filter((cookie) => cookie !== null);
+
+  return [webRouteBaseUrl, apiBaseUrl].flatMap((url) =>
+    sessionCookies.map((cookie) => ({
+      url,
+      name: cookie.name,
+      value: cookie.value,
+    })),
+  );
+}
+
 async function blockFontRequests(context) {
   await context.addCookies([
     {
@@ -76,11 +102,14 @@ async function blockFontRequests(context) {
     window.__SILO_SMOKE_MODE__ = true;
     window.__siloSkipLoginIntroOnce = true;
   });
+  await context.route(/\/api\/admin\/ai-assistant\//, async (route) => {
+    await route.continue();
+  });
   await context.route(/\.(?:woff2?|ttf|otf)(?:\?.*)?$/i, (route) => route.abort());
 }
 
 async function signInInBrowser(page, routeBasePath, userEmail, userPassword) {
-  const response = await fetch(`${webRouteBaseUrl}/api/auth/login/password`, {
+  const response = await fetch(`${apiBaseUrl}/api/auth/login/password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: userEmail, password: userPassword }),
@@ -107,12 +136,15 @@ async function signInInBrowser(page, routeBasePath, userEmail, userPassword) {
   const authCookies = parseAuthSetCookieHeader(setCookieHeader);
   assert.ok(authCookies.length > 0, "Login não retornou cookies de sessão.");
 
+  const cookieUrls = [webRouteBaseUrl, apiBaseUrl];
   await page.context().addCookies(
-    authCookies.map((cookie) => ({
-      url: webRouteBaseUrl,
-      name: cookie.name,
-      value: cookie.value,
-    })),
+    cookieUrls.flatMap((url) =>
+      authCookies.map((cookie) => ({
+        url,
+        name: cookie.name,
+        value: cookie.value,
+      })),
+    ),
   );
 }
 
@@ -339,12 +371,286 @@ async function expectModalHeadingVisible(page, text, timeout = 15000) {
   await expect(page.locator("h3", { hasText: text })).toBeVisible({ timeout });
 }
 
+const ASSISTANT_ROUTE = "/admin/ai-assistant";
+const ASSISTANT_HEADER_HEADING = "Assistente de IA";
+const ASSISTANT_EMPTY_HEADING = "Nova conversa";
+const ASSISTANT_INPUT_PLACEHOLDER = "Pergunte sobre modelos, pend\u00eancias, relat\u00f3rios, problemas, solu\u00e7\u00f5es ou projetos do Silo...";
+
+function parseOptionalPositiveInt(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+
+  const parsed = Number.parseInt(text, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeArtifactName(value) {
+  return (
+    String(value)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "assistant-case"
+  );
+}
+
+function truncateText(value, maxLength) {
+  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function serializeError(error) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack ?? null,
+    };
+  }
+
+  if (typeof error === "string") {
+    return { message: error };
+  }
+
+  try {
+    return { message: JSON.stringify(error) };
+  } catch {
+    return { message: String(error) };
+  }
+}
+
+async function readPlaywrightJsonResponse(response) {
+  const responseText = await response.text();
+  const headers = response.headers();
+  const contentType = headers["content-type"] ?? headers["Content-Type"] ?? "";
+
+  if (responseText.trim().length === 0) {
+    return {
+      payload: null,
+      parseError: null,
+      rawBody: "",
+      contentType,
+    };
+  }
+
+  try {
+    return {
+      payload: JSON.parse(responseText),
+      parseError: null,
+      rawBody: responseText,
+      contentType,
+    };
+  } catch (error) {
+    return {
+      payload: null,
+      parseError: serializeError(error),
+      rawBody: responseText,
+      contentType,
+    };
+  }
+}
+
+async function prepareAssistantShell(page, routeBasePath) {
+  if (debugCookies) {
+    page.on("request", (request) => {
+      if (request.url().includes(ASSISTANT_ROUTE) && request.resourceType() === "document") {
+        console.log("assistant smoke navigation cookie header:", request.headers().cookie ?? "");
+      }
+    });
+  }
+
+  await reloadPage(page, routeBasePath, ASSISTANT_ROUTE);
+  await page.waitForLoadState("networkidle").catch(() => {});
+
+  await expect(page.url()).toContain(ASSISTANT_ROUTE);
+  await expect(page.getByPlaceholder(ASSISTANT_INPUT_PLACEHOLDER)).toBeVisible({ timeout: 60000 });
+  await expect(page.locator("aside")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Alternar lateral" })).toHaveCount(0);
+}
+
+async function runAssistantScenario(page, routeBasePath, outputDir, scenario, index, total) {
+  await prepareAssistantShell(page, routeBasePath);
+
+  const input = page.getByPlaceholder(ASSISTANT_INPUT_PLACEHOLDER);
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      (response.url().includes("/api/admin/ai-assistant/messages") ||
+        response.url().includes("/api/ai-assistant/messages")) &&
+      response.request().method() === "POST",
+    { timeout: 120000 },
+  );
+
+  await input.fill(scenario.prompt);
+  await input.press("Enter");
+
+  const apiResponse = await responsePromise;
+  const { payload, parseError, rawBody, contentType } =
+    await readPlaywrightJsonResponse(apiResponse);
+
+  await expect(page.locator("p.whitespace-pre-wrap")).toHaveCount(2, { timeout: 120000 });
+  await expect(page.getByText("Pensando...")).toHaveCount(0, { timeout: 120000 });
+
+  const messageTexts = await page.locator("p.whitespace-pre-wrap").allTextContents();
+  const assistantMessageText = messageTexts[1] ?? "";
+  const responseData = payload && typeof payload === "object" ? payload.data ?? null : null;
+  const responseThread = responseData && typeof responseData === "object" ? responseData.thread ?? null : null;
+  const responseGeneration = responseData && typeof responseData === "object" ? responseData.generation ?? null : null;
+  const responseCitations = Array.isArray(responseData?.citations) ? responseData.citations : [];
+  const responseSuggestedQuestions = Array.isArray(responseData?.suggestedQuestions)
+    ? responseData.suggestedQuestions
+    : [];
+
+  const artifactBaseName = `${String(index + 1).padStart(2, "0")}-${normalizeArtifactName(scenario.key)}`;
+  const screenshotPath = path.join(outputDir, `${artifactBaseName}.png`);
+  const reportPath = path.join(outputDir, `${artifactBaseName}.json`);
+  const report = {
+    key: scenario.key,
+    category: scenario.category,
+    challenge: scenario.challenge ?? null,
+    prompt: scenario.prompt,
+    expectedScope: scenario.expectedScope ?? null,
+    expectedInScope: typeof scenario.expectedInScope === "boolean" ? scenario.expectedInScope : null,
+    httpStatus: apiResponse.status(),
+    responseOk: apiResponse.ok(),
+    apiSuccess: Boolean(payload?.success),
+    responseError:
+      payload && typeof payload === "object" && typeof payload.error === "string" ? payload.error : null,
+    parseError,
+    responseContentType: contentType,
+    rawBodyPreview: truncateText(rawBody, 240),
+    success: Boolean(apiResponse.ok() && payload?.success && responseData),
+    threadId: responseData?.threadId ?? null,
+    threadTitle: responseThread?.title ?? null,
+    scope: responseData?.scope ?? null,
+    isInScope: typeof responseData?.isInScope === "boolean" ? responseData.isInScope : null,
+    refusalReason: responseData?.refusalReason ?? null,
+    generationStatus: responseGeneration?.status ?? null,
+    generationProvider: responseGeneration?.provider ?? null,
+    generationModel: responseGeneration?.model ?? null,
+    suggestedQuestionsCount: responseSuggestedQuestions.length,
+    citationsCount: responseCitations.length,
+    answerPreview: truncateText(
+      responseData?.messageContent ?? responseData?.answer ?? assistantMessageText,
+      240,
+    ),
+    displayedPreview: truncateText(assistantMessageText, 240),
+    scopeMatchesExpectation:
+      typeof scenario.expectedScope === "string" ? responseData?.scope === scenario.expectedScope : null,
+    inScopeMatchesExpectation:
+      typeof scenario.expectedInScope === "boolean"
+        ? responseData?.isInScope === scenario.expectedInScope
+        : null,
+    screenshotPath,
+    reportPath,
+    caseIndex: index + 1,
+    totalCases: total,
+  };
+
+  await page.screenshot({
+    path: screenshotPath,
+    fullPage: false,
+    timeout: 120000,
+    animations: "disabled",
+  });
+  await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+
+  console.log(`✓ ${String(index + 1).padStart(2, "0")}/${total} ${scenario.key}`);
+  console.log(`  screenshot: ${screenshotPath}`);
+  console.log(`  report: ${reportPath}`);
+  console.log(`  response: ${report.httpStatus} | scope=${report.scope ?? "n/a"} | generation=${report.generationStatus ?? "n/a"}`);
+
+  return report;
+}
+
+async function runAssistantSmokeSuite(page, routeBasePath, outputDir) {
+  const assistantOutputDir = path.join(outputDir, "ai-assistant");
+  await fs.mkdir(assistantOutputDir, { recursive: true });
+
+  const parsedLimit = parseOptionalPositiveInt(
+    getOption("--assistant-limit") ?? process.env.WEB_VISUAL_ASSISTANT_LIMIT,
+  );
+  const corpus = buildAssistantPromptCorpus();
+  const selectedCorpus = parsedLimit ? corpus.slice(0, parsedLimit) : corpus;
+  const results = [];
+
+  console.log(`AI assistant smoke suite: ${selectedCorpus.length} prompts`);
+  if (parsedLimit) {
+    console.log(`AI assistant smoke suite limit applied: ${parsedLimit}`);
+  }
+
+  for (let index = 0; index < selectedCorpus.length; index += 1) {
+    const scenario = selectedCorpus[index];
+    try {
+      const result = await runAssistantScenario(
+        page,
+        routeBasePath,
+        assistantOutputDir,
+        scenario,
+        index,
+        selectedCorpus.length,
+      );
+      results.push(result);
+    } catch (error) {
+      const failure = {
+        key: scenario.key,
+        category: scenario.category,
+        prompt: scenario.prompt,
+        expectedScope: scenario.expectedScope ?? null,
+        expectedInScope: typeof scenario.expectedInScope === "boolean" ? scenario.expectedInScope : null,
+        error: serializeError(error),
+        success: false,
+        caseIndex: index + 1,
+        totalCases: selectedCorpus.length,
+      };
+      const artifactBaseName = `${String(index + 1).padStart(2, "0")}-${normalizeArtifactName(scenario.key)}`;
+      const failureReportPath = path.join(assistantOutputDir, `${artifactBaseName}.json`);
+      await fs.writeFile(failureReportPath, `${JSON.stringify(failure, null, 2)}\n`, "utf8");
+      console.error(`✗ ${String(index + 1).padStart(2, "0")}/${selectedCorpus.length} ${scenario.key}`);
+      console.error(error);
+      results.push(failure);
+    }
+  }
+
+  const summary = {
+    total: results.length,
+    successful: results.filter((result) => result.success === true).length,
+    scopeMismatches: results.filter(
+      (result) =>
+        typeof result.expectedScope === "string" &&
+        result.success === true &&
+        result.scope !== result.expectedScope,
+    ).length,
+    inScopeMismatches: results.filter(
+      (result) =>
+        typeof result.expectedInScope === "boolean" &&
+        result.success === true &&
+        typeof result.isInScope === "boolean" &&
+        result.isInScope !== result.expectedInScope,
+    ).length,
+    fallbackResponses: results.filter((result) => result.generationStatus === "fallback").length,
+    errorResponses: results.filter((result) => result.generationStatus === "error").length,
+  };
+
+  const summaryPath = path.join(assistantOutputDir, "assistant-smoke-report.json");
+  await fs.writeFile(
+    summaryPath,
+    `${JSON.stringify({ summary, results }, null, 2)}\n`,
+    "utf8",
+  );
+
+  console.log(`Assistant smoke summary: ${summary.successful}/${summary.total} successful`);
+  console.log(`Assistant smoke report: ${summaryPath}`);
+}
+
 async function runInventory() {
   console.log("Visual smoke inventory");
   console.log(`- Base URL do web: ${webRouteBaseUrl}`);
   console.log(`- Base URL da API: ${apiBaseUrl}`);
   console.log("- Auth mobile: /login, /register, /login-email, /forget-password, /setup-password");
-  console.log("- Admin desktop: /admin/welcome, /admin/dashboard, /admin/dashboard (registro/histórico de turno), /admin/settings, /admin/settings/products, /admin/projects, /admin/projects/:projectId, /admin/projects/:projectId/activities/:activityId, /admin/products/:slug, /admin/products/:slug/problems, /admin/products/:slug/data-flow, /admin/groups, /admin/groups/users, /admin/contacts, /admin/monitoring, /admin/chat/groups, /admin/chat/users, /admin/chat/groups/:groupId, /admin/chat/users/:userId, /admin/help, /admin/reports/availability, /admin/reports/problems, /admin/reports/projects");
+  console.log("- Admin desktop: /admin/welcome, /admin/dashboard, /admin/dashboard (registro/histórico de turno), /admin/settings, /admin/settings/products, /admin/projects, /admin/projects/:projectId, /admin/projects/:projectId/activities/:activityId, /admin/products/:slug, /admin/products/:slug/problems, /admin/products/:slug/data-flow, /admin/groups, /admin/groups/users, /admin/contacts, /admin/monitoring, /admin/chat/groups, /admin/chat/users, /admin/chat/groups/:groupId, /admin/chat/users/:userId, /admin/help, /admin/reports/availability, /admin/reports/problems, /admin/reports/projects, /admin/ai-assistant (corpus em lote com screenshots e JSON por caso)");
   console.log("- CRUDs visuais: criação, edição, exclusão e gerenciamento de projetos, atividades, produtos, grupos, dependências, problemas, categorias, soluções, radares e contatos");
 }
 
@@ -365,6 +671,7 @@ const onlyPages = new Set(
 const email = getOption("--email") ?? process.env.WEB_VISUAL_EMAIL ?? process.env.API_SMOKE_EMAIL;
 const password = getOption("--password") ?? process.env.WEB_VISUAL_PASSWORD ?? process.env.API_SMOKE_PASSWORD;
 const cookieOverride = getOption("--cookie") ?? process.env.WEB_VISUAL_COOKIE ?? process.env.API_SMOKE_COOKIE;
+const debugCookies = ["1", "true"].includes((process.env.WEB_VISUAL_DEBUG_COOKIES ?? "").toLowerCase());
 
 const mobileAuthPages = [
   { name: "login", path: "/login", screenshot: "mobile-login" },
@@ -446,40 +753,6 @@ const desktopAdminPages = [
     },
     screenshot: "desktop-report-smart-metas",
   },
-  {
-    name: "ai-assistant",
-    path: "/admin/ai-assistant",
-    useFreshPage: true,
-    waitFor: async (page, routeBasePath) => {
-      await reloadPage(page, routeBasePath, "/admin/ai-assistant");
-      await page.waitForLoadState("networkidle").catch(() => {});
-
-      const createConversationButton = page.getByRole("button", { name: "Criar nova conversa" });
-      await expect(createConversationButton).toBeVisible({ timeout: 60000 });
-      await createConversationButton.click({ timeout: 60000 });
-      await expect(page.getByRole("heading", { name: "Nova conversa", level: 1 })).toBeVisible({ timeout: 60000 });
-
-      const input = page.getByPlaceholder(
-        "Pergunte sobre modelos, pendências, relatórios, problemas, soluções ou projetos do Silo...",
-      );
-      await expect(input).toBeVisible({ timeout: 60000 });
-
-      const prompt = "Quais problemas e pendências merecem atenção agora?";
-      await input.fill(prompt);
-      await input.press("Enter");
-
-      const conversationPanel = page
-        .locator("main div.flex.min-w-0.min-h-0.flex-1.flex-col.overflow-hidden")
-        .last();
-      const messageBubbles = conversationPanel.locator("p.whitespace-pre-wrap");
-      await expect(page.getByRole("heading", { name: prompt, level: 1 })).toBeVisible({ timeout: 60000 });
-      await expect(messageBubbles).toHaveCount(2, { timeout: 120000 });
-      await expect(
-        conversationPanel.getByText("Não consegui processar a pergunta agora.", { exact: true }),
-      ).toHaveCount(0, { timeout: 120000 });
-    },
-    screenshot: "desktop-ai-assistant",
-  },
 ];
 
 async function main() {
@@ -523,35 +796,44 @@ async function main() {
       const freshPage = await freshContext.newPage();
 
       if (cookieOverride) {
-        const overrideCookies = cookieOverride
-          .split(";")
-          .map((cookie) => cookie.trim())
-          .filter(Boolean)
-          .map((cookie) => {
-            const equalsIndex = cookie.indexOf("=");
-            if (equalsIndex <= 0) return null;
-            return {
-              url: webRouteBaseUrl,
-              name: cookie.slice(0, equalsIndex).trim(),
-              value: cookie.slice(equalsIndex + 1).trim(),
-            };
-          })
-          .filter(Boolean);
-
-        await freshContext.addCookies(overrideCookies);
+        await freshContext.addCookies(buildCookieOverrideEntries(cookieOverride));
       } else {
         const desktopCookies = await desktopContext.cookies();
         const sessionCookies = desktopCookies.filter((cookie) =>
           cookie.name.startsWith("better-auth.session_"),
         );
         assert.ok(sessionCookies.length > 0, "Login administrativo não persistiu cookies de sessão no navegador.");
+        if (debugCookies) {
+          console.log(
+            "assistant smoke desktop session cookies:",
+            sessionCookies.map((cookie) => ({
+              name: cookie.name,
+              domain: cookie.domain,
+              path: cookie.path,
+            })),
+          );
+        }
         await freshContext.addCookies(
-          sessionCookies.map((cookie) => ({
-            url: webRouteBaseUrl,
-            name: cookie.name,
-            value: cookie.value,
-          })),
+          [webRouteBaseUrl, apiBaseUrl].flatMap((url) =>
+            sessionCookies.map((cookie) => ({
+              url,
+              name: cookie.name,
+              value: cookie.value,
+            })),
+          ),
         );
+        if (debugCookies) {
+          const freshCookies = await freshContext.cookies();
+          console.log(
+            "assistant smoke fresh session cookies:",
+            freshCookies.filter((cookie) => cookie.name.startsWith("better-auth."))
+              .map((cookie) => ({
+                name: cookie.name,
+                domain: cookie.domain,
+                path: cookie.path,
+              })),
+          );
+        }
       }
 
       return { freshContext, freshPage };
@@ -562,22 +844,7 @@ async function main() {
 
     const desktopPage = await desktopContext.newPage();
     if (cookieOverride) {
-      const overrideCookies = cookieOverride
-        .split(";")
-        .map((cookie) => cookie.trim())
-        .filter(Boolean)
-        .map((cookie) => {
-          const equalsIndex = cookie.indexOf("=");
-          if (equalsIndex <= 0) return null;
-          return {
-            url: webRouteBaseUrl,
-            name: cookie.slice(0, equalsIndex).trim(),
-            value: cookie.slice(equalsIndex + 1).trim(),
-          };
-        })
-        .filter(Boolean);
-
-      await desktopContext.addCookies(overrideCookies);
+      await desktopContext.addCookies(buildCookieOverrideEntries(cookieOverride));
     } else {
       await signInInBrowser(desktopPage, basePath, email, password);
     }
@@ -590,35 +857,44 @@ async function main() {
         try {
           const isolatedPage = await isolatedContext.newPage();
           if (cookieOverride) {
-            const overrideCookies = cookieOverride
-              .split(";")
-              .map((cookie) => cookie.trim())
-              .filter(Boolean)
-              .map((cookie) => {
-                const equalsIndex = cookie.indexOf("=");
-                if (equalsIndex <= 0) return null;
-                return {
-                  url: webRouteBaseUrl,
-                  name: cookie.slice(0, equalsIndex).trim(),
-                  value: cookie.slice(equalsIndex + 1).trim(),
-                };
-              })
-              .filter(Boolean);
-
-            await isolatedContext.addCookies(overrideCookies);
+            await isolatedContext.addCookies(buildCookieOverrideEntries(cookieOverride));
           } else {
             const desktopCookies = await desktopContext.cookies();
             const sessionCookies = desktopCookies.filter((cookie) =>
               cookie.name.startsWith("better-auth.session_"),
             );
             assert.ok(sessionCookies.length > 0, "Login administrativo não persistiu cookies de sessão no navegador.");
+            if (debugCookies) {
+              console.log(
+                "assistant smoke isolated session cookies:",
+                sessionCookies.map((cookie) => ({
+                  name: cookie.name,
+                  domain: cookie.domain,
+                  path: cookie.path,
+                })),
+              );
+            }
             await isolatedContext.addCookies(
-              sessionCookies.map((cookie) => ({
-                url: webRouteBaseUrl,
-                name: cookie.name,
-                value: cookie.value,
-              })),
+              [webRouteBaseUrl, apiBaseUrl].flatMap((url) =>
+                sessionCookies.map((cookie) => ({
+                  url,
+                  name: cookie.name,
+                  value: cookie.value,
+                })),
+              ),
             );
+            if (debugCookies) {
+              const isolatedCookies = await isolatedContext.cookies();
+              console.log(
+                "assistant smoke isolated fresh session cookies:",
+                isolatedCookies.filter((cookie) => cookie.name.startsWith("better-auth."))
+                  .map((cookie) => ({
+                    name: cookie.name,
+                    domain: cookie.domain,
+                    path: cookie.path,
+                  })),
+              );
+            }
           }
 
           if (check.useFreshPage) {
@@ -640,6 +916,18 @@ async function main() {
         }
       } else {
         await runPageCheck(desktopPage, screenshotDir, check, basePath);
+      }
+    }
+
+    if (shouldRunCheck("ai-assistant")) {
+      const {
+        freshContext: assistantContext,
+        freshPage: assistantPage,
+      } = await createFreshAuthenticatedPage();
+      try {
+        await runAssistantSmokeSuite(assistantPage, basePath, screenshotDir);
+      } finally {
+        await assistantContext.close();
       }
     }
 

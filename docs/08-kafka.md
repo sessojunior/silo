@@ -112,36 +112,23 @@ services:
 
 ## Contrato do fluxo de dados
 
-O valor da mensagem de data-flow deve seguir o contrato abaixo. Os detalhes completos ficam em [09-dataflow.md](09-dataflow.md).
+O payload bruto lido do Kafka REST Proxy deve seguir a árvore ecFlow/suite abaixo. O exemplo completo vive em [kafka-consumer-api-example.json](../kafka-consumer-api-example.json) e os detalhes de normalização ficam em [09-dataflow.md](09-dataflow.md).
 
 ```json
 {
-  "schemaVersion": 1,
-  "source": {
-    "type": "ecflow",
-    "transport": "kafka",
-    "topic": "silo.dataflow.bam",
-    "messageId": "bam-2026-03-06-18-20260413T180500-0300",
-    "generatedAt": "2026-04-13T18:05:00-03:00"
-  },
-  "product": { "slug": "bam", "name": "BAM" },
-  "run": {
-    "date": "2026-03-06",
-    "turn": "18",
-    "cycleAt": "2026-03-06T18:00:00-03:00",
-    "status": "completed"
-  },
-  "defaults": {
-    "timezone": "America/Sao_Paulo",
-    "latenessToleranceMinutes": 5,
-    "referenceDurationMinutes": 15
-  },
+  "kind": "suite",
+  "name": "SMNA_PRE_OPER",
+  "date": "2026-05-13",
+  "turn": "PRE_OPER",
+  "node_state": "queued",
+  "default_state": "queued",
   "groups": []
 }
 ```
 
 Regras essenciais:
 
+- `date` e `turn` devem existir no suite root e nos nós de família de primeiro nível.
 - `dependencies` deve conter IDs estáveis de tasks.
 - `referenceDurationMinutes` deve existir por task; o valor em `defaults` é apenas fallback.
 - `plannedStartAt` e `plannedEndAt` são usados pela UI para posicionar tarefas pendentes e atrasadas.
@@ -214,7 +201,7 @@ Exemplo de data-flow:
 ```bash
 curl -X POST \
   -H "Content-Type: application/vnd.kafka.json.v2+json" \
-  --data '{"records":[{"value":{"schemaVersion":1,"source":{"type":"ecflow","transport":"kafka","topic":"silo.dataflow.bam","messageId":"bam-2026-03-06-18-demo","generatedAt":"2026-04-13T18:05:00-03:00"},"product":{"slug":"bam","name":"BAM"},"run":{"date":"2026-03-06","turn":"18","cycleAt":"2026-03-06T18:00:00-03:00","status":"completed"},"defaults":{"timezone":"America/Sao_Paulo","latenessToleranceMinutes":5,"referenceDurationMinutes":15},"groups":[]}}]}' \
+  --data '{"records":[{"value":{"kind":"suite","name":"SMNA_PRE_OPER","date":"2026-05-13","turn":"PRE_OPER","node_state":"queued","default_state":"queued","groups":[{"id":"SMNA_00_2026-05-13","kind":"family","name":"00","date":"2026-05-13","turn":"00","status":"complete","tasks":[]}]}}]}' \
   http://rest-proxy:8082/topics/silo.dataflow.bam
 ```
 
@@ -244,22 +231,26 @@ curl -X DELETE http://rest-proxy:8082/consumers/my-dlq-group/instances/dlq-reade
 
 ## Smoke tests
 
-### Mapper simulado usado pela UI
+### Parser do payload bruto
 
 ```powershell
-npx tsx -e "void (async () => { const mod = await import('./apps/web/src/lib/dataflow/kafka-data-flow-source.ts'); const fn = mod.default.getProductDataFlowPipelinesFromKafkaRest; const pipelines = await fn({ slug: 'bam', date: '2026-03-06', turn: '18' }); const first = pipelines[0]; console.log(JSON.stringify({ count: pipelines.length, model: first?.model, date: first?.date, turn: first?.turn, status: first?.status, groups: first?.groups.length, firstTask: first?.groups[0]?.tasks[0] }, null, 2)); })();"
+npm run dataflow:ecflow:smoke
 ```
 
 Resultado esperado resumido:
 
 ```json
 {
-  "count": 1,
-  "model": "bam",
-  "date": "2026-03-06",
-  "turn": "18",
-  "status": "completed",
-  "groups": 4
+  "count": 4,
+  "pipelines": [
+    {
+      "model": "smna",
+      "date": "2026-05-13",
+      "turn": "18",
+      "status": "pending",
+      "groups": 1
+    }
+  ]
 }
 ```
 

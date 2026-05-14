@@ -195,37 +195,47 @@ export default function SolutionFormModal({
                 endpoint="solutionImageUploader"
                 onClientUploadComplete={async (res) => {
                   if (res && Array.isArray(res) && res.length > 0) {
-                    // Processar todas as imagens enviadas
-                    const uploadPromises = res.map(async (imageData) => {
-                      const formData = new FormData();
-                      formData.append(
-                        "imageUrl",
-                        toStoredUploadsSrc(imageData.url),
-                      );
-                      formData.append(
-                        "productSolutionId",
-                        editingSolution?.id || "",
-                      );
-                      formData.append(
-                        "description",
-                        "Imagem enviada via servidor local",
-                      );
-
+                    const saveImage = async (imageUrl: string): Promise<void> => {
                       const apiRes = await fetch(
-                        config.getApiUrl(
-                          "/api/admin/products/solutions/images",
-                        ),
+                        config.getApiUrl("/api/admin/products/solutions/images"),
                         {
                           method: "POST",
-                          body: formData,
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            imageUrl,
+                            productSolutionId: editingSolution?.id || "",
+                            description: "Imagem enviada via servidor local",
+                          }),
                         },
                       );
 
-                      return apiRes.ok;
-                    });
+                      const payload = (await apiRes.json().catch(() => null)) as
+                        | { error?: string }
+                        | null;
 
-                    const results = await Promise.all(uploadPromises);
-                    const successCount = results.filter(Boolean).length;
+                      if (!apiRes.ok) {
+                        throw new Error(
+                          payload?.error || "Erro ao salvar imagem da solução.",
+                        );
+                      }
+                    };
+
+                    const results = await Promise.allSettled(
+                      res.map(async (imageData) =>
+                        saveImage(toStoredUploadsSrc(imageData.url)),
+                      ),
+                    );
+                    const successCount = results.filter(
+                      (result) => result.status === "fulfilled",
+                    ).length;
+                    const firstError = results.find(
+                      (result): result is PromiseRejectedResult =>
+                        result.status === "rejected",
+                    )?.reason;
+                    const errorMessage =
+                      firstError instanceof Error
+                        ? firstError.message
+                        : "Erro ao salvar imagem da solução.";
 
                     if (successCount === res.length) {
                       toast({
@@ -236,7 +246,11 @@ export default function SolutionFormModal({
                     } else {
                       toast({
                         type: "error",
-                        title: `Apenas ${successCount} de ${res.length} imagens foram salvas`,
+                        title: "Não foi possível salvar todas as imagens",
+                        description:
+                          successCount > 0
+                            ? `${successCount} de ${res.length} imagens foram salvas. ${errorMessage}`
+                            : errorMessage,
                       });
                     }
                   }

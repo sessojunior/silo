@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request, Response as ExpressResponse } from "express";
+import type { Request } from "express";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/permissions.js";
 import { validate } from "../middleware/validate.js";

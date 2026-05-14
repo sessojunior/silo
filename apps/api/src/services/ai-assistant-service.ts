@@ -4,10 +4,12 @@ import {
   AiAssistantCitationDto,
   AiAssistantExampleDto,
   AiAssistantExamplesResponseDto,
+  AiAssistantGenerationDto,
   AiAssistantMessageRequestDto,
   AiAssistantMessageResponseDto,
   AiAssistantScope,
 } from "@silo/engine/contracts/dto/ai-assistant";
+import { config } from "@silo/engine/config";
 import { getDaysAgo } from "@silo/engine/date";
 import {
   getAvailabilityReport,
@@ -144,34 +146,104 @@ const PROJECT_KEYWORDS = [
   "piorar",
   "piora",
   "revisar",
+  "cenario",
+  "cenarios",
+  "sumario",
+  "sumario executivo",
+  "visao geral",
 ];
 
-const SCOPE_KEYWORDS: Array<{ scope: AiAssistantScope; keywords: string[] }> = [
-  {
-    scope: "models",
-    keywords: ["modelo", "modelos", "rodada", "rodadas", "turno", "turnos"],
-  },
-  {
-    scope: "pending",
-    keywords: ["pendencia", "pendencias", "pendente", "pendentes", "atraso", "atrasados", "tarefas"],
-  },
-  {
-    scope: "reports",
-    keywords: ["relatorio", "relatorios", "dashboard", "resumo", "visao geral"],
-  },
-  {
-    scope: "problems",
-    keywords: ["problema", "problemas", "falha", "falhas", "incidente", "incidentes"],
-  },
-  {
-    scope: "solutions",
-    keywords: ["solucao", "solucoes", "resolver", "resolucao", "reabertura"],
-  },
-  {
-    scope: "projects",
-    keywords: ["projeto", "projetos", "atividade", "atividades", "task", "tasks"],
-  },
+type ScopeKeywordDefinition = {
+  keyword: string;
+  weight: number;
+};
+
+type ScopeMatchScore = {
+  scope: AiAssistantScope;
+  score: number;
+  hits: number;
+};
+
+const SCOPE_PRIORITY: AiAssistantScope[] = [
+  "models",
+  "pending",
+  "reports",
+  "problems",
+  "solutions",
+  "projects",
 ];
+
+const SCOPE_KEYWORDS: Record<AiAssistantScope, ScopeKeywordDefinition[]> = {
+  general: [],
+  models: [
+    { keyword: "modelo", weight: 3 },
+    { keyword: "modelos", weight: 3 },
+    { keyword: "rodada", weight: 2.5 },
+    { keyword: "rodadas", weight: 2.5 },
+    { keyword: "turno", weight: 2.5 },
+    { keyword: "turnos", weight: 2.5 },
+    { keyword: "disponibilidade", weight: 1.8 },
+    { keyword: "intervencao", weight: 1.6 },
+    { keyword: "intervencoes", weight: 1.6 },
+  ],
+  pending: [
+    { keyword: "pendencia", weight: 3 },
+    { keyword: "pendencias", weight: 3 },
+    { keyword: "pendente", weight: 3 },
+    { keyword: "pendentes", weight: 3 },
+    { keyword: "atraso", weight: 2.5 },
+    { keyword: "atrasados", weight: 2.5 },
+    { keyword: "tarefas", weight: 2.2 },
+    { keyword: "trava", weight: 2 },
+    { keyword: "bloqueio", weight: 2 },
+  ],
+  reports: [
+    { keyword: "relatorio", weight: 3 },
+    { keyword: "relatorios", weight: 3 },
+    { keyword: "dashboard", weight: 3 },
+    { keyword: "cenario", weight: 1.8 },
+    { keyword: "cenarios", weight: 1.8 },
+    { keyword: "sumario executivo", weight: 2.5 },
+    { keyword: "resumo executivo", weight: 2.5 },
+    { keyword: "visao geral", weight: 2.5 },
+  ],
+  problems: [
+    { keyword: "problema", weight: 3 },
+    { keyword: "problemas", weight: 3 },
+    { keyword: "falha", weight: 2.2 },
+    { keyword: "falhas", weight: 2.2 },
+    { keyword: "incidente", weight: 2.5 },
+    { keyword: "incidentes", weight: 2.5 },
+    { keyword: "erro", weight: 2 },
+    { keyword: "erros", weight: 2 },
+  ],
+  solutions: [
+    { keyword: "solucao", weight: 3 },
+    { keyword: "solucoes", weight: 3 },
+    { keyword: "resolver", weight: 2.5 },
+    { keyword: "resolucao", weight: 2.5 },
+    { keyword: "reabertura", weight: 2 },
+    { keyword: "correcao", weight: 2 },
+    { keyword: "recorrente", weight: 1.5 },
+    { keyword: "recorrentes", weight: 1.5 },
+    { keyword: "impacto", weight: 1.3 },
+    { keyword: "impactos", weight: 1.3 },
+    { keyword: "tendencia", weight: 1.3 },
+    { keyword: "tendencias", weight: 1.3 },
+  ],
+  projects: [
+    { keyword: "projeto", weight: 3 },
+    { keyword: "projetos", weight: 3 },
+    { keyword: "atividade", weight: 2.5 },
+    { keyword: "atividades", weight: 2.5 },
+    { keyword: "task", weight: 2 },
+    { keyword: "tasks", weight: 2 },
+    { keyword: "andamento", weight: 1.8 },
+    { keyword: "prazo", weight: 2 },
+    { keyword: "prazos", weight: 2 },
+    { keyword: "cronograma", weight: 2 },
+  ],
+};
 
 const DEFAULT_FOLLOW_UPS = [
   "Quais modelos mais críticos devo acompanhar hoje?",
@@ -218,11 +290,65 @@ function getPreviousAssistantDateRange(range: AssistantDateRange): AssistantDate
   );
 }
 
-function normalizeText(value: string): string {
-  return value
+function normalizeText(value: string | null | undefined): string {
+  return (value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+function tokenizeText(value: string): string[] {
+  return normalizeText(value)
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 0);
+}
+
+function levenshteinDistance(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+
+  if (left.length === 0) {
+    return right.length;
+  }
+
+  if (right.length === 0) {
+    return left.length;
+  }
+
+  const previousRow = Array.from({ length: right.length + 1 }, (_, index) => index);
+  const currentRow = new Array<number>(right.length + 1);
+
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    currentRow[0] = leftIndex;
+    let previousDiagonal = leftIndex - 1;
+
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      const savedValue = previousRow[rightIndex];
+      const cost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+      currentRow[rightIndex] = Math.min(
+        previousRow[rightIndex] + 1,
+        currentRow[rightIndex - 1] + 1,
+        previousDiagonal + cost,
+      );
+      previousDiagonal = savedValue;
+    }
+
+    for (let index = 0; index < previousRow.length; index += 1) {
+      previousRow[index] = currentRow[index] ?? previousRow[index];
+    }
+  }
+
+  return previousRow[right.length];
+}
+
+function isFuzzyKeywordMatch(token: string, keyword: string): boolean {
+  if (token === keyword) {
+    return true;
+  }
+
+  const maxDistance = keyword.length <= 5 ? 1 : 2;
+  return levenshteinDistance(token, keyword) <= maxDistance;
 }
 
 function resolveAssistantDateRange(content: string): AssistantDateRange {
@@ -319,20 +445,95 @@ function matchesAny(value: string, keywords: string[]): boolean {
   return keywords.some((keyword) => value.includes(keyword));
 }
 
-function detectScope(content: string): AiAssistantScope | null {
+function scoreScopeMatches(content: string, scope: AiAssistantScope): ScopeMatchScore {
   const normalized = normalizeText(content);
+  const tokens = tokenizeText(content);
+  const definitions = SCOPE_KEYWORDS[scope];
+  let score = 0;
+  let hits = 0;
 
-  for (const entry of SCOPE_KEYWORDS) {
-    if (matchesAny(normalized, entry.keywords)) {
-      return entry.scope;
+  for (const definition of definitions) {
+    if (normalized.includes(definition.keyword)) {
+      score += definition.weight;
+      hits += 1;
+      continue;
+    }
+
+    if (definition.keyword.includes(" ")) {
+      continue;
+    }
+
+    if (tokens.some((token) => isFuzzyKeywordMatch(token, definition.keyword))) {
+      score += definition.weight * 0.75;
+      hits += 1;
     }
   }
 
+  return { scope, score, hits };
+}
+
+function compareScopeScores(left: ScopeMatchScore, right: ScopeMatchScore): number {
+  if (right.score !== left.score) {
+    return right.score - left.score;
+  }
+
+  if (right.hits !== left.hits) {
+    return right.hits - left.hits;
+  }
+
+  return SCOPE_PRIORITY.indexOf(left.scope) - SCOPE_PRIORITY.indexOf(right.scope);
+}
+
+function detectStrongScopeOverride(content: string): AiAssistantScope | null {
+  const normalized = normalizeText(content);
+
+  if (
+    (normalized.includes("problema") || normalized.includes("problemas") || normalized.includes("falha") || normalized.includes("falhas")) &&
+    (normalized.includes("recorrente") || normalized.includes("recorrentes")) &&
+    (normalized.includes("impacto") || normalized.includes("impactos") || normalized.includes("tendencia") || normalized.includes("tendencias"))
+  ) {
+    return "problems";
+  }
+
+  if (
+    (normalized.includes("projeto") || normalized.includes("projetos")) &&
+    (normalized.includes("impacto") || normalized.includes("impactos") || normalized.includes("urgencia") || normalized.includes("urgente") || normalized.includes("continuidade") || normalized.includes("continuidade operacional"))
+  ) {
+    return "projects";
+  }
+
+  return null;
+}
+
+export function detectScope(content: string): AiAssistantScope | null {
+  const strongOverride = detectStrongScopeOverride(content);
+  if (strongOverride) {
+    return strongOverride;
+  }
+
+  const scopeScores = SCOPE_PRIORITY.map((scope) => scoreScopeMatches(content, scope)).filter(
+    (entry) => entry.score > 0,
+  );
+
+  if (scopeScores.length > 0) {
+    scopeScores.sort(compareScopeScores);
+    const winner = scopeScores[0];
+
+    if (winner) {
+      return winner.scope;
+    }
+  }
+
+  const normalized = normalizeText(content);
   if (matchesAny(normalized, PROJECT_KEYWORDS)) {
     return "general";
   }
 
   return null;
+}
+
+export function getScopeScoreBreakdown(content: string): ScopeMatchScore[] {
+  return SCOPE_PRIORITY.map((scope) => scoreScopeMatches(content, scope)).sort(compareScopeScores);
 }
 
 function buildCitation(label: string, detail?: string | null): AiAssistantCitationDto {
@@ -496,6 +697,13 @@ function buildScopelessReply(): AiAssistantMessageResponseDto {
     suggestedQuestions: [...DEFAULT_FOLLOW_UPS],
     citations: [],
     contextSummary: "A pergunta recebida não está ligada ao domínio do projeto.",
+    generation: {
+      provider: "ollama",
+      model: config.ollama.model,
+      status: "fallback",
+      latencyMs: 0,
+      errorMessage: "Pergunta fora do escopo do Silo.",
+    } satisfies AiAssistantGenerationDto,
   };
 }
 

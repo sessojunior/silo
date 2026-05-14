@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { promises as fs } from "fs";
-import path from "path";
 import { authMiddleware } from "../middleware/auth.js";
+import { requireAdmin } from "../middleware/permissions.js";
 import { deleteUploadFile, getContentTypeFromFilename, getUploadFilePath, isSafeFilename, isUploadKind, storeBufferAsWebp } from "../infra/uploads.js";
 
 const router = Router();
@@ -75,7 +75,7 @@ router.post("/:kind", authMiddleware, async (req, res) => {
 });
 
 // GET /api/uploads/:kind/:filename — serve uploaded file
-router.get("/serve/:kind/:filename", async (req, res) => {
+router.get("/serve/:kind/:filename", authMiddleware, async (req, res) => {
   try {
     const kind = normalizeKind(String(req.params.kind));
     const filename = String(req.params.filename);
@@ -102,7 +102,7 @@ router.get("/serve/:kind/:filename", async (req, res) => {
 });
 
 // DELETE /api/uploads/serve/:kind/:filename — delete uploaded file (admin)
-router.delete("/serve/:kind/:filename", authMiddleware, async (req, res) => {
+router.delete("/serve/:kind/:filename", authMiddleware, requireAdmin(), async (req, res) => {
   try {
     const kind = normalizeKind(String(req.params.kind));
     const filename = String(req.params.filename);

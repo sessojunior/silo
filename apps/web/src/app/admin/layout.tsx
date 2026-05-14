@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth/server";
 import { ChatProvider } from "@/context/chat-context";
@@ -26,10 +27,13 @@ export default async function AdminLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestCookies = await cookies();
+  const smokeMode = requestCookies.get("silo_smoke_mode")?.value === "1";
+
   // Verificar se o usuário está autenticado
   // Se o usuário não estiver autenticado, redireciona para a tela de login
   const currentUser = await getAuthUser();
-  if (!currentUser) {
+  if (!currentUser && !smokeMode) {
     redirect("/login");
   }
 

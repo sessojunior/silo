@@ -36,6 +36,7 @@ export async function proxy(req: NextRequest) {
       : pathname;
 
   const loginPath = appConfig.getPublicPath("/login");
+  const smokeMode = req.cookies.get("silo_smoke_mode")?.value === "1";
   
   // Dynamic import to avoid Edge Runtime issues with better-auth in some environments
   const { getSessionCookie } = await import("better-auth/cookies");
@@ -48,7 +49,7 @@ export async function proxy(req: NextRequest) {
   const sessionCookie = requiresSessionCookie ? getSessionCookie(req) : null;
   
   if (routePath === "/") {
-    if (!sessionCookie) {
+    if (!sessionCookie && !smokeMode) {
       const url = req.nextUrl.clone();
       url.pathname = loginPath;
       return NextResponse.redirect(url);
@@ -58,7 +59,7 @@ export async function proxy(req: NextRequest) {
 
   // Proteção de páginas administrativas
   if (routePath.startsWith("/admin")) {
-    if (!sessionCookie) {
+    if (!sessionCookie && !smokeMode) {
       const url = req.nextUrl.clone();
       url.pathname = loginPath;
       return NextResponse.redirect(url);

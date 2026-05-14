@@ -42,9 +42,24 @@ export async function GET(
   const { type, filename } = await context.params;
   const corsHeaders = buildCorsHeaders(req);
   try {
-    const upstream = await fetch(getApiUrl(`/api/upload/serve/${type}/${filename}`), { cache: "no-store" });
+    const forwardHeaders = new Headers();
+    const cookie = req.headers.get("cookie");
+    if (cookie) forwardHeaders.set("cookie", cookie);
+
+    const upstream = await fetch(getApiUrl(`/api/upload/serve/${type}/${filename}`), {
+      cache: "no-store",
+      headers: forwardHeaders,
+    });
     if (!upstream.ok) {
-      return errorResponse("Arquivo não encontrado", upstream.status as 404, undefined, corsHeaders);
+      const payload = await upstream.json().catch(() => null) as { error?: string } | null;
+      const message =
+        payload?.error ??
+        (upstream.status === 401
+          ? "Usuário não autenticado."
+          : upstream.status === 403
+            ? "Permissão insuficiente."
+            : "Arquivo não encontrado.");
+      return errorResponse(message, upstream.status, undefined, corsHeaders);
     }
     const responseHeaders = new Headers(corsHeaders);
     const ct = upstream.headers.get("content-type");
@@ -71,8 +86,15 @@ export async function DELETE(
       headers: forwardHeaders,
     });
     if (!upstream.ok) {
-      const body = await upstream.json().catch(() => ({ error: "Erro ao deletar arquivo." })) as { error?: string };
-      return errorResponse(body.error ?? "Erro ao deletar arquivo.", upstream.status as 404 | 403, undefined, corsHeaders);
+      const body = await upstream.json().catch(() => null) as { error?: string } | null;
+      const message =
+        body?.error ??
+        (upstream.status === 401
+          ? "Usuário não autenticado."
+          : upstream.status === 403
+            ? "Permissão insuficiente."
+            : "Erro ao deletar arquivo.");
+      return errorResponse(message, upstream.status, undefined, corsHeaders);
     }
     return successResponse(null, undefined, 200, undefined, corsHeaders);
   } catch {

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import type { Response } from "express";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/permissions.js";
 import { respondServiceError as respondTaskServiceError } from "../lib/respond-service-error.js";

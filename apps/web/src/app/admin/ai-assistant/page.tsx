@@ -191,6 +191,7 @@ const readTypedApiResponse = async <T,>(
 
 export default function AiAssistantPage() {
   const { currentUser, loading: isLoadingUser, error: userError } = useCurrentUser();
+  const smokeMode = config.isSmokeMode;
   const [threads, setThreads] = useState<AiAssistantThreadSummaryDto[]>([]);
   const [messagesByThread, setMessagesByThread] = useState<
     Record<string, ChatMessage[]>
@@ -199,8 +200,8 @@ export default function AiAssistantPage() {
     FALLBACK_EXAMPLES,
   );
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [isLoadingExamples, setIsLoadingExamples] = useState(true);
-  const [isLoadingThreads, setIsLoadingThreads] = useState(true);
+  const [isLoadingExamples, setIsLoadingExamples] = useState(() => !smokeMode);
+  const [isLoadingThreads, setIsLoadingThreads] = useState(() => !smokeMode);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
@@ -405,7 +406,7 @@ export default function AiAssistantPage() {
 
       try {
         const response = await fetch(
-          config.getApiUrl("/api/admin/ai-assistant/messages"),
+          config.getAssistantApiUrl("/api/admin/ai-assistant/messages"),
           {
             method: "POST",
             credentials: "include",
@@ -468,13 +469,18 @@ export default function AiAssistantPage() {
   );
 
   useEffect(() => {
-    if (isLoadingUser || !currentUser) return;
+    if (smokeMode || isLoadingUser || !currentUser) return;
 
     void loadExamples();
     void loadThreads();
-  }, [currentUser, isLoadingUser, loadExamples, loadThreads]);
+  }, [currentUser, isLoadingUser, loadExamples, loadThreads, smokeMode]);
 
   useEffect(() => {
+    if (smokeMode) {
+      setShowSidebar(false);
+      return;
+    }
+
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
     setShowSidebar(mediaQuery.matches);
 
@@ -484,10 +490,10 @@ export default function AiAssistantPage() {
 
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
+  }, [smokeMode]);
 
   useEffect(() => {
-    if (isLoadingUser || !currentUser) return;
+    if (smokeMode || isLoadingUser || !currentUser) return;
     if (isLoadingThreads || selectedThreadId || threads.length === 0) return;
 
     void loadThreadDetail(threads[0].id);
@@ -497,6 +503,7 @@ export default function AiAssistantPage() {
     isLoadingUser,
     loadThreadDetail,
     selectedThreadId,
+    smokeMode,
     threads,
   ]);
 
@@ -525,7 +532,7 @@ export default function AiAssistantPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-zinc-50 dark:bg-zinc-900 lg:flex-row">
-      {showSidebar && (
+      {showSidebar && !smokeMode && (
         <aside className="flex h-full min-h-0 w-full shrink-0 border-b border-zinc-200 dark:border-zinc-700 lg:w-96 lg:border-b-0 lg:border-r">
           <AssistantSidebar
             examples={examples}
@@ -544,15 +551,17 @@ export default function AiAssistantPage() {
       <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
           <div className="flex min-w-0 items-center gap-3">
-            <Button
-              type="button"
-              onClick={() => setShowSidebar((current) => !current)}
-              className="md:hidden bg-transparent p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              style="unstyled"
-              title="Alternar lateral"
-            >
-              <span className="icon-[mdi--menu] h-5 w-5" />
-            </Button>
+            {!smokeMode && (
+              <Button
+                type="button"
+                onClick={() => setShowSidebar((current) => !current)}
+                className="md:hidden bg-transparent p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                style="unstyled"
+                title="Alternar lateral"
+              >
+                <span className="icon-[mdi--menu] h-5 w-5" />
+              </Button>
+            )}
 
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600/10 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
               <span className="icon-[lucide--bot] h-5 w-5" />

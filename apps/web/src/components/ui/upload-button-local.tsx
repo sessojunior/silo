@@ -4,6 +4,13 @@ import { useState, useRef } from "react";
 import { toast } from "@silo/engine/format/toast";
 import { config } from "@/lib/config";
 
+type UploadItem = {
+  url: string;
+  key?: string;
+  name?: string;
+  size?: number;
+};
+
 interface UploadButtonLocalProps {
   endpoint?:
     | "general"
@@ -47,6 +54,86 @@ export default function UploadButtonLocal({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const endpointKindMap: Record<NonNullable<UploadButtonLocalProps["endpoint"]>, string> = {
+    general: "general",
+    avatarUploader: "avatars",
+    contactImageUploader: "contacts",
+    incidentImageUploader: "incidents",
+    problemImageUploader: "problems",
+    solutionImageUploader: "solutions",
+    manualImageUploader: "manual",
+    helpImageUploader: "help",
+    projectImageUploader: "projects",
+  };
+
+  const multiUploadEndpoints = new Set<NonNullable<UploadButtonLocalProps["endpoint"]>>([
+    "problemImageUploader",
+    "incidentImageUploader",
+    "solutionImageUploader",
+    "manualImageUploader",
+    "helpImageUploader",
+    "projectImageUploader",
+  ]);
+
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null;
+
+  const normalizeUploadItem = (payload: unknown): UploadItem | null => {
+    if (!isRecord(payload)) return null;
+
+    if (typeof payload.url === "string") {
+      return {
+        url: payload.url,
+        ...(typeof payload.key === "string" ? { key: payload.key } : {}),
+        ...(typeof payload.name === "string" ? { name: payload.name } : {}),
+        ...(typeof payload.size === "number" ? { size: payload.size } : {}),
+      };
+    }
+
+    if (typeof payload.success === "boolean") {
+      const data = payload.data;
+      if (isRecord(data) && typeof data.url === "string") {
+        const filename = typeof data.filename === "string" ? data.filename : undefined;
+        return {
+          url: data.url,
+          ...(filename ? { key: filename, name: filename } : {}),
+        };
+      }
+    }
+
+    return null;
+  };
+
+  const uploadSingleFile = async (file: File): Promise<UploadItem> => {
+    const uploadKind = endpointKindMap[endpoint];
+    const uploadEndpoint = config.getApiUrl(`/api/upload/${uploadKind}`);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(uploadEndpoint, {
+      method: "POST",
+      body: formData,
+    });
+
+    const payload: unknown = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const message =
+        (isRecord(payload) && typeof payload.error === "string" && payload.error.trim().length > 0)
+          ? payload.error
+          : `Erro no upload: ${response.status}`;
+      throw new Error(message);
+    }
+
+    const item = normalizeUploadItem(payload);
+    if (!item) {
+      throw new Error("Resposta inválida do upload.");
+    }
+
+    return item;
+  };
+
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -82,100 +169,14 @@ export default function UploadButtonLocal({
     setIsUploading(true);
 
     try {
-      // Determinar endpoint baseado no tipo
-      let uploadEndpoint = config.getApiUrl("/api/upload");
-      if (endpoint === "avatarUploader") {
-        uploadEndpoint = config.getApiUrl("/api/admin/upload/avatar");
-      } else if (endpoint === "contactImageUploader") {
-        uploadEndpoint = config.getApiUrl("/api/admin/upload/contact");
-      } else if (endpoint === "incidentImageUploader") {
-        uploadEndpoint = config.getApiUrl("/api/admin/upload/incidents");
-      } else if (endpoint === "problemImageUploader") {
-        uploadEndpoint = config.getApiUrl("/api/admin/upload/problem");
-      } else if (endpoint === "solutionImageUploader") {
-        uploadEndpoint = config.getApiUrl("/api/admin/upload/solution");
-      } else if (endpoint === "manualImageUploader") {
-        uploadEndpoint = config.getApiUrl("/api/admin/upload/manual");
-      } else if (endpoint === "helpImageUploader") {
-        uploadEndpoint = config.getApiUrl("/api/admin/upload/help");
-      } else if (endpoint === "projectImageUploader") {
-        uploadEndpoint = config.getApiUrl("/api/admin/upload/projects");
-      }
-
-      const formData = new FormData();
-
-      // Para problemas e soluções, enviar todos os arquivos de uma vez
-      if (
-        endpoint === "problemImageUploader" ||
-        endpoint === "incidentImageUploader" ||
-        endpoint === "solutionImageUploader" ||
-        endpoint === "manualImageUploader" ||
-        endpoint === "helpImageUploader" ||
-        endpoint === "projectImageUploader"
-      ) {
-        fileArray.forEach((file) => {
-          formData.append("files", file);
-        });
-      } else {
-        // Para avatar e contato, apenas o primeiro arquivo
-        formData.append("file", fileArray[0]);
-      }
-
-      const response = await fetch(uploadEndpoint, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro no upload: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      const uploadedItems = multiUploadEndpoints.has(endpoint)
+        ? await Promise.all(fileArray.map(async (file) => uploadSingleFile(file)))
+        : [await uploadSingleFile(fileArray[0])];
 
       if (onClientUploadComplete) {
-        // Adaptar resposta baseada no endpoint
-        if (endpoint === "avatarUploader" && result.success) {
-          // Endpoint /api/upload/avatar retorna { success: true, data: {...} }
-          onClientUploadComplete({
-            url: result.data.url,
-            key: result.data.key,
-            name: result.data.name,
-            size: result.data.size,
-          });
-        } else if (endpoint === "contactImageUploader" && result.success) {
-          // Endpoint /api/upload/contact retorna { success: true, data: {...} }
-          onClientUploadComplete({
-            url: result.data.url,
-            key: result.data.key,
-            name: result.data.name,
-            size: result.data.size,
-          });
-        } else if (
-          (endpoint === "problemImageUploader" ||
-            endpoint === "incidentImageUploader" ||
-            endpoint === "solutionImageUploader") &&
-          result.success
-        ) {
-          // Endpoints /api/upload/problem e /api/upload/solution retornam { success: true, data: [...] }
-          onClientUploadComplete(result.data);
-        } else if (endpoint === "manualImageUploader" && result.success) {
-          // Endpoint /api/upload/manual retorna { success: true, data: [...] }
-          onClientUploadComplete(result.data);
-        } else if (
-          (endpoint === "helpImageUploader" ||
-            endpoint === "projectImageUploader") &&
-          result.success
-        ) {
-          onClientUploadComplete(result.data);
-        } else {
-          // Endpoint genérico /api/upload retorna { url, key, name, size }
-          onClientUploadComplete({
-            url: result.url,
-            key: result.key,
-            name: result.name,
-            size: result.size,
-          });
-        }
+        onClientUploadComplete(
+          multiUploadEndpoints.has(endpoint) ? uploadedItems : uploadedItems[0],
+        );
       }
     } catch (error) {
       let errorMessage = "Erro no upload";

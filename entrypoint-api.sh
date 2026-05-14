@@ -51,7 +51,7 @@ npm run db:migrate -w @silo/database
 
 echo "✅ Iniciando API..."
 if [ $# -eq 0 ]; then
-  exec node dist/index.js
+  exec ./node_modules/.bin/tsx apps/api/src/index.ts
 else
   exec "$@"
 fi

@@ -85,8 +85,8 @@ export default function ChartDonut({ refresh = 0 }: { refresh?: number }) {
     };
   }, [refresh]);
 
-  const labels = data?.labels ?? [];
-  const values = data?.values ?? [];
+  const labels = useMemo(() => data?.labels ?? [], [data]);
+  const values = useMemo(() => data?.values ?? [], [data]);
 
   const theme = useMemo(
     () => ({

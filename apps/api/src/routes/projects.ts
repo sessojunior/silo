@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/permissions.js";
 import { validate } from "../middleware/validate.js";
-import { isServiceErrorResult, respondServiceError as respondProjectServiceError } from "../lib/respond-service-error.js";
+import { respondServiceError as respondProjectServiceError } from "../lib/respond-service-error.js";
 import {
   listProjects,
   createProject,

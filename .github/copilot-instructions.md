@@ -26,12 +26,8 @@ docs/         # Documentação completa (leia docs/00-start.md primeiro)
 
 ## Comportamento do assistente
 
-- **Sempre responda em português brasileiro**, independente do idioma da pergunta.
-- Seja objetivo e direto. Evite introduções desnecessárias.
-- Ao sugerir código, implemente — não apenas descreva.
-- Ao encontrar um bug, corrija na raiz — não adicione workarounds.
+- Antes de alterar autenticação, uploads, sessões, permissões, rate limit, CORS, segredos ou integrações externas, revise a segurança do slice afetado. Use a skill `security-audit` para a checagem quando o trabalho tocar essas áreas.
 
----
 
 ## Regras fundamentais
 

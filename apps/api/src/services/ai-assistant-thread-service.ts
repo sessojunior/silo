@@ -21,7 +21,6 @@ import {
   getAssistantExamples,
 } from "./ai-assistant-service.js";
 
-const ASSISTANT_SENDER_ID = "ai-assistant";
 const ASSISTANT_SENDER_NAME = "Assistente de IA";
 const DEFAULT_THREAD_TITLE = "Nova conversa";
 const THREAD_TITLE_MAX_LENGTH = 64;
@@ -224,6 +223,9 @@ export async function sendAssistantMessage(
     : buildThreadTitle(request.content);
 
   const thread = await db.transaction(async (tx) => {
+    const userMessageCreatedAt = now;
+    const assistantMessageCreatedAt = new Date(now.getTime() + 1);
+
     if (!existingThread) {
       const [insertedThread] = await tx
         .insert(aiAssistantThread)
@@ -246,6 +248,7 @@ export async function sendAssistantMessage(
           senderUserId: user.id,
           senderName: user.name,
           content: request.content.trim(),
+          createdAt: userMessageCreatedAt,
           metadata: {},
         },
         {
@@ -253,6 +256,7 @@ export async function sendAssistantMessage(
           senderType: "assistant",
           senderUserId: null,
           senderName: ASSISTANT_SENDER_NAME,
+          createdAt: assistantMessageCreatedAt,
           provider: generationMetadata.provider,
           model: generationMetadata.model,
           generationStatus: generationMetadata.generationStatus,
@@ -281,6 +285,7 @@ export async function sendAssistantMessage(
         senderUserId: user.id,
         senderName: user.name,
         content: request.content.trim(),
+        createdAt: userMessageCreatedAt,
         metadata: {},
       },
       {
@@ -288,6 +293,7 @@ export async function sendAssistantMessage(
         senderType: "assistant",
         senderUserId: null,
         senderName: ASSISTANT_SENDER_NAME,
+        createdAt: assistantMessageCreatedAt,
         provider: generationMetadata.provider,
         model: generationMetadata.model,
         generationStatus: generationMetadata.generationStatus,

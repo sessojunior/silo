@@ -67,9 +67,9 @@ export default function ChartLine({ refresh = 0 }: { refresh?: number }) {
     };
   }, [refresh]);
 
-  const categories = chartData?.categories ?? [];
-  const problems = chartData?.problems ?? [];
-  const solutions = chartData?.solutions ?? [];
+  const categories = useMemo(() => chartData?.categories ?? [], [chartData]);
+  const problems = useMemo(() => chartData?.problems ?? [], [chartData]);
+  const solutions = useMemo(() => chartData?.solutions ?? [], [chartData]);
 
   const theme = useMemo(
     () => ({

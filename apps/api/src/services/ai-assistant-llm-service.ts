@@ -13,6 +13,11 @@ const AssistantRewriteSchema = z.object({
   contextSummary: z.string().default(""),
 });
 
+type AssistantRewriteContent = {
+  answer: string;
+  contextSummary: string;
+};
+
 type ComposeAssistantAnswerInput = {
   scope: AiAssistantScope;
   question: string;
@@ -38,6 +43,8 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
         "Use somente os fatos fornecidos no contexto.",
         "Não invente números, nomes, eventos ou causas.",
         "Reescreva a resposta para ficar mais clara, mais útil e mais detalhada, sem alterar os fatos.",
+        'Responda com um objeto JSON estrito, sem markdown, sem bloco de código e sem texto extra.',
+        'Exemplo: {"answer":"Resumo objetivo.","contextSummary":"Contexto curto."}',
         "Retorne apenas JSON válido com as chaves answer e contextSummary.",
       ].join(" "),
     },
@@ -62,6 +69,93 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
     },
   ];
 };
+
+function getStringProperty(
+  value: Record<string, unknown>,
+  keys: string[],
+): string | null {
+  for (const key of keys) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+
+  return null;
+}
+
+function coerceAssistantRewriteContent(content: unknown): AssistantRewriteContent | null {
+  if (typeof content === "string") {
+    const answer = content.trim();
+    return answer.length > 0 ? { answer, contextSummary: "" } : null;
+  }
+
+  if (!content || typeof content !== "object" || Array.isArray(content)) {
+    return null;
+  }
+
+  const record = content as Record<string, unknown>;
+  const answer = getStringProperty(record, ["answer", "response", "content", "text"]);
+
+  if (!answer) {
+    return null;
+  }
+
+  return {
+    answer,
+    contextSummary:
+      getStringProperty(record, ["contextSummary", "summary", "context"]) ?? "",
+  };
+}
+
+function extractJsonCandidates(content: string): string[] {
+  const trimmed = content.trim();
+  const candidates = new Set<string>();
+
+  if (trimmed.length === 0) {
+    return [];
+  }
+
+  candidates.add(trimmed);
+
+  const fencedMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fencedMatch?.[1]) {
+    candidates.add(fencedMatch[1].trim());
+  }
+
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    candidates.add(trimmed.slice(firstBrace, lastBrace + 1).trim());
+  }
+
+  return [...candidates];
+}
+
+export function parseAssistantRewriteContent(content: string): AssistantRewriteContent | null {
+  for (const candidate of extractJsonCandidates(content)) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      const coerced = coerceAssistantRewriteContent(parsed);
+      if (coerced) {
+        const validated = AssistantRewriteSchema.safeParse(coerced);
+        if (validated.success) {
+          return {
+            answer: validated.data.answer.trim(),
+            contextSummary: validated.data.contextSummary.trim(),
+          };
+        }
+      }
+    } catch {
+      // Tenta o próximo candidato.
+    }
+  }
+
+  const fallbackAnswer = content.trim();
+  return fallbackAnswer.length > 0
+    ? { answer: fallbackAnswer, contextSummary: "" }
+    : null;
+}
 
 const buildGeneration = (
   generation: Omit<AiAssistantGenerationDto, "errorMessage"> & {
@@ -91,7 +185,11 @@ export async function composeAssistantAnswerWithOllama(
       messages: buildPrompt(input),
     });
 
-    const parsedContent = AssistantRewriteSchema.parse(JSON.parse(content) as unknown);
+    const parsedContent = parseAssistantRewriteContent(content);
+
+    if (!parsedContent) {
+      throw new Error("Resposta do Ollama vazia ou inválida.");
+    }
 
     return {
       answer: parsedContent.answer.trim(),

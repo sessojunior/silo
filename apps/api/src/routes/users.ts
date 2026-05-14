@@ -1,15 +1,9 @@
 import { Router } from "express";
-import { randomUUID, randomInt } from "crypto";
-import path from "path";
 import { authMiddleware } from "../middleware/auth.js";
-import { requirePermission, requireAdmin, getUserGroups, getPermissions, isAdmin } from "../middleware/permissions.js";
+import { requirePermission, requireAdmin } from "../middleware/permissions.js";
 import { validate } from "../middleware/validate.js";
 import { respondServiceError as respondUserServiceError } from "../lib/respond-service-error.js";
 import * as userService from "../services/user-service.js";
-import { db } from "@silo/database";
-import { authUser } from "@silo/database/schema";
-import { eq, and } from "drizzle-orm";
-import { toNodeHandler } from "better-auth/node";
 import { z } from "zod";
 import type { Request, Response as ExpressResponse } from "express";
 import multer from "multer";

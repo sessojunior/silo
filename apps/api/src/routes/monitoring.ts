@@ -12,7 +12,6 @@ import {
   radarGroupSchema,
   radarSchema,
 } from "@silo/engine/validation/monitoring";
-import { z } from "zod";
 import * as monitoringService from "../services/monitoring-service.js";
 
 const router = Router();

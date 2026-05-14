@@ -43,5 +43,5 @@ console.log(
 );
 
 // 3. Exibir logs do container app para acompanhar o entrypoint
-// Equivalente a: docker compose logs -f silo
-run("docker", ["compose", "logs", "-f", "silo"]);
+// Equivalente a: docker compose logs -f api web
+run("docker", ["compose", "logs", "-f", "api", "web"]);

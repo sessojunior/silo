@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
-import { createAuthMiddleware, APIError, getOAuthState } from "better-auth/api";
+import { createAuthMiddleware, APIError } from "better-auth/api";
 import { db } from "@silo/database";
 import {
   authUser,
@@ -11,7 +11,7 @@ import {
 } from "@silo/database/schema";
 import { hashPassword, verifyPassword } from "@silo/engine/auth/hash";
 import { config } from "@silo/engine/config";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const AUTH_SESSION_DURATION_DAYS = 365;
 const AUTH_SESSION_DURATION_SECONDS = AUTH_SESSION_DURATION_DAYS * 24 * 60 * 60;

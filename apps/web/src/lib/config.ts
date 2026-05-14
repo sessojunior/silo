@@ -103,7 +103,7 @@ export const config = {
    * Constrói URL para chamadas de API respeitando o basePath da aplicação.
    *
    * - Em ambiente client, retorna sempre um path relativo (ex.: /silo/api/auth/login)
-   * - Em ambiente server, concatena APP_URL_DEV/APP_URL_PROD com o path normalizado
+   * - Em ambiente server, concatena APP_URL_DEV/APP_URL_PROD com o path normalizado.
    *
    * Exemplo:
    * const url = config.getApiUrl('/api/auth/login')
@@ -119,6 +119,21 @@ export const config = {
     const base = this.appUrl;
     if (!base) return normalizedPath;
     return `${base.replace(/\/$/, "")}${normalizedPath}`;
+  },
+
+  /**
+   * Resolve a URL da API do assistente mantendo o fluxo same-origin.
+   *
+   * O smoke runner intercepta essa rota antes do proxy do web e a cumpre com
+   * a resposta real da API, o que evita CORS e mantém a validação visual estável.
+   */
+  getAssistantApiUrl(path: string): string {
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    const assistantApiPath = normalizedPath
+      .replace("/api/admin/ai-assistant/", "/api/ai-assistant/")
+      .replace(/^\/api\/admin\/ai-assistant$/, "/api/ai-assistant");
+
+    return this.getApiUrl(assistantApiPath);
   },
 
   /**

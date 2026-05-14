@@ -612,9 +612,9 @@ export default function SettingsProductsPage() {
 }
 
 function SettingsProductsSmokeShell() {
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [, setCreateOpen] = useState(false);
+  const [, setEditOpen] = useState(false);
+  const [, setDeleteOpen] = useState(false);
 
   return (
     <div className="w-full p-6">

@@ -10,16 +10,15 @@ import {
 } from "@silo/engine/validation/auth";
 
 export const getRequestIp = (req: Request): string => {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") return forwarded.split(",")[0]?.trim() ?? "unknown";
-  const real = req.headers["x-real-ip"];
-  if (typeof real === "string") return real.trim();
-  return req.ip ?? "unknown";
+  return req.ip || req.socket.remoteAddress || "unknown";
 };
 
 export const buildHeaders = (req: Request): Record<string, string> => {
   const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(req.headers)) {
+    if (key === "x-forwarded-for" || key === "x-real-ip") {
+      continue;
+    }
     if (typeof value === "string") out[key] = value;
     else if (Array.isArray(value)) out[key] = value.join(", ");
   }

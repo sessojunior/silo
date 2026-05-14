@@ -23,6 +23,7 @@
     "./auth/hash": "./src/auth/hash.ts",
     "./email/send-email-template": "./src/email/send-email-template.ts",
     "./kafka/rest-client": "./src/kafka/rest-client.ts",
+    "./dataflow/ecflow-kafka": "./src/dataflow/ecflow-kafka.ts",
     "./dataflow/types": "./src/dataflow/types.ts",
     "./dataflow/helpers": "./src/dataflow/helpers.ts",
     "./dataflow/pipeline-data": "./src/dataflow/pipeline-data.ts",

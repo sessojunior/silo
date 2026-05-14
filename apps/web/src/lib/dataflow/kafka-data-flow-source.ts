@@ -1,25 +1,11 @@
+import { config } from "@silo/engine/config";
+import { parseEcflowKafkaPipelines } from "@silo/engine/dataflow/ecflow-kafka";
+import { clampProgress, normalizeModelKey, normalizeProductStatus } from "@silo/engine/dataflow/helpers";
 import pipelineDataJson from "@silo/engine/dataflow/pipeline-data";
 import { createRestConsumer, deleteRestConsumer, fetchRecordsRest, subscribeRest } from "@silo/engine/kafka/rest-client";
-import { config } from "@silo/engine/config";
-import type { ProductStatus } from "@silo/engine/domain/product-status";
-import {
-  clampProgress,
-  normalizeModelKey,
-  normalizeProductStatus,
-} from "@silo/engine/dataflow/helpers";
 import { seedMonitoringProducts } from "@silo/engine/dataflow/seed-monitoring-products";
 
-import type {
-  DataFlowTask,
-  DataFlowTaskGroup,
-  GroupedPipelineData,
-  GroupedPipelineDataFile,
-  KafkaDataFlowGroup,
-  KafkaDataFlowMessage,
-  KafkaDataFlowTask,
-  MonitoringProductItem,
-  MonitoringProductsFile,
-} from "./types";
+import type { GroupedPipelineData, GroupedPipelineDataFile, MonitoringProductItem, MonitoringProductsFile } from "./types";
 
 type ActiveProduct = {
   slug: string;
@@ -31,132 +17,7 @@ const kafkaConfig = config.kafka;
 const legacyPipelineData = pipelineDataJson as GroupedPipelineDataFile;
 const legacyMonitoringData = seedMonitoringProducts as unknown as MonitoringProductsFile;
 
-function toValidDateString(value: unknown): string | null {
-  if (typeof value !== "string" || value.trim().length === 0) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return value;
-}
-
-function addMinutesIso(start: string, minutes: number): string {
-  const date = new Date(start);
-  date.setMinutes(date.getMinutes() + minutes);
-  return date.toISOString();
-}
-
-function minutesBetween(start?: string | null, end?: string | null): number | null {
-  if (!start || !end) return null;
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
-  return Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 60000));
-}
-
-function stableDependencies(dependencies?: string[]): string[] {
-  if (!Array.isArray(dependencies)) return [];
-  return dependencies
-    .map((dependency) => String(dependency ?? "").trim())
-    .filter((dependency) => dependency.length > 0);
-}
-
-function productStatusToKafkaState(status: ProductStatus): string {
-  switch (status) {
-    case "completed":
-      return "complete";
-    case "in_progress":
-      return "active";
-    case "with_problems":
-    case "run_again":
-      return "failed";
-    case "not_run":
-    case "suspended":
-    case "under_support":
-      return "aborted";
-    case "pending":
-    default:
-      return "queued";
-  }
-}
-
-function isFinishedStatus(status: ProductStatus): boolean {
-  return status === "completed" || status === "with_problems" || status === "run_again";
-}
-
-function legacySnapshotToKafkaMessage(snapshot: GroupedPipelineData, requestedSlug: string): KafkaDataFlowMessage {
-  const productSlug = requestedSlug || snapshot.model;
-  const productName = productSlug.toUpperCase();
-  const topicPrefix = kafkaConfig.dataFlowTopicPrefix;
-  const topic = `${topicPrefix}${productSlug}`;
-  const generatedAt = new Date().toISOString();
-
-  return {
-    schemaVersion: 1,
-    source: {
-      type: "ecflow",
-      transport: "kafka",
-      topic,
-      messageId: `${productSlug}-${snapshot.date}-${snapshot.turn}-${generatedAt}`,
-      generatedAt,
-    },
-    product: {
-      slug: productSlug,
-      name: productName,
-    },
-    run: {
-      date: snapshot.date,
-      turn: snapshot.turn,
-      cycleAt: snapshot.groups[0]?.tasks[0]?.start ?? null,
-      status: snapshot.status,
-    },
-    defaults: {
-      timezone: "America/Sao_Paulo",
-      latenessToleranceMinutes: 5,
-      referenceDurationMinutes: 15,
-    },
-    groups: snapshot.groups.map((group) => ({
-      id: group.id,
-      parentId: `${productSlug}/${snapshot.date}/${snapshot.turn}`,
-      kind: "family",
-      name: group.name,
-      status: group.tasks.some((task) => task.status === "in_progress")
-        ? "active"
-        : group.tasks.some((task) => task.status === "with_problems")
-          ? "failed"
-          : group.tasks.every((task) => task.status === "completed")
-            ? "complete"
-            : "queued",
-      startedAt: group.tasks[0]?.start ?? null,
-      finishedAt: group.tasks.at(-1)?.end ?? null,
-      referenceDurationMinutes: minutesBetween(group.tasks[0]?.start, group.tasks.at(-1)?.end) ?? 15,
-      tasks: group.tasks.map((task) => {
-        const referenceDurationMinutes = minutesBetween(task.start, task.end) ?? 15;
-        return {
-          id: task.id,
-          kind: "task",
-          name: task.name,
-          state: productStatusToKafkaState(task.status),
-          status: task.status,
-          dependencies: stableDependencies(task.dependencies),
-          triggerExpression: null,
-          plannedStartAt: task.start,
-          plannedEndAt: task.end,
-          startedAt: task.status === "pending" ? null : task.start,
-          finishedAt: isFinishedStatus(task.status) ? task.end : null,
-          referenceDurationMinutes,
-          delayMinutes: 0,
-          isDelayed: false,
-          progress: task.progress,
-        } satisfies KafkaDataFlowTask;
-      }),
-    } satisfies KafkaDataFlowGroup)),
-    raw: {
-      suiteId: `${productSlug.toUpperCase()}_PRE_OPER`,
-      simulated: true,
-    },
-  };
-}
-
-function createMockDataFlowMessages(slug: string): KafkaDataFlowMessage[] {
+function getMockDataFlowPipelines(slug: string): GroupedPipelineData[] {
   const requestedSlug = normalizeModelKey(slug);
   const exactMatches = legacyPipelineData.pipelines.filter(
     (snapshot) => normalizeModelKey(snapshot.model) === requestedSlug,
@@ -164,20 +25,23 @@ function createMockDataFlowMessages(slug: string): KafkaDataFlowMessage[] {
   const snapshots = exactMatches.length > 0 ? exactMatches : legacyPipelineData.pipelines;
 
   return snapshots.map((snapshot) =>
-    legacySnapshotToKafkaMessage(
-      exactMatches.length > 0 ? snapshot : { ...snapshot, model: requestedSlug || snapshot.model },
-      requestedSlug || snapshot.model,
-    ),
+    exactMatches.length > 0
+      ? snapshot
+      : { ...snapshot, model: requestedSlug || snapshot.model },
   );
 }
 
-function isKafkaDataFlowMessage(value: unknown): value is KafkaDataFlowMessage {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<KafkaDataFlowMessage>;
-  return Boolean(candidate.product?.slug && candidate.run?.date && candidate.run?.turn && Array.isArray(candidate.groups));
+function toParsedJsonValue(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
 }
 
-async function fetchLiveDataFlowMessages(slug: string): Promise<KafkaDataFlowMessage[]> {
+async function fetchLiveDataFlowPipelines(slug: string): Promise<GroupedPipelineData[]> {
   const topic = `${kafkaConfig.dataFlowTopicPrefix}${normalizeModelKey(slug)}`;
   const groupId = `${kafkaConfig.groupId}-ui-dataflow-${normalizeModelKey(slug) || "product"}`;
   const instance = await createRestConsumer(groupId, undefined, "earliest");
@@ -185,9 +49,9 @@ async function fetchLiveDataFlowMessages(slug: string): Promise<KafkaDataFlowMes
   try {
     await subscribeRest(instance, [topic]);
     const records = await fetchRecordsRest(instance, 1000);
-    return records
-      .map((record) => record.value)
-      .filter(isKafkaDataFlowMessage);
+    return records.flatMap((record) =>
+      parseEcflowKafkaPipelines(toParsedJsonValue(record.value), slug),
+    );
   } finally {
     await deleteRestConsumer(instance).catch(() => undefined);
   }
@@ -197,88 +61,17 @@ function shouldUseMockRestProxyData(): boolean {
   return kafkaConfig.restProxyUseMockData || !kafkaConfig.restProxyUrl;
 }
 
-function mapKafkaTaskToDataFlowTask(
-  task: KafkaDataFlowTask,
-  group: KafkaDataFlowGroup,
-  message: KafkaDataFlowMessage,
-): DataFlowTask {
-  const status = normalizeProductStatus(task.state, task.status);
-  const fallbackStart = toValidDateString(group.startedAt) ?? toValidDateString(message.run.cycleAt) ?? new Date().toISOString();
-  const plannedStartAt = toValidDateString(task.plannedStartAt) ?? toValidDateString(task.startedAt) ?? fallbackStart;
-  const referenceDurationMinutes =
-    typeof task.referenceDurationMinutes === "number" && Number.isFinite(task.referenceDurationMinutes)
-      ? task.referenceDurationMinutes
-      : message.defaults?.referenceDurationMinutes ?? 15;
-  const plannedEndAt =
-    toValidDateString(task.plannedEndAt) ??
-    toValidDateString(task.finishedAt) ??
-    addMinutesIso(plannedStartAt, referenceDurationMinutes);
-  const delayMinutes =
-    typeof task.delayMinutes === "number" && Number.isFinite(task.delayMinutes) ? task.delayMinutes : 0;
-
-  return {
-    id: task.id,
-    name: task.name,
-    start: plannedStartAt,
-    end: plannedEndAt,
-    progress: clampProgress(task.progress, status),
-    dependencies: stableDependencies(task.dependencies),
-    status,
-    type: "task",
-    plannedStartAt,
-    plannedEndAt,
-    startedAt: toValidDateString(task.startedAt),
-    finishedAt: toValidDateString(task.finishedAt),
-    referenceDurationMinutes,
-    delayMinutes,
-    isDelayed:
-      typeof task.isDelayed === "boolean"
-        ? task.isDelayed
-        : delayMinutes > (message.defaults?.latenessToleranceMinutes ?? 5),
-  };
-}
-
-function derivePipelineStatus(groups: DataFlowTaskGroup[]): ProductStatus {
-  const statuses = groups.flatMap((group) => group.tasks.map((task) => task.status));
-  if (statuses.includes("with_problems")) return "with_problems";
-  if (statuses.includes("in_progress")) return "in_progress";
-  if (statuses.includes("run_again")) return "run_again";
-  if (statuses.includes("not_run")) return "not_run";
-  if (statuses.includes("under_support")) return "under_support";
-  if (statuses.includes("suspended")) return "suspended";
-  if (statuses.length > 0 && statuses.every((status) => status === "completed")) return "completed";
-  return "pending";
-}
-
-function mapKafkaMessageToPipeline(message: KafkaDataFlowMessage): GroupedPipelineData {
-  const groups = message.groups
-    .map((group): DataFlowTaskGroup => ({
-      id: group.id,
-      name: group.name,
-      tasks: group.tasks.map((task) => mapKafkaTaskToDataFlowTask(task, group, message)),
-    }))
-    .filter((group) => group.tasks.length > 0);
-
-  return {
-    model: normalizeModelKey(message.product.slug) || message.product.slug,
-    date: message.run.date,
-    turn: String(message.run.turn),
-    status: message.run.status ? normalizeProductStatus(message.run.status) : derivePipelineStatus(groups),
-    groups,
-  };
-}
-
-async function getDataFlowMessages(slug: string): Promise<KafkaDataFlowMessage[]> {
+async function getDataFlowPipelines(slug: string): Promise<GroupedPipelineData[]> {
   if (!shouldUseMockRestProxyData()) {
     try {
-      const liveMessages = await fetchLiveDataFlowMessages(slug);
-      if (liveMessages.length > 0) return liveMessages;
+      const livePipelines = await fetchLiveDataFlowPipelines(slug);
+      if (livePipelines.length > 0) return livePipelines;
     } catch (error) {
       console.warn("[kafka-rest-dataflow] Falling back to simulated data", error);
     }
   }
 
-  return createMockDataFlowMessages(slug);
+  return getMockDataFlowPipelines(slug);
 }
 
 export async function getProductDataFlowPipelinesFromKafkaRest({
@@ -290,9 +83,8 @@ export async function getProductDataFlowPipelinesFromKafkaRest({
   date?: string | null;
   turn?: string | null;
 }): Promise<GroupedPipelineData[]> {
-  const messages = await getDataFlowMessages(slug);
-  return messages
-    .map(mapKafkaMessageToPipeline)
+  const pipelines = await getDataFlowPipelines(slug);
+  return pipelines
     .filter((pipeline) => (!date || pipeline.date === date) && (!turn || pipeline.turn === String(turn)))
     .sort((a, b) => {
       const dateDiff = b.date.localeCompare(a.date);

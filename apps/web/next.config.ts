@@ -1,5 +1,10 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { config } from "./src/lib/config";
+
+const webRoot = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(webRoot, "../..");
 
 const normalizedBasePath = config.publicBasePath;
 const appOrigin = (() => {
@@ -20,12 +25,15 @@ const appOrigin = (() => {
 const getRootRedirectDestination = (): string | null => {
   if (!normalizedBasePath || !appOrigin) return null;
   const port = appOrigin.port ? `:${appOrigin.port}` : "";
-  return `${appOrigin.protocol}//${appOrigin.hostname}${port}${normalizedBasePath}`;
+  return `${appOrigin.protocol}://${appOrigin.hostname}${port}${normalizedBasePath}`;
 };
 
 const nextConfig: NextConfig = {
   ...(normalizedBasePath ? { basePath: normalizedBasePath } : {}),
   output: "standalone",
+  turbopack: {
+    root: workspaceRoot,
+  },
   transpilePackages: ["@silo/engine"],
   async redirects() {
     const destination = `${normalizedBasePath || ""}/images/logo.png`;

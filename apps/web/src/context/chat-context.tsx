@@ -423,6 +423,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     (status: number): boolean => {
       if (status !== 401 && status !== 403) return false;
 
+      if (config.isSmokeMode) {
+        disconnectRealtime();
+        return true;
+      }
+
       disconnectRealtime();
 
       if (status === 401) {

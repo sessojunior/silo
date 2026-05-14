@@ -1,6 +1,6 @@
 # Fluxo de Dados via Kafka REST Proxy
 
-Este guia descreve o fluxo de dados exibido em `/admin/products/:slug/data-flow`. A fonte oficial do módulo é o **Kafka REST Proxy**. Enquanto o REST Proxy real não estiver disponível, a aplicação usa os snapshots fake existentes e os converte para o mesmo contrato Kafka/ecFlow esperado em produção.
+Este guia descreve o fluxo de dados exibido em `/admin/products/:slug/data-flow`. A fonte oficial do módulo é o **Kafka REST Proxy**. Enquanto o REST Proxy real não estiver disponível, a aplicação usa os snapshots fake existentes e retorna o mesmo contrato normalizado que a UI consome.
 
 ---
 
@@ -24,15 +24,15 @@ Fluxo atual:
 
 1. A tela `/admin/products/:slug/data-flow` chama `GET /api/admin/products/{slug}/data-flow`.
 2. A rota chama `getProductDataFlowPipelinesFromKafkaRest`.
-3. Se `KAFKA_REST_PROXY_USE_MOCK_DATA` for diferente de `false`, ou se `KAFKA_REST_PROXY_URL` não estiver definido, o sistema usa os snapshots fake existentes.
-4. Se `KAFKA_REST_PROXY_USE_MOCK_DATA=false` e `KAFKA_REST_PROXY_URL` estiver definido, o sistema cria um consumidor temporário via REST Proxy e lê o tópico `${KAFKA_DATAFLOW_TOPIC_PREFIX}${slug}`.
-5. O payload Kafka/ecFlow é normalizado para o formato usado pelo Gantt.
+3. Se `KAFKA_REST_PROXY_USE_MOCK_DATA` for diferente de `false`, ou se `KAFKA_REST_PROXY_URL` não estiver definido, o sistema usa os snapshots fake existentes e devolve o mesmo modelo normalizado da UI.
+4. Se `KAFKA_REST_PROXY_USE_MOCK_DATA=false` e `KAFKA_REST_PROXY_URL` estiver definido, o sistema cria um consumidor temporário via REST Proxy, lê o tópico `${KAFKA_DATAFLOW_TOPIC_PREFIX}${slug}` e parseia a árvore ecFlow/suite bruta.
+5. O parser normaliza o payload bruto para o formato usado pelo Gantt.
 
 Arquivos principais:
 
-- `apps/web/src/app/api/admin/products/[slug]/data-flow/route.ts`
+- `apps/api/src/routes/products-extended.ts`
+- `apps/api/src/dataflow/kafka-data-flow-source.ts`
 - `apps/web/src/lib/dataflow/kafka-data-flow-source.ts`
-- `apps/web/src/lib/dataflow/types.ts`
 - `apps/web/src/app/admin/products/[slug]/data-flow/page.tsx`
 - `apps/web/src/components/admin/nav/product-tabs.tsx`
 
@@ -78,72 +78,37 @@ Uso pela interface:
 
 ## Contrato Kafka/ecFlow
 
-O valor da mensagem no tópico de data-flow deve seguir este formato base:
+O contrato bruto aceito pelo parser é a árvore ecFlow/suite do anexo [kafka-consumer-api-example.json](../kafka-consumer-api-example.json). O root da suite e os nós de família de primeiro nível carregam `date` e `turn` explicitamente.
 
 ```json
 {
-  "schemaVersion": 1,
-  "source": {
-    "type": "ecflow",
-    "transport": "kafka",
-    "topic": "silo.dataflow.bam",
-    "messageId": "bam-2026-03-06-18-20260413T180500-0300",
-    "generatedAt": "2026-04-13T18:05:00-03:00"
-  },
-  "product": {
-    "slug": "bam",
-    "name": "BAM"
-  },
-  "run": {
-    "date": "2026-03-06",
-    "turn": "18",
-    "cycleAt": "2026-03-06T18:00:00-03:00",
-    "status": "completed"
-  },
-  "defaults": {
-    "timezone": "America/Sao_Paulo",
-    "latenessToleranceMinutes": 5,
-    "referenceDurationMinutes": 15
-  },
+  "kind": "suite",
+  "name": "SMNA_PRE_OPER",
+  "date": "2026-05-13",
+  "turn": "PRE_OPER",
+  "node_state": "queued",
+  "default_state": "queued",
+  "attributes": [],
+  "dependencies": [],
+  "triggerExpression": null,
   "groups": [
     {
-      "id": "ingestion",
+      "id": "SMNA_00_2026-05-13",
       "kind": "family",
-      "name": "Ingestao de dados",
+      "name": "00",
+      "date": "2026-05-13",
+      "turn": "00",
       "status": "complete",
-      "tasks": [
-        {
-          "id": "download_gfs_025",
-          "kind": "task",
-          "name": "Download GFS 0.25",
-          "state": "complete",
-          "dependencies": [],
-          "plannedStartAt": "2026-03-06T18:08:00Z",
-          "plannedEndAt": "2026-03-06T18:47:00Z",
-          "startedAt": "2026-03-06T18:08:00Z",
-          "finishedAt": "2026-03-06T18:47:00Z",
-          "referenceDurationMinutes": 39,
-          "delayMinutes": 0,
-          "isDelayed": false,
-          "progress": 100
-        }
-      ]
+      "tasks": [],
+      "groups": []
     }
-  ],
-  "raw": {
-    "suiteId": "BAM_PRE_OPER"
-  }
+  ]
 }
 ```
 
----
+Regras obrigatórias:
 
-## Regras obrigatórias
-
-- `source.messageId` deve ser estável e único para deduplicação operacional.
-- `product.slug` deve corresponder ao `{slug}` da URL e ao sufixo do tópico.
-- `run.date` deve usar `YYYY-MM-DD`.
-- `run.turn` deve ser string, como `"0"`, `"6"`, `"12"` ou `"18"`.
+- `date` e `turn` devem existir no root da suite e nos nós de família de primeiro nível.
 - `groups[].tasks[].id` deve ser estável ao longo das execuções.
 - `dependencies` deve conter IDs estáveis de tasks, nunca nomes soltos.
 - `referenceDurationMinutes` deve existir por task; o valor em `defaults` é apenas fallback.
@@ -227,8 +192,8 @@ Com esse valor, o sistema:
 
 - usa `apps/web/src/app/admin/products/[slug]/data-flow/pipeline-data.json` como base;
 - adapta snapshots existentes para o `slug` solicitado quando não houver match exato;
-- gera mensagens no formato Kafka/ecFlow;
-- passa essas mensagens pelo mesmo mapper usado para dados reais.
+- devolve o mesmo modelo normalizado da UI;
+- não depende do REST Proxy.
 
 Para testar leitura real pelo REST Proxy:
 
@@ -242,33 +207,22 @@ KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.
 
 ## Smoke test local
 
-Com o modo mock ativo, este comando valida a conversão para `bam`, data `2026-03-06`, turno `18`:
+Este comando valida o parser do payload bruto do anexo e a conversão para pipelines normalizados:
 
 ```powershell
-npx tsx -e "void (async () => { const mod = await import('./apps/web/src/lib/dataflow/kafka-data-flow-source.ts'); const fn = mod.default.getProductDataFlowPipelinesFromKafkaRest; const pipelines = await fn({ slug: 'bam', date: '2026-03-06', turn: '18' }); const first = pipelines[0]; console.log(JSON.stringify({ count: pipelines.length, model: first?.model, date: first?.date, turn: first?.turn, status: first?.status, groups: first?.groups.length, firstTask: first?.groups[0]?.tasks[0] }, null, 2)); })();"
+npm run dataflow:ecflow:smoke
 ```
 
 Resultado esperado resumido:
 
 ```json
 {
-  "count": 1,
-  "model": "bam",
-  "date": "2026-03-06",
-  "turn": "18",
-  "status": "completed",
-  "groups": 4
+  "count": 4,
+  "pipelines": [
+    { "model": "smna", "date": "2026-05-13", "turn": "18", "status": "pending", "groups": 1 },
+    { "model": "smna", "date": "2026-05-13", "turn": "12", "status": "completed", "groups": 1 },
+    { "model": "smna", "date": "2026-05-13", "turn": "06", "status": "completed", "groups": 1 },
+    { "model": "smna", "date": "2026-05-13", "turn": "00", "status": "completed", "groups": 2 }
+  ]
 }
 ```
-
----
-
-## Referências internas
-
-- [08-kafka.md](08-kafka.md)
-- `apps/web/src/app/api/admin/products/[slug]/data-flow/route.ts`
-- `apps/web/src/lib/dataflow/kafka-data-flow-source.ts`
-- `apps/web/src/lib/dataflow/types.ts`
-- `apps/web/src/app/admin/products/[slug]/data-flow/page.tsx`
-- `apps/web/src/components/admin/nav/product-tabs.tsx`
-- `apps/web/src/app/admin/products/[slug]/data-flow/pipeline-data.json`

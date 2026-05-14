@@ -263,32 +263,47 @@ export default function ProblemFormOffcanvas({
                   endpoint="problemImageUploader"
                   onClientUploadComplete={async (res) => {
                     if (res && Array.isArray(res) && res.length > 0) {
-                      // Processar todas as imagens enviadas
-                      const uploadPromises = res.map(async (imageData) => {
-                        const formData = new FormData();
-                        formData.append(
-                          "imageUrl",
-                          toStoredUploadsSrc(imageData.url),
-                        );
-                        formData.append("productProblemId", editing?.id || "");
-                        formData.append(
-                          "description",
-                          "Imagem enviada via servidor local",
-                        );
-
+                      const saveImage = async (imageUrl: string): Promise<void> => {
                         const apiRes = await fetch(
                           config.getApiUrl("/api/admin/products/images"),
                           {
                             method: "POST",
-                            body: formData,
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              imageUrl,
+                              productProblemId: editing?.id || "",
+                              description: "Imagem enviada via servidor local",
+                            }),
                           },
                         );
 
-                        return apiRes.ok;
-                      });
+                        const payload = (await apiRes.json().catch(() => null)) as
+                          | { error?: string }
+                          | null;
 
-                      const results = await Promise.all(uploadPromises);
-                      const successCount = results.filter(Boolean).length;
+                        if (!apiRes.ok) {
+                          throw new Error(
+                            payload?.error || "Erro ao salvar imagem do problema.",
+                          );
+                        }
+                      };
+
+                      const results = await Promise.allSettled(
+                        res.map(async (imageData) =>
+                          saveImage(toStoredUploadsSrc(imageData.url)),
+                        ),
+                      );
+                      const successCount = results.filter(
+                        (result) => result.status === "fulfilled",
+                      ).length;
+                      const firstError = results.find(
+                        (result): result is PromiseRejectedResult =>
+                          result.status === "rejected",
+                      )?.reason;
+                      const errorMessage =
+                        firstError instanceof Error
+                          ? firstError.message
+                          : "Erro ao salvar imagem do problema.";
 
                       if (successCount === res.length) {
                         toast({
@@ -299,7 +314,11 @@ export default function ProblemFormOffcanvas({
                       } else {
                         toast({
                           type: "error",
-                          title: `Apenas ${successCount} de ${res.length} imagens foram salvas`,
+                          title: "Não foi possível salvar todas as imagens",
+                          description:
+                            successCount > 0
+                              ? `${successCount} de ${res.length} imagens foram salvas. ${errorMessage}`
+                              : errorMessage,
                         });
                       }
                     }

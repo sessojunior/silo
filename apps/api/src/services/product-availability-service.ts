@@ -20,37 +20,6 @@ import type {
   TimeSlot,
 } from "@silo/engine/domain/scheduling";
 
-type ProductAvailabilityServiceSuccess<T> = {
-  ok: true;
-  data: T;
-};
-
-type ProductAvailabilityServiceError = {
-  ok: false;
-  error: string;
-  status?: number;
-  field?: string;
-  data?: unknown;
-  retryAfterSeconds?: number;
-  resetFlow?: boolean;
-};
-
-const success = <T>(data: T): ProductAvailabilityServiceSuccess<T> => ({
-  ok: true,
-  data,
-});
-
-const failure = (
-  error: string,
-  status?: number,
-  extra?: Omit<ProductAvailabilityServiceError, "ok" | "error" | "status">,
-): ProductAvailabilityServiceError => ({
-  ok: false,
-  error,
-  ...(typeof status === "number" ? { status } : {}),
-  ...(extra ?? {}),
-});
-
 const ALL_DAYS: DayOfWeek[] = [0, 1, 2, 3, 4, 5, 6];
 
 export const PRODUCT_AVAILABILITY_EXCEPTION_TYPES = ["holiday", "pause", "extra"] as const;
