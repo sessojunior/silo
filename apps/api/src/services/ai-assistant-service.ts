@@ -707,6 +707,39 @@ function buildScopelessReply(): AiAssistantMessageResponseDto {
   };
 }
 
+function buildUnavailableReply(
+  threadId: string,
+  scope: AiAssistantScope,
+  error: unknown,
+): AiAssistantMessageResponseDto {
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "Falha ao consolidar a resposta do assistente.";
+
+  return {
+    threadId,
+    scope,
+    isInScope: true,
+    refusalReason: null,
+    answer:
+      "Não consegui consolidar os dados do Silo agora. Tente novamente em instantes ou refaça a pergunta com um recorte mais específico.",
+    suggestedQuestions: getSuggestedQuestions(scope),
+    citations: [],
+    contextSummary:
+      "A geração da resposta falhou ao consolidar os dados do domínio solicitado.",
+    generation: {
+      provider: "ollama",
+      model: config.ollama.model,
+      status: "fallback",
+      latencyMs: 0,
+      errorMessage,
+    } satisfies AiAssistantGenerationDto,
+  };
+}
+
 function buildModelsAnswer(
   availability: Awaited<ReturnType<typeof getAvailabilityReport>>,
   dashboardSummary: Awaited<ReturnType<typeof getDashboardSummary>>,
@@ -1108,152 +1141,169 @@ export async function answerAssistantMessage(
     };
   }
 
-  switch (scope) {
-    case "models": {
-      const [availability, dashboardSummary, executive, previousAvailability, previousExecutive] = await Promise.all([
-        getAvailabilityReport(dateRange),
-        getDashboardSummary(),
-        getExecutiveReport(dateRange),
-        getAvailabilityReport(previousDateRange.dateRange),
-        getExecutiveReport(previousDateRange.dateRange),
-      ]);
-      return {
-        ...(await finalizeAssistantResponse(
-          buildModelsAnswer(
-            availability,
-            dashboardSummary,
-            executive,
-            previousAvailability,
-            previousExecutive,
-          ),
-          request.content,
-        )),
-        threadId,
-      };
+  try {
+    switch (scope) {
+      case "models": {
+        const [availability, dashboardSummary, executive, previousAvailability, previousExecutive] = await Promise.all([
+          getAvailabilityReport(dateRange),
+          getDashboardSummary(),
+          getExecutiveReport(dateRange),
+          getAvailabilityReport(previousDateRange.dateRange),
+          getExecutiveReport(previousDateRange.dateRange),
+        ]);
+        return {
+          ...(await finalizeAssistantResponse(
+            buildModelsAnswer(
+              availability,
+              dashboardSummary,
+              executive,
+              previousAvailability,
+              previousExecutive,
+            ),
+            request.content,
+          )),
+          threadId,
+        };
+      }
+      case "pending": {
+        const [projects, executive, previousProjects] = await Promise.all([
+          getProjectsReport(dateRange),
+          getExecutiveReport(dateRange),
+          getProjectsReport(previousDateRange.dateRange),
+        ]);
+        return {
+          ...(await finalizeAssistantResponse(
+            buildPendingAnswer(projects, executive, periodLabel, previousProjects),
+            request.content,
+            "pending",
+          )),
+          threadId,
+        };
+      }
+      case "projects": {
+        const [projects, executive, previousProjects] = await Promise.all([
+          getProjectsReport(dateRange),
+          getExecutiveReport(dateRange),
+          getProjectsReport(previousDateRange.dateRange),
+        ]);
+        return {
+          ...(await finalizeAssistantResponse(
+            buildProjectsAnswer(projects, executive, previousProjects),
+            request.content,
+          )),
+          threadId,
+        };
+      }
+      case "problems": {
+        const [problems, dashboardSummary, dashboardCauses, dashboardSolutions, executive, previousProblems] = await Promise.all([
+          getProblemsReport(dateRange),
+          getDashboardSummary(),
+          getDashboardProblemsCauses(),
+          getDashboardProblemsSolutions(),
+          getExecutiveReport(dateRange),
+          getProblemsReport(previousDateRange.dateRange),
+        ]);
+        return {
+          ...(await finalizeAssistantResponse(
+            buildProblemsAnswer(
+              problems,
+              dashboardSummary,
+              dashboardCauses,
+              dashboardSolutions,
+              executive,
+              periodLabel,
+              previousProblems,
+            ),
+            request.content,
+          )),
+          threadId,
+        };
+      }
+      case "solutions": {
+        const [problems, dashboardSummary, dashboardCauses, dashboardSolutions, executive, previousProblems] = await Promise.all([
+          getProblemsReport(dateRange),
+          getDashboardSummary(),
+          getDashboardProblemsCauses(),
+          getDashboardProblemsSolutions(),
+          getExecutiveReport(dateRange),
+          getProblemsReport(previousDateRange.dateRange),
+        ]);
+        const response = buildProblemsAnswer(
+          problems,
+          dashboardSummary,
+          dashboardCauses,
+          dashboardSolutions,
+          executive,
+          periodLabel,
+          previousProblems,
+        );
+        return {
+          ...(await finalizeAssistantResponse(response, request.content, "solutions")),
+          threadId,
+          scope: "solutions",
+          suggestedQuestions: getSuggestedQuestions("solutions"),
+          contextSummary:
+            "Contexto de soluções montado a partir do comportamento dos problemas e do dashboard.",
+        };
+      }
+      case "reports": {
+        const [executive, problems, availability] = await Promise.all([
+          getExecutiveReport(dateRange),
+          getProblemsReport(dateRange),
+          getAvailabilityReport(dateRange),
+        ]);
+        return {
+          ...(await finalizeAssistantResponse(
+            buildReportsAnswer(executive, problems, availability),
+            request.content,
+          )),
+          threadId,
+        };
+      }
+      case "general":
+      default: {
+        const [executive, availability, problems, projects, previousExecutive, previousAvailability, previousProblems, previousProjects] = await Promise.all([
+          getExecutiveReport(dateRange),
+          getAvailabilityReport(dateRange),
+          getProblemsReport(dateRange),
+          getProjectsReport(dateRange),
+          getExecutiveReport(previousDateRange.dateRange),
+          getAvailabilityReport(previousDateRange.dateRange),
+          getProblemsReport(previousDateRange.dateRange),
+          getProjectsReport(previousDateRange.dateRange),
+        ]);
+        return {
+          ...(await finalizeAssistantResponse(
+            buildGeneralAnswer(
+              executive,
+              availability,
+              problems,
+              projects,
+              previousExecutive,
+              previousAvailability,
+              previousProblems,
+              previousProjects,
+            ),
+            request.content,
+          )),
+          threadId,
+        };
+      }
     }
-    case "pending": {
-      const [projects, executive, previousProjects] = await Promise.all([
-        getProjectsReport(dateRange),
-        getExecutiveReport(dateRange),
-        getProjectsReport(previousDateRange.dateRange),
-      ]);
-      return {
-        ...(await finalizeAssistantResponse(
-          buildPendingAnswer(projects, executive, periodLabel, previousProjects),
-          request.content,
-          "pending",
-        )),
-        threadId,
-      };
-    }
-    case "projects": {
-      const [projects, executive, previousProjects] = await Promise.all([
-        getProjectsReport(dateRange),
-        getExecutiveReport(dateRange),
-        getProjectsReport(previousDateRange.dateRange),
-      ]);
-      return {
-        ...(await finalizeAssistantResponse(
-          buildProjectsAnswer(projects, executive, previousProjects),
-          request.content,
-        )),
-        threadId,
-      };
-    }
-    case "problems": {
-      const [problems, dashboardSummary, dashboardCauses, dashboardSolutions, executive, previousProblems] = await Promise.all([
-        getProblemsReport(dateRange),
-        getDashboardSummary(),
-        getDashboardProblemsCauses(),
-        getDashboardProblemsSolutions(),
-        getExecutiveReport(dateRange),
-        getProblemsReport(previousDateRange.dateRange),
-      ]);
-      return {
-        ...(await finalizeAssistantResponse(
-          buildProblemsAnswer(
-            problems,
-            dashboardSummary,
-            dashboardCauses,
-            dashboardSolutions,
-            executive,
-            periodLabel,
-            previousProblems,
-          ),
-          request.content,
-        )),
-        threadId,
-      };
-    }
-    case "solutions": {
-      const [problems, dashboardSummary, dashboardCauses, dashboardSolutions, executive, previousProblems] = await Promise.all([
-        getProblemsReport(dateRange),
-        getDashboardSummary(),
-        getDashboardProblemsCauses(),
-        getDashboardProblemsSolutions(),
-        getExecutiveReport(dateRange),
-        getProblemsReport(previousDateRange.dateRange),
-      ]);
-      const response = buildProblemsAnswer(
-        problems,
-        dashboardSummary,
-        dashboardCauses,
-        dashboardSolutions,
-        executive,
-        periodLabel,
-        previousProblems,
-      );
-      return {
-        ...(await finalizeAssistantResponse(response, request.content, "solutions")),
-        threadId,
-        scope: "solutions",
-        suggestedQuestions: getSuggestedQuestions("solutions"),
-        contextSummary:
-          "Contexto de soluções montado a partir do comportamento dos problemas e do dashboard.",
-      };
-    }
-    case "reports": {
-      const [executive, problems, availability] = await Promise.all([
-        getExecutiveReport(dateRange),
-        getProblemsReport(dateRange),
-        getAvailabilityReport(dateRange),
-      ]);
-      return {
-        ...(await finalizeAssistantResponse(
-          buildReportsAnswer(executive, problems, availability),
-          request.content,
-        )),
-        threadId,
-      };
-    }
-    case "general":
-    default: {
-      const [executive, availability, problems, projects, previousExecutive, previousAvailability, previousProblems, previousProjects] = await Promise.all([
-        getExecutiveReport(dateRange),
-        getAvailabilityReport(dateRange),
-        getProblemsReport(dateRange),
-        getProjectsReport(dateRange),
-        getExecutiveReport(previousDateRange.dateRange),
-        getAvailabilityReport(previousDateRange.dateRange),
-        getProblemsReport(previousDateRange.dateRange),
-        getProjectsReport(previousDateRange.dateRange),
-      ]);
-      return {
-        ...(await finalizeAssistantResponse(
-          buildGeneralAnswer(
-            executive,
-            availability,
-            problems,
-            projects,
-            previousExecutive,
-            previousAvailability,
-            previousProblems,
-            previousProjects,
-          ),
-          request.content,
-        )),
-        threadId,
-      };
-    }
+  } catch (error) {
+    console.error("❌ [AI_ASSISTANT_SERVICE] Falha ao gerar resposta:", {
+      scope,
+      threadId,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack ?? null,
+            }
+          : error,
+    });
+
+    return buildUnavailableReply(threadId, scope, error);
   }
 }

@@ -83,6 +83,28 @@ const truncateText = (value: string, maxLength: number): string => {
   return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
 };
 
+const serializeClientError = (
+  error: unknown,
+): { name?: string; message: string; stack?: string | null } => {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack ?? null,
+    };
+  }
+
+  if (typeof error === "string") {
+    return { message: error };
+  }
+
+  try {
+    return { message: JSON.stringify(error) };
+  } catch {
+    return { message: String(error) };
+  }
+};
+
 const buildChatMessage = (
   content: string,
   senderUserId: string,
@@ -245,7 +267,7 @@ export default function AiAssistantPage() {
         setExamples(FALLBACK_EXAMPLES);
       }
     } catch (error) {
-      console.error("❌ [AI_ASSISTANT] Erro ao carregar exemplos:", { error });
+      console.error("❌ [AI_ASSISTANT] Erro ao carregar exemplos:", serializeClientError(error));
       setExamples(FALLBACK_EXAMPLES);
     } finally {
       setIsLoadingExamples(false);
@@ -274,7 +296,7 @@ export default function AiAssistantPage() {
       setThreads(nextThreads);
       return nextThreads;
     } catch (error) {
-      console.error("❌ [AI_ASSISTANT] Erro ao carregar conversas:", { error });
+      console.error("❌ [AI_ASSISTANT] Erro ao carregar conversas:", serializeClientError(error));
       setThreads([]);
       return [] as AiAssistantThreadSummaryDto[];
     } finally {
@@ -323,7 +345,7 @@ export default function AiAssistantPage() {
 
         return thread;
       } catch (error) {
-        console.error("❌ [AI_ASSISTANT] Erro ao carregar conversa:", { error });
+        console.error("❌ [AI_ASSISTANT] Erro ao carregar conversa:", serializeClientError(error));
         return null;
       } finally {
         setIsLoadingThread(false);
@@ -359,7 +381,7 @@ export default function AiAssistantPage() {
       setSelectedThreadId(thread.id);
       return thread;
     } catch (error) {
-      console.error("❌ [AI_ASSISTANT] Erro ao criar conversa:", { error });
+      console.error("❌ [AI_ASSISTANT] Erro ao criar conversa:", serializeClientError(error));
       return null;
     } finally {
       setIsCreatingConversation(false);
@@ -441,7 +463,7 @@ export default function AiAssistantPage() {
         }));
         setSelectedThreadId(responseThread.id);
       } catch (error) {
-        console.error("❌ [AI_ASSISTANT] Erro ao responder mensagem:", { error });
+        console.error("❌ [AI_ASSISTANT] Erro ao responder mensagem:", serializeClientError(error));
         setMessagesByThread((current) => ({
           ...current,
           [threadId]: [...(current[threadId] ?? []), buildAssistantErrorMessage()],
