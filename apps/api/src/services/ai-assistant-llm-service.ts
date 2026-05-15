@@ -5,6 +5,7 @@ import type {
   AiAssistantGenerationDto,
   AiAssistantScope,
 } from "@silo/engine/contracts/dto/ai-assistant";
+import { AiAssistantScopeSchema } from "@silo/engine/contracts/dto/ai-assistant";
 import { config } from "@silo/engine/config";
 import { chatWithOllama, type OllamaChatMessage } from "../infra/llm/ollama-client.js";
 
@@ -25,6 +26,72 @@ type ComposeAssistantAnswerInput = {
   contextSummary: string;
   citations: AiAssistantCitationDto[];
   suggestedQuestions: string[];
+  conversationHistory: OllamaChatMessage[];
+  conversationMemory: string | null;
+};
+
+type ClassifyAssistantScopeInput = {
+  question: string;
+  lastKnownScope: AiAssistantScope | null;
+  conversationHistory: OllamaChatMessage[];
+  conversationMemory: string | null;
+};
+
+const buildScopeClassificationPrompt = (
+  input: ClassifyAssistantScopeInput,
+): OllamaChatMessage[] => {
+  const recentHistory = input.conversationHistory.slice(-6);
+
+  const memoryMessage = input.conversationMemory
+    ? {
+        role: "system" as const,
+        content: [
+          "Memória persistida da conversa:",
+          input.conversationMemory,
+          "Use esta memória para manter continuidade de contexto e herança de assunto.",
+        ].join("\n"),
+      }
+    : null;
+
+  const examplesMessage = {
+    role: "system" as const,
+    content: [
+      "Exemplos de classificação:",
+      '- Contexto sobre modelos + "Como foi o dia hoje?" -> {"scope":"models","isInScope":true}',
+      '- Contexto sobre projetos + "E qual depende de mais gente?" -> {"scope":"projects","isInScope":true}',
+      '- "Que filme você assistiu hoje?" -> {"scope":null,"isInScope":false}',
+    ].join("\n"),
+  };
+
+  return [
+    {
+      role: "system",
+      content: [
+        "Você classifica se a próxima pergunta está no escopo do assistente analítico do SILO.",
+        "Escopos válidos: models, pending, reports, problems, solutions, projects e general.",
+        "Use general para um panorama amplo da operação, resumo do dia, cenário atual ou visão executiva que misture vários temas do SILO.",
+        "Se a pergunta for claramente externa ao SILO, responda com scope null e isInScope false.",
+        "Perguntas curtas, elípticas ou de seguimento devem herdar o assunto da thread quando isso fizer sentido.",
+        'Responda apenas com JSON válido no formato {"scope":null|"models"|"pending"|"reports"|"problems"|"solutions"|"projects"|"general","isInScope":true|false}.',
+      ].join(" "),
+    },
+    examplesMessage,
+    ...(memoryMessage ? [memoryMessage] : []),
+    ...recentHistory,
+    {
+      role: "user",
+      content: [
+        `Último escopo conhecido: ${input.lastKnownScope ?? "nenhum"}`,
+        "Memória resumida da thread:",
+        input.conversationMemory ?? "sem memória",
+        "",
+        `Pergunta atual: ${input.question}`,
+        "",
+        "Se a pergunta for um seguimento da operação do SILO, preserve o contexto da thread.",
+        "Se for um assunto externo como filmes, receitas, clima ou outros temas pessoais, marque fora do escopo.",
+      ].join("\n"),
+    },
+  ];
 };
 
 const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] => {
@@ -34,13 +101,25 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
 
   const suggestedQuestions = input.suggestedQuestions.map((item) => `- ${item}`).join("\n");
 
+  const memoryMessage = input.conversationMemory
+    ? {
+        role: "system" as const,
+        content: [
+          "Memória persistida da conversa:",
+          input.conversationMemory,
+          "Use esta memória apenas para continuidade, referências implícitas e manutenção do contexto da thread.",
+        ].join("\n"),
+      }
+    : null;
+
   return [
     {
       role: "system",
       content: [
         "Você é o assistente analítico do SILO.",
+        "Use o modo thinking internamente antes de responder, mas nunca exponha o raciocínio ao usuário.",
         "Responda sempre em português brasileiro.",
-        "Use somente os fatos fornecidos no contexto.",
+        "Use sempre o contexto factual atual como fonte principal. O histórico da conversa serve apenas para continuidade e memória; se houver conflito, o contexto factual atual vence.",
         "Não invente números, nomes, eventos ou causas.",
         "Reescreva a resposta para ficar mais clara, mais útil e mais detalhada, sem alterar os fatos.",
         'Responda com um objeto JSON estrito, sem markdown, sem bloco de código e sem texto extra.',
@@ -48,6 +127,8 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
         "Retorne apenas JSON válido com as chaves answer e contextSummary.",
       ].join(" "),
     },
+    ...(memoryMessage ? [memoryMessage] : []),
+    ...input.conversationHistory,
     {
       role: "user",
       content: [
@@ -157,6 +238,41 @@ export function parseAssistantRewriteContent(content: string): AssistantRewriteC
     : null;
 }
 
+function parseAssistantScopeClassificationContent(content: string): AiAssistantScope | null {
+  for (const candidate of extractJsonCandidates(content)) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        continue;
+      }
+
+      const record = parsed as Record<string, unknown>;
+      const isInScope = typeof record.isInScope === "boolean" ? record.isInScope : null;
+      if (isInScope === null) {
+        continue;
+      }
+
+      if (!isInScope) {
+        return null;
+      }
+
+      const scopeCandidate = getStringProperty(record, ["scope", "scopeName"]);
+      const validatedScope = scopeCandidate ? AiAssistantScopeSchema.safeParse(scopeCandidate) : null;
+
+      if (!validatedScope?.success) {
+        continue;
+      }
+
+      return validatedScope.data;
+    } catch {
+      // Tenta o próximo candidato.
+    }
+  }
+
+  return null;
+}
+
 const buildGeneration = (
   generation: Omit<AiAssistantGenerationDto, "errorMessage"> & {
     errorMessage?: string | null;
@@ -166,6 +282,8 @@ const buildGeneration = (
   model: generation.model,
   status: generation.status,
   latencyMs: generation.latencyMs,
+  generatedTokens: generation.generatedTokens ?? null,
+  thinkingTimeMs: generation.thinkingTimeMs ?? null,
   errorMessage: generation.errorMessage ?? null,
 });
 
@@ -179,7 +297,7 @@ export async function composeAssistantAnswerWithOllama(
   const startedAt = Date.now();
 
   try {
-    const { content, latencyMs } = await chatWithOllama({
+    const { content, latencyMs, generatedTokens, thinkingTimeMs } = await chatWithOllama({
       model: config.ollama.model,
       timeoutMs: config.ollama.timeoutMs,
       messages: buildPrompt(input),
@@ -202,6 +320,8 @@ export async function composeAssistantAnswerWithOllama(
         model: config.ollama.model,
         status: "success",
         latencyMs,
+        generatedTokens,
+        thinkingTimeMs,
       }),
     };
   } catch (error) {
@@ -216,8 +336,26 @@ export async function composeAssistantAnswerWithOllama(
         model: config.ollama.model,
         status: "fallback",
         latencyMs,
+        generatedTokens: null,
+        thinkingTimeMs: null,
         errorMessage,
       }),
     };
+  }
+}
+
+export async function classifyAssistantScopeWithOllama(
+  input: ClassifyAssistantScopeInput,
+): Promise<AiAssistantScope | null> {
+  try {
+    const { content } = await chatWithOllama({
+      model: config.ollama.model,
+      timeoutMs: config.ollama.timeoutMs,
+      messages: buildScopeClassificationPrompt(input),
+    });
+
+    return parseAssistantScopeClassificationContent(content);
+  } catch {
+    return null;
   }
 }

@@ -12,6 +12,10 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { useUser } from "@/context/user-context";
 import { config } from "@/lib/config";
 import { readApiResponse, type ApiResponse } from "@silo/engine/contracts/api-response";
+import type {
+  AiAssistantGenerationDto,
+  AiAssistantVisualizationDto,
+} from "@silo/engine/contracts/dto/ai-assistant";
 import {
   type ChatRealtimeMessageDto,
   type ChatRealtimeServerMessage,
@@ -55,6 +59,8 @@ export type ChatMessage = {
   readAt: Date | null;
   deletedAt: Date | null;
   messageType: "groupMessage" | "userMessage";
+  assistantGeneration?: AiAssistantGenerationDto | null;
+  assistantVisualization?: AiAssistantVisualizationDto | null;
 };
 
 export type PresenceStatus = "visible" | "invisible";

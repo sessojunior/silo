@@ -181,6 +181,7 @@ export function MessagesList({
               message={message}
               isOwnMessage={isOwnMessage}
               showAvatar={true}
+              showAssistantFooter={isAssistantVariant && !isOwnMessage}
             />
           );
         })}

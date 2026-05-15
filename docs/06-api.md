@@ -1259,7 +1259,11 @@ Content-Type: application/json
 
 ### **Persistência**
 
-As mensagens são salvas nas tabelas `ai_assistant_thread` e `ai_assistant_message`. Cada resposta do assistente grava também metadados de geração com `provider`, `model`, `status` e `latencyMs` para auditoria e fallback. A configuração padrão do runtime usa o modelo quantizado `qwen2.5:7b-instruct-q4_K_M`.
+As mensagens são salvas nas tabelas `ai_assistant_thread` e `ai_assistant_message`. Cada resposta do assistente grava também metadados de geração com `provider`, `model`, `status`, `latencyMs`, `generatedTokens` e `thinkingTimeMs` para auditoria, fallback e exibição do rodapé na UI. A configuração padrão do runtime usa o modelo quantizado `qwen2.5:7b-instruct-q4_K_M`.
+
+O backend chama o Ollama com `think: true` por padrão e reaproveita o histórico recente da thread, além do último resumo de contexto salvo, como memória da conversa para responder seguimentos no mesmo tópico.
+
+A janela de contexto da conversa é ajustada automaticamente ao maior `num_ctx` reportado pelo modelo no Ollama, e o histórico da thread deixa de ser limitado por um corte fixo artificial.
 
 ### **Resposta do assistente**
 
@@ -1269,7 +1273,7 @@ O retorno do `POST /api/admin/ai-assistant/messages` usa o envelope padrão `{ s
 - `citations`
 - `suggestedQuestions`
 - `contextSummary`
-- `generation` com os dados do modelo usado
+- `generation` com os dados do modelo usado, incluindo tokens gerados e tempo de inferência
 
 ---
 

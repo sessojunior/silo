@@ -11,10 +11,25 @@ import {
   listAssistantThreads,
   sendAssistantMessage,
 } from "../services/ai-assistant-thread-service.js";
+import { getAssistantRuntimeStatus } from "../services/ai-assistant-service.js";
 
 const router = Router();
 
 router.use(authMiddleware);
+
+router.get(
+  "/status",
+  requirePermission("reports", "view"),
+  async (_req, res) => {
+    try {
+      const data = await getAssistantRuntimeStatus();
+      res.json({ success: true, data });
+    } catch (err) {
+      console.error("❌ [API_AI_ASSISTANT/STATUS] GET:", err);
+      res.status(500).json({ success: false, error: "Erro interno" });
+    }
+  },
+);
 
 router.get(
   "/examples",

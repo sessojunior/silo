@@ -3,12 +3,20 @@
 import { useEffect, useState } from "react";
 import type {
   AiAssistantExampleDto,
+  AiAssistantRuntimeStatusDto,
   AiAssistantThreadSummaryDto,
 } from "@silo/engine/contracts/dto/ai-assistant";
 import Avatar from "@/components/ui/avatar";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
 type SidebarTab = "conversations" | "examples";
+
+type RuntimeStatusView = {
+  label: string;
+  title: string;
+  presenceColor: string;
+  labelClassName: string;
+};
 
 const SCOPE_LABELS: Record<string, string> = {
   models: "Modelos",
@@ -40,6 +48,41 @@ const formatThreadTime = (dateValue: string): string => {
   return `${day}/${month}`;
 };
 
+const getRuntimeStatusView = (
+  runtimeStatus: AiAssistantRuntimeStatusDto | null,
+  isLoadingRuntimeStatus: boolean,
+): RuntimeStatusView => {
+  if (isLoadingRuntimeStatus) {
+    return {
+      label: "Verificando conexão",
+      title: "Aguardando resposta do runtime do assistente.",
+      presenceColor: "bg-zinc-400 animate-pulse",
+      labelClassName: "text-zinc-500 dark:text-zinc-400",
+    };
+  }
+
+  if (runtimeStatus?.mode === "ollama") {
+    return {
+      label: "IA disponível · Ollama conectado.",
+      title: `Ollama conectado: ${runtimeStatus.model}`,
+      presenceColor: "bg-green-400",
+      labelClassName: "text-green-600 dark:text-green-300",
+    };
+  }
+
+  return {
+    label: "IA em fallback · Ollama indisponível.",
+    title: (() => {
+      const fallbackReason = runtimeStatus?.fallbackReason?.trim();
+      return fallbackReason && fallbackReason.length > 0
+        ? fallbackReason
+        : "O assistente vai responder com fallback até o Ollama voltar.";
+    })(),
+    presenceColor: "bg-amber-400",
+    labelClassName: "text-amber-600 dark:text-amber-300",
+  };
+};
+
 type AssistantSidebarProps = {
   examples: AiAssistantExampleDto[];
   threads: AiAssistantThreadSummaryDto[];
@@ -50,6 +93,8 @@ type AssistantSidebarProps = {
   isLoadingExamples: boolean;
   isLoadingThreads: boolean;
   isCreatingConversation: boolean;
+  runtimeStatus: AiAssistantRuntimeStatusDto | null;
+  isLoadingRuntimeStatus: boolean;
 };
 
 export default function AssistantSidebar({
@@ -62,10 +107,17 @@ export default function AssistantSidebar({
   isLoadingExamples,
   isLoadingThreads,
   isCreatingConversation,
+  runtimeStatus,
+  isLoadingRuntimeStatus,
 }: AssistantSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<SidebarTab>(
     selectedThreadId ? "conversations" : "examples",
+  );
+
+  const runtimeStatusView = getRuntimeStatusView(
+    runtimeStatus,
+    isLoadingRuntimeStatus,
   );
 
   useEffect(() => {
@@ -117,22 +169,23 @@ export default function AssistantSidebar({
   return (
     <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
       <div className="border-b border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800">
-        <div className="flex items-center gap-3 mb-3 p-4 border-b border-zinc-200 dark:border-zinc-700">
+        <div
+          className="flex items-center gap-3 mb-3 p-4 border-b border-zinc-200 dark:border-zinc-700"
+          title={runtimeStatusView.title}
+        >
           <Avatar
             name="Assistente de IA"
             size="md"
             showPresence={true}
-            presenceColor="bg-blue-400"
+            presenceColor={runtimeStatusView.presenceColor}
           />
           <div className="flex-1 min-w-0">
             <h2 className="font-semibold text-sm text-zinc-900 dark:text-white">
               Assistente de IA
             </h2>
-            <div className="flex items-center gap-2">
-              <p className="text-xs text-blue-500 dark:text-blue-300">
-                Só Silo
-              </p>
-            </div>
+            <p className={`text-xs font-medium ${runtimeStatusView.labelClassName}`}>
+              {runtimeStatusView.label}
+            </p>
           </div>
           <div className="relative">
             <button

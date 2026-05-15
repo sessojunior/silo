@@ -5,9 +5,11 @@ import {
   AiAssistantExampleDto,
   AiAssistantExamplesResponseDto,
   AiAssistantGenerationDto,
+  AiAssistantRuntimeStatusDto,
   AiAssistantMessageRequestDto,
   AiAssistantMessageResponseDto,
   AiAssistantScope,
+  AiAssistantVisualizationDto,
 } from "@silo/engine/contracts/dto/ai-assistant";
 import { config } from "@silo/engine/config";
 import { getDaysAgo } from "@silo/engine/date";
@@ -22,7 +24,14 @@ import {
   getDashboardProblemsSolutions,
   getDashboardSummary,
 } from "./dashboard-service.js";
-import { composeAssistantAnswerWithOllama } from "./ai-assistant-llm-service.js";
+import {
+  classifyAssistantScopeWithOllama,
+  composeAssistantAnswerWithOllama,
+} from "./ai-assistant-llm-service.js";
+import {
+  probeOllamaRuntime,
+  type OllamaChatMessage,
+} from "../infra/llm/ollama-client.js";
 
 const DEFAULT_GUIDANCE =
   "Pergunte sobre modelos, problemas, causas, intervenções, eficácia, pendências, tarefas, projetos, prioridades, relatórios e monitoramento do Silo.";
@@ -164,6 +173,15 @@ type ScopeMatchScore = {
   hits: number;
 };
 
+type AssistantConversationContext = {
+  historyMessages: OllamaChatMessage[];
+  conversationMemory: string | null;
+  lastKnownScope: AiAssistantScope | null;
+};
+
+type AssistantMessageRequest = AiAssistantMessageRequestDto &
+  Partial<AssistantConversationContext>;
+
 const SCOPE_PRIORITY: AiAssistantScope[] = [
   "models",
   "pending",
@@ -297,6 +315,33 @@ function normalizeText(value: string | null | undefined): string {
     .toLowerCase();
 }
 
+type AssistantVisualizationIntent = "chart" | "image" | null;
+
+function detectVisualizationIntent(content: string): AssistantVisualizationIntent {
+  const normalized = normalizeText(content);
+
+  if (
+    normalized.includes("grafico") ||
+    normalized.includes("chart") ||
+    normalized.includes("visualizacao") ||
+    normalized.includes("plot")
+  ) {
+    return "chart";
+  }
+
+  if (
+    normalized.includes("imagem") ||
+    normalized.includes("figura") ||
+    normalized.includes("ilustracao") ||
+    normalized.includes("foto") ||
+    normalized.includes("visual")
+  ) {
+    return "image";
+  }
+
+  return null;
+}
+
 function tokenizeText(value: string): string[] {
   return normalizeText(value)
     .split(/[^a-z0-9]+/)
@@ -423,6 +468,10 @@ async function finalizeAssistantResponse(
   response: AiAssistantMessageResponseDto,
   question: string,
   scopeOverride?: AiAssistantScope,
+  conversationContext?: {
+    conversationHistory: OllamaChatMessage[];
+    conversationMemory: string | null;
+  },
 ): Promise<AiAssistantMessageResponseDto> {
   const refinedResponse = await composeAssistantAnswerWithOllama({
     scope: scopeOverride ?? response.scope,
@@ -431,6 +480,8 @@ async function finalizeAssistantResponse(
     contextSummary: response.contextSummary,
     citations: response.citations,
     suggestedQuestions: response.suggestedQuestions,
+    conversationHistory: conversationContext?.conversationHistory ?? [],
+    conversationMemory: conversationContext?.conversationMemory ?? null,
   });
 
   return {
@@ -1117,6 +1168,377 @@ function buildReportsAnswer(
   };
 }
 
+function truncateVisualizationText(value: string, maxLength: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function escapeSvgText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function buildSvgDataUri(svg: string): string {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function buildAssistantImageVisualization(input: {
+  title: string;
+  subtitle?: string;
+  footer?: string;
+  accentColor: string;
+  metrics: Array<{ label: string; value: string }>;
+}): AiAssistantVisualizationDto {
+  const width = 1200;
+  const height = 700;
+  const accentColor = input.accentColor;
+  const safeTitle = escapeSvgText(truncateVisualizationText(input.title, 48));
+  const safeSubtitle = input.subtitle
+    ? escapeSvgText(truncateVisualizationText(input.subtitle, 90))
+    : "";
+  const safeFooter = input.footer
+    ? escapeSvgText(truncateVisualizationText(input.footer, 72))
+    : "";
+
+  const metricBoxes = input.metrics.slice(0, 3).map((metric, index) => {
+    const x = 64 + index * 356;
+    const safeLabel = escapeSvgText(truncateVisualizationText(metric.label, 24));
+    const safeValue = escapeSvgText(truncateVisualizationText(metric.value, 28));
+
+    return `
+      <g transform="translate(${x}, 308)">
+        <rect x="0" y="0" width="320" height="180" rx="28" fill="rgba(255,255,255,0.92)" stroke="rgba(148,163,184,0.22)" />
+        <circle cx="44" cy="44" r="18" fill="${accentColor}" opacity="0.18" />
+        <rect x="30" y="30" width="28" height="28" rx="10" fill="${accentColor}" opacity="0.88" />
+        <text x="30" y="98" font-family="Inter, Arial, sans-serif" font-size="21" fill="#64748b" font-weight="600">${safeLabel}</text>
+        <text x="30" y="142" font-family="Inter, Arial, sans-serif" font-size="42" fill="#0f172a" font-weight="700">${safeValue}</text>
+      </g>`;
+  });
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#f8fafc" />
+          <stop offset="100%" stop-color="#eef2ff" />
+        </linearGradient>
+        <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="${accentColor}" />
+          <stop offset="100%" stop-color="#0f172a" stop-opacity="0.15" />
+        </linearGradient>
+      </defs>
+      <rect width="${width}" height="${height}" rx="36" fill="url(#bg)" />
+      <circle cx="1010" cy="118" r="220" fill="${accentColor}" opacity="0.08" />
+      <circle cx="1060" cy="540" r="180" fill="#0f172a" opacity="0.04" />
+      <rect x="64" y="64" width="160" height="12" rx="6" fill="url(#accent)" />
+      <text x="64" y="132" font-family="Inter, Arial, sans-serif" font-size="28" fill="#475569" font-weight="600">SILO</text>
+      <text x="64" y="204" font-family="Inter, Arial, sans-serif" font-size="58" fill="#0f172a" font-weight="800">${safeTitle}</text>
+      <text x="64" y="256" font-family="Inter, Arial, sans-serif" font-size="26" fill="#64748b" font-weight="500">${safeSubtitle}</text>
+      ${metricBoxes.join("")}
+      <text x="64" y="626" font-family="Inter, Arial, sans-serif" font-size="20" fill="#64748b" font-weight="500">${safeFooter}</text>
+    </svg>`;
+
+  return {
+    kind: "image",
+    src: buildSvgDataUri(svg),
+    alt: input.title,
+    caption: input.subtitle,
+    width,
+    height,
+  };
+}
+
+function buildAssistantChartVisualization(input: {
+  title: string;
+  subtitle?: string;
+  chartType: "bar" | "line" | "donut";
+  categories: string[];
+  series: Array<{ name: string; values: number[]; color?: string }>;
+  height?: number;
+}): AiAssistantVisualizationDto {
+  return {
+    kind: "chart",
+    chartType: input.chartType,
+    title: input.title,
+    subtitle: input.subtitle,
+    categories: input.categories,
+    series: input.series,
+    height: input.height,
+  };
+}
+
+function buildModelsVisualization(
+  intent: AssistantVisualizationIntent,
+  availability: Awaited<ReturnType<typeof getAvailabilityReport>>,
+  previousAvailability?: Awaited<ReturnType<typeof getAvailabilityReport>>,
+): AiAssistantVisualizationDto | undefined {
+  if (!intent) return undefined;
+
+  if (intent === "image") {
+    return buildAssistantImageVisualization({
+      title: "Visão de modelos",
+      subtitle: previousAvailability
+        ? `Comparação do período atual com a referência anterior.`
+        : "Resumo visual do recorte atual.",
+      footer: `Baseado em ${availability.totalProducts} produtos monitorados e ${availability.totalInterventions} intervenções.`,
+      accentColor: "#3b82f6",
+      metrics: [
+        { label: "Produtos", value: String(availability.totalProducts) },
+        { label: "Disponibilidade média", value: `${availability.avgAvailability}%` },
+        { label: "Intervenções", value: String(availability.totalInterventions) },
+      ],
+    });
+  }
+
+  const weakestProducts = [...availability.products]
+    .sort((left, right) => left.availabilityPercentage - right.availabilityPercentage)
+    .slice(0, 5);
+
+  return buildAssistantChartVisualization({
+    title: "Disponibilidade por produto",
+    subtitle: previousAvailability
+      ? `Produtos mais sensíveis no recorte atual.`
+      : "Menores índices de disponibilidade no período.",
+    chartType: "bar",
+    categories: weakestProducts.map((product) => product.name),
+    series: [
+      {
+        name: "Disponibilidade (%)",
+        values: weakestProducts.map((product) => product.availabilityPercentage),
+        color: "#3b82f6",
+      },
+    ],
+    height: 300,
+  });
+}
+
+function buildProblemsVisualization(
+  intent: AssistantVisualizationIntent,
+  problems: Awaited<ReturnType<typeof getProblemsReport>>,
+  dashboardCauses: Awaited<ReturnType<typeof getDashboardProblemsCauses>>,
+  dashboardSolutions: Awaited<ReturnType<typeof getDashboardProblemsSolutions>>,
+  executive: Awaited<ReturnType<typeof getExecutiveReport>>,
+  periodLabel: string,
+): AiAssistantVisualizationDto | undefined {
+  if (!intent) return undefined;
+
+  if (intent === "image") {
+    return buildAssistantImageVisualization({
+      title: "Visão de problemas",
+      subtitle: `Recorte ${periodLabel}.`,
+      footer: `O dashboard acompanhou ${dashboardCauses.labels.length} causas e ${dashboardSolutions.categories.length} séries de solução.`,
+      accentColor: "#ef4444",
+      metrics: [
+        { label: "Problemas", value: String(problems.totalProblems) },
+        { label: "Tempo médio", value: `${problems.avgResolutionHours.toFixed(1)}h` },
+        { label: "Produtos com falhas", value: String(executive.topProducts.length) },
+      ],
+    });
+  }
+
+  const categories = [...problems.problemsByCategory]
+    .sort((left, right) => right.problemsCount - left.problemsCount)
+    .slice(0, 5);
+
+  return buildAssistantChartVisualization({
+    title: "Problemas por categoria",
+    subtitle: `Categorias com maior volume de ocorrências no recorte ${periodLabel}.`,
+    chartType: "bar",
+    categories: categories.map((category) => category.name),
+    series: [
+      {
+        name: "Problemas",
+        values: categories.map((category) => category.problemsCount),
+        color: "#ef4444",
+      },
+    ],
+    height: 300,
+  });
+}
+
+function buildProjectsVisualization(
+  intent: AssistantVisualizationIntent,
+  projects: Awaited<ReturnType<typeof getProjectsReport>>,
+): AiAssistantVisualizationDto | undefined {
+  if (!intent) return undefined;
+
+  if (intent === "image") {
+    return buildAssistantImageVisualization({
+      title: "Visão de projetos",
+      subtitle: "Resumo visual dos projetos acompanhados.",
+      footer: `O painel consolidou ${projects.summary.totalProjects} projetos e ${projects.summary.totalTasks} tarefas.`,
+      accentColor: "#8b5cf6",
+      metrics: [
+        { label: "Projetos", value: String(projects.summary.totalProjects) },
+        { label: "Progresso médio", value: `${projects.summary.avgProgress}%` },
+        { label: "Tarefas", value: String(projects.summary.totalTasks) },
+      ],
+    });
+  }
+
+  const slowestProjects = [...projects.projectsWithProgress]
+    .sort((left, right) => left.progress - right.progress)
+    .slice(0, 5);
+
+  return buildAssistantChartVisualization({
+    title: "Projetos com menor progresso",
+    subtitle: "Os projetos mais lentos no período atual.",
+    chartType: "bar",
+    categories: slowestProjects.map((project) => project.name),
+    series: [
+      {
+        name: "Progresso (%)",
+        values: slowestProjects.map((project) => project.progress),
+        color: "#8b5cf6",
+      },
+    ],
+    height: 300,
+  });
+}
+
+function buildPendingVisualization(
+  intent: AssistantVisualizationIntent,
+  projects: Awaited<ReturnType<typeof getProjectsReport>>,
+): AiAssistantVisualizationDto | undefined {
+  if (!intent) return undefined;
+
+  if (intent === "image") {
+    const totalTaskCount = Object.values(projects.tasksByStatus).reduce(
+      (total, value) => total + value,
+      0,
+    );
+
+    return buildAssistantImageVisualization({
+      title: "Visão de pendências",
+      subtitle: "Resumo visual das tarefas em aberto.",
+      footer: `O recorte mostra ${totalTaskCount} tarefas distribuídas por status.`,
+      accentColor: "#f59e0b",
+      metrics: [
+        { label: "Projetos", value: String(projects.summary.totalProjects) },
+        { label: "Progresso médio", value: `${projects.summary.avgProgress}%` },
+        { label: "Tarefas", value: String(projects.summary.totalTasks) },
+      ],
+    });
+  }
+
+  const statuses = Object.entries(projects.tasksByStatus);
+
+  return buildAssistantChartVisualization({
+    title: "Pendências por status",
+    subtitle: "Distribuição das tarefas em aberto e em andamento.",
+    chartType: "donut",
+    categories: statuses.map(([status]) => status),
+    series: [
+      {
+        name: "Tarefas",
+        values: statuses.map(([, count]) => count),
+      },
+    ],
+    height: 300,
+  });
+}
+
+function buildGeneralVisualization(
+  intent: AssistantVisualizationIntent,
+  executive: Awaited<ReturnType<typeof getExecutiveReport>>,
+  availability: Awaited<ReturnType<typeof getAvailabilityReport>>,
+  problems: Awaited<ReturnType<typeof getProblemsReport>>,
+  projects: Awaited<ReturnType<typeof getProjectsReport>>,
+): AiAssistantVisualizationDto | undefined {
+  if (!intent) return undefined;
+
+  if (intent === "image") {
+    return buildAssistantImageVisualization({
+      title: "Resumo executivo",
+      subtitle: "Visão consolidada do cenário atual.",
+      footer: "Os indicadores abaixo resumem a operação no recorte atual.",
+      accentColor: "#6366f1",
+      metrics: [
+        { label: "Produtos", value: String(executive.summary.totalProducts) },
+        { label: "Problemas", value: String(executive.summary.totalProblems) },
+        { label: "Projetos", value: String(executive.summary.totalProjects) },
+      ],
+    });
+  }
+
+  return buildAssistantChartVisualization({
+    title: "Resumo operacional",
+    subtitle: "Principais indicadores do recorte atual.",
+    chartType: "bar",
+    categories: [
+      "Produtos",
+      "Disponibilidade (%)",
+      "Problemas",
+      "Tempo de resolução (h)",
+      "Projetos",
+      "Tarefas",
+    ],
+    series: [
+      {
+        name: "Volume",
+        values: [
+          executive.summary.totalProducts,
+          availability.avgAvailability,
+          problems.totalProblems,
+          problems.avgResolutionHours,
+          projects.summary.totalProjects,
+          projects.summary.totalTasks,
+        ],
+        color: "#6366f1",
+      },
+    ],
+    height: 300,
+  });
+}
+
+function buildReportsVisualization(
+  intent: AssistantVisualizationIntent,
+  executive: Awaited<ReturnType<typeof getExecutiveReport>>,
+  problems: Awaited<ReturnType<typeof getProblemsReport>>,
+  availability: Awaited<ReturnType<typeof getAvailabilityReport>>,
+): AiAssistantVisualizationDto | undefined {
+  if (!intent) return undefined;
+
+  if (intent === "image") {
+    return buildAssistantImageVisualization({
+      title: "Resumo de relatórios",
+      subtitle: "Pontos de atenção para abrir primeiro.",
+      footer: `A operação consolidou ${availability.totalProducts} produtos e ${problems.totalProblems} problemas no recorte atual.`,
+      accentColor: "#0f766e",
+      metrics: [
+        { label: "Disponibilidade média", value: `${availability.avgAvailability}%` },
+        { label: "Problemas", value: String(problems.totalProblems) },
+        { label: "Produtos", value: String(executive.summary.totalProducts) },
+      ],
+    });
+  }
+
+  return buildAssistantChartVisualization({
+    title: "Visão executiva",
+    subtitle: "Indicadores de prioridade para abrir primeiro.",
+    chartType: "bar",
+    categories: ["Produtos", "Problemas", "Soluções", "Projetos"],
+    series: [
+      {
+        name: "Resumo",
+        values: [
+          executive.summary.totalProducts,
+          executive.summary.totalProblems,
+          executive.summary.totalSolutions,
+          executive.summary.totalProjects,
+        ],
+        color: "#0f766e",
+      },
+    ],
+    height: 300,
+  });
+}
+
 export function getAssistantExamples(): AiAssistantExamplesResponseDto {
   return {
     guidance: DEFAULT_GUIDANCE,
@@ -1125,14 +1547,42 @@ export function getAssistantExamples(): AiAssistantExamplesResponseDto {
   };
 }
 
+export async function getAssistantRuntimeStatus(): Promise<AiAssistantRuntimeStatusDto> {
+  const probe = await probeOllamaRuntime({
+    model: config.ollama.model,
+    timeoutMs: Math.min(config.ollama.timeoutMs, 3_000),
+  });
+
+  return {
+    provider: "ollama",
+    model: probe.model,
+    mode: probe.isReachable ? "ollama" : "fallback",
+    latencyMs: probe.latencyMs,
+    checkedAt: new Date().toISOString(),
+    fallbackReason: probe.isReachable ? null : probe.errorMessage,
+  };
+}
+
 export async function answerAssistantMessage(
-  request: AiAssistantMessageRequestDto,
+  request: AssistantMessageRequest,
 ): Promise<AiAssistantMessageResponseDto> {
   const threadId = request.threadId ?? randomUUID();
-  const scope = detectScope(request.content);
+  const conversationContext = {
+    conversationHistory: request.historyMessages ?? [],
+    conversationMemory: request.conversationMemory ?? null,
+  };
+  const scope =
+    detectScope(request.content) ??
+    (await classifyAssistantScopeWithOllama({
+      question: request.content,
+      lastKnownScope: request.lastKnownScope ?? null,
+      conversationHistory: conversationContext.conversationHistory,
+      conversationMemory: conversationContext.conversationMemory,
+    }));
   const currentDateRange = resolveAssistantDateRange(request.content);
   const previousDateRange = getPreviousAssistantDateRange(currentDateRange);
   const { dateRange, label: periodLabel } = currentDateRange;
+  const visualizationIntent = detectVisualizationIntent(request.content);
 
   if (!scope) {
     return {
@@ -1151,6 +1601,11 @@ export async function answerAssistantMessage(
           getAvailabilityReport(previousDateRange.dateRange),
           getExecutiveReport(previousDateRange.dateRange),
         ]);
+        const visualization = buildModelsVisualization(
+          visualizationIntent,
+          availability,
+          previousAvailability,
+        );
         return {
           ...(await finalizeAssistantResponse(
             buildModelsAnswer(
@@ -1161,7 +1616,10 @@ export async function answerAssistantMessage(
               previousExecutive,
             ),
             request.content,
+            undefined,
+            conversationContext,
           )),
+          visualization,
           threadId,
         };
       }
@@ -1171,12 +1629,18 @@ export async function answerAssistantMessage(
           getExecutiveReport(dateRange),
           getProjectsReport(previousDateRange.dateRange),
         ]);
+        const visualization = buildPendingVisualization(
+          visualizationIntent,
+          projects,
+        );
         return {
           ...(await finalizeAssistantResponse(
             buildPendingAnswer(projects, executive, periodLabel, previousProjects),
             request.content,
             "pending",
+            conversationContext,
           )),
+          visualization,
           threadId,
         };
       }
@@ -1186,11 +1650,18 @@ export async function answerAssistantMessage(
           getExecutiveReport(dateRange),
           getProjectsReport(previousDateRange.dateRange),
         ]);
+        const visualization = buildProjectsVisualization(
+          visualizationIntent,
+          projects,
+        );
         return {
           ...(await finalizeAssistantResponse(
             buildProjectsAnswer(projects, executive, previousProjects),
             request.content,
+            undefined,
+            conversationContext,
           )),
+          visualization,
           threadId,
         };
       }
@@ -1203,6 +1674,14 @@ export async function answerAssistantMessage(
           getExecutiveReport(dateRange),
           getProblemsReport(previousDateRange.dateRange),
         ]);
+        const visualization = buildProblemsVisualization(
+          visualizationIntent,
+          problems,
+          dashboardCauses,
+          dashboardSolutions,
+          executive,
+          periodLabel,
+        );
         return {
           ...(await finalizeAssistantResponse(
             buildProblemsAnswer(
@@ -1215,7 +1694,10 @@ export async function answerAssistantMessage(
               previousProblems,
             ),
             request.content,
+            undefined,
+            conversationContext,
           )),
+          visualization,
           threadId,
         };
       }
@@ -1237,8 +1719,22 @@ export async function answerAssistantMessage(
           periodLabel,
           previousProblems,
         );
+        const visualization = buildProblemsVisualization(
+          visualizationIntent,
+          problems,
+          dashboardCauses,
+          dashboardSolutions,
+          executive,
+          periodLabel,
+        );
         return {
-          ...(await finalizeAssistantResponse(response, request.content, "solutions")),
+          ...(await finalizeAssistantResponse(
+            response,
+            request.content,
+            "solutions",
+            conversationContext,
+          )),
+          visualization,
           threadId,
           scope: "solutions",
           suggestedQuestions: getSuggestedQuestions("solutions"),
@@ -1252,11 +1748,20 @@ export async function answerAssistantMessage(
           getProblemsReport(dateRange),
           getAvailabilityReport(dateRange),
         ]);
+        const visualization = buildReportsVisualization(
+          visualizationIntent,
+          executive,
+          problems,
+          availability,
+        );
         return {
           ...(await finalizeAssistantResponse(
             buildReportsAnswer(executive, problems, availability),
             request.content,
+            undefined,
+            conversationContext,
           )),
+          visualization,
           threadId,
         };
       }
@@ -1272,6 +1777,13 @@ export async function answerAssistantMessage(
           getProblemsReport(previousDateRange.dateRange),
           getProjectsReport(previousDateRange.dateRange),
         ]);
+        const visualization = buildGeneralVisualization(
+          visualizationIntent,
+          executive,
+          availability,
+          problems,
+          projects,
+        );
         return {
           ...(await finalizeAssistantResponse(
             buildGeneralAnswer(
@@ -1285,7 +1797,10 @@ export async function answerAssistantMessage(
               previousProjects,
             ),
             request.content,
+            undefined,
+            conversationContext,
           )),
+          visualization,
           threadId,
         };
       }

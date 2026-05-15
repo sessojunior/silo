@@ -6,25 +6,37 @@ import {
   aiAssistantThread,
 } from "@silo/database/schema";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import type {
+import {
+  AI_ASSISTANT_SCOPES,
   AiAssistantCreateThreadResponseDto,
   AiAssistantGenerationDto,
   AiAssistantMessageRequestDto,
   AiAssistantMessageResponseDto,
+  AiAssistantScope,
   AiAssistantThreadDetailResponseDto,
   AiAssistantThreadMessageDto,
   AiAssistantThreadSummaryDto,
   AiAssistantThreadsResponseDto,
+  AiAssistantVisualizationDto,
+  AiAssistantVisualizationSchema,
 } from "@silo/engine/contracts/dto/ai-assistant";
 import {
   answerAssistantMessage as generateAssistantMessage,
   getAssistantExamples,
 } from "./ai-assistant-service.js";
+import type { OllamaChatMessage } from "../infra/llm/ollama-client.js";
 
 const ASSISTANT_SENDER_NAME = "Assistente de IA";
 const DEFAULT_THREAD_TITLE = "Nova conversa";
 const THREAD_TITLE_MAX_LENGTH = 64;
 const MESSAGE_PREVIEW_MAX_LENGTH = 120;
+const ASSISTANT_SCOPE_SET = new Set<string>(AI_ASSISTANT_SCOPES);
+
+type ConversationContext = {
+  historyMessages: OllamaChatMessage[];
+  conversationMemory: string | null;
+  lastKnownScope: AiAssistantScope | null;
+};
 
 export class AssistantThreadNotFoundError extends Error {
   constructor() {
@@ -50,6 +62,57 @@ const buildThreadTitle = (content: string): string => {
 const buildMessagePreview = (content: string): string =>
   truncateText(content, MESSAGE_PREVIEW_MAX_LENGTH);
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const readStringValue = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const readNumberValue = (value: unknown): number | null => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return value;
+};
+
+const readStoredGenerationMetadata = (
+  metadata: unknown,
+): Record<string, unknown> | null => {
+  if (!isRecord(metadata)) {
+    return null;
+  }
+
+  const generation = metadata.generation;
+  if (!isRecord(generation)) {
+    return null;
+  }
+
+  return generation;
+};
+
+const isAssistantScope = (value: string): value is AiAssistantScope =>
+  ASSISTANT_SCOPE_SET.has(value);
+
+const readAssistantScopeValue = (value: unknown): AiAssistantScope | null => {
+  const candidate = readStringValue(value);
+  return candidate && isAssistantScope(candidate) ? candidate : null;
+};
+
+const readConversationMemoryValue = (metadata: unknown): string | null => {
+  if (!isRecord(metadata)) {
+    return null;
+  }
+
+  return readStringValue(metadata.contextSummary);
+};
+
 const normalizeGenerationMetadata = (
   generation: AiAssistantGenerationDto | undefined,
 ): {
@@ -57,14 +120,135 @@ const normalizeGenerationMetadata = (
   model: string | null;
   generationStatus: string | null;
   latencyMs: number | null;
+  generatedTokens: number | null;
+  thinkingTimeMs: number | null;
   errorMessage: string | null;
 } => ({
   provider: generation?.provider ?? null,
   model: generation?.model ?? null,
   generationStatus: generation?.status ?? null,
   latencyMs: generation?.latencyMs ?? null,
+  generatedTokens: generation?.generatedTokens ?? null,
+  thinkingTimeMs: generation?.thinkingTimeMs ?? null,
   errorMessage: generation?.errorMessage ?? null,
 });
+
+const normalizeThreadMessageVisualization = (
+  message: typeof aiAssistantMessage.$inferSelect,
+): AiAssistantVisualizationDto | undefined => {
+  const storedVisualization = isRecord(message.metadata)
+    ? message.metadata.visualization
+    : undefined;
+
+  const parsedVisualization = AiAssistantVisualizationSchema.safeParse(
+    storedVisualization,
+  );
+
+  return parsedVisualization.success ? parsedVisualization.data : undefined;
+};
+
+const buildAssistantMessageMetadata = (
+  response: AiAssistantMessageResponseDto,
+  generationMetadata: ReturnType<typeof normalizeGenerationMetadata>,
+): Record<string, unknown> => {
+  const metadata: Record<string, unknown> = {
+    scope: response.scope,
+    isInScope: response.isInScope,
+    refusalReason: response.refusalReason,
+    suggestedQuestions: response.suggestedQuestions,
+    citations: response.citations,
+    generation: generationMetadata,
+    contextSummary: response.contextSummary,
+  };
+
+  if (response.visualization) {
+    metadata.visualization = response.visualization;
+  }
+
+  return metadata;
+};
+
+const normalizeThreadMessageGeneration = (
+  message: typeof aiAssistantMessage.$inferSelect,
+): AiAssistantGenerationDto | undefined => {
+  const storedGeneration = readStoredGenerationMetadata(message.metadata);
+
+  const provider =
+    readStringValue(storedGeneration?.provider) ?? readStringValue(message.provider);
+  const model =
+    readStringValue(storedGeneration?.model) ?? readStringValue(message.model);
+  const status =
+    readStringValue(storedGeneration?.status) ?? readStringValue(message.generationStatus);
+  const latencyMs =
+    readNumberValue(storedGeneration?.latencyMs) ?? message.latencyMs ?? null;
+
+  if (!provider || !model || !status || latencyMs == null) {
+    return undefined;
+  }
+
+  if (status !== "success" && status !== "fallback" && status !== "error") {
+    return undefined;
+  }
+
+  const generatedTokens =
+    status === "success" ? readNumberValue(storedGeneration?.generatedTokens) : null;
+  const thinkingTimeMs =
+    status === "success" ? readNumberValue(storedGeneration?.thinkingTimeMs) : null;
+
+  const errorMessage =
+    readStringValue(storedGeneration?.errorMessage) ?? message.errorMessage ?? null;
+
+  return {
+    provider,
+    model,
+    status,
+    latencyMs,
+    generatedTokens,
+    thinkingTimeMs,
+    errorMessage,
+  };
+};
+
+const loadConversationContext = async (
+  threadId: string,
+): Promise<ConversationContext> => {
+  const threadMessages = await db
+    .select()
+    .from(aiAssistantMessage)
+    .where(eq(aiAssistantMessage.threadId, threadId))
+    .orderBy(asc(aiAssistantMessage.createdAt), asc(aiAssistantMessage.id));
+
+  const historyMessages: OllamaChatMessage[] = [];
+  let conversationMemory: string | null = null;
+  let lastKnownScope: AiAssistantScope | null = null;
+
+  for (const message of threadMessages) {
+    if (message.senderType === "assistant") {
+      const storedScope = readAssistantScopeValue(
+        isRecord(message.metadata) ? message.metadata.scope : null,
+      );
+      if (storedScope) {
+        lastKnownScope = storedScope;
+      }
+
+      const memory = readConversationMemoryValue(message.metadata);
+      if (memory) {
+        conversationMemory = memory;
+      }
+    }
+
+    historyMessages.push({
+      role: message.senderType === "assistant" ? "assistant" : "user",
+      content: message.content,
+    });
+  }
+
+  return {
+    historyMessages,
+    conversationMemory,
+    lastKnownScope,
+  };
+};
 
 const formatAssistantReply = (data: AiAssistantMessageResponseDto): string => {
   const lines = [data.answer.trim()];
@@ -111,6 +295,8 @@ const toThreadMessage = (
   senderUserId: message.senderUserId,
   senderName: message.senderName,
   content: message.content,
+  generation: normalizeThreadMessageGeneration(message),
+  visualization: normalizeThreadMessageVisualization(message),
   createdAt: message.createdAt.toISOString(),
 });
 
@@ -209,11 +395,26 @@ export async function sendAssistantMessage(
     throw new AssistantThreadNotFoundError();
   }
 
+  const conversationContext = existingThread
+    ? await loadConversationContext(existingThread.id)
+    : {
+        historyMessages: [],
+        conversationMemory: null,
+        lastKnownScope: null,
+      };
+
   const generatedResponse = await generateAssistantMessage({
     threadId: requestedThreadId,
     content: request.content,
+    historyMessages: conversationContext.historyMessages,
+    conversationMemory: conversationContext.conversationMemory,
+    lastKnownScope: conversationContext.lastKnownScope,
   });
   const generationMetadata = normalizeGenerationMetadata(generatedResponse.generation);
+  const assistantMetadata = buildAssistantMessageMetadata(
+    generatedResponse,
+    generationMetadata,
+  );
   const messageContent = formatAssistantReply(generatedResponse);
   const now = new Date();
   const nextThreadTitle = existingThread
@@ -263,15 +464,7 @@ export async function sendAssistantMessage(
           latencyMs: generationMetadata.latencyMs,
           errorMessage: generationMetadata.errorMessage,
           content: messageContent,
-          metadata: {
-            scope: generatedResponse.scope,
-            isInScope: generatedResponse.isInScope,
-            refusalReason: generatedResponse.refusalReason,
-            suggestedQuestions: generatedResponse.suggestedQuestions,
-            citations: generatedResponse.citations,
-            generation: generationMetadata,
-            contextSummary: generatedResponse.contextSummary,
-          },
+          metadata: assistantMetadata,
         },
       ]);
 
@@ -300,15 +493,7 @@ export async function sendAssistantMessage(
         latencyMs: generationMetadata.latencyMs,
         errorMessage: generationMetadata.errorMessage,
         content: messageContent,
-        metadata: {
-          scope: generatedResponse.scope,
-          isInScope: generatedResponse.isInScope,
-          refusalReason: generatedResponse.refusalReason,
-          suggestedQuestions: generatedResponse.suggestedQuestions,
-          citations: generatedResponse.citations,
-          generation: generationMetadata,
-          contextSummary: generatedResponse.contextSummary,
-        },
+        metadata: assistantMetadata,
       },
     ]);
 

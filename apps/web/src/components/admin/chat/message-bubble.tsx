@@ -1,20 +1,13 @@
 "use client";
 
+import type { ChatMessage } from "@/context/chat-context";
+import AssistantVisualizationBlock from "@/components/admin/chat/assistant-visualization";
+
 type MessageBubbleProps = {
-  message: {
-    id: string;
-    content: string;
-    senderUserId: string;
-    senderName: string;
-    receiverGroupId: string | null;
-    receiverUserId: string | null;
-    createdAt: Date;
-    readAt: Date | null;
-    deletedAt: Date | null;
-    messageType: "groupMessage" | "userMessage";
-  };
+  message: ChatMessage;
   isOwnMessage: boolean;
   showAvatar: boolean;
+  showAssistantFooter?: boolean;
   readCount?: number; // Quantos usuários leram (apenas para groupMessage)
   totalParticipants?: number; // Total de participantes do grupo (apenas para groupMessage)
 };
@@ -23,6 +16,7 @@ export default function MessageBubble({
   message,
   isOwnMessage,
   showAvatar,
+  showAssistantFooter = false,
   readCount = 0,
   totalParticipants = 0,
 }: MessageBubbleProps) {
@@ -74,6 +68,71 @@ export default function MessageBubble({
 
   // Avatar baseado no nome do usuário (primeira letra)
   const avatarLetter = message.senderName?.charAt(0).toUpperCase() || "?";
+  const assistantVisualization =
+    !isOwnMessageFinal && message.assistantVisualization
+      ? message.assistantVisualization
+      : null;
+  const hasAssistantVisualization = Boolean(assistantVisualization);
+  const bubbleWidthClass = hasAssistantVisualization
+    ? "max-w-sm lg:max-w-lg"
+    : "max-w-xs lg:max-w-md";
+
+  const formatTokenCount = (tokenCount: number): string => {
+    const normalizedCount = tokenCount.toLocaleString("pt-BR");
+    return `${normalizedCount} ${tokenCount === 1 ? "token" : "tokens"}`;
+  };
+
+  const formatThinkingTime = (thinkingTimeMs: number): string => {
+    if (thinkingTimeMs < 1000) {
+      return `${thinkingTimeMs}ms`;
+    }
+
+    const seconds = thinkingTimeMs / 1000;
+    const normalizedSeconds = seconds.toLocaleString("pt-BR", {
+      maximumFractionDigits: 1,
+    });
+
+    return `${normalizedSeconds}s`;
+  };
+
+  const formatAssistantFooter = (
+    generation: ChatMessage["assistantGeneration"],
+  ): string => {
+    if (!generation) {
+      return "Sem IA.";
+    }
+
+    if (generation.status === "fallback" || generation.status === "error") {
+      return "Mensagem fallback.";
+    }
+
+    if (generation.provider === "seed" || generation.model === "demo") {
+      return "Sem IA.";
+    }
+
+    const sourceLabel =
+      generation.provider === "ollama"
+        ? generation.model.trim()
+        : `${generation.provider.trim()}/${generation.model.trim()}`.trim();
+
+    if (sourceLabel.length === 0) {
+      return "Sem IA.";
+    }
+
+    const details: string[] = [];
+
+    if (typeof generation.generatedTokens === "number") {
+      details.push(formatTokenCount(generation.generatedTokens));
+    }
+
+    if (typeof generation.thinkingTimeMs === "number") {
+      details.push(`pensou por ${formatThinkingTime(generation.thinkingTimeMs)}`);
+    }
+
+    return details.length > 0
+      ? `Mensagem de ${sourceLabel} · ${details.join(" · ")}`
+      : `Mensagem de ${sourceLabel}`;
+  };
 
   // Renderizar ícone de status de leitura
   const renderReadStatus = () => {
@@ -137,7 +196,7 @@ export default function MessageBubble({
 
       {/* Conteúdo da mensagem */}
       <div
-        className={`flex flex-col max-w-xs lg:max-w-md ${isOwnMessageFinal ? "items-end" : "items-start"}`}
+        className={`flex flex-col ${bubbleWidthClass} ${isOwnMessageFinal ? "items-end" : "items-start"}`}
       >
         {/* Container do bubble com setinha */}
         <div
@@ -169,6 +228,10 @@ export default function MessageBubble({
               </p>
             )}
 
+            {assistantVisualization ? (
+              <AssistantVisualizationBlock visualization={assistantVisualization} />
+            ) : null}
+
             {/* Indicador de exclusão */}
             {message.deletedAt && (
               <div className="text-xs opacity-75 italic">
@@ -197,6 +260,12 @@ export default function MessageBubble({
                   )}
               </div>
             </div>
+
+            {showAssistantFooter ? (
+              <div className="mt-1 text-[10px] leading-tight text-zinc-400 dark:text-zinc-500">
+                {formatAssistantFooter(message.assistantGeneration)}
+              </div>
+            ) : null}
           </div>
 
           {/* Setinha reta em cima (estilo WhatsApp) - apenas quando há avatar */}
@@ -207,7 +276,7 @@ export default function MessageBubble({
 							border-l-8 border-l-transparent 
 							border-r-8 border-r-transparent 
 							border-t-8 border-t-white dark:border-t-zinc-800
-							left-[-8px] top-0
+                -left-2 top-0
 						`}
             />
           )}
@@ -220,7 +289,7 @@ export default function MessageBubble({
 							border-r-8 border-r-transparent 
 							border-l-8 border-l-transparent 
 							border-t-8 border-t-blue-600
-							right-[-8px] top-0
+                -right-2 top-0
 						`}
             />
           )}

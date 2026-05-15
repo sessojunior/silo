@@ -54,6 +54,8 @@ export const AiAssistantThreadMessageSchema = z.object({
   senderUserId: z.string().nullable(),
   senderName: z.string(),
   content: z.string(),
+  generation: z.lazy(() => AiAssistantGenerationSchema).optional(),
+  visualization: z.lazy(() => AiAssistantVisualizationSchema).optional(),
   createdAt: z.string(),
 });
 
@@ -107,10 +109,71 @@ export const AiAssistantGenerationSchema = z.object({
   model: z.string(),
   status: z.enum(["success", "fallback", "error"]),
   latencyMs: z.number().int().nonnegative(),
+  generatedTokens: z.number().int().nonnegative().nullish(),
+  thinkingTimeMs: z.number().int().nonnegative().nullish(),
   errorMessage: z.string().optional().nullable(),
 });
 
 export type AiAssistantGenerationDto = z.infer<typeof AiAssistantGenerationSchema>;
+
+export const AiAssistantRuntimeStatusSchema = z.object({
+  provider: z.literal("ollama"),
+  model: z.string(),
+  mode: z.enum(["ollama", "fallback"]),
+  latencyMs: z.number().int().nonnegative(),
+  checkedAt: z.string(),
+  fallbackReason: z.string().optional().nullable(),
+});
+
+export type AiAssistantRuntimeStatusDto = z.infer<
+  typeof AiAssistantRuntimeStatusSchema
+>;
+
+export const AiAssistantVisualizationImageSchema = z.object({
+  kind: z.literal("image"),
+  src: z.string().min(1),
+  alt: z.string().min(1),
+  caption: z.string().optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+});
+
+export type AiAssistantVisualizationImageDto = z.infer<
+  typeof AiAssistantVisualizationImageSchema
+>;
+
+export const AiAssistantVisualizationChartSeriesSchema = z.object({
+  name: z.string().min(1),
+  values: z.array(z.number()),
+  color: z.string().optional(),
+});
+
+export type AiAssistantVisualizationChartSeriesDto = z.infer<
+  typeof AiAssistantVisualizationChartSeriesSchema
+>;
+
+export const AiAssistantVisualizationChartSchema = z.object({
+  kind: z.literal("chart"),
+  chartType: z.enum(["bar", "line", "donut"]),
+  title: z.string().min(1),
+  subtitle: z.string().optional(),
+  categories: z.array(z.string()),
+  series: z.array(AiAssistantVisualizationChartSeriesSchema).min(1),
+  height: z.number().int().positive().optional(),
+});
+
+export type AiAssistantVisualizationChartDto = z.infer<
+  typeof AiAssistantVisualizationChartSchema
+>;
+
+export const AiAssistantVisualizationSchema = z.discriminatedUnion("kind", [
+  AiAssistantVisualizationImageSchema,
+  AiAssistantVisualizationChartSchema,
+]);
+
+export type AiAssistantVisualizationDto = z.infer<
+  typeof AiAssistantVisualizationSchema
+>;
 
 export const AiAssistantMessageResponseSchema = z.object({
   threadId: z.string(),
@@ -122,6 +185,7 @@ export const AiAssistantMessageResponseSchema = z.object({
   answer: z.string(),
   suggestedQuestions: z.array(z.string()),
   citations: z.array(AiAssistantCitationSchema),
+  visualization: AiAssistantVisualizationSchema.optional(),
   generation: AiAssistantGenerationSchema.optional(),
   contextSummary: z.string(),
 });

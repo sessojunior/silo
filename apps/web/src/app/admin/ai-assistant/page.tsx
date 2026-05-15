@@ -7,6 +7,7 @@ import {
   type AiAssistantExampleDto,
   type AiAssistantExamplesResponseDto,
   type AiAssistantMessageResponseDto,
+  type AiAssistantRuntimeStatusDto,
   type AiAssistantThreadDetailResponseDto,
   type AiAssistantThreadMessageDto,
   type AiAssistantThreadSummaryDto,
@@ -122,12 +123,32 @@ const buildChatMessage = (
   messageType: "userMessage",
 });
 
-const buildAssistantMessage = (content: string): ChatMessage =>
-  buildChatMessage(content, ASSISTANT_SENDER_ID, ASSISTANT_SENDER_NAME);
+const buildAssistantMessage = (
+  content: string,
+  assistantGeneration?: ChatMessage["assistantGeneration"],
+  assistantVisualization?: ChatMessage["assistantVisualization"],
+): ChatMessage => ({
+  ...buildChatMessage(content, ASSISTANT_SENDER_ID, ASSISTANT_SENDER_NAME),
+  assistantGeneration: assistantGeneration ?? null,
+  assistantVisualization: assistantVisualization ?? null,
+});
+
+const buildAssistantFallbackGeneration = (): NonNullable<
+  ChatMessage["assistantGeneration"]
+> => ({
+  provider: "ollama",
+  model: "indisponível",
+  status: "fallback",
+  latencyMs: 0,
+  generatedTokens: null,
+  thinkingTimeMs: null,
+  errorMessage: "Não foi possível consultar o assistente.",
+});
 
 const buildAssistantErrorMessage = (): ChatMessage =>
   buildAssistantMessage(
     "Não consegui processar a pergunta agora. Faça outra pergunta sobre modelos, pendências, relatórios, problemas, soluções ou projetos do Silo.",
+    buildAssistantFallbackGeneration(),
   );
 
 const buildAssistantMessageContent = (
@@ -166,7 +187,11 @@ const mapThreadMessageToChatMessage = (
   currentUserName: string,
 ): ChatMessage => {
   if (message.senderType === "assistant") {
-    return buildAssistantMessage(message.content);
+    return buildAssistantMessage(
+      message.content,
+      message.generation,
+      message.visualization,
+    );
   }
 
   return buildChatMessage(
@@ -227,6 +252,8 @@ export default function AiAssistantPage() {
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [runtimeStatus, setRuntimeStatus] = useState<AiAssistantRuntimeStatusDto | null>(null);
+  const [isLoadingRuntimeStatus, setIsLoadingRuntimeStatus] = useState(() => !smokeMode);
   const [showSidebar, setShowSidebar] = useState(false);
 
   const currentUserId = currentUser?.id ?? "";
@@ -301,6 +328,38 @@ export default function AiAssistantPage() {
       return [] as AiAssistantThreadSummaryDto[];
     } finally {
       setIsLoadingThreads(false);
+    }
+  }, []);
+
+  const loadRuntimeStatus = useCallback(async () => {
+    setIsLoadingRuntimeStatus(true);
+    try {
+      const response = await fetch(
+        config.getAssistantApiUrl("/api/admin/ai-assistant/status"),
+        {
+          credentials: "include",
+          cache: "no-store",
+        },
+      );
+      const apiResponse = await readTypedApiResponse<AiAssistantRuntimeStatusDto>(response);
+
+      if (!response.ok || !apiResponse.success || !apiResponse.data) {
+        throw new Error(apiResponse.error || "Não foi possível verificar o status do assistente.");
+      }
+
+      setRuntimeStatus(apiResponse.data);
+    } catch (error) {
+      console.error("❌ [AI_ASSISTANT] Erro ao verificar status do runtime:", serializeClientError(error));
+      setRuntimeStatus({
+        provider: "ollama",
+        model: "indisponível",
+        mode: "fallback",
+        latencyMs: 0,
+        checkedAt: new Date().toISOString(),
+        fallbackReason: "Não foi possível verificar o status do assistente.",
+      });
+    } finally {
+      setIsLoadingRuntimeStatus(false);
     }
   }, []);
 
@@ -454,6 +513,8 @@ export default function AiAssistantPage() {
           );
         const assistantMessage = buildAssistantMessage(
           buildAssistantMessageContent(apiResponse.data),
+          apiResponse.data.generation,
+          apiResponse.data.visualization,
         );
 
         setThreads((current) => upsertThread(current, responseThread));
@@ -493,9 +554,10 @@ export default function AiAssistantPage() {
   useEffect(() => {
     if (smokeMode || isLoadingUser || !currentUser) return;
 
+    void loadRuntimeStatus();
     void loadExamples();
     void loadThreads();
-  }, [currentUser, isLoadingUser, loadExamples, loadThreads, smokeMode]);
+  }, [currentUser, isLoadingUser, loadExamples, loadRuntimeStatus, loadThreads, smokeMode]);
 
   useEffect(() => {
     if (smokeMode) {
@@ -566,6 +628,8 @@ export default function AiAssistantPage() {
             isLoadingExamples={isLoadingExamples}
             isLoadingThreads={isLoadingThreads}
             isCreatingConversation={isCreatingConversation}
+            runtimeStatus={runtimeStatus}
+            isLoadingRuntimeStatus={isLoadingRuntimeStatus}
           />
         </aside>
       )}

@@ -13,13 +13,20 @@ const OllamaChatResponseSchema = z.object({
     content: z.string(),
   }),
   done: z.boolean().optional(),
+  eval_count: z.number().int().nonnegative().optional(),
+  eval_duration: z.number().int().nonnegative().optional(),
 });
 
 type ChatOptions = {
   messages: OllamaChatMessage[];
   model?: string;
   timeoutMs?: number;
+  think?: boolean;
 };
+
+const DEFAULT_MODEL_CONTEXT_LENGTH = 131_072;
+const modelContextLengthCache = new Map<string, Promise<number>>();
+const OLLAMA_STATUS_TIMEOUT_MS = 3_000;
 
 const queue: Array<() => void> = [];
 let activeRequests = 0;
@@ -62,15 +69,152 @@ async function fetchWithTimeout(
   }
 }
 
+async function requestOllamaModelDetails(model: string, timeoutMs: number): Promise<Response> {
+  return fetchWithTimeout(
+    new URL("/api/show", config.ollama.url).toString(),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model }),
+    },
+    timeoutMs,
+  );
+}
+
+function collectContextLengthCandidates(
+  value: unknown,
+  candidates: number[] = [],
+  keyHint = "",
+): number[] {
+  if (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value > 0 &&
+    keyHint.toLowerCase().includes("context_length")
+  ) {
+    candidates.push(value);
+    return candidates;
+  }
+
+  if (!value || typeof value !== "object") {
+    return candidates;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectContextLengthCandidates(item, candidates, keyHint);
+    }
+    return candidates;
+  }
+
+  for (const [key, candidate] of Object.entries(value as Record<string, unknown>)) {
+    collectContextLengthCandidates(candidate, candidates, key);
+  }
+
+  return candidates;
+}
+
+function extractModelContextLength(value: unknown): number | null {
+  const candidates = collectContextLengthCandidates(value);
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return Math.max(...candidates);
+}
+
+async function resolveModelContextLength(
+  model: string,
+  timeoutMs: number,
+): Promise<number> {
+  const cached = modelContextLengthCache.get(model);
+  if (cached) {
+    return cached;
+  }
+
+  const resolved = (async () => {
+    try {
+      const response = await requestOllamaModelDetails(model, Math.min(timeoutMs, 10_000));
+
+      if (!response.ok) {
+        return DEFAULT_MODEL_CONTEXT_LENGTH;
+      }
+
+      const rawBody = (await response.json()) as unknown;
+      return extractModelContextLength(rawBody) ?? DEFAULT_MODEL_CONTEXT_LENGTH;
+    } catch {
+      return DEFAULT_MODEL_CONTEXT_LENGTH;
+    }
+  })();
+
+  modelContextLengthCache.set(model, resolved);
+  return resolved;
+}
+
+export type OllamaRuntimeProbeResult = {
+  model: string;
+  isReachable: boolean;
+  latencyMs: number;
+  errorMessage: string | null;
+};
+
+export async function probeOllamaRuntime({
+  model = config.ollama.model,
+  timeoutMs = Math.min(config.ollama.timeoutMs, OLLAMA_STATUS_TIMEOUT_MS),
+}: {
+  model?: string;
+  timeoutMs?: number;
+} = {}): Promise<OllamaRuntimeProbeResult> {
+  const startedAt = Date.now();
+
+  try {
+    const response = await requestOllamaModelDetails(model, timeoutMs);
+    const latencyMs = Date.now() - startedAt;
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        model,
+        isReachable: false,
+        latencyMs,
+        errorMessage: `Falha no Ollama (${response.status} ${response.statusText}): ${errorText}`,
+      };
+    }
+
+    await response.json();
+
+    return {
+      model,
+      isReachable: true,
+      latencyMs,
+      errorMessage: null,
+    };
+  } catch (error) {
+    const latencyMs = Date.now() - startedAt;
+    return {
+      model,
+      isReachable: false,
+      latencyMs,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 export async function chatWithOllama({
   messages,
   model = config.ollama.model,
   timeoutMs = config.ollama.timeoutMs,
+  think = true,
 }: ChatOptions): Promise<{
   content: string;
   latencyMs: number;
+  generatedTokens: number | null;
+  thinkingTimeMs: number | null;
 }> {
   return withConcurrencyLimit(config.ollama.maxConcurrentRequests, async () => {
+    const resolvedContextLength = await resolveModelContextLength(model, timeoutMs);
     const startedAt = Date.now();
     const response = await fetchWithTimeout(
       new URL("/api/chat", config.ollama.url).toString(),
@@ -82,12 +226,14 @@ export async function chatWithOllama({
         body: JSON.stringify({
           model,
           messages,
+          think,
           stream: false,
           format: "json",
           options: {
             temperature: 0.2,
             top_p: 0.9,
             num_predict: 512,
+            num_ctx: resolvedContextLength,
           },
         }),
       },
@@ -108,6 +254,11 @@ export async function chatWithOllama({
     return {
       content: parsedBody.message.content,
       latencyMs,
+      generatedTokens: parsedBody.eval_count ?? null,
+      thinkingTimeMs:
+        typeof parsedBody.eval_duration === "number"
+          ? Math.max(0, Math.round(parsedBody.eval_duration / 1_000_000))
+          : null,
     };
   });
 }
