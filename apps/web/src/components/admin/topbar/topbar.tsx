@@ -8,6 +8,7 @@ import TopbarTitle from "@/components/admin/topbar/topbar-title";
 import ServerClock from "@/components/admin/topbar/server-clock";
 import { useSidebar } from "@/context/sidebar-context";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { config } from "@/lib/config";
 import { postLoginRedirectPath } from "@/lib/auth/urls";
 import type { ApiResponse } from "@/lib/api-response";
@@ -24,9 +25,17 @@ export type AccountProps = AccountLinkProps[];
 
 export default function Topbar() {
   const { isOpenSidebar } = useSidebar();
+  const pathname = usePathname();
   const [chatEnabled, setChatEnabled] = useState(true);
   const [loadingChatEnabled, setLoadingChatEnabled] = useState(true);
   const pageTitle = useAdminPageTitle();
+  const isDataFlowPage = pathname.includes("/admin/products/") && pathname.endsWith("/data-flow");
+
+  const dataFlowSlug = (() => {
+    const match = pathname.match(/\/admin\/products\/([^/]+)\/data-flow$/);
+    return match?.[1] ? decodeURIComponent(match[1]) : null;
+  })();
+
 
   // Verificar se o chat está habilitado para o usuário
   useEffect(() => {
@@ -74,6 +83,12 @@ export default function Topbar() {
     };
   }, []);
 
+  const dataFlowHeaderTitle = (() => {
+    if (!isDataFlowPage || !dataFlowSlug) return null;
+
+    return dataFlowSlug.toUpperCase();
+  })();
+
   // Dados da conta para o dropdown da barra do topo
   const account: AccountProps = [
     {
@@ -107,9 +122,15 @@ export default function Topbar() {
 
               {/* Título dinâmico da página atual */}
               <div className="flex items-center p-2 min-w-0">
-                <TopbarTitle className="truncate max-w-40 sm:max-w-65 md:max-w-95 lg:max-w-125 xl:max-w-150 2xl:max-w-none">
-                  {pageTitle}
-                </TopbarTitle>
+                {dataFlowHeaderTitle ? (
+                  <TopbarTitle className="truncate max-w-40 sm:max-w-65 md:max-w-95 lg:max-w-125 xl:max-w-150 2xl:max-w-none">
+                    {dataFlowHeaderTitle}
+                  </TopbarTitle>
+                ) : (
+                  <TopbarTitle className="truncate max-w-40 sm:max-w-65 md:max-w-95 lg:max-w-125 xl:max-w-150 2xl:max-w-none">
+                    {pageTitle}
+                  </TopbarTitle>
+                )}
               </div>
             </div>
 

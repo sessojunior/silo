@@ -1,12 +1,14 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/admin/nav/button";
 import Select from "@/components/ui/select";
 import { getStatusLabel } from "@silo/engine/domain/product-status";
-import { config } from "@/lib/config";
-import type { GroupedPipelineData } from "@/lib/dataflow/types";
+import {
+  selectDataFlowSnapshotFromPipelines,
+  useDataFlowPipelines,
+} from "@/lib/dataflow/mock-ecflow";
 
 interface ProductTabsProps {
   tabs: { label: string; url: string }[];
@@ -46,45 +48,9 @@ export default function ProductTabs({
   const router = useRouter();
   const searchParams = useSearchParams();
   const isDataFlowPage = pathname.endsWith("/data-flow");
-  const [dataFlowSnapshots, setDataFlowSnapshots] = useState<GroupedPipelineData[]>([]);
-  const [hasLoadedDataFlowOptions, setHasLoadedDataFlowOptions] = useState(false);
-
-  useEffect(() => {
-    if (!isDataFlowPage || !modelSlug) return;
-
-    let isCancelled = false;
-    setHasLoadedDataFlowOptions(false);
-
-    const loadDataFlowOptions = async () => {
-      try {
-        const response = await fetch(
-          config.getApiUrl(`/api/admin/products/${encodeURIComponent(modelSlug)}/data-flow`),
-          { cache: "no-store" },
-        );
-        if (!response.ok) {
-          if (!isCancelled) setHasLoadedDataFlowOptions(true);
-          return;
-        }
-
-        const payload = (await response.json()) as { data?: { pipelines?: GroupedPipelineData[] } };
-        if (!isCancelled) {
-          setDataFlowSnapshots(Array.isArray(payload.data?.pipelines) ? payload.data.pipelines : []);
-          setHasLoadedDataFlowOptions(true);
-        }
-      } catch {
-        if (!isCancelled) {
-          setDataFlowSnapshots([]);
-          setHasLoadedDataFlowOptions(true);
-        }
-      }
-    };
-
-    loadDataFlowOptions();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [isDataFlowPage, modelSlug]);
+  const { pipelines: dataFlowSnapshots, loading: isDataFlowLoading } = useDataFlowPipelines(
+    isDataFlowPage ? modelSlug : undefined,
+  );
 
   const turns = useMemo(() => {
     const turnsFromKafka = Array.from(
@@ -111,6 +77,10 @@ export default function ProductTabs({
   }, [dataFlowSnapshots, modelTurns]);
 
   const dayTurnOptions = useMemo(() => {
+    if (isDataFlowLoading && dataFlowSnapshots.length === 0) {
+      return [];
+    }
+
     const days = (() => {
       const datesFromKafka = Array.from(
         new Set(dataFlowSnapshots.map((snapshot) => snapshot.date).filter(Boolean)),
@@ -118,10 +88,6 @@ export default function ProductTabs({
 
       if (datesFromKafka.length > 0) {
         return datesFromKafka.slice(0, 4);
-      }
-
-      if (isDataFlowPage && !hasLoadedDataFlowOptions) {
-        return [];
       }
 
       return getLastFourDaysIso();
@@ -139,7 +105,7 @@ export default function ProductTabs({
     }
 
     return options;
-  }, [dataFlowSnapshots, hasLoadedDataFlowOptions, isDataFlowPage, turns]);
+  }, [dataFlowSnapshots, isDataFlowLoading, isDataFlowPage, turns]);
 
   const selectedDate = searchParams.get("date");
   const selectedTurn = searchParams.get("turn");
@@ -181,19 +147,12 @@ export default function ProductTabs({
     ? selectedValue
     : dayTurnOptions[0]?.value;
 
-  const selectedStatusLabel = useMemo(() => {
-    if (!isDataFlowPage || !selectValue) return null;
+  const selectedSnapshot = useMemo(
+    () => (isDataFlowPage ? selectDataFlowSnapshotFromPipelines(dataFlowSnapshots, selectedDate, selectedTurn) : null),
+    [dataFlowSnapshots, isDataFlowPage, selectedDate, selectedTurn],
+  );
 
-    const [date, turn] = selectValue.split("|");
-    if (!date || !turn) return null;
-
-    const target = dataFlowSnapshots.find(
-      (snapshot) => snapshot.date === date && snapshot.turn === turn,
-    );
-    if (!target) return null;
-
-    return `${getStatusLabel(target.status)}`;
-  }, [dataFlowSnapshots, isDataFlowPage, selectValue]);
+  const selectedStatus = selectedSnapshot ? getStatusLabel(selectedSnapshot.status) : null;
 
   return (
     <div className="flex w-full items-center justify-between gap-3">
@@ -213,11 +172,11 @@ export default function ProductTabs({
 
       {isDataFlowPage && (
         <div className="flex items-center gap-4">
-          {selectedStatusLabel && (
-            <div className="text-base text-right text-zinc-700 dark:text-zinc-200 min-w-32">
-              {selectedStatusLabel}
-            </div>
-          )}
+          {selectedStatus ? (
+            <span className="rounded-md bg-blue-100 px-2 py-1 text-sm font-semibold uppercase text-blue-700 dark:bg-blue-950 dark:text-blue-200">
+              {selectedStatus}
+            </span>
+          ) : null}
 
           <div className="w-full max-w-sm min-w-60">
             <Select
@@ -235,6 +194,8 @@ export default function ProductTabs({
 
                 router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
               }}
+              buttonClassName="h-10 pl-3 pr-10"
+              noTruncate
             />
           </div>
         </div>

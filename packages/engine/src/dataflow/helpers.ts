@@ -33,6 +33,26 @@ export function normalizeModelKey(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+export function normalizeDataFlowReferenceKey(value: string): string {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+
+  const cleanedPath = text.replace(/^\/+|\/+$/g, "");
+  if (cleanedPath.includes("/")) {
+    const segments = cleanedPath.split("/").filter(Boolean);
+    if (segments.length > 1) {
+      return normalizeDataFlowReferenceKey(segments.slice(1).join("_"));
+    }
+    return normalizeDataFlowReferenceKey(segments[0] ?? "");
+  }
+
+  return cleanedPath
+    .replace(/_\d{4}-\d{2}-\d{2}$/, "")
+    .replace(/[^a-zA-Z0-9_]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 export function normalizeProductStatus(
   primary?: string | null,
   fallback?: string | null,

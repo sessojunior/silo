@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CPTEC / INPE - AMS Workstation</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            /* Cores dark mais claras e com melhor contraste (escala Slate do Tailwind) */
+            darkbg: '#0f172a', /* slate-900 */
+            darkmap: '#1e293b', /* slate-800 */
+            darkglass: 'rgba(30, 41, 59, 0.90)', /* slate-800 com leve transparência */
+            lightglass: 'rgba(255, 255, 255, 0.90)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      font-family: "Inter", sans-serif;
+    }
+
+    body {
+      overflow: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Scrollbars */
+    .panel-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .panel-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .panel-scroll::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.3);
+      border-radius: 4px;
+    }
+
+    /* Grid for placeholders */
+    .bg-grid-pattern {
+      background-image: 
+        linear-gradient(to right, rgba(156, 163, 175, 0.15) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(156, 163, 175, 0.15) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      pointer-events: all;
+      width: 16px;
+      height: 16px;
+      -webkit-appearance: none;
+      background: #ffffff;
+      border: 2px solid #0ea5e9;
+      border-radius: 9999px;
+      box-shadow: 0 4px 8px rgba(15, 23, 42, 0.20);
+      cursor: pointer;
+    }
+
+    /* Color Scale Gradient */
+    .scale-gradient {
+      background: linear-gradient(to bottom, #ffc0cb 0%, #a855f7 10%, #22c55e 65%, #eab308 80%, #f97316 90%, #f97316 100%);
+    }
+    
+    .ensemble-gradient {
+      background: linear-gradient(to right, #0ea5e9, #2dd4bf, #facc15, #f97316, #ec4899);
+    }
+    .ui-select-shell {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .ui-select-control {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      min-width: 0;
+      height: 2rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      background: rgba(241, 245, 249, 0.9);
+      padding: 0 2rem 0 0.75rem;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: -0.01em;
+      color: #334155;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+      transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+    }
+
+    .ui-select-control:hover {
+      background: rgba(226, 232, 240, 0.95);
+    }
+
+    .ui-select-control:focus {
+      outline: none;
+      border-color: rgba(14, 165, 233, 0.55);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.16);
+    }
+
+    .ui-select-control option {
+      color: #0f172a;
+    }
+
+    .ui-select-control--compact {
+      font-size: 12px;
+      padding-right: 1.9rem;
+    }
+
+    .ui-select-caret {
+      pointer-events: none;
+      position: absolute;
+      right: 0.65rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(100, 116, 139, 0.92);
+    }
+
+    .dark .ui-select-control {
+      background: rgba(15, 23, 42, 0.42);
+      border-color: rgba(148, 163, 184, 0.24);
+      color: #e2e8f0;
+    }
+
+    .dark .ui-select-control:hover {
+      background: rgba(30, 41, 59, 0.88);
+    }
+
+    .dark .ui-select-control option {
+      color: #0f172a;
+    }
+
+    .dark .ui-select-caret {
+      color: rgba(226, 232, 240, 0.72);
+    }
+
+    .transport-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .transport-button,
+    .transport-play-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      background: transparent;
+      color: #475569;
+      box-shadow: none;
+      border-radius: 9999px;
+      transition: color 0.2s ease;
+    }
+
+    .transport-button {
+      width: 2rem;
+      height: 2rem;
+    }
+
+    .transport-button:hover {
+      color: #0f172a;
+    }
+
+    .transport-play-button {
+      width: 2.75rem;
+      height: 2.75rem;
+      color: #0284c7;
+    }
+
+    .transport-play-button:hover {
+      color: #0369a1;
+    }
+
+    .dark .transport-button {
+      color: #cbd5e1;
+    }
+
+    .dark .transport-button:hover {
+      color: #f8fafc;
+    }
+
+    .dark .transport-play-button {
+      color: #7dd3fc;
+    }
+
+    .dark .transport-play-button:hover {
+      color: #e0f2fe;
+    }
+
+    .transport-play-icon {
+      width: 1.75rem;
+      height: 1.75rem;
+    }
+
+    #weather-map {
+      background: #061627;
+    }
+
+    .leaflet-container {
+      font-family: "Inter", sans-serif;
+      background: #061627;
+    }
+
+    .leaflet-control-attribution {
+      display: none;
+    }
+
+    #weather-map .leaflet-pane,
+    #weather-map .leaflet-tile,
+    #weather-map .leaflet-marker-icon,
+    #weather-map .leaflet-marker-shadow,
+    #weather-map .leaflet-tile-container,
+    #weather-map .leaflet-pane > svg,
+    #weather-map .leaflet-pane > canvas,
+    #weather-map .leaflet-zoom-box,
+    #weather-map .leaflet-image-layer,
+    #weather-map .leaflet-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    #weather-map .leaflet-map-pane,
+    #weather-map .leaflet-tile-pane,
+    #weather-map .leaflet-overlay-pane,
+    #weather-map .leaflet-shadow-pane,
+    #weather-map .leaflet-marker-pane,
+    #weather-map .leaflet-tooltip-pane,
+    #weather-map .leaflet-popup-pane {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #weather-map .leaflet-tile {
+      border: 0;
+      filter: saturate(1.12) contrast(1.05);
+      max-width: none !important;
+    }
+
+    .chart-panel {
+      background: transparent;
+      border: 0;
+      border-radius: 0.75rem;
+    }
+
+    .chart-canvas {
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .map-zoom-button,
+    .map-segment-button,
+    .map-icon-button,
+    .map-tool-button,
+    .map-measure-segment,
+    .map-metric {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      color: #334155;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+      backdrop-filter: blur(12px);
+    }
+
+    .dark .map-zoom-button,
+    .dark .map-segment-button,
+    .dark .map-icon-button,
+    .dark .map-tool-button,
+    .dark .map-measure-segment,
+    .dark .map-metric {
+      background: rgba(10, 21, 31, 0.92);
+      border-color: rgba(148, 163, 184, 0.28);
+      color: #f8fafc;
+      box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
+    }
+
+    .map-zoom-stack {
+      display: flex;
+      width: 2.625rem;
+      flex-direction: column;
+      gap: 0.35rem;
+      overflow: visible;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .map-zoom-button,
+    .map-segment-button,
+    .map-icon-button,
+    .map-tool-button {
+      display: flex;
+      height: 2.625rem;
+      width: 2.625rem;
+      align-items: center;
+      justify-content: center;
+      color: inherit;
+      transition: background-color 0.2s ease;
+      border-radius: 0.5rem;
+    }
+
+    .map-zoom-button:hover,
+    .map-segment-button:hover,
+    .map-icon-button:hover,
+    .map-tool-button:hover,
+    .map-measure-segment:hover {
+      background: rgba(226, 232, 240, 0.95);
+    }
+
+    .dark .map-zoom-button:hover,
+    .dark .map-segment-button:hover,
+    .dark .map-icon-button:hover,
+    .dark .map-tool-button:hover,
+    .dark .map-measure-segment:hover {
+      background: rgba(30, 48, 64, 0.86);
+    }
+
+    .map-divider {
+      height: 1px;
+      width: 100%;
+      background: rgba(148, 163, 184, 0.18);
+    }
+
+    .dark .map-divider {
+      background: rgba(148, 163, 184, 0.28);
+    }
+
+    .map-segmented-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      overflow: visible;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    .map-measure-segment {
+      display: flex;
+      height: 2.625rem;
+      align-items: center;
+      padding: 0 1rem;
+      color: inherit;
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      transition: background-color 0.2s ease;
+      border-radius: 0.5rem;
+    }
+
+    .map-icon-button {
+      border-radius: 0.5rem;
+    }
+
+    .map-floating-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.55rem;
+    }
+
+    .map-tool-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.45rem;
+    }
+
+    .map-metric {
+      display: inline-flex;
+      align-self: flex-end;
+      min-height: 2.25rem;
+      align-items: center;
+      border-radius: 0.5rem;
+      padding: 0 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      line-height: 1;
+      text-align: right;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+      white-space: nowrap;
+      width: fit-content;
+    }
+  </style>
+</head>
+
+<body class="flex h-screen w-screen bg-slate-50 text-slate-800 dark:bg-darkbg dark:text-slate-200 antialiased selection:bg-sky-500/30">
+
+  <aside class="z-50 flex h-full w-14 flex-col items-center border-r border-slate-200 bg-lightglass dark:border-slate-700 dark:bg-darkglass backdrop-blur-md shrink-0 transition-colors duration-300">
+    <div class="flex h-16 w-full items-center justify-center border-b border-slate-200 dark:border-slate-700">
+      <button class="text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-white transition-colors">
+        <iconify-icon icon="mdi:menu" width="24"></iconify-icon>
+      </button>
+    </div>
+
+    <nav class="flex flex-col items-center gap-4 py-6 w-full">
+      <button class="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-100 text-sky-600 border border-sky-200 dark:bg-sky-500/20 dark:text-sky-400 dark:border-sky-500/30 shadow-sm">
+        <iconify-icon icon="mdi:layers" width="22"></iconify-icon>
+      </button>
+      <button class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200 transition-colors">
+        <iconify-icon icon="mdi:weather-partly-cloudy" width="22"></iconify-icon>
+      </button>
+      <button class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200 transition-colors">
+        <iconify-icon icon="mdi:map-marker-path" width="22"></iconify-icon>
+      </button>
+      <button class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200 transition-colors">
+        <iconify-icon icon="mdi:ruler" width="22"></iconify-icon>
+      </button>
+    </nav>
+
+    <div class="mt-auto flex flex-col items-center gap-4 py-6 w-full">
+      <button class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200 transition-colors">
+        <iconify-icon icon="mdi:flag-variant-outline" width="22"></iconify-icon>
+      </button>
+      <button class="relative flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200 transition-colors">
+        <iconify-icon icon="mdi:cog" width="22"></iconify-icon>
+        <iconify-icon icon="mdi:chevron-down" width="10" class="absolute bottom-0.5 right-0.5"></iconify-icon>
+      </button>
+    </div>
+  </aside>
+
+  <div class="relative flex h-full flex-1 flex-col overflow-hidden">
+    
+    <header class="absolute top-0 left-0 right-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-lightglass dark:border-slate-700 dark:bg-darkglass backdrop-blur-md px-6 transition-colors duration-300">
+      <div class="flex flex-col justify-center">
+        <h1 class="text-sm md:text-base font-semibold tracking-wide text-slate-800 dark:text-slate-100">
+          CPTEC/INPE - AMS WORKSTATION (v2.1)
+        </h1>
+        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+          WRF-SAMS Ensemble
+        </p>
+      </div>
+
+      <div class="flex items-center gap-4 md:gap-6">
+        <button id="theme-toggle" class="flex items-center justify-center h-9 w-9 rounded-full bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-slate-800 dark:border dark:border-slate-600 dark:text-yellow-400 dark:hover:bg-slate-700 transition-colors shadow-sm">
+          <iconify-icon id="theme-icon" icon="mdi:weather-sunny" width="20"></iconify-icon>
+        </button>
+
+        <button class="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors relative">
+          <iconify-icon icon="mdi:bell-outline" width="24"></iconify-icon>
+          <span class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-darkbg"></span>
+        </button>
+
+        <div class="flex items-center gap-2">
+          <div class="flex h-8 px-3 items-center justify-center rounded-full bg-[#004797] border border-blue-400/30 text-white font-bold text-xs shadow-inner">
+            CPTEC
+          </div>
+          <div class="flex h-8 px-2 items-center justify-center rounded-full bg-orange-600 border border-orange-400/30 text-white font-bold text-[10px] shadow-inner">
+            <iconify-icon icon="mdi:weather-hurricane" width="16" class="mr-1"></iconify-icon> OIPA
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="relative h-full w-full pt-16 bg-slate-200 dark:bg-darkmap transition-colors duration-300">
+      
+      <div id="weather-map" class="absolute inset-0 z-0"></div>
+      <div class="absolute inset-0 z-10 bg-grid-pattern opacity-15 dark:opacity-10 pointer-events-none"></div>
+
+      <div class="absolute left-4 top-20 z-30 flex w-[17rem] md:w-72 flex-col rounded-xl border border-slate-200 bg-lightglass dark:border-slate-700 dark:bg-darkglass backdrop-blur-md shadow-2xl transition-colors duration-300">
+        <div class="flex h-11 items-center justify-between border-b border-slate-200 dark:border-slate-700 px-4">
+          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Layer Manager</span>
+          <button class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+            <iconify-icon icon="mdi:close" width="18"></iconify-icon>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-4 p-4 max-h-[calc(100vh-16rem)] overflow-y-auto panel-scroll">
+          
+          <div class="flex flex-col gap-2">
+            <div class="ui-select-shell">
+              <select class="ui-select-control">
+                <option selected>Atmosfera</option>
+                <option>Umidade</option>
+                <option>Vento</option>
+                <option>Geopotencial</option>
+              </select>
+              <iconify-icon class="ui-select-caret" icon="mdi:chevron-down" width="18"></iconify-icon>
+            </div>
+            <div class="flex gap-2">
+              <div class="ui-select-shell flex-1">
+                <select class="ui-select-control">
+                  <option selected>Superfície</option>
+                  <option>Pressão</option>
+                  <option>Chuva</option>
+                  <option>SST</option>
+                </select>
+                <iconify-icon class="ui-select-caret" icon="mdi:chevron-down" width="18"></iconify-icon>
+              </div>
+              <div class="ui-select-shell w-[4.5rem] shrink-0">
+                <select class="ui-select-control ui-select-control--compact">
+                  <option selected>A4Bh</option>
+                  <option>A4Bf</option>
+                  <option>MONAN</option>
+                  <option>GFS</option>
+                </select>
+                <iconify-icon class="ui-select-caret" icon="mdi:chevron-down" width="16"></iconify-icon>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1 mt-1">
+            
+            <div class="flex h-8 items-center justify-between rounded px-2 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked class="h-3.5 w-3.5 rounded border-slate-300 bg-slate-100 text-sky-500 focus:ring-sky-500 dark:border-slate-500 dark:bg-slate-600">
+                <span class="text-[13px] text-slate-700 dark:text-slate-200">Temperature</span>
+              </label>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer" checked>
+                <div class="w-8 h-4 bg-slate-300 dark:bg-slate-600 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-sky-500 shadow-sm border dark:border-slate-500"></div>
+              </label>
+            </div>
+
+            <div class="flex h-8 items-center justify-between rounded px-2 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="h-3.5 w-3.5 rounded border-slate-300 bg-slate-100 text-sky-500 focus:ring-sky-500 dark:border-slate-500 dark:bg-slate-600">
+                <span class="text-[13px] text-slate-700 dark:text-slate-200">Temperature, Humidity</span>
+              </label>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer">
+                <div class="w-8 h-4 bg-slate-300 dark:bg-slate-600 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-sky-500 shadow-sm border dark:border-slate-500"></div>
+              </label>
+            </div>
+
+            <div class="flex h-8 items-center justify-between rounded px-2 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="h-3.5 w-3.5 rounded border-slate-300 bg-slate-100 text-sky-500 dark:border-slate-500 dark:bg-slate-600">
+                <span class="text-[13px] text-slate-700 dark:text-slate-200">Geopotential</span>
+              </label>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer" checked>
+                <div class="w-8 h-4 bg-slate-300 dark:bg-slate-600 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-400 shadow-sm border dark:border-slate-500"></div>
+              </label>
+            </div>
+
+            <div class="flex h-8 items-center justify-between rounded px-2 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="h-3.5 w-3.5 rounded border-slate-300 bg-slate-100 text-sky-500 dark:border-slate-500 dark:bg-slate-600">
+                <span class="text-[13px] text-slate-700 dark:text-slate-200">Geopotential Height</span>
+              </label>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer">
+                <div class="w-8 h-4 bg-slate-300 dark:bg-slate-600 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-400 shadow-sm border dark:border-slate-500"></div>
+              </label>
+            </div>
+
+            <div class="flex h-8 items-center justify-between rounded px-2 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked class="h-3.5 w-3.5 rounded border-slate-300 bg-slate-100 text-sky-500 dark:border-slate-500 dark:bg-slate-600">
+                <span class="text-[13px] text-slate-700 dark:text-slate-200">Humidity</span>
+              </label>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer" checked>
+                <div class="w-8 h-4 bg-slate-300 dark:bg-slate-600 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-slate-500 shadow-sm border dark:border-slate-500"></div>
+              </label>
+            </div>
+
+            <div class="flex h-8 items-center justify-between rounded px-2 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="h-3.5 w-3.5 rounded border-slate-300 bg-slate-100 text-sky-500 dark:border-slate-500 dark:bg-slate-600">
+                <span class="text-[13px] text-slate-700 dark:text-slate-200">Vorticity</span>
+              </label>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer">
+                <div class="w-8 h-4 bg-slate-300 dark:bg-slate-600 rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-slate-500 shadow-sm border dark:border-slate-500"></div>
+              </label>
+            </div>
+
+          </div>
+
+          <div class="mt-2 flex flex-col gap-2">
+            <div class="ui-select-shell">
+              <select class="ui-select-control">
+                <option selected>Atmosfera</option>
+                <option>Umidade</option>
+                <option>Temperatura</option>
+                <option>Vento</option>
+              </select>
+              <iconify-icon class="ui-select-caret" icon="mdi:chevron-down" width="18"></iconify-icon>
+            </div>
+            <div class="ui-select-shell">
+              <select class="ui-select-control">
+                <option selected>Superfície</option>
+                <option>Pressão</option>
+                <option>Precipitação</option>
+                <option>Radiação</option>
+              </select>
+              <iconify-icon class="ui-select-caret" icon="mdi:chevron-down" width="18"></iconify-icon>
+            </div>
+            <div class="ui-select-shell">
+              <select class="ui-select-control">
+                <option selected>Oceano</option>
+                <option>SST</option>
+                <option>Ondas</option>
+                <option>Correntes</option>
+              </select>
+              <iconify-icon class="ui-select-caret" icon="mdi:chevron-down" width="18"></iconify-icon>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+
+      <div class="map-zoom-stack absolute left-[20rem] top-20 z-30">
+        <button class="map-zoom-button" data-map-zoom="in">
+          <iconify-icon icon="mdi:plus" width="18"></iconify-icon>
+        </button>
+        <button class="map-zoom-button" data-map-zoom="out">
+          <iconify-icon icon="mdi:minus" width="18"></iconify-icon>
+        </button>
+        <button class="map-zoom-button" data-map-home>
+          <iconify-icon icon="mdi:crosshairs-gps" width="16"></iconify-icon>
+        </button>
+      </div>
+
+      <div class="absolute right-[25.5rem] top-20 z-30 flex items-center gap-2">
+        <div class="map-segmented-toolbar">
+          <button class="map-segment-button w-10">
+            <iconify-icon icon="mdi:magnify" width="18"></iconify-icon>
+          </button>
+          <button class="map-segment-button w-10">
+            <iconify-icon icon="mdi:crosshairs" width="16"></iconify-icon>
+          </button>
+          <button class="map-measure-segment">
+            Measurements
+          </button>
+        </div>
+        <button class="map-icon-button">
+          <iconify-icon icon="mdi:layers-outline" width="18"></iconify-icon>
+        </button>
+      </div>
+
+      <div class="absolute right-[25.5rem] top-[8.5rem] z-30 flex flex-col items-end gap-2">
+        <div class="map-floating-stack">
+          <div class="map-metric">
+            Wind: 35 kt
+          </div>
+          <div class="map-metric">
+            SST: 26°C
+          </div>
+          <div class="map-metric">
+            CAPET: 1200 J/kg
+          </div>
+        </div>
+
+        <div class="map-tool-stack">
+          <button class="map-tool-button">
+            <iconify-icon icon="mdi:compass-outline" width="18"></iconify-icon>
+          </button>
+          <button class="map-tool-button">
+            <iconify-icon icon="mdi:ruler" width="18"></iconify-icon>
+          </button>
+          <button class="map-tool-button">
+            <iconify-icon icon="mdi:magnify-plus-outline" width="18"></iconify-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="absolute right-[25.5rem] bottom-[12.5rem] z-30 flex flex-col items-center rounded-xl border border-slate-200 bg-white/90 p-2 shadow-lg dark:border-slate-600 dark:bg-darkglass backdrop-blur-md">
+        <span class="mb-1 text-[10px] font-bold text-slate-700 dark:text-slate-200 drop-shadow-md">+50</span>
+        <div class="h-44 w-3 rounded-full border border-slate-300 dark:border-white/20 scale-gradient shadow-sm"></div>
+        <span class="mt-1 text-[10px] font-bold text-slate-700 dark:text-slate-200 drop-shadow-md">255</span>
+      </div>
+
+      <div class="absolute right-[25.5rem] bottom-[7.5rem] z-30 w-48 rounded-xl border border-slate-200 bg-white/90 p-2 shadow-lg dark:border-slate-600 dark:bg-darkglass backdrop-blur-md">
+        <h4 class="mb-1.5 text-[9px] font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
+          Membros do Ensemble
+        </h4>
+        <div class="h-2 w-full rounded-full ensemble-gradient"></div>
+        <div class="mt-1 flex justify-between text-[9px] font-medium text-slate-500 dark:text-slate-400">
+          <span>0</span>
+          <span>120</span>
+          <span>300</span>
+          <span>500</span>
+          <span>700</span>
+          <span>1000</span>
+        </div>
+      </div>
+
+      <footer class="absolute bottom-4 left-[20rem] right-[25.5rem] z-30 rounded-xl border border-slate-200 bg-lightglass p-3 shadow-2xl flex flex-col dark:border-slate-700 dark:bg-darkglass backdrop-blur-md transition-colors duration-300">
+        <div class="mb-2 flex items-center justify-center">
+          <span class="text-[11px] font-medium text-slate-600 dark:text-slate-300 tracking-wide uppercase">
+            Horário da Previsão: <strong class="text-sky-600 dark:text-sky-400">12z UTC - 28 Out 2023 / +48h</strong>
+          </span>
+        </div>
+
+        <div class="flex gap-4 items-center">
+          <div class="transport-controls">
+            <button class="transport-button" data-timeline-prev aria-label="Voltar">
+              <iconify-icon icon="mdi:skip-previous" width="18"></iconify-icon>
+            </button>
+            <button class="transport-play-button" data-timeline-play aria-label="Reproduzir animação" aria-pressed="false">
+              <iconify-icon class="transport-play-icon" data-timeline-play-icon icon="mdi:play" width="28"></iconify-icon>
+            </button>
+            <button class="transport-button" data-timeline-next aria-label="Avançar">
+              <iconify-icon icon="mdi:skip-next" width="18"></iconify-icon>
+            </button>
+          </div>
+
+          <div class="flex-1 flex flex-col pt-[2px]" data-timeline-slider>
+            <div class="relative h-4 w-full flex items-center">
+              <input type="range" min="0" max="100" value="25" class="absolute inset-0 w-full z-20 opacity-0 cursor-pointer" data-timeline-input>
+              <div class="w-full h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full relative">
+                <div class="absolute left-0 top-0 h-full rounded-full bg-sky-500" style="width: 25%;" data-timeline-fill></div>
+                <div class="absolute top-1/2 -mt-2 h-4 w-4 rounded-full border-2 border-sky-500 bg-white shadow-sm dark:border-sky-400" style="left: 25%; transform: translateX(-50%);" data-timeline-thumb></div>
+              </div>
+            </div>
+
+            <div class="mt-1 flex w-full justify-between items-start text-[9px] font-medium text-slate-500 dark:text-slate-400">
+              <div class="flex flex-col items-center"><div class="h-3 w-[1.5px] bg-slate-400 dark:bg-slate-500 mb-0.5"></div><span class="leading-none">12z</span></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+
+              <div class="flex flex-col items-center"><div class="h-3 w-[1.5px] bg-slate-400 dark:bg-slate-500 mb-0.5"></div><span class="leading-none">15z</span></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+
+              <div class="flex flex-col items-center"><div class="h-3 w-[1.5px] bg-slate-400 dark:bg-slate-500 mb-0.5"></div><span class="leading-none">18z</span></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+
+              <div class="flex flex-col items-center"><div class="h-3 w-[1.5px] bg-slate-400 dark:bg-slate-500 mb-0.5"></div><span class="leading-none">21z</span></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+
+              <div class="flex flex-col items-center"><div class="h-3 w-[1.5px] bg-slate-400 dark:bg-slate-500 mb-0.5"></div><span class="leading-none">00z</span></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+
+              <div class="flex flex-col items-center"><div class="h-3 w-[1.5px] bg-slate-400 dark:bg-slate-500 mb-0.5"></div><span class="leading-none">03z</span></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+
+              <div class="flex flex-col items-center"><div class="h-3 w-[1.5px] bg-slate-400 dark:bg-slate-500 mb-0.5"></div><span class="leading-none">06z</span></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+              <div class="flex flex-col items-center"><div class="h-2 w-[1.5px] bg-slate-400 dark:bg-slate-500"></div></div>
+
+              <div class="flex flex-col items-center"><div class="h-3 w-[1.5px] bg-slate-400 dark:bg-slate-500 mb-0.5"></div><span class="leading-none">09z</span></div>
+            </div>
+          </div>
+
+          <div class="flex items-center shrink-0">
+            <button class="transport-button" aria-label="Maximizar">
+              <iconify-icon icon="solar:maximize-bold" width="16"></iconify-icon>
+            </button>
+          </div>
+        </div>
+      </footer>
+
+      <aside class="absolute bottom-4 right-4 top-20 z-30 flex w-[24rem] flex-col rounded-xl border border-slate-200 bg-lightglass shadow-2xl overflow-hidden dark:border-slate-700 dark:bg-darkglass backdrop-blur-md transition-colors duration-300">
+        
+        <div class="flex flex-col border-b border-slate-200 dark:border-slate-700 p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-xs font-bold tracking-wide text-slate-700 dark:text-slate-200 uppercase">
+              Sondagem SKEW-T Log-P
+            </h3>
+            <button class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+              <iconify-icon icon="mdi:dots-vertical" width="18"></iconify-icon>
+            </button>
+          </div>
+          
+          <div class="chart-panel relative h-72 w-full overflow-hidden rounded-xl transition-colors duration-300">
+            <div id="skew-chart" class="chart-canvas h-full w-full"></div>
+          </div>
+        </div>
+
+        <div class="flex flex-1 flex-col p-4 overflow-y-auto panel-scroll">
+          
+          <div class="mb-3 flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold tracking-wide text-slate-700 dark:text-slate-200 uppercase">
+                Meteograma Interativo
+              </h3>
+              <button class="flex h-6 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 text-slate-500 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700/50 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">
+                <iconify-icon icon="mdi:cog" width="14"></iconify-icon>
+                <iconify-icon icon="mdi:chevron-down" width="12"></iconify-icon>
+              </button>
+            </div>
+            
+            <div class="flex items-center justify-between">
+              <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Curitiba, Paraná</p>
+              <div class="ui-select-shell w-[7.25rem]">
+                <select class="ui-select-control ui-select-control--compact">
+                  <option selected>Next 5 dias</option>
+                  <option>Next 3 dias</option>
+                  <option>Next 7 dias</option>
+                  <option>Next 10 dias</option>
+                </select>
+                <iconify-icon class="ui-select-caret" icon="mdi:chevron-down" width="16"></iconify-icon>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-panel relative flex-1 w-full min-h-[360px] overflow-hidden rounded-xl transition-colors duration-300">
+            <div id="meteogram-chart" class="chart-canvas h-full min-h-[360px] w-full"></div>
+          </div>
+
+        </div>
+      </aside>
+
+    </main>
+  </div>
+
+  <script>
+    const htmlEl = document.documentElement;
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    let weatherMap;
+    let activeTileLayer;
+    const chartRegistry = [];
+
+    const isDarkMode = () => htmlEl.classList.contains('dark');
+
+    const timelineState = {
+      timer: null,
+      playing: false
+    };
+
+    const chartTheme = () => ({
+      background: isDarkMode() ? '#0b1620' : '#f8fafc',
+      panel: 'transparent',
+      text: isDarkMode() ? '#e5edf6' : '#1e293b',
+      muted: isDarkMode() ? '#94a3b8' : '#64748b',
+      grid: isDarkMode() ? 'rgba(148, 163, 184, 0.32)' : 'rgba(100, 116, 139, 0.26)',
+      gridStrong: isDarkMode() ? 'rgba(226, 232, 240, 0.72)' : 'rgba(51, 65, 85, 0.38)',
+      bandA: isDarkMode() ? 'rgba(148, 163, 184, 0.09)' : 'rgba(15, 23, 42, 0.05)',
+      bandB: isDarkMode() ? 'rgba(15, 23, 42, 0.01)' : 'rgba(255, 255, 255, 0.65)'
+    });
+
+    const makeChart = (id) => {
+      const element = document.getElementById(id);
+      if (!element || !window.echarts) return null;
+
+      const chart = echarts.init(element, null, { renderer: 'canvas' });
+      chartRegistry.push(chart);
+      return chart;
+    };
+
+    const initMap = () => {
+      const mapElement = document.getElementById('weather-map');
+      if (!mapElement || !window.L) return;
+
+      weatherMap = L.map(mapElement, {
+        zoomControl: false,
+        attributionControl: false,
+        preferCanvas: true,
+        minZoom: 3,
+        maxZoom: 8
+      }).setView([-22.7, -54.5], 4);
+
+      const addTileLayer = () => {
+        const dark = isDarkMode();
+        const url = dark
+          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+        if (activeTileLayer) {
+          weatherMap.removeLayer(activeTileLayer);
+        }
+
+        activeTileLayer = L.tileLayer(url, {
+          subdomains: 'abcd',
+          maxZoom: 19,
+          opacity: dark ? 0.92 : 0.88
+        }).addTo(weatherMap);
+      };
+
+      addTileLayer();
+      weatherMap._refreshTiles = addTileLayer;
+
+      document.querySelector('[data-map-zoom="in"]')?.addEventListener('click', () => weatherMap.zoomIn());
+      document.querySelector('[data-map-zoom="out"]')?.addEventListener('click', () => weatherMap.zoomOut());
+      document.querySelector('[data-map-home]')?.addEventListener('click', () => weatherMap.setView([-22.7, -54.5], 4));
+    };
+
+    const buildSkewOption = () => {
+      const theme = chartTheme();
+      const pressureLevels = [1000, 925, 850, 800, 750, 700, 600, 500, 400, 300, 250, 200];
+      const temperature = [[24, 1000], [20, 925], [15, 850], [11, 800], [7, 750], [2, 700], [-8, 600], [-18, 500], [-31, 400], [-45, 300], [-53, 250], [-60, 200]];
+      const dewPoint = [[20, 1000], [17, 925], [12, 850], [8, 800], [2, 750], [-4, 700], [-12, 600], [-38, 500], [-22, 400], [-52, 300], [-60, 250], [-67, 200]];
+      const parcel = [[26, 1000], [18, 900], [10, 800], [0, 700], [-12, 600], [-24, 500], [-35, 400], [-45, 300], [-55, 200]];
+
+      const diagonalFamilies = [];
+      for (let x = -120; x <= 90; x += 18) {
+        diagonalFamilies.push({
+          name: 'isoterma',
+          type: 'line',
+          data: [[x, 1000], [x + 72, 200]],
+          symbol: 'none',
+          silent: true,
+          lineStyle: { color: 'rgba(59, 130, 246, 0.34)', width: 1, type: 'dashed' }
+        });
+      }
+
+      for (let x = -95; x <= 110; x += 24) {
+        diagonalFamilies.push({
+          name: 'adiabatica',
+          type: 'line',
+          data: [[x, 1000], [x - 82, 200]],
+          symbol: 'none',
+          silent: true,
+          lineStyle: { color: 'rgba(56, 189, 248, 0.25)', width: 1 }
+        });
+      }
+
+      return {
+        backgroundColor: theme.panel,
+        animation: false,
+        grid: { left: 42, right: 46, top: 22, bottom: 26 },
+        xAxis: {
+          type: 'value',
+          min: -100,
+          max: 100,
+          interval: 20,
+          axisLine: { lineStyle: { color: theme.gridStrong } },
+          axisTick: { lineStyle: { color: theme.gridStrong } },
+          axisLabel: { color: theme.text, fontSize: 10 },
+          splitLine: { show: false }
+        },
+        yAxis: {
+          type: 'value',
+          min: 200,
+          max: 1000,
+          inverse: true,
+          interval: 100,
+          axisLine: { lineStyle: { color: theme.gridStrong } },
+          axisTick: { lineStyle: { color: theme.gridStrong } },
+          axisLabel: {
+            color: theme.text,
+            fontSize: 10,
+            formatter: (value) => pressureLevels.includes(value) ? value : ''
+          },
+          splitLine: { lineStyle: { color: theme.gridStrong, width: 1 } }
+        },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(15, 23, 42, 0.92)',
+          borderColor: 'rgba(148, 163, 184, 0.45)',
+          textStyle: { color: '#e2e8f0' },
+          valueFormatter: (value) => `${value}`
+        },
+        graphic: [
+          {
+            type: 'text',
+            right: 30,
+            top: 18,
+            style: {
+              text: 'ASB:  - 0.00%\nDSE:  - 0.03\nASS:  -1.06\nSSS:  -1.00\nCAPT: 1000 J/kg',
+              fill: theme.text,
+              font: '11px Inter',
+              lineHeight: 16,
+              textAlign: 'left'
+            }
+          },
+          {
+            type: 'text',
+            right: 6,
+            top: 38,
+            rotation: 1.5708,
+            style: {
+              text: '┐ ┘ ┐ ┘ ┐ ┘ ┐ ┘ ┐ ┘ ┐ ┘',
+              fill: '#e5e7eb',
+              font: '12px monospace'
+            }
+          },
+          {
+            type: 'text',
+            right: 70,
+            bottom: 62,
+            style: {
+              text: 'MGIs1\n-8g825\nIog865\nIGg858',
+              fill: theme.text,
+              font: '10px Inter',
+              lineHeight: 15
+            }
+          }
+        ],
+        series: [
+          ...diagonalFamilies,
+          {
+            name: 'Temperatura',
+            type: 'line',
+            data: temperature,
+            symbol: 'none',
+            lineStyle: { color: '#fb6b4b', width: 2.4 },
+            emphasis: { disabled: true }
+          },
+          {
+            name: 'Ponto de orvalho',
+            type: 'line',
+            data: dewPoint,
+            symbol: 'none',
+            lineStyle: { color: '#5ee15f', width: 2.2 },
+            emphasis: { disabled: true }
+          },
+          {
+            name: 'Parcela',
+            type: 'line',
+            data: parcel,
+            symbol: 'none',
+            lineStyle: { color: '#f59e0b', width: 1.4, type: 'dotted' },
+            emphasis: { disabled: true }
+          },
+          {
+            name: 'Dispersao',
+            type: 'scatter',
+            data: [[18, 970], [21, 930], [16, 900], [24, 880], [14, 840], [8, 760], [2, 710], [-18, 560], [12, 980], [25, 990]],
+            symbolSize: 3,
+            itemStyle: { color: 'rgba(248, 113, 113, 0.65)' },
+            silent: true
+          }
+        ]
+      };
+    };
+
+    const buildMeteogramOption = () => {
+      const theme = chartTheme();
+      const times = ['10:00\n28 Out', '14:00', '18:00', '22:00', '02:00\n29 Out', '06:00', '10:00\n30 Out', '14:00', '18:00', '22:00', '02:00\n04 Out', '06:00', '10:00', '14:00\n04 Out', '18:00', '22:00', '02:00\n05 Out', '06:00', '10:00', '14:00', '16:00\n05 Out'];
+      const pressure = [3520, 3620, 4300, 4700, 5000, 4480, 3720, 3550, 4440, 4740, 4200, 3380, 3110, 2980, 2860, 2750, 3150, 2480, 2300, 3420, 3650];
+      const temperature = [210, 225, 178, 142, 136, 168, 224, 232, 176, 126, 64, 78, 156, 232, 218, 112, 142, 190, 224, 168, 196];
+      const wind = [11, 10, 9, 7, 5, 6, 17, 32, 24, 16, 12, 14, 29, 19, 16, 15, 12, 9, 6, 5, 8];
+      const rain = [0, 0, 0, 110, 90, 1000, 270, 285, 92, 86, 70, 390, 310, 220, 68, 170, 1000, 520, 320, 120, 95];
+      const convective = [0, 0, 0, 80, 120, 0, 0, 0, 80, 95, 40, 0, 0, 0, 0, 105, 870, 420, 360, 150, 120];
+      const grayArea = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 60, 110, 160, 220, 330, 520, 310, 220];
+
+      const xAxis = [0, 1, 2, 3].map((index) => ({
+        type: 'category',
+        gridIndex: index,
+        data: times,
+        boundaryGap: false,
+        position: index === 0 ? 'top' : 'bottom',
+        axisLine: { lineStyle: { color: theme.gridStrong } },
+        axisTick: { lineStyle: { color: theme.gridStrong } },
+        axisLabel: {
+          color: theme.text,
+          fontSize: 10,
+          lineHeight: 13,
+          show: index === 0 || index === 3,
+          interval: (valueIndex) => [0, 6, 10, 13, 20].includes(valueIndex),
+          formatter: (value) => value.replace('\n', '\n')
+        },
+        splitLine: { show: true, lineStyle: { color: theme.grid, width: 1 } },
+        splitArea: { show: true, areaStyle: { color: [theme.bandA, theme.bandB] } }
+      }));
+
+      const yAxis = [
+        { name: 'Pressão', min: 2200, max: 5200, interval: 1000 },
+        { name: 'Temp.', min: 0, max: 300, interval: 100 },
+        { name: 'Wind.', min: 0, max: 35, interval: 10 },
+        { name: 'Raios.', min: 0, max: 1000, interval: 200 }
+      ].map((axis, index) => ({
+        type: 'value',
+        gridIndex: index,
+        name: axis.name,
+        min: axis.min,
+        max: axis.max,
+        interval: axis.interval,
+        nameLocation: 'middle',
+        nameGap: 38,
+        nameRotate: 90,
+        nameTextStyle: { color: theme.text, fontSize: 11, fontWeight: 600 },
+        axisLine: { lineStyle: { color: theme.gridStrong } },
+        axisTick: { lineStyle: { color: theme.gridStrong } },
+        axisLabel: { color: theme.text, fontSize: 10 },
+        splitLine: { lineStyle: { color: theme.grid, width: 1 } }
+      }));
+
+      yAxis.push({
+        type: 'value',
+        gridIndex: 1,
+        min: 20,
+        max: 60,
+        interval: 10,
+        name: 'Temp. (°C)',
+        nameLocation: 'middle',
+        nameGap: 34,
+        nameRotate: 90,
+        position: 'right',
+        nameTextStyle: { color: theme.text, fontSize: 11, fontWeight: 600 },
+        axisLine: { lineStyle: { color: theme.gridStrong } },
+        axisTick: { lineStyle: { color: theme.gridStrong } },
+        axisLabel: { color: theme.text, fontSize: 10 },
+        splitLine: { show: false }
+      });
+
+      return {
+        backgroundColor: theme.panel,
+        animation: false,
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'cross', snap: true, lineStyle: { color: '#e2e8f0', width: 1 } },
+          backgroundColor: 'rgba(15, 23, 42, 0.94)',
+          borderColor: 'rgba(148, 163, 184, 0.45)',
+          textStyle: { color: '#e2e8f0', fontSize: 11 }
+        },
+        grid: [
+          { left: 58, right: 42, top: '10%', height: '18%' },
+          { left: 58, right: 42, top: '31%', height: '18%' },
+          { left: 58, right: 42, top: '52%', height: '18%' },
+          { left: 58, right: 42, top: '73%', height: '19%' }
+        ],
+        xAxis,
+        yAxis,
+        series: [
+          {
+            name: 'Pressão',
+            type: 'line',
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            data: pressure,
+            smooth: 0.35,
+            symbol: 'none',
+            lineStyle: { color: '#38bdf8', width: 2.5 },
+            areaStyle: { color: 'rgba(56, 189, 248, 0.08)' }
+          },
+          {
+            name: 'Temperatura',
+            type: 'line',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: temperature,
+            smooth: 0.3,
+            symbol: 'none',
+            lineStyle: { color: '#fb923c', width: 2.4 }
+          },
+          {
+            name: 'Vento',
+            type: 'line',
+            xAxisIndex: 2,
+            yAxisIndex: 2,
+            data: wind,
+            smooth: 0.35,
+            symbol: 'none',
+            lineStyle: { color: '#57db5c', width: 2.4 },
+            areaStyle: { color: 'rgba(34, 197, 94, 0.08)' }
+          },
+          {
+            name: 'Precipitação',
+            type: 'bar',
+            xAxisIndex: 3,
+            yAxisIndex: 3,
+            data: rain,
+            barWidth: '42%',
+            itemStyle: {
+              color: (params) => params.value > 380 ? '#22d3ee' : '#38bdf8'
+            }
+          },
+          {
+            name: 'Raios',
+            type: 'bar',
+            xAxisIndex: 3,
+            yAxisIndex: 3,
+            data: convective,
+            barWidth: '28%',
+            barGap: '-70%',
+            itemStyle: { color: '#34d399' }
+          },
+          {
+            name: 'Envelope',
+            type: 'line',
+            xAxisIndex: 3,
+            yAxisIndex: 3,
+            data: grayArea,
+            smooth: 0.35,
+            symbol: 'none',
+            lineStyle: { color: 'rgba(203, 213, 225, 0.0)', width: 0 },
+            areaStyle: { color: 'rgba(203, 213, 225, 0.52)' },
+            silent: true
+          }
+        ]
+      };
+    };
+
+    const renderCharts = () => {
+      const skewChart = chartRegistry.find((chart) => chart.getDom().id === 'skew-chart') || makeChart('skew-chart');
+      const meteogramChart = chartRegistry.find((chart) => chart.getDom().id === 'meteogram-chart') || makeChart('meteogram-chart');
+
+      skewChart?.setOption(buildSkewOption(), true);
+      meteogramChart?.setOption(buildMeteogramOption(), true);
+    };
+
+    const syncTimeline = () => {
+      const timelineSlider = document.querySelector('[data-timeline-slider]');
+      if (!timelineSlider) return;
+
+      const timelineInput = timelineSlider.querySelector('[data-timeline-input]');
+      const timelineFill = timelineSlider.querySelector('[data-timeline-fill]');
+      const timelineThumb = timelineSlider.querySelector('[data-timeline-thumb]');
+      const playButton = document.querySelector('[data-timeline-play]');
+      const playIcon = document.querySelector('[data-timeline-play-icon]');
+      const previousButton = document.querySelector('[data-timeline-prev]');
+      const nextButton = document.querySelector('[data-timeline-next]');
+
+      const clampTimelineValue = (value) => {
+        const min = Number(timelineInput.min || 0);
+        const max = Number(timelineInput.max || 100);
+        return Math.max(min, Math.min(max, value));
+      };
+
+      const updateTimeline = () => {
+        const min = Number(timelineInput.min || 0);
+        const max = Number(timelineInput.max || 100);
+        const value = Number(timelineInput.value || 0);
+        const percent = ((value - min) / (max - min)) * 100;
+
+        timelineFill.style.width = `${percent}%`;
+        timelineThumb.style.left = `${percent}%`;
+      };
+
+      const setPlayState = (playing) => {
+        timelineState.playing = playing;
+
+        if (playButton) {
+          playButton.setAttribute('aria-pressed', String(playing));
+        }
+
+        if (playIcon) {
+          playIcon.setAttribute('icon', playing ? 'mdi:pause' : 'mdi:play');
+          playIcon.setAttribute('width', playing ? '26' : '28');
+        }
+      };
+
+      const stopPlayback = () => {
+        if (timelineState.timer) {
+          clearInterval(timelineState.timer);
+          timelineState.timer = null;
+        }
+
+        setPlayState(false);
+      };
+
+      const setTimelineValue = (value) => {
+        timelineInput.value = String(clampTimelineValue(value));
+        updateTimeline();
+      };
+
+      const stepTimeline = (delta) => {
+        stopPlayback();
+        setTimelineValue(Number(timelineInput.value || 0) + delta);
+      };
+
+      const startPlayback = () => {
+        stopPlayback();
+        setPlayState(true);
+
+        timelineState.timer = setInterval(() => {
+          const min = Number(timelineInput.min || 0);
+          const max = Number(timelineInput.max || 100);
+          const nextValue = Number(timelineInput.value || 0) + 1;
+
+          if (nextValue > max) {
+            setTimelineValue(min);
+            stopPlayback();
+            return;
+          }
+
+          timelineInput.value = String(nextValue);
+          updateTimeline();
+        }, 450);
+      };
+
+      timelineInput.addEventListener('input', () => {
+        stopPlayback();
+        updateTimeline();
+      });
+      previousButton?.addEventListener('click', () => stepTimeline(-5));
+      nextButton?.addEventListener('click', () => stepTimeline(5));
+      playButton?.addEventListener('click', () => {
+        if (timelineState.playing) {
+          stopPlayback();
+          return;
+        }
+
+        startPlayback();
+      });
+
+      updateTimeline();
+      setPlayState(false);
+    };
+
+    const refreshVisuals = () => {
+      renderCharts();
+      weatherMap?._refreshTiles?.();
+      setTimeout(() => {
+        weatherMap?.invalidateSize();
+        chartRegistry.forEach((chart) => chart.resize());
+      }, 80);
+    };
+
+    themeToggleBtn.addEventListener('click', () => {
+      const dark = isDarkMode();
+
+      if (dark) {
+        htmlEl.classList.remove('dark');
+        themeIcon.setAttribute('icon', 'mdi:weather-night');
+      } else {
+        htmlEl.classList.add('dark');
+        themeIcon.setAttribute('icon', 'mdi:weather-sunny');
+      }
+
+      refreshVisuals();
+    });
+
+    window.addEventListener('resize', () => {
+      weatherMap?.invalidateSize();
+      chartRegistry.forEach((chart) => chart.resize());
+    });
+
+    initMap();
+    syncTimeline();
+    renderCharts();
+    setTimeout(() => {
+      weatherMap?.invalidateSize();
+      chartRegistry.forEach((chart) => chart.resize());
+    }, 120);
+  </script>
+</body>
+</html>

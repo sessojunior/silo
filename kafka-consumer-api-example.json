@@ -1,8 +1,8 @@
 {
   "kind": "suite",
   "name": "SMNA_PRE_OPER",
-  "date": "2026-05-13",
-  "turn": "PRE_OPER",
+  "date": "2026-05-15",
+  "turn": "06",
   "node_state": "queued",
   "default_state": "queued",
   "attributes": [],
@@ -10,7 +10,7 @@
   "triggerExpression": null,
   "groups": [
     {
-      "id": "SMNA_2026-05-13",
+      "id": "SMNA_2026-05-15",
       "kind": "family",
       "name": "SMNA",
       "status": "queued",
@@ -24,7 +24,7 @@
       "triggerExpression": null,
       "tasks": [
         {
-          "id": "SMNA_control_2026-05-13",
+          "id": "SMNA_control_2026-05-15",
           "kind": "task",
           "name": "control",
           "state": "queued",
@@ -44,7 +44,7 @@
       ],
       "groups": [
         {
-          "id": "SMNA_startup_2026-05-13",
+          "id": "SMNA_startup_2026-05-15",
           "kind": "family",
           "name": "startup",
           "status": "complete",
@@ -58,7 +58,7 @@
           "triggerExpression": null,
           "tasks": [
             {
-              "id": "SMNA_startup_bootstrap_2026-05-13",
+              "id": "SMNA_startup_bootstrap_2026-05-15",
               "kind": "task",
               "name": "bootstrap",
               "state": "complete",
@@ -76,7 +76,7 @@
               "progress": 100
             },
             {
-              "id": "SMNA_startup_bias_correction_2026-05-13",
+              "id": "SMNA_startup_bias_correction_2026-05-15",
               "kind": "task",
               "name": "bias_correction",
               "state": "complete",
@@ -97,11 +97,9 @@
           "groups": []
         },
         {
-          "id": "SMNA_00_2026-05-13",
+          "id": "SMNA_00_2026-05-15",
           "kind": "family",
           "name": "00",
-          "date": "2026-05-13",
-          "turn": "00",
           "status": "complete",
           "plannedStartAt": null,
           "plannedEndAt": null,
@@ -116,73 +114,73 @@
           "tasks": [],
           "groups": [
             {
-              "id": "SMNA_00_analysis_cycle_2026-05-13",
+              "id": "SMNA_00_analysis_cycle_2026-05-15",
               "kind": "family",
               "name": "analysis_cycle",
               "status": "complete",
-              "plannedStartAt": "2026-05-13T02:49:00",
-              "plannedEndAt": "2026-05-13T02:50:00",
-              "startedAt": "2026-05-13T02:55:00",
-              "finishedAt": "2026-05-13T02:55:51",
-              "referenceDurationMinutes": 0.85,
+              "plannedStartAt": "2026-05-15T02:50:00",
+              "plannedEndAt": "2026-05-15T02:50:00",
+              "startedAt": "2026-05-15T02:55:00",
+              "finishedAt": "2026-05-15T02:55:40",
+              "referenceDurationMinutes": 0.67,
               "attributes": [],
               "dependencies": [],
               "triggerExpression": null,
               "tasks": [
                 {
-                  "id": "SMNA_00_analysis_cycle_obs_2026-05-13",
+                  "id": "SMNA_00_analysis_cycle_obs_2026-05-15",
                   "kind": "task",
                   "name": "obs",
                   "state": "complete",
                   "status": "complete",
-                  "plannedStartAt": "2026-05-13T12:31:00",
-                  "plannedEndAt": "2026-05-13T12:31:00",
+                  "plannedStartAt": "2026-05-15T12:29:00",
+                  "plannedEndAt": "2026-05-15T12:29:00",
                   "attributes": [],
                   "dependencies": [],
                   "triggerExpression": null,
-                  "startedAt": "2026-05-13T02:55:00",
-                  "finishedAt": "2026-05-13T02:55:11",
+                  "startedAt": "2026-05-15T02:55:00",
+                  "finishedAt": "2026-05-15T02:55:17",
+                  "referenceDurationMinutes": 0.28,
+                  "delayMinutes": 0,
+                  "isDelayed": false,
+                  "progress": 100
+                },
+                {
+                  "id": "SMNA_00_analysis_cycle_gsi_2026-05-15",
+                  "kind": "task",
+                  "name": "gsi",
+                  "state": "complete",
+                  "status": "complete",
+                  "plannedStartAt": "2026-05-15T12:29:00",
+                  "plannedEndAt": "2026-05-15T12:29:00",
+                  "attributes": [],
+                  "dependencies": [
+                    "/SMNA_PRE_OPER/SMNA/00/analysis_cycle/obs"
+                  ],
+                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/00/analysis_cycle/obs eq complete",
+                  "startedAt": "2026-05-15T02:55:18",
+                  "finishedAt": "2026-05-15T02:55:29",
                   "referenceDurationMinutes": 0.18,
                   "delayMinutes": 0,
                   "isDelayed": false,
                   "progress": 100
                 },
                 {
-                  "id": "SMNA_00_analysis_cycle_gsi_2026-05-13",
-                  "kind": "task",
-                  "name": "gsi",
-                  "state": "complete",
-                  "status": "complete",
-                  "plannedStartAt": "2026-05-13T12:25:00",
-                  "plannedEndAt": "2026-05-13T12:25:00",
-                  "attributes": [],
-                  "dependencies": [
-                    "/SMNA_PRE_OPER/SMNA/00/analysis_cycle/obs"
-                  ],
-                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/00/analysis_cycle/obs eq complete",
-                  "startedAt": "2026-05-13T02:55:12",
-                  "finishedAt": "2026-05-13T02:55:31",
-                  "referenceDurationMinutes": 0.32,
-                  "delayMinutes": 0,
-                  "isDelayed": false,
-                  "progress": 100
-                },
-                {
-                  "id": "SMNA_00_analysis_cycle_bam_2026-05-13",
+                  "id": "SMNA_00_analysis_cycle_bam_2026-05-15",
                   "kind": "task",
                   "name": "bam",
                   "state": "complete",
                   "status": "complete",
-                  "plannedStartAt": "2026-05-13T12:26:00",
-                  "plannedEndAt": "2026-05-13T12:26:00",
+                  "plannedStartAt": "2026-05-15T12:31:00",
+                  "plannedEndAt": "2026-05-15T12:31:00",
                   "attributes": [],
                   "dependencies": [
                     "/SMNA_PRE_OPER/SMNA/00/analysis_cycle/gsi"
                   ],
                   "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/00/analysis_cycle/gsi eq complete",
-                  "startedAt": "2026-05-13T02:55:32",
-                  "finishedAt": "2026-05-13T02:55:51",
-                  "referenceDurationMinutes": 0.32,
+                  "startedAt": "2026-05-15T02:55:30",
+                  "finishedAt": "2026-05-15T02:55:40",
+                  "referenceDurationMinutes": 0.17,
                   "delayMinutes": 0,
                   "isDelayed": false,
                   "progress": 100
@@ -191,15 +189,15 @@
               "groups": []
             },
             {
-              "id": "SMNA_00_forecast_cycle_2026-05-13",
+              "id": "SMNA_00_forecast_cycle_2026-05-15",
               "kind": "family",
               "name": "forecast_cycle",
               "status": "complete",
-              "plannedStartAt": "2026-05-13T02:50:00",
-              "plannedEndAt": "2026-05-13T02:51:00",
-              "startedAt": "2026-05-13T02:55:52",
-              "finishedAt": "2026-05-13T02:56:21",
-              "referenceDurationMinutes": 0.48,
+              "plannedStartAt": "2026-05-15T02:51:00",
+              "plannedEndAt": "2026-05-15T02:51:00",
+              "startedAt": "2026-05-15T02:55:41",
+              "finishedAt": "2026-05-15T02:56:04",
+              "referenceDurationMinutes": 0.38,
               "attributes": [],
               "dependencies": [
                 "/SMNA_PRE_OPER/SMNA/00/analysis_cycle"
@@ -207,37 +205,37 @@
               "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/00/analysis_cycle eq complete",
               "tasks": [
                 {
-                  "id": "SMNA_00_forecast_cycle_forecast_2026-05-13",
+                  "id": "SMNA_00_forecast_cycle_forecast_2026-05-15",
                   "kind": "task",
                   "name": "forecast",
                   "state": "complete",
                   "status": "complete",
-                  "plannedStartAt": "2026-05-13T02:55:00",
-                  "plannedEndAt": "2026-05-13T02:55:00",
+                  "plannedStartAt": "2026-05-15T02:55:00",
+                  "plannedEndAt": "2026-05-15T02:55:00",
                   "attributes": [],
                   "dependencies": [],
                   "triggerExpression": null,
-                  "startedAt": "2026-05-13T02:55:52",
-                  "finishedAt": "2026-05-13T02:56:11",
-                  "referenceDurationMinutes": 0.32,
+                  "startedAt": "2026-05-15T02:55:41",
+                  "finishedAt": "2026-05-15T02:55:46",
+                  "referenceDurationMinutes": 0.08,
                   "delayMinutes": 0,
                   "isDelayed": false,
                   "progress": 100
                 },
                 {
-                  "id": "SMNA_00_forecast_cycle_pos_2026-05-13",
+                  "id": "SMNA_00_forecast_cycle_pos_2026-05-15",
                   "kind": "task",
                   "name": "pos",
                   "state": "complete",
                   "status": "complete",
-                  "plannedStartAt": "2026-05-13T02:55:00",
-                  "plannedEndAt": "2026-05-13T02:55:00",
+                  "plannedStartAt": "2026-05-15T02:55:00",
+                  "plannedEndAt": "2026-05-15T02:55:00",
                   "attributes": [],
                   "dependencies": [],
                   "triggerExpression": null,
-                  "startedAt": "2026-05-13T02:55:52",
-                  "finishedAt": "2026-05-13T02:56:21",
-                  "referenceDurationMinutes": 0.48,
+                  "startedAt": "2026-05-15T02:55:41",
+                  "finishedAt": "2026-05-15T02:56:04",
+                  "referenceDurationMinutes": 0.38,
                   "delayMinutes": 0,
                   "isDelayed": false,
                   "progress": 100
@@ -248,12 +246,10 @@
           ]
         },
         {
-          "id": "SMNA_06_2026-05-13",
+          "id": "SMNA_06_2026-05-15",
           "kind": "family",
           "name": "06",
-          "date": "2026-05-13",
-          "turn": "06",
-          "status": "complete",
+          "status": "queued",
           "plannedStartAt": null,
           "plannedEndAt": null,
           "startedAt": null,
@@ -269,208 +265,12 @@
           "tasks": [],
           "groups": [
             {
-              "id": "SMNA_06_analysis_cycle_2026-05-13",
-              "kind": "family",
-              "name": "analysis_cycle",
-              "status": "complete",
-              "plannedStartAt": "2026-05-13T06:11:00",
-              "plannedEndAt": "2026-05-13T06:11:00",
-              "startedAt": "2026-05-13T11:55:00",
-              "finishedAt": "2026-05-13T11:55:58",
-              "referenceDurationMinutes": 0.97,
-              "attributes": [],
-              "dependencies": [],
-              "triggerExpression": null,
-              "tasks": [
-                {
-                  "id": "SMNA_06_analysis_cycle_obs_2026-05-13",
-                  "kind": "task",
-                  "name": "obs",
-                  "state": "complete",
-                  "status": "complete",
-                  "plannedStartAt": "2026-05-13T12:31:00",
-                  "plannedEndAt": "2026-05-13T12:31:00",
-                  "attributes": [],
-                  "dependencies": [],
-                  "triggerExpression": null,
-                  "startedAt": "2026-05-13T11:55:00",
-                  "finishedAt": "2026-05-13T11:55:09",
-                  "referenceDurationMinutes": 0.15,
-                  "delayMinutes": 0,
-                  "isDelayed": false,
-                  "progress": 100
-                },
-                {
-                  "id": "SMNA_06_analysis_cycle_gsi_2026-05-13",
-                  "kind": "task",
-                  "name": "gsi",
-                  "state": "complete",
-                  "status": "complete",
-                  "plannedStartAt": "2026-05-13T12:25:00",
-                  "plannedEndAt": "2026-05-13T12:25:00",
-                  "attributes": [],
-                  "dependencies": [
-                    "/SMNA_PRE_OPER/SMNA/06/analysis_cycle/obs"
-                  ],
-                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/06/analysis_cycle/obs eq complete",
-                  "startedAt": "2026-05-13T11:55:10",
-                  "finishedAt": "2026-05-13T11:55:28",
-                  "referenceDurationMinutes": 0.3,
-                  "delayMinutes": 0,
-                  "isDelayed": false,
-                  "progress": 100
-                },
-                {
-                  "id": "SMNA_06_analysis_cycle_bam_2026-05-13",
-                  "kind": "task",
-                  "name": "bam",
-                  "state": "complete",
-                  "status": "complete",
-                  "plannedStartAt": "2026-05-13T12:26:00",
-                  "plannedEndAt": "2026-05-13T12:26:00",
-                  "attributes": [],
-                  "dependencies": [
-                    "/SMNA_PRE_OPER/SMNA/06/analysis_cycle/gsi"
-                  ],
-                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/06/analysis_cycle/gsi eq complete",
-                  "startedAt": "2026-05-13T11:55:29",
-                  "finishedAt": "2026-05-13T11:55:58",
-                  "referenceDurationMinutes": 0.48,
-                  "delayMinutes": 0,
-                  "isDelayed": false,
-                  "progress": 100
-                }
-              ],
-              "groups": []
-            }
-          ]
-        },
-        {
-          "id": "SMNA_12_2026-05-13",
-          "kind": "family",
-          "name": "12",
-          "date": "2026-05-13",
-          "turn": "12",
-          "status": "complete",
-          "plannedStartAt": null,
-          "plannedEndAt": null,
-          "startedAt": null,
-          "finishedAt": null,
-          "referenceDurationMinutes": null,
-          "attributes": [
-            "time=17:55"
-          ],
-          "dependencies": [
-            "/SMNA_PRE_OPER/SMNA/06"
-          ],
-          "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/06 == complete",
-          "tasks": [],
-          "groups": [
-            {
-              "id": "SMNA_12_analysis_cycle_2026-05-13",
-              "kind": "family",
-              "name": "analysis_cycle",
-              "status": "complete",
-              "plannedStartAt": "2026-05-13T08:41:00",
-              "plannedEndAt": "2026-05-13T08:42:00",
-              "startedAt": "2026-05-13T14:55:00",
-              "finishedAt": "2026-05-13T14:56:01",
-              "referenceDurationMinutes": 1.02,
-              "attributes": [],
-              "dependencies": [],
-              "triggerExpression": null,
-              "tasks": [
-                {
-                  "id": "SMNA_12_analysis_cycle_obs_2026-05-13",
-                  "kind": "task",
-                  "name": "obs",
-                  "state": "complete",
-                  "status": "complete",
-                  "plannedStartAt": "2026-05-13T12:31:00",
-                  "plannedEndAt": "2026-05-13T12:31:00",
-                  "attributes": [],
-                  "dependencies": [],
-                  "triggerExpression": null,
-                  "startedAt": "2026-05-13T14:55:00",
-                  "finishedAt": "2026-05-13T14:55:26",
-                  "referenceDurationMinutes": 0.43,
-                  "delayMinutes": 0,
-                  "isDelayed": false,
-                  "progress": 100
-                },
-                {
-                  "id": "SMNA_12_analysis_cycle_gsi_2026-05-13",
-                  "kind": "task",
-                  "name": "gsi",
-                  "state": "complete",
-                  "status": "complete",
-                  "plannedStartAt": "2026-05-13T12:25:00",
-                  "plannedEndAt": "2026-05-13T12:25:00",
-                  "attributes": [],
-                  "dependencies": [
-                    "/SMNA_PRE_OPER/SMNA/12/analysis_cycle/obs"
-                  ],
-                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/12/analysis_cycle/obs eq complete",
-                  "startedAt": "2026-05-13T14:55:27",
-                  "finishedAt": "2026-05-13T14:55:41",
-                  "referenceDurationMinutes": 0.23,
-                  "delayMinutes": 0,
-                  "isDelayed": false,
-                  "progress": 100
-                },
-                {
-                  "id": "SMNA_12_analysis_cycle_bam_2026-05-13",
-                  "kind": "task",
-                  "name": "bam",
-                  "state": "complete",
-                  "status": "complete",
-                  "plannedStartAt": "2026-05-13T12:26:00",
-                  "plannedEndAt": "2026-05-13T12:26:00",
-                  "attributes": [],
-                  "dependencies": [
-                    "/SMNA_PRE_OPER/SMNA/12/analysis_cycle/gsi"
-                  ],
-                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/12/analysis_cycle/gsi eq complete",
-                  "startedAt": "2026-05-13T14:55:42",
-                  "finishedAt": "2026-05-13T14:56:01",
-                  "referenceDurationMinutes": 0.32,
-                  "delayMinutes": 0,
-                  "isDelayed": false,
-                  "progress": 100
-                }
-              ],
-              "groups": []
-            }
-          ]
-        },
-        {
-          "id": "SMNA_18_2026-05-13",
-          "kind": "family",
-          "name": "18",
-          "date": "2026-05-13",
-          "turn": "18",
-          "status": "queued",
-          "plannedStartAt": null,
-          "plannedEndAt": null,
-          "startedAt": null,
-          "finishedAt": null,
-          "referenceDurationMinutes": null,
-          "attributes": [
-            "time=23:55"
-          ],
-          "dependencies": [
-            "/SMNA_PRE_OPER/SMNA/12"
-          ],
-          "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/12 == complete",
-          "tasks": [],
-          "groups": [
-            {
-              "id": "SMNA_18_analysis_cycle_2026-05-13",
+              "id": "SMNA_06_analysis_cycle_2026-05-15",
               "kind": "family",
               "name": "analysis_cycle",
               "status": "queued",
-              "plannedStartAt": "2026-05-13T09:36:00",
-              "plannedEndAt": "2026-05-13T09:37:00",
+              "plannedStartAt": "2026-05-15T06:34:00",
+              "plannedEndAt": "2026-05-15T06:34:00",
               "startedAt": null,
               "finishedAt": null,
               "referenceDurationMinutes": null,
@@ -479,7 +279,7 @@
               "triggerExpression": null,
               "tasks": [
                 {
-                  "id": "SMNA_18_analysis_cycle_obs_2026-05-13",
+                  "id": "SMNA_06_analysis_cycle_obs_2026-05-15",
                   "kind": "task",
                   "name": "obs",
                   "state": "queued",
@@ -497,7 +297,199 @@
                   "progress": 100
                 },
                 {
-                  "id": "SMNA_18_analysis_cycle_gsi_2026-05-13",
+                  "id": "SMNA_06_analysis_cycle_gsi_2026-05-15",
+                  "kind": "task",
+                  "name": "gsi",
+                  "state": "queued",
+                  "status": "queued",
+                  "plannedStartAt": null,
+                  "plannedEndAt": null,
+                  "attributes": [],
+                  "dependencies": [
+                    "/SMNA_PRE_OPER/SMNA/06/analysis_cycle/obs"
+                  ],
+                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/06/analysis_cycle/obs eq complete",
+                  "startedAt": null,
+                  "finishedAt": null,
+                  "referenceDurationMinutes": null,
+                  "delayMinutes": 0,
+                  "isDelayed": false,
+                  "progress": 100
+                },
+                {
+                  "id": "SMNA_06_analysis_cycle_bam_2026-05-15",
+                  "kind": "task",
+                  "name": "bam",
+                  "state": "queued",
+                  "status": "queued",
+                  "plannedStartAt": null,
+                  "plannedEndAt": null,
+                  "attributes": [],
+                  "dependencies": [
+                    "/SMNA_PRE_OPER/SMNA/06/analysis_cycle/gsi"
+                  ],
+                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/06/analysis_cycle/gsi eq complete",
+                  "startedAt": null,
+                  "finishedAt": null,
+                  "referenceDurationMinutes": null,
+                  "delayMinutes": 0,
+                  "isDelayed": false,
+                  "progress": 100
+                }
+              ],
+              "groups": []
+            }
+          ]
+        },
+        {
+          "id": "SMNA_12_2026-05-15",
+          "kind": "family",
+          "name": "12",
+          "status": "queued",
+          "plannedStartAt": null,
+          "plannedEndAt": null,
+          "startedAt": null,
+          "finishedAt": null,
+          "referenceDurationMinutes": null,
+          "attributes": [
+            "time=17:55"
+          ],
+          "dependencies": [
+            "/SMNA_PRE_OPER/SMNA/06"
+          ],
+          "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/06 == complete",
+          "tasks": [],
+          "groups": [
+            {
+              "id": "SMNA_12_analysis_cycle_2026-05-15",
+              "kind": "family",
+              "name": "analysis_cycle",
+              "status": "queued",
+              "plannedStartAt": "2026-05-15T09:02:00",
+              "plannedEndAt": "2026-05-15T09:02:00",
+              "startedAt": null,
+              "finishedAt": null,
+              "referenceDurationMinutes": null,
+              "attributes": [],
+              "dependencies": [],
+              "triggerExpression": null,
+              "tasks": [
+                {
+                  "id": "SMNA_12_analysis_cycle_obs_2026-05-15",
+                  "kind": "task",
+                  "name": "obs",
+                  "state": "queued",
+                  "status": "queued",
+                  "plannedStartAt": null,
+                  "plannedEndAt": null,
+                  "attributes": [],
+                  "dependencies": [],
+                  "triggerExpression": null,
+                  "startedAt": null,
+                  "finishedAt": null,
+                  "referenceDurationMinutes": null,
+                  "delayMinutes": 0,
+                  "isDelayed": false,
+                  "progress": 100
+                },
+                {
+                  "id": "SMNA_12_analysis_cycle_gsi_2026-05-15",
+                  "kind": "task",
+                  "name": "gsi",
+                  "state": "queued",
+                  "status": "queued",
+                  "plannedStartAt": null,
+                  "plannedEndAt": null,
+                  "attributes": [],
+                  "dependencies": [
+                    "/SMNA_PRE_OPER/SMNA/12/analysis_cycle/obs"
+                  ],
+                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/12/analysis_cycle/obs eq complete",
+                  "startedAt": null,
+                  "finishedAt": null,
+                  "referenceDurationMinutes": null,
+                  "delayMinutes": 0,
+                  "isDelayed": false,
+                  "progress": 100
+                },
+                {
+                  "id": "SMNA_12_analysis_cycle_bam_2026-05-15",
+                  "kind": "task",
+                  "name": "bam",
+                  "state": "queued",
+                  "status": "queued",
+                  "plannedStartAt": null,
+                  "plannedEndAt": null,
+                  "attributes": [],
+                  "dependencies": [
+                    "/SMNA_PRE_OPER/SMNA/12/analysis_cycle/gsi"
+                  ],
+                  "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/12/analysis_cycle/gsi eq complete",
+                  "startedAt": null,
+                  "finishedAt": null,
+                  "referenceDurationMinutes": null,
+                  "delayMinutes": 0,
+                  "isDelayed": false,
+                  "progress": 100
+                }
+              ],
+              "groups": []
+            }
+          ]
+        },
+        {
+          "id": "SMNA_18_2026-05-15",
+          "kind": "family",
+          "name": "18",
+          "status": "queued",
+          "plannedStartAt": null,
+          "plannedEndAt": null,
+          "startedAt": null,
+          "finishedAt": null,
+          "referenceDurationMinutes": null,
+          "attributes": [
+            "time=23:55"
+          ],
+          "dependencies": [
+            "/SMNA_PRE_OPER/SMNA/12"
+          ],
+          "triggerExpression": "trigger /SMNA_PRE_OPER/SMNA/12 == complete",
+          "tasks": [],
+          "groups": [
+            {
+              "id": "SMNA_18_analysis_cycle_2026-05-15",
+              "kind": "family",
+              "name": "analysis_cycle",
+              "status": "queued",
+              "plannedStartAt": "2026-05-15T11:01:00",
+              "plannedEndAt": "2026-05-15T11:01:00",
+              "startedAt": null,
+              "finishedAt": null,
+              "referenceDurationMinutes": null,
+              "attributes": [],
+              "dependencies": [],
+              "triggerExpression": null,
+              "tasks": [
+                {
+                  "id": "SMNA_18_analysis_cycle_obs_2026-05-15",
+                  "kind": "task",
+                  "name": "obs",
+                  "state": "queued",
+                  "status": "queued",
+                  "plannedStartAt": null,
+                  "plannedEndAt": null,
+                  "attributes": [],
+                  "dependencies": [],
+                  "triggerExpression": null,
+                  "startedAt": null,
+                  "finishedAt": null,
+                  "referenceDurationMinutes": null,
+                  "delayMinutes": 0,
+                  "isDelayed": false,
+                  "progress": 100
+                },
+                {
+                  "id": "SMNA_18_analysis_cycle_gsi_2026-05-15",
                   "kind": "task",
                   "name": "gsi",
                   "state": "queued",
@@ -517,7 +509,7 @@
                   "progress": 100
                 },
                 {
-                  "id": "SMNA_18_analysis_cycle_bam_2026-05-13",
+                  "id": "SMNA_18_analysis_cycle_bam_2026-05-15",
                   "kind": "task",
                   "name": "bam",
                   "state": "queued",

@@ -4,9 +4,11 @@ import {
   useState,
   useRef,
   useEffect,
+  useLayoutEffect,
   KeyboardEvent,
   HTMLAttributes,
 } from "react";
+import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -30,6 +32,10 @@ export interface SelectProps extends Omit<
   onClear?: () => void;
   isInvalid?: boolean;
   invalidMessage?: string;
+  /** Extra classes applied to the inner toggle button (to adjust height/padding) */
+  buttonClassName?: string;
+  /** When true, selected label won't be truncated */
+  noTruncate?: boolean;
 }
 
 export default function Select({
@@ -44,6 +50,8 @@ export default function Select({
   onChange,
   clearable = false,
   onClear,
+  buttonClassName,
+  noTruncate = false,
   ...props
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,6 +61,12 @@ export default function Select({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownRect, setDropdownRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    openUpwards: boolean;
+  } | null>(null);
 
   const filtered = options.filter((opt) =>
     opt.label.toLowerCase().includes(search.toLowerCase()),
@@ -80,14 +94,33 @@ export default function Select({
       const rect = containerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const dropdownHeight = 240; // altura aproximada: search (40px) + lista (200px)
-
       const spaceBelow = viewportHeight - rect.bottom;
       const spaceAbove = rect.top;
-
-      setOpenUpwards(
-        spaceBelow < dropdownHeight && spaceAbove > dropdownHeight,
-      );
+      const openUp = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
+      setOpenUpwards(openUp);
+      setDropdownRect({ left: rect.left + window.scrollX, top: rect.bottom + window.scrollY, width: rect.width, openUpwards: openUp });
     }
+  }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const onResize = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const dropdownHeight = 240;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const openUp = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
+      setOpenUpwards(openUp);
+      setDropdownRect({ left: rect.left + window.scrollX, top: rect.bottom + window.scrollY, width: rect.width, openUpwards: openUp });
+    };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onResize, true);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onResize, true);
+    };
   }, [isOpen]);
 
   const toggle = () => setIsOpen((prev) => !prev);
@@ -139,7 +172,7 @@ export default function Select({
         aria-expanded={isOpen}
         className={twMerge(
           clsx(
-            "relative w-full cursor-pointer rounded-lg border bg-white pl-4 py-3 text-left text-base text-zinc-700 transition focus:outline-none",
+            "relative w-full cursor-pointer rounded-lg border bg-white text-left text-base text-zinc-700 transition focus:outline-none",
             canClear ? "pr-16" : "pr-10",
             "dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-200",
             isInvalid
@@ -150,9 +183,10 @@ export default function Select({
               "border-zinc-200": !isOpen && !isInvalid,
             },
           ),
+          buttonClassName,
         )}
       >
-        <span className="block w-full truncate">
+        <span className={twMerge(noTruncate ? "block w-full" : "block w-full truncate")}>
           {hasSelection && selectedLabel ? (
             selectedLabel
           ) : (
@@ -194,74 +228,80 @@ export default function Select({
       )}
 
       {/* Dropdown */}
-      {isOpen && (
+      {isOpen && dropdownRect && createPortal(
         <div
           ref={dropdownRef}
-          className={twMerge(
-            clsx(
-              "absolute z-50 w-full max-h-80 overflow-hidden rounded-lg bg-white shadow-lg dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700",
-              openUpwards ? "bottom-full mb-1" : "top-full mt-1",
-            ),
-          )}
+          style={{
+            position: "absolute",
+            left: dropdownRect.left,
+            top: dropdownRect.openUpwards ? dropdownRect.top - 240 : dropdownRect.top,
+            width: dropdownRect.width,
+            zIndex: 100000,
+          }}
         >
-          {/* Search */}
-          <div className="px-3 py-2">
-            <input
-              type="text"
-              name="search"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setHighlight(0);
-              }}
-              className="block w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200"
-              placeholder="Buscar..."
-              autoFocus
-            />
-          </div>
+          <div className={twMerge(
+            "max-h-80 overflow-hidden rounded-lg bg-white shadow-lg dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700",
+          )}>
+            {/* Search */}
+            <div className="px-3 py-2">
+              <input
+                type="text"
+                name="search"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setHighlight(0);
+                }}
+                className="block w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200"
+                placeholder="Buscar..."
+                autoFocus
+              />
+            </div>
 
-          <ul role="listbox" className="max-h-64 overflow-y-auto pb-1">
-            {filtered.length > 0 ? (
-              filtered.map((opt, idx) => (
-                <li
-                  key={opt.value}
-                  role="option"
-                  aria-selected={selected === opt.value}
-                  onClick={() => selectOption(opt)}
-                  onMouseEnter={() => setHighlight(idx)}
-                  className={twMerge(
-                    clsx(
-                      "flex cursor-pointer items-center justify-between px-4 py-2 text-base transition group",
-                      {
-                        "bg-blue-50 dark:bg-zinc-800": idx === highlight,
-                        "opacity-50 cursor-not-allowed": opt.disabled,
-                      },
-                    ),
-                  )}
-                >
-                  <span
+            <ul role="listbox" className="max-h-64 overflow-y-auto pb-1">
+              {filtered.length > 0 ? (
+                filtered.map((opt, idx) => (
+                  <li
+                    key={opt.value}
+                    role="option"
+                    aria-selected={selected === opt.value}
+                    onClick={() => selectOption(opt)}
+                    onMouseEnter={() => setHighlight(idx)}
                     className={twMerge(
-                      clsx("transition-colors", {
-                        "group-hover:text-zinc-800 dark:group-hover:text-zinc-100":
-                          !opt.disabled,
-                        "text-zinc-900 dark:text-zinc-100": idx === highlight,
-                      }),
+                      clsx(
+                        "flex cursor-pointer items-center justify-between px-4 py-2 text-base transition group",
+                        {
+                          "bg-blue-50 dark:bg-zinc-800": idx === highlight,
+                          "opacity-50 cursor-not-allowed": opt.disabled,
+                        },
+                      ),
                     )}
                   >
-                    {opt.label}
-                  </span>
-                  {selected === opt.value && (
-                    <span className="icon-[lucide--check] size-4 text-blue-600 dark:text-blue-500" />
-                  )}
+                    <span
+                      className={twMerge(
+                        clsx("transition-colors", {
+                          "group-hover:text-zinc-800 dark:group-hover:text-zinc-100":
+                            !opt.disabled,
+                          "text-zinc-900 dark:text-zinc-100": idx === highlight,
+                        }),
+                      )}
+                    >
+                      {opt.label}
+                    </span>
+                    {selected === opt.value && (
+                      <span className="icon-[lucide--check] size-4 text-blue-600 dark:text-blue-500" />
+                    )}
+                  </li>
+                ))
+              ) : (
+                <li className="px-4 py-2 text-base text-zinc-500">
+                  Nenhuma opção
                 </li>
-              ))
-            ) : (
-              <li className="px-4 py-2 text-base text-zinc-500">
-                Nenhuma opção
-              </li>
-            )}
-          </ul>
-        </div>
+              )}
+            </ul>
+          </div>
+        </div>,
+        document.body,
       )}
 
       {/* Input hidden para formulário */}

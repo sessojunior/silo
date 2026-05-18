@@ -1677,10 +1677,34 @@ async function main() {
           `${productPath}/data-flow`,
           "desktop-product-data-flow",
           async (page) => {
-            await expect(page.locator(".data-flow-gantt-shell")).toBeVisible({ timeout: 15000 });
-            await expect(page.getByText("Nome")).toBeVisible({ timeout: 15000 });
-            await expect(page.getByText("Inicio")).toBeVisible({ timeout: 15000 });
-            await expect(page.getByText("Fim")).toBeVisible({ timeout: 15000 });
+            const kpis = page.locator('[data-testid="pert-kpis"]');
+            const sidebarScroll = page.locator('[data-testid="pert-side-panel-scroll"]');
+
+            await expect(kpis).toBeVisible({ timeout: 15000 });
+            await expect(page.locator('[data-testid="pert-flow-canvas"]')).toBeVisible({ timeout: 15000 });
+            await expect(page.getByText("Autoatualizar", { exact: true })).toBeVisible({ timeout: 15000 });
+            await expect(page.getByText("Rodada", { exact: true })).toBeVisible({ timeout: 15000 });
+            await expect(page.getByText("Início", { exact: true })).toBeVisible({ timeout: 15000 });
+            await expect(page.getByText("Previsto término", { exact: true })).toBeVisible({ timeout: 15000 });
+            await expect(page.getByText("Término atual", { exact: true })).toBeVisible({ timeout: 15000 });
+            await expect(page.getByText("Atualizado", { exact: true })).toBeVisible({ timeout: 15000 });
+            await expect(page.getByRole("heading", { name: /ECFLOW — RODADA/i })).toHaveCount(0);
+            await expect(page.getByText("Saúde da rodada", { exact: false })).toBeVisible({ timeout: 15000 });
+
+            const firstDependencyBadge = page.locator('[data-testid="pert-flow-canvas"] span[title*="Dependência"]').first();
+            await expect(firstDependencyBadge).toBeVisible({ timeout: 15000 });
+            await firstDependencyBadge.hover({ timeout: 15000 });
+            await expect(page.getByText(/Fluxo da dependência|Fluxo do gatilho|Fluxo da dependência e do gatilho/)).toBeVisible({ timeout: 15000 });
+
+            const sidebarMetrics = await sidebarScroll.evaluate((element) => ({
+              scrollHeight: element.scrollHeight,
+              clientHeight: element.clientHeight,
+              overflowY: getComputedStyle(element).overflowY,
+            }));
+
+            assert.ok(sidebarMetrics.clientHeight > 0, "Sidebar height should be bounded");
+            assert.ok(sidebarMetrics.scrollHeight > sidebarMetrics.clientHeight, "Sidebar should scroll independently");
+            assert.ok(sidebarMetrics.overflowY === "auto" || sidebarMetrics.overflowY === "scroll");
           },
         );
       }

@@ -34,7 +34,7 @@ export default function ProjectProgressCard({
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
-    <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
+    <div>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
           Progresso Geral
