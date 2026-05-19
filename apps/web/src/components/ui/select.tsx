@@ -172,7 +172,7 @@ export default function Select({
         aria-expanded={isOpen}
         className={twMerge(
           clsx(
-            "relative w-full cursor-pointer rounded-lg border bg-white text-left text-base text-zinc-700 transition focus:outline-none",
+            "relative w-full cursor-pointer rounded-lg border bg-white text-left text-base text-zinc-700 transition focus:outline-none px-4 py-3",
             canClear ? "pr-16" : "pr-10",
             "dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-200",
             isInvalid

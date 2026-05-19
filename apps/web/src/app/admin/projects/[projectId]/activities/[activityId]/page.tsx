@@ -533,25 +533,8 @@ export default function TaskKanbanPage() {
 
   // Carregar dados ao montar o componente
   useEffect(() => {
-    if (config.isSmokeMode) {
-      setProject({ id: projectId, name: "Projeto smoke" });
-      setActivity({
-        id: activityId,
-        name: "Atividade smoke",
-        description: "Shell estável para o smoke.",
-        priority: "medium",
-        status: "todo",
-      });
-      setTasks([]);
-      setKanbanTasks([]);
-      setError(null);
-      setIsDragBlocked(false);
-      setLoading(false);
-      return;
-    }
-
     loadAllData();
-  }, [loadAllData, activityId, projectId]);
+  }, [loadAllData]);
 
   // Estados de loading e erro
   if (loading) {

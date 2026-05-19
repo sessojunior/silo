@@ -313,7 +313,7 @@ export default function Offcanvas({
         >
           {children}
         </div>
-        <div className="flex items-center border-t border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800 sm:p-6 p-4 gap-4">
+        <div className="flex items-center border-t border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800 p-4 gap-4">
           {footerContent}
         </div>
       </div>

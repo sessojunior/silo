@@ -36,15 +36,29 @@ interface ProjectDB {
 
 import { config } from "@/lib/config";
 
+type ProjectViewMode =
+  | "all"
+  | "name"
+  | "status"
+  | "active"
+  | "completed"
+  | "paused"
+  | "cancelled";
+
+const PROJECT_STATUS_ORDER: Record<Project["status"], number> = {
+  active: 0,
+  paused: 1,
+  completed: 2,
+  cancelled: 3,
+};
+
 export default function ProjectsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "active" | "completed" | "paused" | "cancelled"
-  >("all");
+  const [viewMode, setViewMode] = useState<ProjectViewMode>("all");
 
   // Estados para formulários e dialogs
   const [formOpen, setFormOpen] = useState(false);
@@ -128,13 +142,28 @@ export default function ProjectsPage() {
       );
     }
 
-    // Filtro de status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((project) => project.status === statusFilter);
+    // Ordem / filtros combinados
+    if (viewMode === "active") {
+      filtered = filtered.filter((project) => project.status === "active");
+    } else if (viewMode === "completed") {
+      filtered = filtered.filter((project) => project.status === "completed");
+    } else if (viewMode === "paused") {
+      filtered = filtered.filter((project) => project.status === "paused");
+    } else if (viewMode === "cancelled") {
+      filtered = filtered.filter((project) => project.status === "cancelled");
     }
 
-    setFilteredProjects(filtered);
-  }, [projects, search, statusFilter]);
+    const sortedProjects = [...filtered].sort((a, b) => {
+      if (viewMode === "status") {
+        const statusDiff = PROJECT_STATUS_ORDER[a.status] - PROJECT_STATUS_ORDER[b.status];
+        if (statusDiff !== 0) return statusDiff;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+
+    setFilteredProjects(sortedProjects);
+  }, [projects, search, viewMode]);
 
   function openCreateForm() {
     setEditingProject(null);
@@ -372,28 +401,21 @@ export default function ProjectsPage() {
                 <span className="icon-[lucide--search] absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 size-4" />
               </div>
 
-              {/* Filtro de Status */}
+              {/* Filtro / Ordenação */}
               <Select
-                name="statusFilter"
-                selected={statusFilter}
-                onChange={(value) =>
-                  setStatusFilter(
-                    value as
-                      | "all"
-                      | "active"
-                      | "completed"
-                      | "paused"
-                      | "cancelled",
-                  )
-                }
+                name="projectViewMode"
+                selected={viewMode}
+                onChange={(value) => setViewMode(value as ProjectViewMode)}
                 options={[
-                  { value: "all", label: "Todos os status" },
+                  { value: "all", label: "Todos os projetos" },
+                  { value: "name", label: "Ordenar por nome" },
+                  { value: "status", label: "Ordenar por status" },
                   { value: "active", label: "Apenas ativos" },
                   { value: "completed", label: "Apenas finalizados" },
                   { value: "paused", label: "Apenas pausados" },
                   { value: "cancelled", label: "Apenas cancelados" },
                 ]}
-                placeholder="Filtrar por status"
+                placeholder="Filtrar ou ordenar"
               />
             </div>
 
@@ -444,16 +466,16 @@ export default function ProjectsPage() {
               <div className="text-center py-12">
                 <span className="icon-[lucide--folder-x] size-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-4 block" />
                 <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-                  {search || statusFilter !== "all"
+                  {search || viewMode !== "all"
                     ? "Nenhum projeto encontrado"
                     : "Nenhum projeto criado ainda"}
                 </h3>
                 <p className="text-zinc-600 dark:text-zinc-400 mb-4">
-                  {search || statusFilter !== "all"
+                  {search || viewMode !== "all"
                     ? "Tente ajustar os filtros para encontrar projetos."
                     : "Comece criando seu primeiro projeto para organizar as atividades."}
                 </p>
-                {!search && statusFilter === "all" && (
+                {!search && viewMode === "all" && (
                   <Button
                     onClick={openCreateForm}
                     className="flex items-center gap-2 mx-auto"
