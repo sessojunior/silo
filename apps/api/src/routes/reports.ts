@@ -14,10 +14,19 @@ const router = Router();
 
 router.use(authMiddleware);
 
+const getQueryStringValue = (
+  value: unknown,
+): string | undefined =>
+  typeof value === "string" && value.length > 0 ? value : undefined;
+
 router.get("/availability", requirePermission("reports", "view"), async (req: Request, res) => {
   try {
+    const period = {
+      start: getQueryStringValue(req.query.start),
+      end: getQueryStringValue(req.query.end),
+    };
     const data = await getAvailabilityReport(
-      parsePeriod(req.query as Record<string, string | undefined>),
+      parsePeriod(period),
     );
     res.json({ success: true, data });
   } catch (err) {
@@ -28,9 +37,12 @@ router.get("/availability", requirePermission("reports", "view"), async (req: Re
 
 router.get("/problems", requirePermission("reports", "view"), async (req: Request, res) => {
   try {
-    const { start, end } = parsePeriod(req.query as Record<string, string | undefined>);
-    const productId = typeof req.query.productId === "string" ? req.query.productId : undefined;
-    const problemCategory = typeof req.query.problemCategory === "string" ? req.query.problemCategory : undefined;
+    const { start, end } = parsePeriod({
+      start: getQueryStringValue(req.query.start),
+      end: getQueryStringValue(req.query.end),
+    });
+    const productId = getQueryStringValue(req.query.productId);
+    const problemCategory = getQueryStringValue(req.query.problemCategory);
     const data = await getProblemsReport({ start, end }, productId, problemCategory);
     res.json({ success: true, data });
   } catch (err) {
@@ -41,9 +53,12 @@ router.get("/problems", requirePermission("reports", "view"), async (req: Reques
 
 router.get("/executive", requirePermission("reports", "view"), async (req: Request, res) => {
   try {
-    const { start, end } = parsePeriod(req.query as Record<string, string | undefined>);
-    const productId = typeof req.query.productId === "string" ? req.query.productId : undefined;
-    const groupId = typeof req.query.groupId === "string" ? req.query.groupId : undefined;
+    const { start, end } = parsePeriod({
+      start: getQueryStringValue(req.query.start),
+      end: getQueryStringValue(req.query.end),
+    });
+    const productId = getQueryStringValue(req.query.productId);
+    const groupId = getQueryStringValue(req.query.groupId);
     const data = await getExecutiveReport({ start, end }, productId, groupId);
     res.json({ success: true, data });
   } catch (err) {
@@ -54,8 +69,12 @@ router.get("/executive", requirePermission("reports", "view"), async (req: Reque
 
 router.get("/projects", requirePermission("reports", "view"), async (req: Request, res) => {
   try {
+    const period = {
+      start: getQueryStringValue(req.query.start),
+      end: getQueryStringValue(req.query.end),
+    };
     const data = await getProjectsReport(
-      parsePeriod(req.query as Record<string, string | undefined>),
+      parsePeriod(period),
     );
     res.json({ success: true, data });
   } catch (err) {

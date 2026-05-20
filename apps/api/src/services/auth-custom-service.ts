@@ -73,10 +73,22 @@ const parseAttempts = (value: string | null | undefined): number => {
 };
 
 const readSetCookieHeaders = (headers: Headers): string[] => {
-  const maybe = headers as unknown as { getSetCookie?: () => string[] };
+  const maybe = headers as { getSetCookie?: () => string[] };
   if (typeof maybe.getSetCookie === "function") return maybe.getSetCookie();
   const raw = headers.get("set-cookie");
   return raw ? [raw] : [];
+};
+
+const readJsonResponse = async <T>(response: Response, context: string): Promise<T | null> => {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("application/json")) return null;
+
+  try {
+    return (await response.clone().json()) as T;
+  } catch (error) {
+    console.warn(`[AUTH] ${context}: falha ao ler JSON da resposta`, error);
+    return null;
+  }
 };
 
 export async function loginWithGoogle(params: {
@@ -141,10 +153,7 @@ export async function createSignUpEmail(params: {
 
   const response = await auth.api.signUpEmail({ body: { name, email, password }, headers, asResponse: true });
   if (!response.ok) {
-    let payload: { code?: string; message?: string } | null = null;
-    try {
-      payload = await response.clone().json() as { code?: string; message?: string } | null;
-    } catch {}
+    const payload = await readJsonResponse<{ code?: string; message?: string }>(response, "signUpEmail");
 
     const code = normalizeErrorKey(payload?.code);
     const messageCode = normalizeErrorKey(payload?.message);
@@ -392,8 +401,7 @@ export async function verifySignUpEmailOtp(params: {
   if (autoSignIn === true && typeof password === "string") {
     const signInResp = await auth.api.signInEmail({ body: { email, password }, headers, asResponse: true });
     if (!signInResp.ok) {
-      let payload: { message?: string } | null = null;
-      try { payload = await signInResp.clone().json() as { message?: string } | null; } catch {}
+      const payload = await readJsonResponse<{ message?: string }>(signInResp, "completePasswordSetup/signInEmail");
       if (signInResp.status >= 500) {
         return failure("Serviço de autenticação temporariamente indisponível.", 503);
       }
@@ -484,10 +492,7 @@ export async function signInWithPassword(params: {
   }
 
   if (!response.ok) {
-    let payload: { code?: string; message?: string } | null = null;
-    try {
-      payload = await response.clone().json() as { code?: string; message?: string } | null;
-    } catch {}
+    const payload = await readJsonResponse<{ code?: string; message?: string }>(response, "sendLoginOtp");
 
     const code = normalizeErrorKey(payload?.code);
     const messageCode = normalizeErrorKey(payload?.message);
@@ -551,10 +556,7 @@ export async function verifyLoginEmailOtp(params: {
     const r = await auth.api.signInEmailOTP({ body: { email, otp: code }, headers, asResponse: true });
     if (r.ok) signInRes = r;
     else {
-      let payload: { code?: string; message?: string } | null = null;
-      try {
-        payload = await r.clone().json() as { code?: string; message?: string } | null;
-      } catch {}
+      const payload = await readJsonResponse<{ code?: string; message?: string }>(r, "verifyLoginEmailOtp");
       const c = getBetterAuthErrorCode(payload?.code);
       const m = getBetterAuthErrorCode(payload?.message);
       if (c === "TOO_MANY_ATTEMPTS" || m === "TOO_MANY_ATTEMPTS") internalType = "too_many";
@@ -669,10 +671,7 @@ export async function completePasswordSetup(params: {
   if (autoSignIn === true) {
     const signInResp = await auth.api.signInEmail({ body: { email, password }, headers, asResponse: true });
     if (!signInResp.ok) {
-      let payload: { message?: string } | null = null;
-      try {
-        payload = await signInResp.clone().json() as { message?: string } | null;
-      } catch {}
+      const payload = await readJsonResponse<{ message?: string }>(signInResp, "completePasswordSetup/signInEmail");
 
       if (signInResp.status >= 500) {
         return failure("Serviço de autenticação temporariamente indisponível.", 503);

@@ -96,15 +96,19 @@ export default function ProblemsPage() {
   const [formCategoryId, setFormCategoryId] = useState<string | null>(null);
 
   const getItemsFromApiResponse = <T,>(value: unknown): T[] => {
-    if (!value || typeof value !== "object") return [];
-    const root = value as Record<string, unknown>;
+    const getRecordValue = (input: unknown): Record<string, unknown> | null =>
+      typeof input === "object" && input !== null && !Array.isArray(input)
+        ? input
+        : null;
+
+    const root = getRecordValue(value);
+    if (!root) return [];
 
     const directItems = root["items"];
     if (Array.isArray(directItems)) return directItems as T[];
 
-    const data = root["data"];
-    if (!data || typeof data !== "object") return [];
-    const dataObj = data as Record<string, unknown>;
+    const dataObj = getRecordValue(root["data"]);
+    if (!dataObj) return [];
     const nestedItems = dataObj["items"];
     if (Array.isArray(nestedItems)) return nestedItems as T[];
 

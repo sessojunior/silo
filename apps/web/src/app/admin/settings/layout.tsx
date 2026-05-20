@@ -2,7 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import Button from "@/components/admin/nav/button";
-import { config } from "@/lib/config";
+import { normalizePathname } from "@/lib/navigation/pageTitle";
 
 interface SettingsLayoutProps {
   children: React.ReactNode;
@@ -18,22 +18,6 @@ const SETTINGS_PRODUCTS_TAB = {
   label: "Produtos",
   url: "/admin/settings/products",
 } as const;
-
-const normalizePathname = (pathname: string): string => {
-  const path = pathname.split("?")[0].split("#")[0] || "/";
-  const basePath = config.publicBasePath;
-
-  const withoutBasePath =
-    basePath && (path === basePath || path.startsWith(`${basePath}/`))
-      ? path.slice(basePath.length) || "/"
-      : path;
-
-  if (withoutBasePath.length > 1 && withoutBasePath.endsWith("/")) {
-    return withoutBasePath.slice(0, -1);
-  }
-
-  return withoutBasePath;
-};
 
 export default function SettingsLayout({ children }: SettingsLayoutProps) {
   const pathname = usePathname();

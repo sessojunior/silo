@@ -6,6 +6,13 @@ import { deleteUploadFile, isSafeFilename, listUploadFiles } from "../infra/uplo
 
 const router = Router();
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const getQueryStringValue = (
+  value: unknown,
+): string | undefined => (typeof value === "string" && value.length > 0 ? value : undefined);
+
 // GET /api/help
 router.get("/", authMiddleware, requirePermission("help", "list"), async (_req, res) => {
   try {
@@ -20,8 +27,8 @@ router.get("/", authMiddleware, requirePermission("help", "list"), async (_req, 
 // PUT /api/help
 router.put("/", authMiddleware, requirePermission("help", "update"), async (req, res) => {
   try {
-    const body = req.body as Record<string, unknown>;
-    const description = typeof body.description === "string" ? body.description : "";
+    const body = isRecord(req.body) ? req.body : null;
+    const description = typeof body?.description === "string" ? body.description : "";
     await helpService.updateHelp(description);
     res.json({ success: true, message: "Documentação atualizada com sucesso" });
   } catch (err) {
@@ -44,7 +51,7 @@ router.get("/images", authMiddleware, requirePermission("help", "list"), async (
 // DELETE /api/help/images?filename=
 router.delete("/images", authMiddleware, requirePermission("help", "delete"), async (req, res) => {
   try {
-    const filename = req.query.filename as string | undefined;
+    const filename = getQueryStringValue(req.query.filename);
     if (!filename || !isSafeFilename(filename)) {
       res.status(400).json({ success: false, error: "Nome de arquivo inválido" });
       return;

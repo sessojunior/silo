@@ -8,6 +8,7 @@ import { config, configValidation } from "@silo/engine/config";
 import { registerRoutes } from "./routes/index.js";
 import { rateLimit } from "./middleware/rate-limit.js";
 import { initializeChatRealtime } from "./realtime/chat-realtime.js";
+import { toHeaders } from "./lib/request-headers.js";
 
 const resolveApiRateLimitKey = async (req: Request): Promise<string> => {
   const clientIp = req.ip || req.socket.remoteAddress || "unknown";
@@ -16,7 +17,7 @@ const resolveApiRateLimitKey = async (req: Request): Promise<string> => {
   }
 
   try {
-    const session = await auth.api.getSession({ headers: new Headers(req.headers as Record<string, string>) });
+    const session = await auth.api.getSession({ headers: toHeaders(req.headers) });
     if (session?.user?.id) {
       return `user:${session.user.id}`;
     }

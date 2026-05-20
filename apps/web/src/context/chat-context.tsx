@@ -11,7 +11,7 @@ import React, {
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useUser } from "@/context/user-context";
 import { config } from "@/lib/config";
-import { readApiResponse, type ApiResponse } from "@silo/engine/contracts/api-response";
+import { readApiResponse } from "@silo/engine/contracts/api-response";
 import type {
   AiAssistantGenerationDto,
   AiAssistantVisualizationDto,
@@ -138,6 +138,13 @@ export const MESSAGES_PER_PAGE = 15;
 export const SYNC_INITIAL_MINUTES = 5; // Minutos para buscar mensagens na primeira sincronização
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const getRecordValue = (
+  value: unknown,
+): Record<string, unknown> | null => (isRecord(value) ? value : null);
 
 const readChatApiData = async <T,>(response: Response): Promise<T | null> => {
   const apiResponse = await readApiResponse(response);
@@ -482,18 +489,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           if (response.ok) {
             const raw = (await response.json()) as unknown;
             const payload = (() => {
-              if (!raw || typeof raw !== "object") return null;
-              const root = raw as Record<string, unknown>;
+              const root = getRecordValue(raw);
+              if (!root) return null;
               if ("success" in root) {
-                const api = root as ApiResponse<unknown>;
-                if (!api.success) {
+                if (root.success !== true) {
                   console.error("❌ [CONTEXT_CHAT] Erro ao carregar sidebar:", {
-                    error: api.error,
+                    error: root.error,
                   });
                   return null;
                 }
-                if (!api.data || typeof api.data !== "object") return null;
-                return api.data as Record<string, unknown>;
+                return getRecordValue(root.data);
               }
               return root;
             })();

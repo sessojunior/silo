@@ -67,8 +67,8 @@ export default function PhotoUploadLocal({
   }, [image]);
 
   const extractErrorMessage = (data: unknown): string | null => {
-    if (!data || typeof data !== "object") return null;
-    const message = (data as Record<string, unknown>).message;
+    if (!isRecord(data)) return null;
+    const message = data.message;
     return typeof message === "string" && message.trim().length > 0
       ? message
       : null;

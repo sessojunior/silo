@@ -21,6 +21,13 @@ const respondIncidentBadRequest = (res: ExpressResponse, message: string): void 
   res.status(400).json({ success: false, error: message });
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const getQueryStringValue = (
+  value: unknown,
+): string | undefined => (typeof value === "string" && value.length > 0 ? value : undefined);
+
 // GET /incidents
 router.get("/", requireAdmin(), async (_req, res) => {
   try {
@@ -34,7 +41,9 @@ router.get("/", requireAdmin(), async (_req, res) => {
 
 // POST /incidents
 router.post("/", requireAdmin(), async (req, res) => {
-  const { name, color } = req.body as { name?: string; color?: string };
+  const body = isRecord(req.body) ? req.body : null;
+  const name = typeof body?.name === "string" ? body.name : undefined;
+  const color = typeof body?.color === "string" ? body.color : undefined;
   if (!name || name.trim().length < 2) {
     respondIncidentBadRequest(res, "Nome do incidente é obrigatório e deve ter pelo menos 2 caracteres.");
     return;
@@ -55,7 +64,10 @@ router.post("/", requireAdmin(), async (req, res) => {
 
 // PUT /incidents
 router.put("/", requireAdmin(), async (req, res) => {
-  const { id, name, color } = req.body as { id?: string; name?: string; color?: string };
+  const body = isRecord(req.body) ? req.body : null;
+  const id = typeof body?.id === "string" ? body.id : undefined;
+  const name = typeof body?.name === "string" ? body.name : undefined;
+  const color = typeof body?.color === "string" ? body.color : undefined;
   if (!id || !name || name.trim().length < 2) {
     respondIncidentBadRequest(res, "ID e nome do incidente são obrigatórios.");
     return;
@@ -75,7 +87,7 @@ router.put("/", requireAdmin(), async (req, res) => {
 
 // DELETE /incidents?id=
 router.delete("/", requireAdmin(), async (req, res) => {
-  const { id } = req.query as Record<string, string>;
+  const id = getQueryStringValue(req.query.id);
   if (!id) {
     respondIncidentBadRequest(res, "ID do incidente é obrigatório.");
     return;
@@ -100,7 +112,7 @@ router.delete("/", requireAdmin(), async (req, res) => {
 // GET /incidents/usage?incidentId=
 router.get("/usage", requireAdmin(), async (req, res) => {
   try {
-    const incidentId = typeof req.query.incidentId === "string" ? req.query.incidentId : undefined;
+    const incidentId = getQueryStringValue(req.query.incidentId);
     if (!incidentId) { respondIncidentBadRequest(res, "ID do incidente é obrigatório."); return; }
     const result = await getIncidentUsage(incidentId);
 
@@ -132,7 +144,7 @@ router.get("/images", requireAdmin(), async (_req, res) => {
 // POST /api/incidents/images
 router.post("/images", requireAdmin(), async (req, res) => {
   try {
-    const body = req.body as Record<string, unknown>;
+    const body = isRecord(req.body) ? req.body : null;
     const base64 = typeof body.image === "string" ? body.image : null;
     const filename = typeof body.filename === "string" ? body.filename : null;
     if (!base64 || !filename) {
@@ -154,7 +166,7 @@ router.post("/images", requireAdmin(), async (req, res) => {
 // DELETE /api/incidents/images?filename=
 router.delete("/images", requireAdmin(), async (req, res) => {
   try {
-    const filename = req.query.filename as string | undefined;
+    const filename = getQueryStringValue(req.query.filename);
     if (!filename) {
       respondIncidentBadRequest(res, "Nome de arquivo inválido");
       return;

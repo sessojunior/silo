@@ -61,6 +61,13 @@ const getStatusLabel = (status?: string | null) =>
 const getPriorityLabel = (priority?: string) =>
   priority ? priorityLabels[priority] || priority : "Não definida";
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const getRecordValue = (
+  value: unknown,
+): Record<string, unknown> | null => (isRecord(value) ? value : null);
+
 const getDetailsObject = (
   details?: Record<string, unknown> | null,
 ): Record<string, unknown> | null =>
@@ -121,10 +128,7 @@ const getEntryTitle = (entry: TaskHistoryEntry, taskName: string) => {
 const getEntryDetails = (entry: TaskHistoryEntry) => {
   const details = getDetailsObject(entry.details);
   if (entry.action === "created") {
-    const initialData =
-      details && typeof details.initialData === "object"
-        ? (details.initialData as Record<string, unknown>)
-        : null;
+    const initialData = getRecordValue(details?.initialData);
     const category = getStringValue(initialData?.category);
     const priority = getStringValue(initialData?.priority);
     const info: string[] = [];
@@ -133,10 +137,7 @@ const getEntryDetails = (entry: TaskHistoryEntry) => {
     return info;
   }
   if (entry.action === "deleted") {
-    const deletedData =
-      details && typeof details.deletedData === "object"
-        ? (details.deletedData as Record<string, unknown>)
-        : null;
+    const deletedData = getRecordValue(details?.deletedData);
     const category = getStringValue(deletedData?.category);
     const info: string[] = [];
     if (category) info.push(`Categoria: ${category}`);
@@ -147,14 +148,8 @@ const getEntryDetails = (entry: TaskHistoryEntry) => {
     const readableFields = changedFields
       .map((field) => fieldLabels[field] || field)
       .filter(Boolean);
-    const oldValues =
-      details && typeof details.oldValues === "object"
-        ? (details.oldValues as Record<string, unknown>)
-        : null;
-    const newValues =
-      details && typeof details.newValues === "object"
-        ? (details.newValues as Record<string, unknown>)
-        : null;
+    const oldValues = getRecordValue(details?.oldValues);
+    const newValues = getRecordValue(details?.newValues);
     const changes: string[] = [];
     const oldName = getStringValue(oldValues?.name);
     const newName = getStringValue(newValues?.name);

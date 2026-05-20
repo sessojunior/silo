@@ -596,12 +596,7 @@ export function MenuBuilder({
           {flattenedItems.map(
             ({ id, children, collapsed, depth, ...otherFields }) => {
               // Extrai corretamente os otherfields passados do ProductDependencyMenuBuilder
-              const actualOtherFields =
-                (
-                  otherFields as unknown as TreeItemType & {
-                    otherfields?: MenuItemData;
-                  }
-                )?.otherfields || (otherFields as MenuItemData);
+              const actualOtherFields = otherFields.otherfields || otherFields;
 
               return (
                 <SortableTreeItem
@@ -614,7 +609,7 @@ export function MenuBuilder({
                     setItems(updateItem(id, data, items));
                   }}
                   value={id as string}
-                  otherfields={actualOtherFields as Record<string, unknown>}
+                  otherfields={actualOtherFields}
                   depth={id === activeId && projected ? projected.depth : depth}
                   indentationWidth={indentationWidth}
                   indicator={style == "bordered"}
@@ -641,10 +636,7 @@ export function MenuBuilder({
                     clone
                     childCount={getChildCount(items, activeId) + 1}
                     value={activeId.toString()}
-                    otherfields={
-                      (activeItem as unknown as TreeItemType)?.otherfields ||
-                      (activeItem as unknown as MenuItemData)
-                    }
+                    otherfields={activeItem.otherfields || activeItem}
                     indentationWidth={indentationWidth}
                     childs={getChildrens(items, activeId)}
                   />

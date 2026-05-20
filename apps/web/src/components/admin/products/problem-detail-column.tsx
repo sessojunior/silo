@@ -6,15 +6,7 @@ import { getMarkdownClasses } from "@silo/engine/format/markdown";
 import Image from "next/image";
 import type { ProductProblemDto as ProductProblem, ProductProblemImageDto as ProductProblemImage } from "@silo/engine/contracts/dto/products";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-import { normalizeUploadsSrc } from "@silo/engine/format/ui";
-import { config } from "@/lib/config";
-
-const toPublicUploadsSrc = (input: string): string => {
-  const normalized = normalizeUploadsSrc(input);
-  if (normalized.startsWith("/uploads/"))
-    return config.getPublicPath(normalized);
-  return normalized;
-};
+import { toPublicUploadsSrc } from "@/lib/uploads";
 
 interface SolutionWithDetails {
   id: string;

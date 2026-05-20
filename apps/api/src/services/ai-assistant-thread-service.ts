@@ -45,11 +45,11 @@ export class AssistantThreadNotFoundError extends Error {
   }
 }
 
-const normalizeText = (value: string): string =>
+const normalizeDisplayText = (value: string): string =>
   value.replace(/\s+/g, " ").trim();
 
 const truncateText = (value: string, maxLength: number): string => {
-  const normalized = normalizeText(value);
+  const normalized = normalizeDisplayText(value);
   if (normalized.length <= maxLength) return normalized;
   return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
 };

@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { auth, type AuthUser } from "../auth/setup";
+import { toHeaders } from "../lib/request-headers.js";
 
 declare global {
   namespace Express {
@@ -16,7 +17,7 @@ export async function authMiddleware(
 ): Promise<void> {
   try {
     const session = await auth.api.getSession({
-      headers: new Headers(req.headers as Record<string, string>),
+      headers: toHeaders(req.headers),
     });
 
     if (!session?.user) {

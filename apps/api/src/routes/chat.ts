@@ -118,6 +118,9 @@ const buildQueryData = (query: Record<string, unknown>): Record<string, unknown>
   after: normalizeQueryInput(query.after),
 });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 const buildUnreadQueryData = (query: Record<string, unknown>): Record<string, unknown> => ({
   groupId: normalizeQueryInput(query.groupId),
   userId: normalizeQueryInput(query.userId),
@@ -184,8 +187,9 @@ const sendUnexpectedError = (
 router.get("/messages", authMiddleware, async (req, res) => {
   try {
     const user = req.user!;
+    const query = isRecord(req.query) ? req.query : {};
     const parsedQuery = listMessagesQuerySchema.safeParse(
-      buildQueryData(req.query as Record<string, unknown>),
+      buildQueryData(query),
     );
 
     if (!parsedQuery.success) {
@@ -227,8 +231,9 @@ router.get("/messages", authMiddleware, async (req, res) => {
 router.get("/messages/count", authMiddleware, async (req, res) => {
   try {
     const user = req.user!;
+    const query = isRecord(req.query) ? req.query : {};
     const parsedQuery = conversationTargetQuerySchema.safeParse(
-      buildQueryData(req.query as Record<string, unknown>),
+      buildQueryData(query),
     );
 
     if (!parsedQuery.success) {
@@ -539,8 +544,9 @@ router.patch("/presence", authMiddleware, async (req, res) => {
 router.get("/unread-messages", authMiddleware, async (req, res) => {
   try {
     const user = req.user!;
+    const query = isRecord(req.query) ? req.query : {};
     const parsedQuery = unreadMessagesQuerySchema.safeParse(
-      buildUnreadQueryData(req.query as Record<string, unknown>),
+      buildUnreadQueryData(query),
     );
 
     if (!parsedQuery.success) {

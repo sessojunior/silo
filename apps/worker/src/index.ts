@@ -13,7 +13,7 @@ import { processRecord, sleep } from "./processor";
 console.log("[worker] Starting Silo Worker...");
 
 function getTopicsToSubscribe(): string[] {
-  const envTopic = (process.env.KAFKA_TOPIC || "").trim();
+  const envTopic = config.kafka.topic;
   const cliTopic = (process.argv[2] || "").trim();
   const singleTopic =
     envTopic.length > 0

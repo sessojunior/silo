@@ -8,12 +8,13 @@ import {
   type RestRecord,
 } from "@silo/engine/kafka/rest-client";
 import { getHandlerForTopic } from "./handlers/topic-handlers";
+import { isRecord } from "./lib/kafka-payload";
 
 export const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 function getMessageId(payload: unknown): string | undefined {
-  const payloadObj = (payload as Record<string, unknown> | null) ?? null;
-  const source = payloadObj?.source as Record<string, unknown> | undefined;
+  const payloadObj = isRecord(payload) ? payload : null;
+  const source = isRecord(payloadObj?.source) ? payloadObj.source : null;
   const messageId =
     payloadObj?.message_id ??
     payloadObj?.messageId ??

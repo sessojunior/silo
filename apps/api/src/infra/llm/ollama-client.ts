@@ -109,11 +109,19 @@ function collectContextLengthCandidates(
     return candidates;
   }
 
-  for (const [key, candidate] of Object.entries(value as Record<string, unknown>)) {
+  if (!isRecord(value)) {
+    return candidates;
+  }
+
+  for (const [key, candidate] of Object.entries(value)) {
     collectContextLengthCandidates(candidate, candidates, key);
   }
 
   return candidates;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function extractModelContextLength(value: unknown): number | null {

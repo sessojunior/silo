@@ -1,3 +1,5 @@
+import type { MonitoringProductsFile } from "./types";
+
 export const seedMonitoringProducts = {
   "referenceDate": "2026-03-06",
   "products": [
@@ -119,4 +121,4 @@ export const seedMonitoringProducts = {
       ]
     }
   ]
-};
+} satisfies MonitoringProductsFile;

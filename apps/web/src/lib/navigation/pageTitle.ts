@@ -27,7 +27,7 @@ type DynamicTitleInput = {
   projectsById?: Map<string, string>;
 };
 
-const normalizePathname = (pathname: string): string => {
+export const normalizePathname = (pathname: string): string => {
   const raw = pathname.trim() || "/";
   const withoutQuery = raw.split("?")[0].split("#")[0] || "/";
 

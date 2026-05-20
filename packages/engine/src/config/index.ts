@@ -281,6 +281,7 @@ export const config = {
    */
   get kafka() {
     const groupId = process.env.KAFKA_GROUP_ID || "silo-consumer-group";
+    const topic = (process.env.KAFKA_TOPIC || "").trim();
     const topics = (process.env.KAFKA_TOPICS || "").split(",").map((s) => s.trim()).filter(Boolean);
     const dlqPrefix = process.env.KAFKA_DLQ_PREFIX || "dlq.";
     const processRetryCount = Number(process.env.KAFKA_PROCESS_RETRY_COUNT || "3");
@@ -292,6 +293,7 @@ export const config = {
 
     return {
       groupId,
+      topic,
       topics,
       dlqPrefix,
       processRetryCount,

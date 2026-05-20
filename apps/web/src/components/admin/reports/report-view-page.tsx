@@ -103,6 +103,22 @@ interface ReportData {
   filters: ReportFilters;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const getRecordValue = (
+  value: unknown,
+): Record<string, unknown> | null => (isRecord(value) ? value : null);
+
+const getRecordArray = (value: unknown): Array<Record<string, unknown>> =>
+  Array.isArray(value) ? value.filter(isRecord) : [];
+
+const getStringValue = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+
+const getNumberValue = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
 type SmartCriterion = {
   id: string;
   title: string;
@@ -360,6 +376,8 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
     );
   }
 
+  const reportData = isRecord(report.data) ? report.data : {};
+
   return (
     <div className="w-full">
       <Offcanvas
@@ -489,7 +507,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
             </h3>
             <ReportChart
               type="bar"
-              data={report.data as unknown as Record<string, unknown>}
+              data={reportData}
               reportType={report.type}
             />
           </div>
@@ -501,7 +519,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
             </h3>
             <div className="space-y-3 sm:space-y-4">
               {renderMetrics(
-                report.data as unknown as Record<string, unknown>,
+                reportData,
                 report.type,
               )}
             </div>
@@ -527,7 +545,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
             </p>
             <ReportChart
               type="line"
-              data={report.data as unknown as Record<string, unknown>}
+              data={reportData}
               reportType={report.type}
             />
           </div>
@@ -544,7 +562,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
             </p>
             <ReportChart
               type="donut"
-              data={report.data as unknown as Record<string, unknown>}
+              data={reportData}
               reportType={report.type}
             />
           </div>
@@ -555,7 +573,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           <div className="mt-6 sm:mt-8">
             <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
               {renderProjectsTable(
-                report.data as unknown as Record<string, unknown>,
+                reportData,
               )}
             </div>
           </div>
@@ -566,7 +584,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           <div className="mt-6 sm:mt-8">
             <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
               {renderAvailabilityTable(
-                report.data as unknown as Record<string, unknown>,
+                reportData,
               )}
             </div>
           </div>
@@ -577,7 +595,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           <div className="mt-6 sm:mt-8">
             <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
               {renderProblemsTable(
-                report.data as unknown as Record<string, unknown>,
+                reportData,
               )}
             </div>
           </div>
@@ -588,6 +606,8 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
 }
 
 function renderMetrics(data: Record<string, unknown>, reportType: string) {
+  const summary = getRecordValue(data.summary);
+
   switch (reportType) {
     case "availability":
       return (
@@ -597,7 +617,7 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Total de Produtos
             </span>
             <span className="text-zinc-900 dark:text-zinc-100 font-bold text-lg sm:text-xl">
-              {(data.totalProducts as number) || 0}
+              {getNumberValue(data.totalProducts) || 0}
             </span>
           </div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 bg-green-50 dark:bg-green-950 rounded-lg space-y-2 sm:space-y-0">
@@ -605,8 +625,8 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Disponibilidade Média
             </span>
             <span className="text-green-900 dark:text-green-100 font-bold text-lg sm:text-xl">
-              {(data.avgAvailability as number)
-                ? `${(data.avgAvailability as number).toFixed(1)}%`
+              {getNumberValue(data.avgAvailability)
+                ? `${getNumberValue(data.avgAvailability)?.toFixed(1)}%`
                 : "0%"}
             </span>
           </div>
@@ -615,7 +635,7 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Intervenções Registradas
             </span>
             <span className="text-blue-900 dark:text-blue-100 font-bold text-lg sm:text-xl">
-              {(data.totalInterventions as number) || 0}
+              {getNumberValue(data.totalInterventions) || 0}
             </span>
           </div>
         </>
@@ -629,7 +649,7 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Total de Problemas
             </span>
             <span className="text-red-900 dark:text-red-100 font-bold text-lg sm:text-xl">
-              {(data.totalProblems as number) || 0}
+              {getNumberValue(data.totalProblems) || 0}
             </span>
           </div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg space-y-2 sm:space-y-0">
@@ -637,8 +657,8 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Tempo Médio de Resolução
             </span>
             <span className="text-yellow-900 dark:text-yellow-100 font-bold text-lg sm:text-xl">
-              {(data.avgResolutionHours as number)
-                ? `${(data.avgResolutionHours as number).toFixed(1)}h`
+              {getNumberValue(data.avgResolutionHours)
+                ? `${getNumberValue(data.avgResolutionHours)?.toFixed(1)}h`
                 : "0h"}
             </span>
           </div>
@@ -653,8 +673,7 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Total de Projetos
             </span>
             <span className="text-zinc-900 dark:text-zinc-100 font-bold text-lg sm:text-xl">
-              {((data.summary as Record<string, unknown>)
-                ?.totalProjects as number) || 0}
+              {getNumberValue(summary?.totalProjects) || 0}
             </span>
           </div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 bg-green-50 dark:bg-green-950 rounded-lg space-y-2 sm:space-y-0">
@@ -662,8 +681,7 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Total de Atividades
             </span>
             <span className="text-green-900 dark:text-green-100 font-bold text-lg sm:text-xl">
-              {((data.summary as Record<string, unknown>)
-                ?.totalActivities as number) || 0}
+              {getNumberValue(summary?.totalActivities) || 0}
             </span>
           </div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 bg-purple-50 dark:bg-purple-950 rounded-lg space-y-2 sm:space-y-0">
@@ -671,8 +689,7 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Progresso Médio
             </span>
             <span className="text-purple-900 dark:text-purple-100 font-bold text-lg sm:text-xl">
-              {((data.summary as Record<string, unknown>)
-                ?.avgProgress as number) || 0}
+              {getNumberValue(summary?.avgProgress) || 0}
               %
             </span>
           </div>
@@ -689,10 +706,8 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
 }
 
 function renderProjectsTable(data: Record<string, unknown>) {
-  const projectsWithProgress =
-    (data.projectsWithProgress as Array<Record<string, unknown>>) || [];
-  const mostActiveProjects =
-    (data.mostActiveProjects as Array<Record<string, unknown>>) || [];
+  const projectsWithProgress = getRecordArray(data.projectsWithProgress);
+  const mostActiveProjects = getRecordArray(data.mostActiveProjects);
 
   if (projectsWithProgress.length === 0) {
     return (
@@ -758,16 +773,19 @@ function renderProjectsTable(data: Record<string, unknown>) {
   // Função para obter contagem de atividades por projeto
   const getProjectActivityCount = (projectId: string) => {
     const project = mostActiveProjects.find(
-      (p: Record<string, unknown>) => p.projectId === projectId,
+      (candidate) => getStringValue(candidate.projectId) === projectId,
     );
-    return project ? (project.activityCount as number) : 0;
+    return project ? getNumberValue(project.activityCount) || 0 : 0;
   };
 
   // Função para obter contagem de tarefas por projeto
   const getProjectTaskCount = () => {
-    const tasksByStatus = (data.tasksByStatus as Record<string, number>) || {};
+    const tasksByStatus = getRecordValue(data.tasksByStatus) ?? {};
     // Para simplificar, vamos usar o total de tarefas do período
-    return Object.values(tasksByStatus).reduce((sum, count) => sum + count, 0);
+    return Object.values(tasksByStatus).reduce(
+      (sum, count) => sum + (getNumberValue(count) || 0),
+      0,
+    );
   };
 
   return (
@@ -801,7 +819,7 @@ function renderProjectsTable(data: Record<string, unknown>) {
         <tbody className="bg-white dark:bg-zinc-800 divide-y divide-gray-200 dark:divide-gray-700">
           {projectsWithProgress.map((project, index) => (
             <tr
-              key={project.id as string}
+              key={getStringValue(project.id) || `project-${index}`}
               className={
                 index % 2 === 0
                   ? "bg-white dark:bg-zinc-800"
@@ -1076,7 +1094,7 @@ function renderAvailabilityTable(data: Record<string, unknown>) {
   );
 }
 function renderProblemsTable(data: Record<string, unknown>) {
-  const problems = (data.topProblems as Array<Record<string, unknown>>) || [];
+  const problems = getRecordArray(data.topProblems);
 
   if (problems.length === 0) {
     return (
@@ -1140,7 +1158,7 @@ function renderProblemsTable(data: Record<string, unknown>) {
         <tbody className="bg-white dark:bg-zinc-800 divide-y divide-gray-200 dark:divide-gray-700">
           {problems.map((problem, index) => (
             <tr
-              key={problem.id as string}
+              key={getStringValue(problem.id) || `problem-${index}`}
               className={
                 index % 2 === 0
                   ? "bg-white dark:bg-zinc-800"
@@ -1157,15 +1175,15 @@ function renderProblemsTable(data: Record<string, unknown>) {
                   <div className="ml-4 min-w-0 flex-1">
                     <div
                       className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs"
-                      title={problem.title as string}
+                      title={getStringValue(problem.title) || "Sem título"}
                     >
-                      {(problem.title as string) || "Sem título"}
+                      {getStringValue(problem.title) || "Sem título"}
                     </div>
                     <div
                       className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs"
-                      title={problem.description as string}
+                      title={getStringValue(problem.description) || "Sem descrição"}
                     >
-                      {(problem.description as string) || "Sem descrição"}
+                      {getStringValue(problem.description) || "Sem descrição"}
                     </div>
                   </div>
                 </div>
@@ -1175,10 +1193,7 @@ function renderProblemsTable(data: Record<string, unknown>) {
                   <div className="shrink-0 h-8 w-8">
                     <div className="h-8 w-8 rounded-full bg-linear-to-r from-zinc-400 to-purple-500 flex items-center justify-center">
                       <span className="text-xs font-medium text-white">
-                        {(
-                          (problem.product as Record<string, unknown>)
-                            ?.name as string
-                        )
+                        {getStringValue(getRecordValue(problem.product)?.name)
                           ?.charAt(0)
                           ?.toUpperCase() || "P"}
                       </span>
@@ -1187,23 +1202,18 @@ function renderProblemsTable(data: Record<string, unknown>) {
                   <div className="ml-3">
                     <div
                       className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-24"
-                      title={
-                        (problem.product as Record<string, unknown>)
-                          ?.name as string
-                      }
+                      title={getStringValue(getRecordValue(problem.product)?.name) || "Produto não encontrado"}
                     >
-                      {((problem.product as Record<string, unknown>)
-                        ?.name as string) || "Produto não encontrado"}
+                      {getStringValue(getRecordValue(problem.product)?.name) || "Produto não encontrado"}
                     </div>
                   </div>
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span
-                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(((problem.category as Record<string, unknown>)?.name as string) || "")}`}
+                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(getStringValue(getRecordValue(problem.category)?.name) || "")}`}
                 >
-                  {((problem.category as Record<string, unknown>)
-                    ?.name as string) || "Sem categoria"}
+                  {getStringValue(getRecordValue(problem.category)?.name) || "Sem categoria"}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">

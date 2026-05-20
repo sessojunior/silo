@@ -13,18 +13,8 @@ import type { ProductProblemDto as ProductProblem, ProductProblemImageDto as Pro
 import Select, { SelectOption } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { NO_INCIDENTS_CATEGORY_ID } from "@silo/engine/constants";
-import { normalizeUploadsSrc } from "@silo/engine/format/ui";
+import { toPublicUploadsSrc, toStoredUploadsSrc } from "@/lib/uploads";
 import { config } from "@/lib/config";
-
-const toStoredUploadsSrc = (input: string): string =>
-  normalizeUploadsSrc(input);
-
-const toPublicUploadsSrc = (input: string): string => {
-  const normalized = normalizeUploadsSrc(input);
-  if (normalized.startsWith("/uploads/"))
-    return config.getPublicPath(normalized);
-  return normalized;
-};
 
 interface ProblemFormOffcanvasProps {
   open: boolean;

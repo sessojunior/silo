@@ -15,6 +15,7 @@ import { randomInt, randomUUID } from "crypto";
 import { hashPassword } from "@silo/engine/auth/hash";
 import { sendEmail } from "../infra/send-email.js";
 import { auth } from "../auth/setup.js";
+import { toHeaders } from "../lib/request-headers.js";
 import { getPermissions, getUserGroups, isAdmin } from "../middleware/permissions.js";
 import type { IncomingHttpHeaders } from "http";
 import { authVerification } from "@silo/database/schema";
@@ -128,8 +129,13 @@ export async function createUser(data: {
 
   if (needsPasswordSetup) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (auth.api as any).forgetPassword({ body: { email: newUser.email }, headers: new Headers(headers as Record<string, string>) });
+      const authApi = auth.api as {
+        forgetPassword: (params: {
+          body: { email: string };
+          headers: Headers;
+        }) => Promise<unknown>;
+      };
+      await authApi.forgetPassword({ body: { email: newUser.email }, headers: toHeaders(headers) });
     } catch (err) {
       console.error("❌ [USER_SERVICE] Erro ao enviar email de setup de senha:", err);
     }

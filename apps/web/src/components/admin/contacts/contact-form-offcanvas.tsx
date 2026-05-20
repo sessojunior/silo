@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { config } from "@/lib/config";
 import { toast } from "@silo/engine/format/toast";
 import UploadButtonLocal from "@/components/ui/upload-button-local";
+import { config } from "@/lib/config";
 
 import Offcanvas from "@/components/ui/offcanvas";
 import Button from "@/components/ui/button";
@@ -11,21 +11,7 @@ import Input from "@/components/ui/input";
 import Switch from "@/components/ui/switch";
 import Image from "next/image";
 import type { ContactDto as Contact } from "@silo/engine/contracts/dto/contacts";
-
-const toPublicUploadsSrc = (input: string): string => {
-  const [pathPart, queryPart] = input.split("?");
-  const query = queryPart ? `?${queryPart}` : "";
-  const pathname = pathPart || "";
-
-  if (pathname.startsWith("/uploads/"))
-    return `${config.getPublicPath(pathname)}${query}`;
-
-  const uploadsIdx = pathname.indexOf("/uploads/");
-  if (uploadsIdx !== -1)
-    return `${config.getPublicPath(pathname.slice(uploadsIdx))}${query}`;
-
-  return input;
-};
+import { toPublicUploadsSrc } from "@/lib/uploads";
 
 interface ContactFormOffcanvasProps {
   isOpen: boolean;
@@ -94,6 +80,30 @@ export default function ContactFormOffcanvas({
     }
   };
 
+  const buildContactPayload = (extra: Record<string, unknown> = {}) => ({
+    name: formData.name.trim(),
+    role: formData.role.trim(),
+    team: formData.team.trim(),
+    email: formData.email.trim().toLowerCase(),
+    phone: formData.phone.trim(),
+    active: formData.active,
+    ...(contact ? { id: contact.id } : {}),
+    ...extra,
+  });
+
+  const saveContact = async (
+    method: "POST" | "PUT",
+    extra: Record<string, unknown> = {},
+  ) => {
+    return fetch(config.getApiUrl("/api/admin/contacts"), {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(buildContactPayload(extra)),
+    });
+  };
+
   const handleRemoveImage = async () => {
     setImagePreview(null);
     setRemoveImage(true);
@@ -106,20 +116,8 @@ export default function ContactFormOffcanvas({
     // Remover automaticamente do banco de dados se for edição
     if (contact?.id && contact?.image) {
       try {
-        const formData = new FormData();
-        formData.append("id", contact.id);
-        formData.append("removeImage", "true");
-        // Incluir todos os campos obrigatórios da API
-        formData.append("name", contact.name);
-        formData.append("role", contact.role);
-        formData.append("team", contact.team);
-        formData.append("email", contact.email);
-        formData.append("phone", contact.phone || "");
-        formData.append("active", contact.active.toString());
-
-        const response = await fetch(config.getApiUrl("/api/admin/contacts"), {
-          method: "PUT",
-          body: formData,
+        const response = await saveContact("PUT", {
+          removeImage: true,
         });
 
         if (response.ok) {
@@ -185,35 +183,10 @@ export default function ContactFormOffcanvas({
 
     try {
       setLoading(true);
-
-      const submitFormData = new FormData();
-
-      // Dados básicos
-      submitFormData.append("name", formData.name.trim());
-      submitFormData.append("role", formData.role.trim());
-      submitFormData.append("team", formData.team.trim());
-      submitFormData.append("email", formData.email.trim().toLowerCase());
-      submitFormData.append("phone", formData.phone.trim());
-      submitFormData.append("active", formData.active.toString());
-
-      // Para edição, incluir ID
-      if (contact) {
-        submitFormData.append("id", contact.id);
-      }
-
-      // Imagem via servidor local
-      if (imagePreview) {
-        submitFormData.append("imageUrl", imagePreview);
-      }
-
-      if (removeImage) {
-        submitFormData.append("removeImage", "true");
-      }
-
       const method = contact ? "PUT" : "POST";
-      const response = await fetch(config.getApiUrl("/api/admin/contacts"), {
-        method,
-        body: submitFormData,
+      const response = await saveContact(method, {
+        ...(imagePreview ? { imageUrl: imagePreview } : {}),
+        ...(removeImage ? { removeImage: true } : {}),
       });
 
       const data = await response.json();
@@ -377,30 +350,9 @@ export default function ContactFormOffcanvas({
                         // Salvar automaticamente no banco de dados se for edição
                         if (contact?.id) {
                           try {
-                            const formData = new FormData();
-                            formData.append("id", contact.id);
-                            formData.append(
-                              "imageUrl",
-                              toPublicUploadsSrc(url),
-                            );
-                            // Incluir todos os campos obrigatórios da API
-                            formData.append("name", contact.name);
-                            formData.append("role", contact.role);
-                            formData.append("team", contact.team);
-                            formData.append("email", contact.email);
-                            formData.append("phone", contact.phone || "");
-                            formData.append(
-                              "active",
-                              contact.active.toString(),
-                            );
-
-                            const response = await fetch(
-                              config.getApiUrl("/api/admin/contacts"),
-                              {
-                                method: "PUT",
-                                body: formData,
-                              },
-                            );
+                            const response = await saveContact("PUT", {
+                              imageUrl: toPublicUploadsSrc(url),
+                            });
 
                             if (response.ok) {
                               // Atualizar a lista de contatos para refletir a mudança
