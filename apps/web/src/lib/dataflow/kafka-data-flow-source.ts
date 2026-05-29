@@ -15,7 +15,7 @@ type ActiveProduct = {
 const kafkaConfig = config.kafka;
 
 const legacyPipelineData = pipelineDataJson as GroupedPipelineDataFile;
-const legacyMonitoringData = seedMonitoringProducts as unknown as MonitoringProductsFile;
+const legacyMonitoringData = seedMonitoringProducts;
 
 function getMockDataFlowPipelines(slug: string): GroupedPipelineData[] {
   const requestedSlug = normalizeModelKey(slug);

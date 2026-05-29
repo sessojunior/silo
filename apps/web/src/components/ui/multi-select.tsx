@@ -10,22 +10,7 @@ import {
 import { twMerge } from "tailwind-merge";
 import clsx from "clsx";
 import Image from "next/image";
-import { config } from "@/lib/config";
-
-const toPublicUploadsSrc = (input: string): string => {
-  const [pathPart, queryPart] = input.split("?");
-  const query = queryPart ? `?${queryPart}` : "";
-  const pathname = pathPart || "";
-
-  if (pathname.startsWith("/uploads/"))
-    return `${config.getPublicPath(pathname)}${query}`;
-
-  const uploadsIdx = pathname.indexOf("/uploads/");
-  if (uploadsIdx !== -1)
-    return `${config.getPublicPath(pathname.slice(uploadsIdx))}${query}`;
-
-  return input;
-};
+import { toPublicUploadsSrc } from "@/lib/uploads";
 
 export interface MultiSelectOption {
   label: string;

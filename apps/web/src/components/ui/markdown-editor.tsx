@@ -9,8 +9,7 @@ import Dialog from "@/components/ui/dialog";
 import Button from "@/components/ui/button";
 import UploadButtonLocal from "@/components/ui/upload-button-local";
 import { toast } from "@silo/engine/format/toast";
-import { config } from "@/lib/config";
-import { normalizeUploadsSrc } from "@silo/engine/format/ui";
+import { toPublicUploadsSrc } from "@/lib/uploads";
 import Image from "next/image";
 import Lightbox from "@/components/ui/lightbox";
 
@@ -271,13 +270,6 @@ export default function MarkdownEditor({
   const [deleteTarget, setDeleteTarget] = useState<GalleryImage | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentEditor, setCurrentEditor] = useState<EasyMDE | null>(null);
-
-  const toPublicUploadsSrc = (input: string): string => {
-    const normalized = normalizeUploadsSrc(input);
-    if (normalized.startsWith("/uploads/"))
-      return config.getPublicPath(normalized);
-    return normalized;
-  };
 
   const loadImages = useCallback(async () => {
     if (!uploadConfig) return;

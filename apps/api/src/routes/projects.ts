@@ -95,7 +95,6 @@ const TaskBaseSchema = z.object({
   estimatedDays: z.number().int().nonnegative().nullable().optional(),
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
-  priority: z.enum(["low", "medium", "high", "urgent"]),
   status: z.enum(PROJECT_TASK_STATUSES),
 });
 
@@ -109,13 +108,24 @@ const DeleteTaskSchema = z.object({
   id: z.string().uuid(),
 });
 
+const getQueryStringValue = (
+  value: unknown,
+): string | undefined =>
+  typeof value === "string" && value.length > 0 ? value : undefined;
+
 // ── Projects CRUD ──────────────────────────────────────────────────────────
 
 router.get("/", requirePermission("projects", "list"), async (req, res) => {
   try {
-    const { search, status, priority } = req.query as Record<string, string>;
-    const projects = await listProjects({ search, status, priority });
-    res.json({ success: true, data: projects });
+    const search = getQueryStringValue(req.query.search);
+    const status = getQueryStringValue(req.query.status);
+    const priority = getQueryStringValue(req.query.priority);
+    const result = await listProjects({ search, status, priority });
+    if ("error" in result) {
+      respondProjectServiceError(res, result, "Erro ao listar projetos.");
+      return;
+    }
+    res.json({ success: true, data: result.data });
   } catch (err) {
     console.error("❌ [PROJECTS] GET:", err);
     res.status(500).json({ success: false, error: "Erro interno do servidor" });
@@ -124,8 +134,11 @@ router.get("/", requirePermission("projects", "list"), async (req, res) => {
 
 router.post("/", requirePermission("projects", "create"), validate(ProjectSchema), async (req, res) => {
   try {
-    const project = await createProject(req.body);
-    res.status(201).json({ success: true, data: project, message: "Projeto criado com sucesso" });
+    const result = await createProject(req.body);
+    if (respondProjectServiceError(res, result, "Erro ao criar projeto.")) {
+      return;
+    }
+    res.status(201).json({ success: true, data: result.data, message: "Projeto criado com sucesso" });
   } catch (err) {
     console.error("❌ [PROJECTS] POST:", err);
     res.status(500).json({ success: false, error: "Erro interno do servidor" });
@@ -136,7 +149,7 @@ router.put("/", requirePermission("projects", "update"), validate(UpdateProjectS
   try {
     const result = await updateProject(req.body);
     if ("error" in result) { respondProjectServiceError(res, result, "Erro ao atualizar projeto."); return; }
-    res.json({ success: true, data: result, message: "Projeto atualizado com sucesso" });
+    res.json({ success: true, data: result.data, message: "Projeto atualizado com sucesso" });
   } catch (err) {
     console.error("❌ [PROJECTS] PUT:", err);
     res.status(500).json({ success: false, error: "Erro interno do servidor" });
@@ -144,7 +157,7 @@ router.put("/", requirePermission("projects", "update"), validate(UpdateProjectS
 });
 
 router.delete("/", requirePermission("projects", "delete"), async (req, res) => {
-  const { id } = req.query as Record<string, string>;
+  const id = getQueryStringValue(req.query.id);
   if (!id) {
     res.status(400).json({ success: false, error: "ID do projeto é obrigatório." });
     return;
@@ -165,7 +178,7 @@ router.get("/:projectId/activities", requirePermission("projectActivities", "lis
   try {
     const result = await listProjectActivities(String(req.params.projectId));
     if ("error" in result) { respondProjectServiceError(res, result, "Erro ao listar atividades."); return; }
-    res.json({ success: true, data: { activities: result } });
+    res.json({ success: true, data: { activities: result.data }, activities: result.data });
   } catch (err) {
     console.error("❌ [PROJECTS_ACTIVITIES] GET:", err);
     res.status(500).json({ success: false, error: "Erro interno do servidor" });
@@ -176,7 +189,7 @@ router.post("/:projectId/activities", requirePermission("projectActivities", "cr
   try {
     const result = await createProjectActivity(String(req.params.projectId), req.body);
     if (result && "error" in result) { respondProjectServiceError(res, result, "Erro ao criar atividade."); return; }
-    res.status(201).json({ success: true, data: result, message: "Atividade criada com sucesso" });
+    res.status(201).json({ success: true, data: { activity: result.data }, activity: result.data, message: "Atividade criada com sucesso" });
   } catch (err) {
     console.error("❌ [PROJECTS_ACTIVITIES] POST:", err);
     res.status(500).json({ success: false, error: "Erro interno do servidor" });
@@ -187,7 +200,7 @@ router.put("/:projectId/activities", requirePermission("projectActivities", "upd
   try {
     const result = await updateProjectActivity(String(req.params.projectId), req.body);
     if ("error" in result) { respondProjectServiceError(res, result, "Erro ao atualizar atividade."); return; }
-    res.json({ success: true, data: result, message: "Atividade atualizada com sucesso" });
+    res.json({ success: true, data: { activity: result.data }, activity: result.data, message: "Atividade atualizada com sucesso" });
   } catch (err) {
     console.error("❌ [PROJECTS_ACTIVITIES] PUT:", err);
     res.status(500).json({ success: false, error: "Erro interno do servidor" });
@@ -195,7 +208,7 @@ router.put("/:projectId/activities", requirePermission("projectActivities", "upd
 });
 
 router.delete("/:projectId/activities", requirePermission("projectActivities", "delete"), async (req, res) => {
-  const { activityId } = req.query as Record<string, string>;
+  const activityId = getQueryStringValue(req.query.activityId);
   if (!activityId) {
     res.status(400).json({ success: false, error: "ID da atividade é obrigatório." });
     return;

@@ -7,20 +7,10 @@ import MarkdownEditor from "@/components/ui/markdown-editor";
 import Dialog from "@/components/ui/dialog";
 import Lightbox from "@/components/ui/lightbox";
 import { toast } from "@silo/engine/format/toast";
-import { normalizeUploadsSrc } from "@silo/engine/format/ui";
 import Image from "next/image";
 import UploadButtonLocal from "@/components/ui/upload-button-local";
+import { toPublicUploadsSrc, toStoredUploadsSrc } from "@/lib/uploads";
 import { config } from "@/lib/config";
-
-const toStoredUploadsSrc = (input: string): string =>
-  normalizeUploadsSrc(input);
-
-const toPublicUploadsSrc = (input: string): string => {
-  const normalized = normalizeUploadsSrc(input);
-  if (normalized.startsWith("/uploads/"))
-    return config.getPublicPath(normalized);
-  return normalized;
-};
 
 // Tipo customizado para soluções retornadas pela API
 interface SolutionWithDetails {

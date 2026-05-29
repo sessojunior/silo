@@ -5,7 +5,7 @@ import { errorResponse } from "@/lib/api-response";
 import { config as appConfig } from "@/lib/config";
 
 const getApiBaseUrl = (): URL => {
-  const raw = (process.env.API_URL ?? "http://localhost:3001").trim();
+  const raw = appConfig.apiOrigin || "http://localhost:3001";
   const normalized =
     raw.length === 0 ? "http://localhost:3001/" : raw.endsWith("/") ? raw : `${raw}/`;
 

@@ -11,7 +11,7 @@ import { z } from "zod";
 import path from "path";
 import { promises as fs } from "fs";
 import { respondServiceError as respondProductServiceError } from "../lib/respond-service-error.js";
-import { deleteUploadFile, isSafeFilename, isUploadKind } from "../infra/uploads.js";
+import { deleteUploadFile, getUploadsRoot, isSafeFilename, isUploadKind } from "../infra/uploads.js";
 import {
   createProductDependency,
   createProductProblemImage,
@@ -439,7 +439,7 @@ router.put("/manual", requirePermission("productManual", "update"), async (req: 
 
 router.get("/manual/images", requirePermission("productManual", "view"), async (_req, res) => {
   try {
-    const dir = path.join(process.cwd(), "uploads", "manual");
+    const dir = path.join(getUploadsRoot(), "manual");
     let files: string[] = [];
     try { files = await fs.readdir(dir); } catch { files = []; }
     const stats = await Promise.all(files.map(async (filename) => {

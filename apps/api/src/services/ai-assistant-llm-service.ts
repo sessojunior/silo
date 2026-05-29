@@ -165,17 +165,20 @@ function getStringProperty(
   return null;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 function coerceAssistantRewriteContent(content: unknown): AssistantRewriteContent | null {
   if (typeof content === "string") {
     const answer = content.trim();
     return answer.length > 0 ? { answer, contextSummary: "" } : null;
   }
 
-  if (!content || typeof content !== "object" || Array.isArray(content)) {
+  if (!isRecord(content)) {
     return null;
   }
 
-  const record = content as Record<string, unknown>;
+  const record = content;
   const answer = getStringProperty(record, ["answer", "response", "content", "text"]);
 
   if (!answer) {
@@ -243,12 +246,11 @@ function parseAssistantScopeClassificationContent(content: string): AiAssistantS
     try {
       const parsed = JSON.parse(candidate) as unknown;
 
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      if (!isRecord(parsed)) {
         continue;
       }
 
-      const record = parsed as Record<string, unknown>;
-      const isInScope = typeof record.isInScope === "boolean" ? record.isInScope : null;
+      const isInScope = typeof parsed.isInScope === "boolean" ? parsed.isInScope : null;
       if (isInScope === null) {
         continue;
       }
@@ -257,7 +259,7 @@ function parseAssistantScopeClassificationContent(content: string): AiAssistantS
         return null;
       }
 
-      const scopeCandidate = getStringProperty(record, ["scope", "scopeName"]);
+      const scopeCandidate = getStringProperty(parsed, ["scope", "scopeName"]);
       const validatedScope = scopeCandidate ? AiAssistantScopeSchema.safeParse(scopeCandidate) : null;
 
       if (!validatedScope?.success) {

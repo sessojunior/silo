@@ -78,7 +78,7 @@ export default function ActivityMiniKanban({
   }, [activityId, projectId, loadKanbanTasks]);
 
   // Agrupar tarefas por status (garantir que tasks é um array)
-  const tasksByStatus = (Array.isArray(tasks) ? tasks : []).reduce(
+  const tasksByStatus: Record<string, ProjectTask[]> = (Array.isArray(tasks) ? tasks : []).reduce(
     (acc, task) => {
       if (!acc[task.status]) {
         acc[task.status] = [];
@@ -86,7 +86,7 @@ export default function ActivityMiniKanban({
       acc[task.status].push(task);
       return acc;
     },
-    {} as Record<string, ProjectTask[]>,
+    {},
   );
 
   // Definir colunas simplificadas para o mini-kanban (cores consistentes com KanbanBoard)

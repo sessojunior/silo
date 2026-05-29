@@ -1,6 +1,7 @@
 {
   "extends": "@silo/config/typescript/nextjs.json",
   "compilerOptions": {
+    "types": ["node", "vitest/globals"],
     "paths": {
       "@/*": ["./src/*"]
     }

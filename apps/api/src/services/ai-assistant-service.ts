@@ -308,7 +308,7 @@ function getPreviousAssistantDateRange(range: AssistantDateRange): AssistantDate
   );
 }
 
-function normalizeText(value: string | null | undefined): string {
+function normalizeSemanticText(value: string | null | undefined): string {
   return (value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -318,7 +318,7 @@ function normalizeText(value: string | null | undefined): string {
 type AssistantVisualizationIntent = "chart" | "image" | null;
 
 function detectVisualizationIntent(content: string): AssistantVisualizationIntent {
-  const normalized = normalizeText(content);
+  const normalized = normalizeSemanticText(content);
 
   if (
     normalized.includes("grafico") ||
@@ -343,7 +343,7 @@ function detectVisualizationIntent(content: string): AssistantVisualizationInten
 }
 
 function tokenizeText(value: string): string[] {
-  return normalizeText(value)
+  return normalizeSemanticText(value)
     .split(/[^a-z0-9]+/)
     .filter((token) => token.length > 0);
 }
@@ -397,7 +397,7 @@ function isFuzzyKeywordMatch(token: string, keyword: string): boolean {
 }
 
 function resolveAssistantDateRange(content: string): AssistantDateRange {
-  const normalized = normalizeText(content);
+  const normalized = normalizeSemanticText(content);
 
   if (normalized.includes("anteontem")) {
     return createAssistantDateRange(2, 2, "de anteontem");
@@ -497,7 +497,7 @@ function matchesAny(value: string, keywords: string[]): boolean {
 }
 
 function scoreScopeMatches(content: string, scope: AiAssistantScope): ScopeMatchScore {
-  const normalized = normalizeText(content);
+  const normalized = normalizeSemanticText(content);
   const tokens = tokenizeText(content);
   const definitions = SCOPE_KEYWORDS[scope];
   let score = 0;
@@ -536,7 +536,7 @@ function compareScopeScores(left: ScopeMatchScore, right: ScopeMatchScore): numb
 }
 
 function detectStrongScopeOverride(content: string): AiAssistantScope | null {
-  const normalized = normalizeText(content);
+  const normalized = normalizeSemanticText(content);
 
   if (
     (normalized.includes("problema") || normalized.includes("problemas") || normalized.includes("falha") || normalized.includes("falhas")) &&
@@ -575,7 +575,7 @@ export function detectScope(content: string): AiAssistantScope | null {
     }
   }
 
-  const normalized = normalizeText(content);
+  const normalized = normalizeSemanticText(content);
   if (matchesAny(normalized, PROJECT_KEYWORDS)) {
     return "general";
   }

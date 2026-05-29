@@ -185,7 +185,7 @@ export default function UploadButtonLocal({
       } else if (typeof error === "string") {
         errorMessage = error;
       } else if (error && typeof error === "object") {
-        const maybeMessage = (error as Record<string, unknown>).message;
+        const maybeMessage = isRecord(error) ? error.message : undefined;
         if (
           typeof maybeMessage === "string" &&
           maybeMessage.trim().length > 0

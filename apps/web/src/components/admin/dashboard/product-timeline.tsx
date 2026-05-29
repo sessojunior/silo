@@ -63,7 +63,7 @@ export default function ProductTimeline({
     };
 
     // Agrupar dados por data para exibir todos os turnos no tooltip
-    const dataByDate = timelineData.reduce(
+    const dataByDate: Record<string, TimelineItem[]> = timelineData.reduce(
       (acc, item) => {
         if (!acc[item.date]) {
           acc[item.date] = [];
@@ -71,7 +71,7 @@ export default function ProductTimeline({
         acc[item.date].push(item);
         return acc;
       },
-      {} as Record<string, TimelineItem[]>,
+      {},
     );
 
     /**

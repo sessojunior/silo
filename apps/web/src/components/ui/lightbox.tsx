@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { config } from "@/lib/config";
+import { toPublicUploadsSrc } from "@/lib/uploads";
 
 interface LightboxProps {
   open: boolean;
@@ -11,32 +11,6 @@ interface LightboxProps {
 
 type NaturalSize = { width: number; height: number };
 type DisplaySize = { width: number; height: number };
-
-const toPublicUploadsSrc = (input: string): string => {
-  const [pathPart, queryPart] = input.split("?");
-  const query = queryPart ? `?${queryPart}` : "";
-  const pathname = pathPart || "";
-
-  if (pathname.startsWith("blob:")) return input;
-  if (pathname.startsWith("http://") || pathname.startsWith("https://"))
-    return input;
-
-  const withBasePath = (path: string): string => {
-    if (!path.startsWith("/uploads/")) return path;
-    if (path.startsWith(`${config.publicBasePath}/uploads/`)) return path;
-    return config.getPublicPath(path);
-  };
-
-  if (pathname.startsWith("/uploads/"))
-    return `${withBasePath(pathname)}${query}`;
-
-  const uploadsIdx = pathname.indexOf("/uploads/");
-  if (uploadsIdx !== -1) {
-    return `${withBasePath(pathname.slice(uploadsIdx))}${query}`;
-  }
-
-  return input;
-};
 
 const getContainedSize = (
   natural: NaturalSize,

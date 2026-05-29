@@ -8,7 +8,7 @@ import { seedMonitoringProducts } from "@silo/engine/dataflow/seed-monitoring-pr
 import type { GroupedPipelineData, GroupedPipelineDataFile, MonitoringProductItem, MonitoringProductsFile } from "./types.js";
 
 const legacyPipelineData = pipelineDataJson as GroupedPipelineDataFile;
-const legacyMonitoringData = seedMonitoringProducts as unknown as MonitoringProductsFile;
+const legacyMonitoringData = seedMonitoringProducts;
 
 type ActiveProduct = {
   slug: string;

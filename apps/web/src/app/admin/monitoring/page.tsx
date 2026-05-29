@@ -17,31 +17,22 @@ export default async function DashboardMonitoringPage() {
   const requestHeaders = await headers();
   const cookieHeader = requestHeaders.get("cookie") ?? "";
 
-  const getMonitoringApiUrl = (path: string): string => {
-    const apiOrigin = config.apiOrigin || config.appOrigin;
-    if (apiOrigin) {
-      return new URL(path, apiOrigin).toString();
-    }
-
-    return config.getApiUrl(path);
-  };
-
   const sharedHeaders = cookieHeader ? { cookie: cookieHeader } : undefined;
 
   const [productsRes, pagesRes, radarGroupsRes, radarsRes] = await Promise.all([
-    fetch(getMonitoringApiUrl("/api/products?available=true"), {
+    fetch(config.getApiUrl("/api/products?available=true"), {
       cache: "no-store",
       headers: sharedHeaders,
     }),
-    fetch(getMonitoringApiUrl("/api/monitoring/picture-pages"), {
+    fetch(config.getApiUrl("/api/monitoring/picture-pages"), {
       cache: "no-store",
       headers: sharedHeaders,
     }),
-    fetch(getMonitoringApiUrl("/api/monitoring/radar-groups"), {
+    fetch(config.getApiUrl("/api/monitoring/radar-groups"), {
       cache: "no-store",
       headers: sharedHeaders,
     }),
-    fetch(getMonitoringApiUrl("/api/monitoring/radars"), {
+    fetch(config.getApiUrl("/api/monitoring/radars"), {
       cache: "no-store",
       headers: sharedHeaders,
     }),
@@ -51,7 +42,7 @@ export default async function DashboardMonitoringPage() {
   const activeProducts = productsJson?.data?.items?.map((p) => ({ slug: p.slug, name: p.name })) ?? [];
 
   // Get monitoring products data via API
-  const monitoringRes = await fetch(getMonitoringApiUrl("/api/monitoring/products"), {
+  const monitoringRes = await fetch(config.getApiUrl("/api/monitoring/products"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -67,11 +58,11 @@ export default async function DashboardMonitoringPage() {
   const pagesJson = pagesRes.ok ? await pagesRes.json() as { success: boolean; data?: { items?: PicturePage[] } } : null;
   const picturePagesResult: PicturePage[] = (pagesJson?.data?.items ?? []).map((p) => ({
     ...p,
-    checkMode: p.checkMode as unknown as PictureCheckMode,
-    status: p.status as unknown as PictureLinkStatus,
+    checkMode: p.checkMode,
+    status: p.status,
     links: (p.links ?? []).map((l: PictureLink) => ({
       ...l,
-      status: l.status as unknown as PictureLinkStatus,
+      status: l.status,
     })),
   }));
 
@@ -85,8 +76,8 @@ export default async function DashboardMonitoringPage() {
     <MonitoringPageClient 
       productsData={filteredProductsData} 
       picturePages={picturePagesResult}
-      radarGroups={radarGroupsResult as unknown as DbRadarGroup[]}
-      radars={radarsResult as unknown as DbRadar[]}
+      radarGroups={radarGroupsResult}
+      radars={radarsResult}
     />
   );
 }

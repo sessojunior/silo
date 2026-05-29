@@ -6,6 +6,7 @@
     "build": "next build && node ./scripts/prepare-standalone-assets.mjs",
     "start": "node .next/standalone/apps/web/server.js",
     "lint": "eslint .",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -42,6 +43,8 @@
     "@iconify/json": "^2.2.435",
     "@iconify/tailwind4": "^1.2.1",
     "@silo/config": "*",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/typography": "^0.5.19",
@@ -51,9 +54,11 @@
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.6",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "jsdom": "^26.1.0",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "vitest": "^4.0.18"
   },
   "optionalDependencies": {
     "@esbuild/linux-x64": "0.25.4"

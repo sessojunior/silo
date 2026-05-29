@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 const focusIfPossible = (value: Element | null): boolean => {
   if (!value) return false;
-  const maybeFocusable = value as unknown as { focus?: unknown };
+  const maybeFocusable = value as { focus?: unknown };
   if (typeof maybeFocusable.focus !== "function") return false;
   (maybeFocusable.focus as () => void)();
   return true;

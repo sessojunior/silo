@@ -282,49 +282,34 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Listener para mudanças de preferências de chat
-    const handleChatPreferenceChange = (event: CustomEvent) => {
+    const handleChatPreferenceChange = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
       const { chatEnabled } = event.detail;
       updateUserPreferences({ chatEnabled });
     };
 
     // Listener para mudanças de perfil
-    const handleProfileChange = (event: CustomEvent) => {
+    const handleProfileChange = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
       const updates = event.detail;
       updateUserProfile(updates);
     };
 
     // Listener para mudanças de dados do usuário
-    const handleUserChange = (event: CustomEvent) => {
+    const handleUserChange = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
       const updates = event.detail;
       updateUser(updates);
     };
 
-    window.addEventListener(
-      "chatPreferenceChanged",
-      handleChatPreferenceChange as EventListener,
-    );
-    window.addEventListener(
-      "userProfileChanged",
-      handleProfileChange as EventListener,
-    );
-    window.addEventListener(
-      "userDataChanged",
-      handleUserChange as EventListener,
-    );
+    window.addEventListener("chatPreferenceChanged", handleChatPreferenceChange);
+    window.addEventListener("userProfileChanged", handleProfileChange);
+    window.addEventListener("userDataChanged", handleUserChange);
 
     return () => {
-      window.removeEventListener(
-        "chatPreferenceChanged",
-        handleChatPreferenceChange as EventListener,
-      );
-      window.removeEventListener(
-        "userProfileChanged",
-        handleProfileChange as EventListener,
-      );
-      window.removeEventListener(
-        "userDataChanged",
-        handleUserChange as EventListener,
-      );
+      window.removeEventListener("chatPreferenceChanged", handleChatPreferenceChange);
+      window.removeEventListener("userProfileChanged", handleProfileChange);
+      window.removeEventListener("userDataChanged", handleUserChange);
     };
   }, [updateUserPreferences, updateUserProfile, updateUser]);
 

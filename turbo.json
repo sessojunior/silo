@@ -12,6 +12,10 @@
       "cache": false,
       "persistent": true
     },
+    "test": {
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "cache": true
+    },
     "lint": {
       "inputs": ["$TURBO_DEFAULT$", "packages/config/eslint-config/**"]
     },

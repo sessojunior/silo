@@ -1,6 +1,7 @@
-import { db } from "@silo/database";
 import * as schema from "@silo/database/schema";
 import { eq } from "drizzle-orm";
+import { resolveWorkerDbClient } from "./db-client";
+import { isRecord } from "../lib/kafka-payload";
 
 export async function monitoringHandler(params: {
   topic: string;
@@ -11,13 +12,12 @@ export async function monitoringHandler(params: {
 }) {
   const { payload, tx } = params;
   try {
-    const payloadObj = (payload || {}) as Record<string, unknown>;
-    const slug = (payloadObj["slug"] ??
-      payloadObj["pageSlug"] ??
-      payloadObj["page_id"]) as string | undefined;
+    const payloadObj = isRecord(payload) ? payload : null;
+    const slugValue = payloadObj?.slug ?? payloadObj?.pageSlug ?? payloadObj?.page_id;
+    const slug = typeof slugValue === "string" ? slugValue : undefined;
     if (!slug) return;
 
-    const client = ((tx as unknown) as typeof db) || db;
+    const client = resolveWorkerDbClient(tx);
 
     const rows = await client
       .select()

@@ -167,17 +167,14 @@ export const TreeItem = memo(
     }, []);
 
     // Dados do item
-    const itemData = props?.otherfields as unknown as {
-      icon?: string;
-      description?: string;
-      name?: string;
-      href?: string;
-    };
-    const itemName = itemData?.name || value || "Item sem nome";
-    const itemHref = itemData?.href || "";
-    const itemIcon = itemData?.icon;
+    const itemData = props?.otherfields ?? {};
+    const itemName = typeof itemData.name === "string" && itemData.name.length > 0 ? itemData.name : value || "Item sem nome";
+    const itemHref = typeof itemData.href === "string" ? itemData.href : "";
+    const itemIcon = typeof itemData.icon === "string" ? itemData.icon : undefined;
     const itemDescription =
-      itemData?.description || `URL: ${itemHref || "Não definida"}`;
+      typeof itemData.description === "string" && itemData.description.length > 0
+        ? itemData.description
+        : `URL: ${itemHref || "Não definida"}`;
 
     // Função para renderizar o ícone correto
     const renderItemIcon = useCallback(() => {

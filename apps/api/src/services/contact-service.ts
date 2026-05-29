@@ -2,20 +2,7 @@ import { db } from "@silo/database";
 import { contact, productContact } from "@silo/database/schema";
 import { eq, and, ne } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { promises as fs } from "fs";
-import path from "path";
-
-export type UploadKind = "general" | "avatars" | "contacts" | "incidents" | "problems" | "solutions" | "manual" | "help" | "projects";
-
-const uploadKinds: ReadonlyArray<UploadKind> = ["general", "avatars", "contacts", "incidents", "problems", "solutions", "manual", "help", "projects"];
-
-export const isUploadKind = (value: string): value is UploadKind => uploadKinds.includes(value as UploadKind);
-
-export const isSafeFilename = (filename: string): boolean => {
-  if (filename.includes("..")) return false;
-  if (filename.includes("/") || filename.includes("\\")) return false;
-  return path.basename(filename) === filename;
-};
+import { deleteUploadFile, isSafeFilename, isUploadKind } from "../infra/uploads.js";
 
 type ContactServiceSuccess<T> = {
   ok: true;
@@ -46,20 +33,15 @@ const failure = (
 });
 
 export async function deleteContactImageFile(imageUrl: string): Promise<void> {
-  try {
-    const uploadsDir = path.join(process.cwd(), "public");
-    const filePath = imageUrl.startsWith("/uploads/") ? imageUrl.slice(1) : null;
-    if (!filePath) return;
-    const parts = filePath.replace("uploads/", "").split("/");
-    const kind = parts[0];
-    const filename = parts.slice(1).join("/");
-    if (kind && filename && isUploadKind(kind) && isSafeFilename(filename)) {
-      const fullPath = path.join(process.cwd(), "uploads", kind, filename);
-      await fs.unlink(fullPath).catch(() => undefined);
-    }
-    void uploadsDir;
-  } catch {
-    // noop
+  const cleanImageUrl = imageUrl.split(/[?#]/, 1)[0];
+  const filePath = cleanImageUrl.startsWith("/uploads/") ? cleanImageUrl.slice("/uploads/".length) : "";
+  if (!filePath) return;
+
+  const parts = filePath.split("/");
+  const kind = parts[0];
+  const filename = parts.slice(1).join("/");
+  if (kind && filename && isUploadKind(kind) && isSafeFilename(filename)) {
+    await deleteUploadFile(kind, filename);
   }
 }
 

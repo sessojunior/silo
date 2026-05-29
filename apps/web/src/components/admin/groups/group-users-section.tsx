@@ -262,13 +262,13 @@ const GroupUsersSection = forwardRef<
     resource: string,
     action: string,
     enabled: boolean,
-  ) =>
+  ): Record<string, string[]> =>
     ({
       ...permissions,
       [resource]: enabled
         ? Array.from(new Set([...(permissions[resource] || []), action]))
         : (permissions[resource] || []).filter((item) => item !== action),
-    }) as Record<string, string[]>;
+    });
 
   const handlePermissionToggle = async (
     resource: string,

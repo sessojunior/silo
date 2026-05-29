@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Button from "@/components/admin/nav/button";
 import { config } from "@/lib/config";
+import { normalizePathname } from "@/lib/navigation/pageTitle";
 import type { ApiResponse } from "@/lib/api-response";
 
 interface ProjectsLayoutProps {
@@ -23,22 +24,6 @@ interface ActivityItem {
 const truncateLabel = (value: string, max = 42): string => {
   if (value.length <= max) return value;
   return `${value.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
-};
-
-const normalizePathname = (pathname: string): string => {
-  const path = pathname.split("?")[0].split("#")[0] || "/";
-  const basePath = config.publicBasePath;
-
-  const withoutBasePath =
-    basePath && (path === basePath || path.startsWith(`${basePath}/`))
-      ? path.slice(basePath.length) || "/"
-      : path;
-
-  if (withoutBasePath.length > 1 && withoutBasePath.endsWith("/")) {
-    return withoutBasePath.slice(0, -1);
-  }
-
-  return withoutBasePath;
 };
 
 export default function ProjectsLayout({ children }: ProjectsLayoutProps) {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { config } from "@/lib/config";
 import { toast } from "@silo/engine/format/toast";
 import Image from "next/image";
 
@@ -9,21 +8,8 @@ import Offcanvas from "@/components/ui/offcanvas";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import LoadingSpinner from "@/components/ui/loading-spinner";
-
-const toPublicUploadsSrc = (input: string): string => {
-  const [pathPart, queryPart] = input.split("?");
-  const query = queryPart ? `?${queryPart}` : "";
-  const pathname = pathPart || "";
-
-  if (pathname.startsWith("/uploads/"))
-    return `${config.getPublicPath(pathname)}${query}`;
-
-  const uploadsIdx = pathname.indexOf("/uploads/");
-  if (uploadsIdx !== -1)
-    return `${config.getPublicPath(pathname.slice(uploadsIdx))}${query}`;
-
-  return input;
-};
+import { toPublicUploadsSrc } from "@/lib/uploads";
+import { config } from "@/lib/config";
 
 interface Contact {
   id: string;

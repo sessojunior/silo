@@ -65,21 +65,16 @@ export default function Topbar() {
     checkChatEnabled();
 
     // Listener para atualização automática quando preferência de chat mudar
-    const handleChatPreferenceChange = (event: CustomEvent) => {
+    const handleChatPreferenceChange = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
       setChatEnabled(event.detail.chatEnabled);
     };
 
-    window.addEventListener(
-      "chatPreferenceChanged",
-      handleChatPreferenceChange as EventListener,
-    );
+    window.addEventListener("chatPreferenceChanged", handleChatPreferenceChange);
 
     // Cleanup do listener
     return () => {
-      window.removeEventListener(
-        "chatPreferenceChanged",
-        handleChatPreferenceChange as EventListener,
-      );
+      window.removeEventListener("chatPreferenceChanged", handleChatPreferenceChange);
     };
   }, []);
 

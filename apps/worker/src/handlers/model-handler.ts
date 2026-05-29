@@ -1,6 +1,7 @@
-import { db } from "@silo/database";
 import * as schema from "@silo/database/schema";
 import { eq } from "drizzle-orm";
+import { resolveWorkerDbClient } from "./db-client";
+import { isRecord } from "../lib/kafka-payload";
 
 export async function modelHandler(params: {
   topic: string;
@@ -11,23 +12,23 @@ export async function modelHandler(params: {
 }) {
   const { messageId, payload, tx } = params;
   try {
-    const payloadObj = (payload || {}) as Record<string, unknown>;
-    const productId = (payloadObj["productId"] ??
-      payloadObj["product_id"]) as string | number | undefined;
-    const slug = payloadObj["slug"] as string | undefined;
-    const data = (payloadObj["data"] ??
-      payloadObj["payload"] ??
-      payloadObj) as unknown;
+    const payloadObj = isRecord(payload) ? payload : null;
+    const productIdValue = payloadObj?.productId ?? payloadObj?.product_id;
+    const productId =
+      typeof productIdValue === "string" || typeof productIdValue === "number"
+        ? productIdValue
+        : undefined;
+    const slugValue = payloadObj?.slug;
+    const slug = typeof slugValue === "string" ? slugValue : undefined;
+    const data = payloadObj?.data ?? payloadObj?.payload ?? payloadObj;
 
     if (!productId && !slug) return;
 
-    const client = ((tx as unknown) as typeof db) || db;
+    const client = resolveWorkerDbClient(tx);
 
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     const whereExpr = productId
-      ? eq(schema.product.id, productId as any)
-      : eq(schema.product.slug, slug as any);
-    /* eslint-enable @typescript-eslint/no-explicit-any */
+      ? eq(schema.product.id, productId)
+      : eq(schema.product.slug, slug);
 
     const rows = await client
       .select()

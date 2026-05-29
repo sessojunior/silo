@@ -47,7 +47,12 @@ const PROJECTS_COLORS = [
 ];
 
 function getRecordArray(value: unknown): Array<Record<string, unknown>> {
-  return Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> =>
+          typeof item === "object" && item !== null && !Array.isArray(item),
+      )
+    : [];
 }
 
 function getStringValue(
@@ -69,6 +74,15 @@ function getNumberValue(value: Record<string, unknown>, key: string): number {
   }
 
   const parsedValue = Number(rawValue ?? 0);
+  return Number.isFinite(parsedValue) ? parsedValue : 0;
+}
+
+function getNumberFromValue(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  const parsedValue = Number(value ?? 0);
   return Number.isFinite(parsedValue) ? parsedValue : 0;
 }
 
@@ -180,8 +194,10 @@ function getReportChartData(
 
       if (type === "donut") {
         const rawStatus =
-          data.projectsByStatus && typeof data.projectsByStatus === "object"
-            ? (data.projectsByStatus as Record<string, number>)
+          typeof data.projectsByStatus === "object" &&
+          data.projectsByStatus !== null &&
+          !Array.isArray(data.projectsByStatus)
+            ? data.projectsByStatus
             : null;
 
         if (!rawStatus) {
@@ -206,7 +222,7 @@ function getReportChartData(
 
         return {
           labels: entries.map(([status]) => statusTranslations[status] || status),
-          values: entries.map(([, value]) => value),
+          values: entries.map(([, value]) => getNumberFromValue(value)),
           colors: PROJECTS_COLORS,
           seriesName: "Projetos",
           suffix: "",

@@ -5,17 +5,9 @@ import ReactMarkdown from "react-markdown";
 import Button from "@/components/ui/button";
 import Avatar from "@/components/ui/avatar";
 import { getMarkdownClasses } from "@silo/engine/format/markdown";
-import { normalizeUploadsSrc } from "@silo/engine/format/ui";
-import { config } from "@/lib/config";
+import { toPublicUploadsSrc } from "@/lib/uploads";
 import clsx from "clsx";
 import Image from "next/image";
-
-const toPublicUploadsSrc = (input: string): string => {
-  const normalized = normalizeUploadsSrc(input);
-  if (normalized.startsWith("/uploads/"))
-    return config.getPublicPath(normalized);
-  return normalized;
-};
 
 interface SolutionWithDetails {
   id: string;
