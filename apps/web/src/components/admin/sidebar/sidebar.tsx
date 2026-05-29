@@ -28,7 +28,7 @@ export type SidebarProps = {
 export default function Sidebar() {
   const { isOpenSidebar, closeSidebar } = useSidebar();
   const { currentPresence } = useChat();
-  const { permissions } = useUser();
+  const { permissions, isAdmin } = useUser();
   const [chatEnabled, setChatEnabled] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -36,13 +36,13 @@ export default function Sidebar() {
     permissions[resource]?.includes(action) ?? false;
   const hasAnyPermission = (resource: string, actions: string[]) =>
     actions.some((action) => permissions[resource]?.includes(action));
-  const canSeeProducts = hasPermission("products", "list");
-  const canSeeProjects = hasPermission("projects", "list");
-  const canSeeReports = hasPermission("reports", "view");
+  const canSeeProducts = isAdmin || hasPermission("products", "list");
+  const canSeeProjects = isAdmin || hasPermission("projects", "list");
+  const canSeeReports = isAdmin || hasPermission("reports", "view");
   const canSeeGroups =
-    hasPermission("groups", "list") || hasPermission("users", "list");
-  const canSeeChat = hasAnyPermission("chat", ["view_private", "view_group"]);
-  const canSeeContacts = hasPermission("contacts", "list");
+    isAdmin || hasPermission("groups", "list") || hasPermission("users", "list");
+  const canSeeChat = isAdmin || hasAnyPermission("chat", ["view_private", "view_group"]);
+  const canSeeContacts = isAdmin || hasPermission("contacts", "list");
 
   // Verificar se o chat está habilitado para o usuário
   useEffect(() => {
