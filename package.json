@@ -31,13 +31,6 @@
     "typecheck:worker": "npm --workspace @silo/worker run typecheck",
     "typecheck": "npm run typecheck:web && npm run typecheck:api && npm run typecheck:worker",
 
-    "audit": "node scripts/project-audit.mjs",
-    "verify": "node scripts/verify-project.mjs",
-    "dataflow:ecflow:smoke": "npx tsx scripts/dataflow-ecflow-smoke.mjs",
-    "api:smoke": "node scripts/api-smoke.mjs",
-    "api:assistant-smoke": "node scripts/api-assistant-smoke.mjs",
-    "web:visual": "node scripts/web-visual-smoke.mjs",
-    "web:visual:inventory": "node scripts/web-visual-smoke.mjs --inventory",
     "format": "prettier --write .",
     "docker:up": "node deploy.js",
     "docker:down": "docker compose down",
