@@ -782,7 +782,7 @@ function renderProjectsTable(data: Record<string, unknown>) {
   const getProjectTaskCount = () => {
     const tasksByStatus = getRecordValue(data.tasksByStatus) ?? {};
     // Para simplificar, vamos usar o total de tarefas do período
-    return Object.values(tasksByStatus).reduce(
+    return Object.values(tasksByStatus).reduce<number>(
       (sum, count) => sum + (getNumberValue(count) || 0),
       0,
     );

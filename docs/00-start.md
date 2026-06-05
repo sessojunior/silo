@@ -6,7 +6,7 @@ Guia de entrada para humanos e IAs. Leia nesta ordem ao explorar o projeto pela 
 
 ## Estrutura do repositório
 
-O projeto usa **Turborepo + npm workspaces** (monorepo):
+O projeto usa **npm workspaces** (monorepo):
 
 ```
 silo/
@@ -67,18 +67,31 @@ silo/
 # Instalar dependências (raiz)
 npm install
 
-# Rodar tudo em dev
-npm run dev
+# Rodar em desenvolvimento local (sem Docker)
+# Frontend
+npm run dev:web
+
+# API
+npm run dev:api
+
+# Worker
+npm run dev:worker
+
+# Docker (stack completa)
+npm run docker:up
+
+# Ver status dos containers Docker
+npm run docker:ps
+
+# Ver logs dos containers Docker
+npm run docker:logs
+
+# Parar stack Docker
+npm run docker:down
 
 # Build de todos os pacotes/apps
 npm run build
 
 # Migrations do banco
 npm run db:migrate
-
-# Rodar apenas o worker
-npm run dev -w @silo/worker
-
-# Rodar apenas a web
-npm run dev -w @silo/web
 ```

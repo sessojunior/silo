@@ -47,12 +47,12 @@ No boot da stack, um container `ollama-init` faz o `ollama pull` do modelo confi
 Por padrão, o deploy usa `OLLAMA_IMAGE=ollama/ollama:0.30.0-rc7`, que foi a imagem que você já baixou e validou na máquina local.
 
 **Dockerfiles:**
-- `apps/web/Dockerfile` — build do Next.js usando `turbo prune web --docker`
-- `apps/worker/Dockerfile` — build do worker usando `turbo prune worker --docker`
+- `apps/web/Dockerfile` — instala as dependências da workspace com `npm ci` e compila `@silo/web`
+- `apps/worker/Dockerfile` — instala as dependências da workspace com `npm ci` e compila `@silo/worker`
 
 O serviço `ollama` deve manter o volume `ollama_data` para persistir os modelos baixados entre reinicializações.
 
-O build de ambos usa o contexto da raiz do monorepo para que o Turborepo possa resolver os pacotes internos (`@silo/database`, `@silo/engine`, etc.).
+O build de ambos usa o contexto da raiz do monorepo para que o npm workspaces resolva os pacotes internos (`@silo/database`, `@silo/engine`, etc.).
 
 ---
 
@@ -181,9 +181,16 @@ cp env.example .env
 # Use um editor de texto (VSCode, Notepad, etc.)
 
 # 3. Construir e executar containers (Aplicação + Banco)
+npm run docker:up
+
+# Ver status e logs da stack Docker
+npm run docker:ps
+npm run docker:logs
+
+# Alias mantido por compatibilidade:
 npm run deploy
 
-# Não execute o compose manualmente no fluxo normal; o `npm run deploy` já faz isso por baixo.
+# Não execute o compose manualmente no fluxo normal; o `npm run docker:up` já faz isso por baixo.
 
 # Isso vai:
 # 1. Baixar as imagens necessárias
@@ -200,10 +207,11 @@ npm run deploy
 **Executar em segundo plano:**
 
 ```bash
-docker compose --profile db up -d --build
+npm run docker:up
 
 # Ver logs depois:
-docker compose logs -f
+npm run docker:ps
+npm run docker:logs
 ```
 
 ### **Subir Postgres junto (profile db)**
@@ -211,7 +219,7 @@ docker compose logs -f
 O comando padrão já inclui o profile `db` para garantir que o banco suba junto. Na prática, rode apenas:
 
 ```bash
-npm run deploy
+npm run docker:up
 ```
 
 Se você realmente precisar depurar o Compose, aí sim pode usar o comando manual abaixo:

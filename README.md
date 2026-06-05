@@ -62,7 +62,7 @@ O **Silo** centraliza e estrutura operações críticas em uma única plataforma
 
 ## 🚀 **Início Rápido**
 
-### **Opção 1: Docker (Recomendado)**
+### **Opção 1: Docker (stack completa)**
 
 Para um guia passo a passo detalhado, consulte [**docs/13-deploy.md**](./docs/13-deploy.md).
 
@@ -72,8 +72,17 @@ cp env.example .env
 
 # Edite o arquivo .env com suas configurações
 
-# 2. Executar Deploy (Funciona em Windows, Linux e macOS)
-# Para deploy, rode apenas `npm run deploy`
+# 2. Executar via Docker (stack completa)
+# Comando preferido:
+npm run docker:up
+
+# Ver status dos containers Docker
+npm run docker:ps
+
+# Ver logs dos containers Docker
+npm run docker:logs
+
+# Alias mantido por compatibilidade:
 npm run deploy
 
 # O compose manual fica só para troubleshooting avançado
@@ -84,7 +93,7 @@ npm run deploy
 # - Se NEXT_PUBLIC_BASE_PATH='/nome-qualquer' → http://localhost:3000/nome-qualquer
 ```
 
-### **Opção 2: Desenvolvimento Local**
+### **Opção 2: Desenvolvimento Local (sem Docker)**
 
 ```bash
 # 1. Instalar dependências
@@ -93,8 +102,15 @@ npm install
 # 2. Configurar .env
 cp env.example .env
 
-# 3. Executar servidor
-npm run dev
+# 3. Executar em desenvolvimento local (sem Docker)
+# Frontend
+npm run dev:web
+
+# API
+npm run dev:api
+
+# Worker
+npm run dev:worker
 
 # ✅ Frontend:
 # - Se NEXT_PUBLIC_BASE_PATH='/silo' → http://localhost:3000/silo
@@ -195,11 +211,27 @@ Uploads e arquivos são atendidos pelo próprio Next.js:
 # Instalar dependências
 npm install
 
-# Executar desenvolvimento local
-npm run dev              # Frontend
+# Executar desenvolvimento local (por app)
+# Frontend
+npm run dev:web
 
-# Executar com Docker
-docker compose up -d --build
+# API
+npm run dev:api
+
+# Worker
+npm run dev:worker
+
+# Executar com Docker (stack completa)
+npm run docker:up
+
+# Ver status dos containers Docker
+npm run docker:ps
+
+# Ver logs dos containers Docker
+npm run docker:logs
+
+# Parar o stack Docker
+npm run docker:down
 
 # Banco de dados
 npm run db:generate      # Gerar migração
@@ -211,6 +243,12 @@ npm run build
 
 # Lint
 npm run lint
+
+# Verificação completa
+npm run verify
+
+# Auditoria de irregularidades
+npm run audit
 ```
 
 ---

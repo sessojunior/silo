@@ -129,7 +129,7 @@ export async function createUser(data: {
 
   if (needsPasswordSetup) {
     try {
-      const authApi = auth.api as {
+      const authApi = auth.api as unknown as {
         forgetPassword: (params: {
           body: { email: string };
           headers: Headers;

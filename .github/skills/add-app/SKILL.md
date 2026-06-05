@@ -1,6 +1,6 @@
 ---
 name: add-app
-description: "Create a new app in the SILO monorepo under apps/. Use when: scaffolding a new Next.js app, Express API, or Node.js worker; adding a new app workspace; wiring Turborepo tasks; setting up app-level package.json, tsconfig.json, and environment config."
+description: "Create a new app in the SILO monorepo under apps/. Use when: scaffolding a new Next.js app, Express API, or Node.js worker; adding a new app workspace; wiring workspace scripts; setting up app-level package.json, tsconfig.json, and environment config."
 argument-hint: "App name and type (e.g. admin-web nextjs, jobs-api express, sync-worker node)"
 ---
 
@@ -150,14 +150,13 @@ export const config = schema.parse(process.env);
 - **Never** use `process.env.VAR` directly — always go through `config`
 - Packages that this app depends on receive config as function parameters
 
-### 6. Wire Turborepo tasks
+### 6. Register workspace scripts
 
-The root `turbo.json` pipeline covers `build`, `dev`, `lint`, `typecheck` for all apps automatically. No changes needed unless you add custom tasks.
+The root `package.json` exposes the common workspace scripts (`build`, `lint`, `test`, `typecheck`) and the per-app dev commands (`dev:web`, `dev:api`, `dev:worker`). Add app-specific scripts in the app package.json and mirror them at the root only when you want a repo-level entry point.
 
 To run only this app in dev:
 
 ```bash
-turbo run dev --filter=@silo/<name>
 # or
 npm run dev -w @silo/<name>
 ```

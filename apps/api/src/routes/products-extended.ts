@@ -68,7 +68,7 @@ const AvailabilityQuerySchema = z.object({
 
 // ─── Activities ───────────────────────────────────────────────────────────────
 
-router.get("/activities/availability", requirePermission("productActivities", "update"), async (req: Request, res) => {
+router.get("/activities/availability", requirePermission("productActivities", "view"), async (req: Request, res) => {
   const parsed = AvailabilityQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ success: false, error: parsed.error.issues[0]?.message || "Parâmetros inválidos." });
@@ -89,7 +89,7 @@ router.get("/activities/availability", requirePermission("productActivities", "u
   }
 });
 
-router.post("/activities", requirePermission("productActivities", "create"), async (req: Request, res) => {
+router.post("/activities", requirePermission("productActivities", "manage"), async (req: Request, res) => {
   try {
     const user = req.user!;
     const { productId, date, turn, status, description, intervention, problemCategoryId } = req.body || {};
@@ -118,7 +118,7 @@ router.post("/activities", requirePermission("productActivities", "create"), asy
   }
 });
 
-router.put("/activities", requirePermission("productActivities", "update"), async (req: Request, res) => {
+router.put("/activities", requirePermission("productActivities", "manage"), async (req: Request, res) => {
   try {
     const user = req.user!;
     const { id, status, description, intervention, problemCategoryId } = req.body || {};
@@ -184,7 +184,7 @@ const AvailabilityExceptionDeleteSchema = z.object({
   id: z.string().trim().min(1, "Exceção é obrigatória."),
 });
 
-router.get("/activities/pending-email", requirePermission("productActivities", "update"), async (_req, res) => {
+router.get("/activities/pending-email", requirePermission("productActivities", "view"), async (_req, res) => {
   try {
     const result = await listProductActivityPendingEmailRecipients();
     res.json({ success: true, data: { items: result.data.items, total: result.data.total } });
@@ -194,7 +194,7 @@ router.get("/activities/pending-email", requirePermission("productActivities", "
   }
 });
 
-router.post("/activities/pending-email", requirePermission("productActivities", "update"), async (req: Request, res) => {
+router.post("/activities/pending-email", requirePermission("productActivities", "manage"), async (req: Request, res) => {
   try {
     const parsed = PendingEmailSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ success: false, error: parsed.error.issues[0]?.message }); return; }
@@ -220,7 +220,7 @@ router.post("/activities/pending-email", requirePermission("productActivities", 
   }
 });
 
-router.get("/availability-exceptions", requirePermission("productActivities", "update"), async (req: Request, res) => {
+router.get("/availability-exceptions", requirePermission("productActivities", "view"), async (req: Request, res) => {
   const parsed = AvailabilityExceptionQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ success: false, error: parsed.error.issues[0]?.message || "Parâmetros inválidos." });
@@ -241,7 +241,7 @@ router.get("/availability-exceptions", requirePermission("productActivities", "u
   }
 });
 
-router.post("/availability-exceptions", requirePermission("productActivities", "update"), async (req: Request, res) => {
+router.post("/availability-exceptions", requirePermission("productActivities", "manage"), async (req: Request, res) => {
   try {
     const parsed = AvailabilityExceptionSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -268,7 +268,7 @@ router.post("/availability-exceptions", requirePermission("productActivities", "
   }
 });
 
-router.delete("/availability-exceptions", requirePermission("productActivities", "update"), async (req: Request, res) => {
+router.delete("/availability-exceptions", requirePermission("productActivities", "manage"), async (req: Request, res) => {
   try {
     const parsed = AvailabilityExceptionDeleteSchema.safeParse(req.query);
     if (!parsed.success) {
@@ -290,7 +290,7 @@ router.delete("/availability-exceptions", requirePermission("productActivities",
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 
-router.get("/contacts", requirePermission("contacts", "list"), async (req: Request, res) => {
+router.get("/contacts", requirePermission("contacts", "view"), async (req: Request, res) => {
   try {
     const productId = typeof req.query.productId === "string" ? req.query.productId : undefined;
     if (!productId) { res.status(400).json({ success: false, error: "ProductId é obrigatório" }); return; }
@@ -302,7 +302,7 @@ router.get("/contacts", requirePermission("contacts", "list"), async (req: Reque
   }
 });
 
-router.post("/contacts", requirePermission("contacts", "create"), async (req: Request, res) => {
+router.post("/contacts", requirePermission("contacts", "manage"), async (req: Request, res) => {
   try {
     const { productId, contactIds } = req.body;
     if (!productId || !contactIds || !Array.isArray(contactIds)) { res.status(400).json({ success: false, error: "ProductId e contactIds são obrigatórios" }); return; }
@@ -314,7 +314,7 @@ router.post("/contacts", requirePermission("contacts", "create"), async (req: Re
   }
 });
 
-router.delete("/contacts", requirePermission("contacts", "delete"), async (req: Request, res) => {
+router.delete("/contacts", requirePermission("contacts", "manage"), async (req: Request, res) => {
   try {
     const { associationId } = req.body;
     if (!associationId) { res.status(400).json({ success: false, error: "AssociationId é obrigatório" }); return; }
@@ -327,7 +327,7 @@ router.delete("/contacts", requirePermission("contacts", "delete"), async (req: 
   }
 });
 
-router.get("/dependencies", requirePermission("productDependencies", "list"), async (req: Request, res) => {
+router.get("/dependencies", requirePermission("productDependencies", "view"), async (req: Request, res) => {
   try {
     const productId = typeof req.query.productId === "string" ? req.query.productId : undefined;
     if (!productId) { res.status(400).json({ success: false, error: "ProductId é obrigatório" }); return; }
@@ -339,7 +339,7 @@ router.get("/dependencies", requirePermission("productDependencies", "list"), as
   }
 });
 
-router.post("/dependencies", requirePermission("productDependencies", "create"), async (req: Request, res) => {
+router.post("/dependencies", requirePermission("productDependencies", "manage"), async (req: Request, res) => {
   try {
     const { productId, name, icon, description, parentId } = req.body;
     if (!productId || !name) { res.status(400).json({ success: false, error: "ProductId e nome são obrigatórios" }); return; }
@@ -356,7 +356,7 @@ router.post("/dependencies", requirePermission("productDependencies", "create"),
   }
 });
 
-router.put("/dependencies", requirePermission("productDependencies", "update"), async (req: Request, res) => {
+router.put("/dependencies", requirePermission("productDependencies", "manage"), async (req: Request, res) => {
   try {
     const { id, name, icon, description, parentId, newPosition } = req.body;
     if (!id || !name) { res.status(400).json({ success: false, error: "ID e nome são obrigatórios" }); return; }
@@ -373,7 +373,7 @@ router.put("/dependencies", requirePermission("productDependencies", "update"), 
   }
 });
 
-router.delete("/dependencies", requirePermission("productDependencies", "delete"), async (req: Request, res) => {
+router.delete("/dependencies", requirePermission("productDependencies", "manage"), async (req: Request, res) => {
   try {
     const { id } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID é obrigatório" }); return; }
@@ -386,7 +386,7 @@ router.delete("/dependencies", requirePermission("productDependencies", "delete"
   }
 });
 
-router.put("/dependencies/reorder", requirePermission("productDependencies", "reorder"), async (req: Request, res) => {
+router.put("/dependencies/reorder", requirePermission("productDependencies", "manage"), async (req: Request, res) => {
   try {
     const { productId, items } = req.body as { productId: string; items: Array<{ id: string; parentId: string | null; treePath: string; treeDepth: number; sortKey: string }> };
     if (!productId || !Array.isArray(items)) { res.status(400).json({ success: false, error: "ProductId e items são obrigatórios" }); return; }
@@ -418,7 +418,7 @@ router.get("/manual", requirePermission("productManual", "view"), async (req: Re
   }
 });
 
-router.put("/manual", requirePermission("productManual", "update"), async (req: Request, res) => {
+router.put("/manual", requirePermission("productManual", "manage"), async (req: Request, res) => {
   try {
     const { productId, description } = req.body;
     if (!productId || !description) { res.status(400).json({ success: false, error: "ProductId e description são obrigatórios" }); return; }
@@ -456,7 +456,7 @@ router.get("/manual/images", requirePermission("productManual", "view"), async (
   }
 });
 
-router.delete("/manual/images", requirePermission("productManual", "update"), async (req: Request, res) => {
+router.delete("/manual/images", requirePermission("productManual", "manage"), async (req: Request, res) => {
   try {
     const { filename } = req.body;
     if (!filename || !isSafeFilename(filename)) { res.status(400).json({ success: false, error: "Arquivo inválido." }); return; }
@@ -471,7 +471,7 @@ router.delete("/manual/images", requirePermission("productManual", "update"), as
 
 // ─── Problems ─────────────────────────────────────────────────────────────────
 
-router.get("/problems", requirePermission("productProblems", "list"), async (req: Request, res) => {
+router.get("/problems", requirePermission("productProblems", "view"), async (req: Request, res) => {
   try {
     const slug = typeof req.query.slug === "string" ? req.query.slug : undefined;
     const page = parseInt(typeof req.query.page === "string" ? req.query.page : "1");
@@ -489,7 +489,7 @@ router.get("/problems", requirePermission("productProblems", "list"), async (req
   }
 });
 
-router.post("/problems", requirePermission("productProblems", "create"), async (req: Request, res) => {
+router.post("/problems", requirePermission("productProblems", "manage"), async (req: Request, res) => {
   try {
     const user = req.user!;
     const { productId, title, description, problemCategoryId } = req.body;
@@ -505,7 +505,7 @@ router.post("/problems", requirePermission("productProblems", "create"), async (
   }
 });
 
-router.put("/problems", requirePermission("productProblems", "update"), async (req: Request, res) => {
+router.put("/problems", requirePermission("productProblems", "manage"), async (req: Request, res) => {
   try {
     const { id, title, description, problemCategoryId } = req.body;
     if (!id || typeof title !== "string" || typeof description !== "string" || !problemCategoryId) { res.status(400).json({ success: false, error: "Todos os campos são obrigatórios." }); return; }
@@ -520,7 +520,7 @@ router.put("/problems", requirePermission("productProblems", "update"), async (r
   }
 });
 
-router.delete("/problems", requirePermission("productProblems", "delete"), async (req: Request, res) => {
+router.delete("/problems", requirePermission("productProblems", "manage"), async (req: Request, res) => {
   try {
     const { id } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID obrigatório." }); return; }
@@ -535,7 +535,7 @@ router.delete("/problems", requirePermission("productProblems", "delete"), async
 
 // ─── Problems Categories ──────────────────────────────────────────────────────
 
-router.get("/problems/categories", requirePermission("productProblems", "list"), async (req: Request, res) => {
+router.get("/problems/categories", requirePermission("productProblems", "view"), async (req: Request, res) => {
   try {
     const search = typeof req.query.search === "string" ? req.query.search : "";
     const result = await listProductProblemCategories(search);
@@ -546,7 +546,7 @@ router.get("/problems/categories", requirePermission("productProblems", "list"),
   }
 });
 
-router.post("/problems/categories", requirePermission("productProblems", "create"), async (req: Request, res) => {
+router.post("/problems/categories", requirePermission("productProblems", "manage"), async (req: Request, res) => {
   try {
     const { name, color } = req.body;
     if (!name || name.trim().length < 2) { res.status(400).json({ success: false, error: "Nome é obrigatório e deve ter pelo menos 2 caracteres." }); return; }
@@ -562,7 +562,7 @@ router.post("/problems/categories", requirePermission("productProblems", "create
   }
 });
 
-router.put("/problems/categories", requirePermission("productProblems", "update"), async (req: Request, res) => {
+router.put("/problems/categories", requirePermission("productProblems", "manage"), async (req: Request, res) => {
   try {
     const { id, name, color } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID obrigatório." }); return; }
@@ -576,7 +576,7 @@ router.put("/problems/categories", requirePermission("productProblems", "update"
   }
 });
 
-router.delete("/problems/categories", requirePermission("productProblems", "delete"), async (req: Request, res) => {
+router.delete("/problems/categories", requirePermission("productProblems", "manage"), async (req: Request, res) => {
   try {
     const id = typeof req.query.id === "string" ? req.query.id : undefined;
     if (!id) { res.status(400).json({ success: false, error: "ID obrigatório." }); return; }
@@ -591,7 +591,7 @@ router.delete("/problems/categories", requirePermission("productProblems", "dele
 
 // ─── Problem Images ───────────────────────────────────────────────────────────
 
-router.get("/images", requirePermission("productProblems", "list"), async (req: Request, res) => {
+router.get("/images", requirePermission("productProblems", "view"), async (req: Request, res) => {
   try {
     const problemId = typeof req.query.problemId === "string" ? req.query.problemId : undefined;
     if (!problemId) { res.status(400).json({ success: false, error: "Parâmetro problemId é obrigatório." }); return; }
@@ -603,7 +603,7 @@ router.get("/images", requirePermission("productProblems", "list"), async (req: 
   }
 });
 
-router.post("/images", requirePermission("productProblems", "update"), async (req: Request, res) => {
+router.post("/images", requirePermission("productProblems", "manage"), async (req: Request, res) => {
   try {
     const { productProblemId, imageUrl } = req.body;
     const description = typeof req.body.description === "string" ? req.body.description : "";
@@ -616,7 +616,7 @@ router.post("/images", requirePermission("productProblems", "update"), async (re
   }
 });
 
-router.delete("/images", requirePermission("productProblems", "update"), async (req: Request, res) => {
+router.delete("/images", requirePermission("productProblems", "manage"), async (req: Request, res) => {
   try {
     const { id } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID da imagem é obrigatório." }); return; }
@@ -647,7 +647,7 @@ router.delete("/images", requirePermission("productProblems", "update"), async (
 
 // ─── Solutions ────────────────────────────────────────────────────────────────
 
-router.get("/solutions", requirePermission("productSolutions", "list"), async (req: Request, res) => {
+router.get("/solutions", requirePermission("productSolutions", "view"), async (req: Request, res) => {
   try {
     const problemId = typeof req.query.problemId === "string" ? req.query.problemId : undefined;
     if (!problemId) { res.status(400).json({ success: false, error: "Parâmetro problemId é obrigatório." }); return; }
@@ -659,7 +659,7 @@ router.get("/solutions", requirePermission("productSolutions", "list"), async (r
   }
 });
 
-router.post("/solutions", requirePermission("productSolutions", "create"), async (req: Request, res) => {
+router.post("/solutions", requirePermission("productSolutions", "manage"), async (req: Request, res) => {
   try {
     const user = req.user!;
     // Support both JSON body and formData-like body
@@ -676,7 +676,7 @@ router.post("/solutions", requirePermission("productSolutions", "create"), async
   }
 });
 
-router.put("/solutions", requirePermission("productSolutions", "update"), async (req: Request, res) => {
+router.put("/solutions", requirePermission("productSolutions", "manage"), async (req: Request, res) => {
   try {
     const user = req.user!;
     const id = req.body.id as string | null;
@@ -693,7 +693,7 @@ router.put("/solutions", requirePermission("productSolutions", "update"), async 
   }
 });
 
-router.delete("/solutions", requirePermission("productSolutions", "delete"), async (req: Request, res) => {
+router.delete("/solutions", requirePermission("productSolutions", "manage"), async (req: Request, res) => {
   try {
     const user = req.user!;
     const { id } = req.body;
@@ -707,7 +707,7 @@ router.delete("/solutions", requirePermission("productSolutions", "delete"), asy
   }
 });
 
-router.post("/solutions/count", requirePermission("productSolutions", "list"), async (req: Request, res) => {
+router.post("/solutions/count", requirePermission("productSolutions", "view"), async (req: Request, res) => {
   try {
     const { problemIds } = req.body;
     if (!problemIds || !Array.isArray(problemIds) || problemIds.length === 0) { res.status(400).json({ success: false, error: "Array problemIds é obrigatório e não pode estar vazio." }); return; }
@@ -719,7 +719,7 @@ router.post("/solutions/count", requirePermission("productSolutions", "list"), a
   }
 });
 
-router.get("/solutions/summary", requirePermission("productSolutions", "list"), async (req: Request, res) => {
+router.get("/solutions/summary", requirePermission("productSolutions", "view"), async (req: Request, res) => {
   try {
     const productSlug = typeof req.query.productSlug === "string" ? req.query.productSlug : undefined;
     if (!productSlug) { res.status(400).json({ success: false, error: "Parâmetro productSlug é obrigatório." }); return; }
@@ -733,7 +733,7 @@ router.get("/solutions/summary", requirePermission("productSolutions", "list"), 
 
 // ─── Solution Images ──────────────────────────────────────────────────────────
 
-router.get("/solutions/images", requirePermission("productSolutions", "list"), async (req: Request, res) => {
+router.get("/solutions/images", requirePermission("productSolutions", "view"), async (req: Request, res) => {
   try {
     const solutionId = typeof req.query.solutionId === "string" ? req.query.solutionId : undefined;
     if (!solutionId) { res.status(400).json({ success: false, error: "Parâmetro solutionId é obrigatório." }); return; }
@@ -745,7 +745,7 @@ router.get("/solutions/images", requirePermission("productSolutions", "list"), a
   }
 });
 
-router.post("/solutions/images", requirePermission("productSolutions", "update"), async (req: Request, res) => {
+router.post("/solutions/images", requirePermission("productSolutions", "manage"), async (req: Request, res) => {
   try {
     const productSolutionId = req.body.productSolutionId as string | null;
     const imageUrl = req.body.imageUrl as string | null;
@@ -764,7 +764,7 @@ router.post("/solutions/images", requirePermission("productSolutions", "update")
   }
 });
 
-router.delete("/solutions/images", requirePermission("productSolutions", "update"), async (req: Request, res) => {
+router.delete("/solutions/images", requirePermission("productSolutions", "manage"), async (req: Request, res) => {
   try {
     const { id } = req.body;
     if (!id) { res.status(400).json({ success: false, error: "ID da imagem é obrigatório." }); return; }
@@ -795,7 +795,7 @@ router.delete("/solutions/images", requirePermission("productSolutions", "update
 
 // ─── Product History ──────────────────────────────────────────────────────────
 
-router.get("/:productId/history", requirePermission("productActivities", "list"), async (req: Request, res) => {
+router.get("/:productId/history", requirePermission("productActivities", "view"), async (req: Request, res) => {
   try {
     const productId = req.params.productId as string;
     const result = await listProductActivityHistory({
@@ -816,7 +816,7 @@ router.get("/:productId/history", requirePermission("productActivities", "list")
 
 // ─── Product Data Flow ────────────────────────────────────────────────────────
 
-router.get("/:productId/data-flow", requirePermission("products", "list"), async (req: Request, res) => {
+router.get("/:productId/data-flow", requirePermission("products", "view"), async (req: Request, res) => {
   try {
     const result = await listProductDataFlowPipelines({
       productSlug: String(req.params.productId ?? ""),

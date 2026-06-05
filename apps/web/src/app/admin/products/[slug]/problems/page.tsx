@@ -98,7 +98,7 @@ export default function ProblemsPage() {
   const getItemsFromApiResponse = <T,>(value: unknown): T[] => {
     const getRecordValue = (input: unknown): Record<string, unknown> | null =>
       typeof input === "object" && input !== null && !Array.isArray(input)
-        ? input
+        ? (input as Record<string, unknown>)
         : null;
 
     const root = getRecordValue(value);

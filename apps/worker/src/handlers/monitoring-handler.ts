@@ -12,7 +12,8 @@ export async function monitoringHandler(params: {
 }) {
   const { payload, tx } = params;
   try {
-    const payloadObj = isRecord(payload) ? payload : null;
+    if (!isRecord(payload)) return;
+    const payloadObj = payload;
     const slugValue = payloadObj?.slug ?? payloadObj?.pageSlug ?? payloadObj?.page_id;
     const slug = typeof slugValue === "string" ? slugValue : undefined;
     if (!slug) return;

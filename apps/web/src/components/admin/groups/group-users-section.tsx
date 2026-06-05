@@ -16,178 +16,18 @@ import Switch from "@/components/ui/switch";
 import Offcanvas from "@/components/ui/offcanvas";
 import Button from "@/components/ui/button";
 
+// Simplified permission catalog: resources with only view/manage actions
 const PERMISSION_CATALOG = [
-  {
-    resource: "users",
-    label: "Usuários",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "groups",
-    label: "Grupos",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "projects",
-    label: "Projetos",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "projectActivities",
-    label: "Atividades do Projeto",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "projectTasks",
-    label: "Tarefas do Projeto",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-      { action: "assign", label: "Atribuir" },
-      { action: "history", label: "Histórico" },
-    ],
-  },
-  {
-    resource: "products",
-    label: "Produtos",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "productActivities",
-    label: "Atividades do Produto",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "productProblems",
-    label: "Problemas",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "productSolutions",
-    label: "Soluções",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "productDependencies",
-    label: "Dependências",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-      { action: "reorder", label: "Ordenar" },
-    ],
-  },
-  {
-    resource: "productManual",
-    label: "Manual do Produto",
-    actions: [
-      { action: "view", label: "Visualizar" },
-      { action: "update", label: "Editar" },
-    ],
-  },
-  {
-    resource: "contacts",
-    label: "Contatos",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "incidents",
-    label: "Incidentes",
-    actions: [
-      { action: "list", label: "Listar" },
-      { action: "create", label: "Criar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "dashboard",
-    label: "Dashboard",
-    actions: [
-      { action: "view", label: "Visualizar" },
-      { action: "update", label: "Editar" },
-      { action: "delete", label: "Excluir" },
-    ],
-  },
-  {
-    resource: "reports",
-    label: "Relatórios",
-    actions: [{ action: "view", label: "Visualizar" }],
-  },
-  {
-    resource: "help",
-    label: "Ajuda",
-    actions: [
-      { action: "view", label: "Visualizar" },
-      { action: "update", label: "Editar" },
-    ],
-  },
-  {
-    resource: "chat",
-    label: "Chat",
-    actions: [
-      { action: "view_private", label: "Ver privado" },
-      { action: "view_group", label: "Ver grupos" },
-      { action: "send_private", label: "Enviar privado" },
-      { action: "send_group_all", label: "Enviar em grupos" },
-      { action: "presence", label: "Presença" },
-    ],
-  },
+  { resource: "products", label: "Produtos", actions: [{ action: "view", label: "Visualizar" }, { action: "manage", label: "Gerenciar" }] },
+  { resource: "projects", label: "Projetos", actions: [{ action: "view", label: "Visualizar" }, { action: "manage", label: "Gerenciar" }] },
+  { resource: "groups", label: "Grupos e Usuários", actions: [{ action: "view", label: "Visualizar" }, { action: "manage", label: "Gerenciar" }] },
+  { resource: "reports", label: "Relatórios/Dashboard", actions: [{ action: "view", label: "Visualizar" }, { action: "manage", label: "Gerenciar" }] },
+  { resource: "chat", label: "Chat", actions: [{ action: "view", label: "Visualizar" }, { action: "manage", label: "Gerenciar" }] },
 ];
 
 const ALWAYS_ON_PERMISSIONS = new Set([
-  "dashboard:view",
-  "projects:list",
-  "products:list",
-  "help:view",
+  "projects:view",
+  "products:view",
 ]);
 
 const buildAllPermissions = () =>
@@ -195,6 +35,39 @@ const buildAllPermissions = () =>
     acc[section.resource] = section.actions.map((item) => item.action);
     return acc;
   }, {});
+
+// Helpers to canonicalize group permissions returned by the API into the simplified model
+const mapResourceToV2 = (resource: string) => {
+  if (!resource) return resource;
+  const r = resource.toLowerCase();
+  if (r.startsWith("product") || r.startsWith("picture") || r.startsWith("radar")) return "products";
+  if (r.startsWith("project")) return "projects";
+  if (r === "groups" || r === "users" || r.startsWith("group")) return "groups";
+  if (r === "reports" || r === "dashboard" || r.includes("report")) return "reports";
+  if (r === "chat" || r.includes("chat")) return "chat";
+  return resource;
+};
+
+const mapActionToV2 = (_resource: string, action: string) => {
+  if (!action) return "manage";
+  const a = action.toLowerCase();
+  if (["list", "view", "read"].includes(a) || a.includes("view")) return "view";
+  if (["create", "update", "edit", "delete", "assign", "reorder", "approve", "send"].some((x) => a.includes(x))) return "manage";
+  return "manage";
+};
+
+const canonicalizeGroupPermissions = (raw: Record<string, string[]> | undefined) => {
+  const out: Record<string, string[]> = {};
+  if (!raw) return out;
+  Object.entries(raw).forEach(([resource, actions]) => {
+    const r2 = mapResourceToV2(resource);
+    const set = new Set<string>();
+    (actions || []).forEach((a) => set.add(mapActionToV2(resource, a)));
+    if (set.has("manage")) set.add("view");
+    out[r2] = Array.from(set);
+  });
+  return out;
+};
 
 interface GroupUsersSectionProps {
   group: Group;
@@ -228,7 +101,7 @@ const GroupUsersSection = forwardRef<
       const data = await response.json();
 
       if (data.success) {
-        setPermissions(data.data.permissions || {});
+        setPermissions(canonicalizeGroupPermissions(data.data.permissions || {}));
       } else {
         console.error(
           "❌ [COMPONENT_GROUP_USERS_SECTION] Erro ao carregar permissões do grupo:",

@@ -18,8 +18,8 @@ Arquivos que suportam o fluxo:
 - [../.gitlab-ci.yml](../.gitlab-ci.yml)
 - [../docker-compose.deploy.yml](../docker-compose.deploy.yml)
 - [../scripts/gitlab/deploy.sh](../scripts/gitlab/deploy.sh)
-- `apps/web/Dockerfile` — imagem da aplicação web (usa `turbo prune web --docker`)
-- `apps/worker/Dockerfile` — imagem do consumer Kafka (usa `turbo prune worker --docker`)
+- `apps/web/Dockerfile` — imagem da aplicação web (instala a workspace inteira e compila `@silo/web`)
+- `apps/worker/Dockerfile` — imagem do consumer Kafka (instala a workspace inteira e compila `@silo/worker`)
 
 O arquivo [../docker-compose.yml](../docker-compose.yml) é o compose de desenvolvimento/local.
 O arquivo de deploy usa imagem pré-construída e pressupõe um Postgres externo ou gerenciado.

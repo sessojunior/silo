@@ -2,8 +2,8 @@
   "name": "@silo/web",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build && node ./scripts/prepare-standalone-assets.mjs",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack && node ./scripts/prepare-standalone-assets.mjs",
     "start": "node .next/standalone/apps/web/server.js",
     "lint": "eslint .",
     "test": "vitest run",

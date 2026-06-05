@@ -1,24 +1,14 @@
 FROM node:22-alpine AS base
 RUN apk update && apk upgrade && rm -rf /var/cache/apk/*
-
-# ─── Prune monorepo for worker ───────────────────────────────────────────────
-FROM base AS pruner
 WORKDIR /app
-RUN npm install -g turbo@latest
-COPY . .
-RUN turbo prune @silo/worker --docker
 
 # ─── Install dependencies ────────────────────────────────────────────────────
 FROM base AS installer
-WORKDIR /app
-COPY --from=pruner /app/out/json/ .
+COPY . .
 RUN npm ci --legacy-peer-deps
 
 # ─── Build ───────────────────────────────────────────────────────────────────
-FROM base AS builder
-WORKDIR /app
-COPY --from=installer /app/node_modules ./node_modules
-COPY --from=pruner /app/out/full/ .
+FROM installer AS builder
 ENV NODE_ENV=production
 RUN npm run build -w @silo/worker
 

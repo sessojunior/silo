@@ -545,8 +545,8 @@ Permissões são controladas por **recurso/ação** e somadas entre todos os gru
 Todos os grupos possuem permissões obrigatórias que não podem ser removidas:
 
 - `dashboard:view`
-- `projects:list`
-- `products:list`
+ - `projects:view`
+ - `products:view`
 - `help:view`
 
 ### **Regras**

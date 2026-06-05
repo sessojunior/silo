@@ -61,13 +61,20 @@ POSTGRES_PORT=5432
 
 ### 5) Subir tudo com banco e volumes
 
-Execute apenas o script de deploy automatizado. Este é o comando oficial para Windows, Linux e Mac:
+Execute apenas o script de stack Docker automatizado. Este é o comando oficial para Windows, Linux e Mac:
 
 ```bash
-npm run deploy
+npm run docker:up
 ```
 
-Não use o `docker compose --profile db up -d --build` no fluxo normal. Ele é um detalhe interno do `npm run deploy` e só serve para troubleshooting avançado.
+Para inspecionar a stack depois do boot:
+
+```bash
+npm run docker:ps
+npm run docker:logs
+```
+
+Não use o `docker compose --profile db up -d --build` no fluxo normal. Ele é um detalhe interno do `npm run docker:up` e só serve para troubleshooting avançado.
 
 O que acontece aqui:
 
@@ -79,7 +86,7 @@ O que acontece aqui:
 
 Tudo isso acontece de forma automática graças ao script `apps/web/entrypoint.sh`.
 
-3. **Orquestração**: o `npm run deploy` já chama o Docker Compose correto por baixo, então não é necessário montar os comandos manualmente.
+3. **Orquestração**: o `npm run docker:up` já chama o Docker Compose correto por baixo, então não é necessário montar os comandos manualmente.
 
 ### 6) Ver se está rodando
 
@@ -230,4 +237,4 @@ docker compose logs web
 docker compose logs worker
 ```
 
-Se o erro for relacionado a **módulos não encontrados** ou dependências faltando, verifique se os pacotes internos (`@silo/database`, `@silo/engine`, etc.) estão corretamente declarados no `package.json` do app afetado. O build Docker usa `turbo prune` para incluir apenas o que cada app precisa.
+Se o erro for relacionado a **módulos não encontrados** ou dependências faltando, verifique se os pacotes internos (`@silo/database`, `@silo/engine`, etc.) estão corretamente declarados no `package.json` do app afetado. O build Docker instala a workspace inteira e depois compila o app alvo, então as dependências internas precisam estar declaradas corretamente.

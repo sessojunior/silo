@@ -19,7 +19,7 @@ router.use(authMiddleware);
 
 // ─── Picture Pages ────────────────────────────────────────────────────────────
 
-router.get("/picture-pages", requirePermission("picturePages", "list"), async (_req, res) => {
+router.get("/picture-pages", requirePermission("picturePages", "view"), async (_req, res) => {
   try {
     const items = await monitoringService.listPicturePages();
     res.json({ success: true, data: { items } });
@@ -29,7 +29,7 @@ router.get("/picture-pages", requirePermission("picturePages", "list"), async (_
   }
 });
 
-router.post("/picture-pages", requirePermission("picturePages", "create"), async (req: Request, res) => {
+router.post("/picture-pages", requirePermission("picturePages", "manage"), async (req: Request, res) => {
   try {
     const result = picturePageSchema.omit({ id: true }).safeParse(req.body);
     if (!result.success) { res.status(400).json({ success: false, error: result.error.issues[0]?.message }); return; }
@@ -41,7 +41,7 @@ router.post("/picture-pages", requirePermission("picturePages", "create"), async
   }
 });
 
-router.put("/picture-pages", requirePermission("picturePages", "update"), async (req: Request, res) => {
+router.put("/picture-pages", requirePermission("picturePages", "manage"), async (req: Request, res) => {
   try {
     const result = picturePageSchema.safeParse(req.body);
     if (!result.success) { res.status(400).json({ success: false, error: result.error.issues[0]?.message }); return; }
@@ -53,7 +53,7 @@ router.put("/picture-pages", requirePermission("picturePages", "update"), async 
   }
 });
 
-router.delete("/picture-pages", requirePermission("picturePages", "delete"), async (req: Request, res) => {
+router.delete("/picture-pages", requirePermission("picturePages", "manage"), async (req: Request, res) => {
   try {
     const id = typeof req.query.id === "string" ? req.query.id : undefined;
     if (!id) { res.status(400).json({ success: false, error: "ID é obrigatório." }); return; }
@@ -67,7 +67,7 @@ router.delete("/picture-pages", requirePermission("picturePages", "delete"), asy
 
 // ─── Picture Links ────────────────────────────────────────────────────────────
 
-router.put("/picture-links", requirePermission("picturePages", "update"), async (req: Request, res) => {
+router.put("/picture-links", requirePermission("picturePages", "manage"), async (req: Request, res) => {
   try {
     const result = pictureLinkSchema.safeParse(req.body);
     if (!result.success) { res.status(400).json({ success: false, error: result.error.issues[0]?.message }); return; }
@@ -79,7 +79,7 @@ router.put("/picture-links", requirePermission("picturePages", "update"), async 
   }
 });
 
-router.delete("/picture-links", requirePermission("picturePages", "delete"), async (req: Request, res) => {
+router.delete("/picture-links", requirePermission("picturePages", "manage"), async (req: Request, res) => {
   try {
     const id = typeof req.query.id === "string" ? req.query.id : undefined;
     if (!id) { res.status(400).json({ success: false, error: "ID é obrigatório." }); return; }
@@ -93,7 +93,7 @@ router.delete("/picture-links", requirePermission("picturePages", "delete"), asy
 
 // ─── Radar Groups ─────────────────────────────────────────────────────────────
 
-router.get("/radar-groups", requirePermission("radarGroups", "list"), async (_req, res) => {
+router.get("/radar-groups", requirePermission("radarGroups", "view"), async (_req, res) => {
   try {
     const groups = await monitoringService.listRadarGroups();
     res.json({ success: true, data: { items: groups } });
@@ -103,7 +103,7 @@ router.get("/radar-groups", requirePermission("radarGroups", "list"), async (_re
   }
 });
 
-router.post("/radar-groups", requirePermission("radarGroups", "create"), async (req: Request, res) => {
+router.post("/radar-groups", requirePermission("radarGroups", "manage"), async (req: Request, res) => {
   try {
     const result = radarGroupSchema.safeParse(req.body);
     if (!result.success) { res.status(400).json({ success: false, error: result.error.issues[0]?.message }); return; }
@@ -115,7 +115,7 @@ router.post("/radar-groups", requirePermission("radarGroups", "create"), async (
   }
 });
 
-router.put("/radar-groups", requirePermission("radarGroups", "update"), async (req: Request, res) => {
+router.put("/radar-groups", requirePermission("radarGroups", "manage"), async (req: Request, res) => {
   try {
     const result = radarGroupSchema.safeParse(req.body);
     if (!result.success) { res.status(400).json({ success: false, error: result.error.issues[0]?.message }); return; }
@@ -127,7 +127,7 @@ router.put("/radar-groups", requirePermission("radarGroups", "update"), async (r
   }
 });
 
-router.delete("/radar-groups", requirePermission("radarGroups", "delete"), async (req: Request, res) => {
+router.delete("/radar-groups", requirePermission("radarGroups", "manage"), async (req: Request, res) => {
   try {
     const id = typeof req.query.id === "string" ? req.query.id : undefined;
     if (!id) { res.status(400).json({ success: false, error: "ID é obrigatório." }); return; }
@@ -145,7 +145,7 @@ router.delete("/radar-groups", requirePermission("radarGroups", "delete"), async
 
 // ─── Radars ───────────────────────────────────────────────────────────────────
 
-router.get("/radars", requirePermission("radars", "list"), async (_req, res) => {
+router.get("/radars", requirePermission("radars", "view"), async (_req, res) => {
   try {
     const items = await monitoringService.listRadars();
     res.json({ success: true, data: { items } });
@@ -155,7 +155,7 @@ router.get("/radars", requirePermission("radars", "list"), async (_req, res) => 
   }
 });
 
-router.put("/radars", requirePermission("radars", "update"), async (req: Request, res) => {
+router.put("/radars", requirePermission("radars", "manage"), async (req: Request, res) => {
   try {
     const result = radarSchema.safeParse(req.body);
     if (!result.success) { res.status(400).json({ success: false, error: result.error.issues[0]?.message }); return; }
@@ -167,7 +167,7 @@ router.put("/radars", requirePermission("radars", "update"), async (req: Request
   }
 });
 
-router.delete("/radars", requirePermission("radars", "delete"), async (req: Request, res) => {
+router.delete("/radars", requirePermission("radars", "manage"), async (req: Request, res) => {
   try {
     const id = typeof req.query.id === "string" ? req.query.id : undefined;
     if (!id) { res.status(400).json({ success: false, error: "ID é obrigatório." }); return; }
@@ -181,7 +181,7 @@ router.delete("/radars", requirePermission("radars", "delete"), async (req: Requ
 
 // ─── Seed Radars ──────────────────────────────────────────────────────────────
 
-router.post("/seed-radars", requirePermission("radars", "update"), async (_req, res) => {
+router.post("/seed-radars", requirePermission("radars", "manage"), async (_req, res) => {
   try {
     // Seed from packages/db will be added in S9; for now just respond success
     res.json({ success: true, message: "Seed de monitoramento executado com sucesso" });

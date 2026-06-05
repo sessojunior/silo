@@ -145,6 +145,10 @@ router.get("/images", requireAdmin(), async (_req, res) => {
 router.post("/images", requireAdmin(), async (req, res) => {
   try {
     const body = isRecord(req.body) ? req.body : null;
+    if (!body) {
+      respondIncidentBadRequest(res, "Dados inválidos");
+      return;
+    }
     const base64 = typeof body.image === "string" ? body.image : null;
     const filename = typeof body.filename === "string" ? body.filename : null;
     if (!base64 || !filename) {

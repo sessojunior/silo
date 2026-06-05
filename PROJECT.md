@@ -119,7 +119,7 @@ O Silo combina tecnologias modernas, mas o objetivo aqui não é acumular ferram
 | Next.js 16 | Interface principal, rotas, server actions e integração web |
 | React 19 | Construção da experiência interativa |
 | TypeScript estrito | Consistência de tipos e segurança de manutenção |
-| Turborepo + npm workspaces | Orquestração do monorepo |
+| npm workspaces | Orquestração do monorepo |
 | Express | API REST de recursos e autenticação |
 | PostgreSQL | Persistência dos dados do trabalho |
 | Drizzle ORM | Schema, queries e migrações tipadas |

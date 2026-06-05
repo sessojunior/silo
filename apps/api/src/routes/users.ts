@@ -47,7 +47,7 @@ const getAuthenticatedUserId = (req: Request, res: ExpressResponse): string | nu
 router.get(
   "/",
   authMiddleware,
-  requirePermission("users", "list"),
+  requirePermission("users", "view"),
   validate(userListQuerySchema, "query"),
   async (req, res) => {
     try {
@@ -62,7 +62,7 @@ router.get(
 );
 
 // POST /api/users
-router.post("/", authMiddleware, requirePermission("users", "create"), validate(userCreateSchema), async (req, res) => {
+router.post("/", authMiddleware, requirePermission("users", "manage"), validate(userCreateSchema), async (req, res) => {
   try {
     const result = await userService.createUser(req.body, req.headers);
     if (respondUserServiceError(res, result, "Erro ao criar usuário.")) {
@@ -76,7 +76,7 @@ router.post("/", authMiddleware, requirePermission("users", "create"), validate(
 });
 
 // PUT /api/users
-router.put("/", authMiddleware, requirePermission("users", "update"), validate(userUpdateSchema), async (req, res) => {
+router.put("/", authMiddleware, requirePermission("users", "manage"), validate(userUpdateSchema), async (req, res) => {
   try {
     const result = await userService.updateUser(req.body);
     if (respondUserServiceError(res, result, "Erro ao atualizar usuário.")) {
@@ -93,7 +93,7 @@ router.put("/", authMiddleware, requirePermission("users", "update"), validate(u
 router.delete(
   "/",
   authMiddleware,
-  requirePermission("users", "delete"),
+  requirePermission("users", "manage"),
   validate(userDeleteQuerySchema, "query"),
   async (req, res) => {
     try {

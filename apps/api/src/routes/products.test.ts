@@ -1,12 +1,13 @@
 import express from "express";
+import type { NextFunction, Request, Response } from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
 import { SHIFT_CODES } from "@silo/engine/domain/scheduling";
 
 const mocks = vi.hoisted(() => ({
-  authMiddleware: vi.fn((_req, _res, next) => next()),
-  requirePermission: vi.fn(() => (_req, _res, next) => next()),
+  authMiddleware: vi.fn((_req: Request, _res: Response, next: NextFunction) => next()),
+  requirePermission: vi.fn(() => (_req: Request, _res: Response, next: NextFunction) => next()),
   listProducts: vi.fn(),
   createProduct: vi.fn(),
   updateProduct: vi.fn(),

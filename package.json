@@ -7,27 +7,53 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "test": "turbo run test",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
+    "dev:web": "npm --workspace @silo/web run dev",
+    "dev:api": "npm --workspace @silo/api run dev",
+    "dev:worker": "npm --workspace @silo/worker run dev",
+
+    "build:web": "npm --workspace @silo/web run build",
+    "build:api": "npm --workspace @silo/api run build",
+    "build:worker": "npm --workspace @silo/worker run build",
+    "build": "npm run build:web && npm run build:api && npm run build:worker",
+
+    "test:web": "npm --workspace @silo/web run test",
+    "test:api": "npm --workspace @silo/api run test",
+    "test:worker": "npm --workspace @silo/worker run test",
+    "test": "npm run test:web && npm run test:api && npm run test:worker",
+
+    "lint:web": "npm --workspace @silo/web run lint",
+    "lint:api": "npm --workspace @silo/api run lint",
+    "lint:worker": "npm --workspace @silo/worker run lint",
+    "lint": "npm run lint:web && npm run lint:api && npm run lint:worker",
+
+    "typecheck:web": "npm --workspace @silo/web run typecheck",
+    "typecheck:api": "npm --workspace @silo/api run typecheck",
+    "typecheck:worker": "npm --workspace @silo/worker run typecheck",
+    "typecheck": "npm run typecheck:web && npm run typecheck:api && npm run typecheck:worker",
+
+    "audit": "node scripts/project-audit.mjs",
+    "verify": "node scripts/verify-project.mjs",
     "dataflow:ecflow:smoke": "npx tsx scripts/dataflow-ecflow-smoke.mjs",
     "api:smoke": "node scripts/api-smoke.mjs",
     "api:assistant-smoke": "node scripts/api-assistant-smoke.mjs",
     "web:visual": "node scripts/web-visual-smoke.mjs",
     "web:visual:inventory": "node scripts/web-visual-smoke.mjs --inventory",
     "format": "prettier --write .",
-    "db:generate": "turbo run db:generate --filter=@silo/database",
-    "db:push": "turbo run db:push --filter=@silo/database",
-    "db:migrate": "turbo run db:migrate --filter=@silo/database",
-    "db:studio": "turbo run db:studio --filter=@silo/database",
+    "docker:up": "node deploy.js",
+    "docker:down": "docker compose down",
+    "docker:ps": "docker compose ps",
+    "docker:logs": "docker compose logs -f",
+
+    "db:generate": "npm --workspace @silo/database run db:generate",
+    "db:push": "npm --workspace @silo/database run db:push",
+    "db:migrate": "npm --workspace @silo/database run db:migrate",
+    "db:studio": "npm --workspace @silo/database run db:studio",
+
     "deploy": "node deploy.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.1",
     "prettier": "^3.8.1",
-    "turbo": "^2.5.4",
     "typescript": "^5.9.3"
   }
 }

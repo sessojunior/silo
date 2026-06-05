@@ -51,13 +51,10 @@ export default function UsersPage() {
   const [userToDelete, setUserToDelete] = useState<UserWithGroup | null>(null);
 
   // Verificar se usuário é administrador ou possui permissões
-  const { isAdmin, permissions, loading: userLoading } = useUser();
+  const { isAdmin, loading: userLoading, hasPermission } = useUser();
   const { currentUser } = useCurrentUser();
-  const canUpdateUsers =
-    isAdmin || (permissions.users?.includes("update") ?? false);
-  const canDeleteUsers =
-    isAdmin || (permissions.users?.includes("delete") ?? false);
-  const canManageUsers = canUpdateUsers || canDeleteUsers;
+  // Simplified model: 'manage' covers create/update/delete for users
+  const canManageUsers = isAdmin || hasPermission("users", "manage");
 
   // Carregar dados
   useEffect(() => {
@@ -474,7 +471,7 @@ export default function UsersPage() {
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
                             {/* Botão Ativar/Desativar - não permitir para próprio usuário */}
-                            {canUpdateUsers &&
+                            {canManageUsers &&
                             currentUser &&
                             user.id === currentUser.id ? (
                               <Button
@@ -486,7 +483,7 @@ export default function UsersPage() {
                                   className={`size-4 ${user.isActive ? "icon-[lucide--user-x] text-gray-400" : "icon-[lucide--user-check] text-gray-400"}`}
                                 />
                               </Button>
-                            ) : canUpdateUsers ? (
+                            ) : canManageUsers ? (
                               <Button
                                 onClick={() => toggleUserStatus(user)}
                                 className={`size-8 p-0 rounded-md bg-transparent ${user.isActive ? "hover:bg-red-50 focus:bg-red-50 dark:hover:bg-red-900/20 dark:focus:bg-red-900/20" : "hover:bg-green-50 focus:bg-green-50 dark:hover:bg-green-900/20 dark:focus:bg-green-900/20"}`}
@@ -503,7 +500,7 @@ export default function UsersPage() {
                             ) : null}
 
                             {/* Botões de Edição e Exclusão */}
-                            {canUpdateUsers && (
+                            {canManageUsers && (
                               <Button
                                 onClick={() => openEditForm(user)}
                                 className="size-8 p-0 rounded-md bg-transparent hover:bg-blue-50 focus:bg-blue-50 dark:hover:bg-blue-900/20 dark:focus:bg-blue-900/20"
@@ -512,7 +509,7 @@ export default function UsersPage() {
                               </Button>
                             )}
                             {/* Não permitir exclusão do próprio usuário */}
-                            {canDeleteUsers &&
+                            {canManageUsers &&
                             currentUser &&
                             user.id === currentUser.id ? (
                               <Button
@@ -522,7 +519,7 @@ export default function UsersPage() {
                               >
                                 <span className="icon-[lucide--trash] size-4 text-gray-400" />
                               </Button>
-                            ) : canDeleteUsers ? (
+                            ) : canManageUsers ? (
                               <Button
                                 onClick={() => openDeleteDialog(user)}
                                 className="size-8 p-0 rounded-md bg-transparent hover:bg-red-50 focus:bg-red-50 dark:hover:bg-red-900/20 dark:focus:bg-red-900/20"

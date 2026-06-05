@@ -126,12 +126,12 @@ function findMatchingActiveProduct(
 function getMockMonitoringProducts(activeProducts: ActiveProduct[]): MonitoringProductsFile {
   return {
     referenceDate: legacyMonitoringData.referenceDate,
-    products: legacyMonitoringData.products
-      .map((mockProduct) => {
-        const matchedProduct = findMatchingActiveProduct(mockProduct, activeProducts);
-        if (!matchedProduct) return null;
+    products: legacyMonitoringData.products.flatMap((mockProduct) => {
+      const matchedProduct = findMatchingActiveProduct(mockProduct, activeProducts);
+      if (!matchedProduct) return [];
 
-        return {
+      return [
+        {
           ...mockProduct,
           productId: matchedProduct.slug,
           model: matchedProduct.name,
@@ -140,9 +140,9 @@ function getMockMonitoringProducts(activeProducts: ActiveProduct[]): MonitoringP
             status: normalizeProductStatus(turn.status),
             progress: clampProgress(turn.progress, normalizeProductStatus(turn.status)),
           })),
-        } satisfies MonitoringProductItem;
-      })
-      .filter((product): product is MonitoringProductItem => product !== null),
+        } satisfies MonitoringProductItem,
+      ];
+    }),
   };
 }
 
@@ -181,9 +181,10 @@ export async function getMonitoringProductsFromKafkaRest(activeProducts: ActiveP
           pipelines: await getProductDataFlowPipelinesFromKafkaRest({ slug: activeProduct.slug }),
         })),
       );
-      const products = pipelineGroups
-        .map(({ activeProduct, pipelines }) => pipelineToMonitoringProduct(activeProduct, pipelines))
-        .filter((product): product is MonitoringProductItem => product !== null);
+      const products = pipelineGroups.flatMap(({ activeProduct, pipelines }) => {
+        const product = pipelineToMonitoringProduct(activeProduct, pipelines);
+        return product ? [product] : [];
+      });
 
       if (products.length > 0) {
         return {

@@ -16,7 +16,7 @@ export async function modelHandler(params: {
     const productIdValue = payloadObj?.productId ?? payloadObj?.product_id;
     const productId =
       typeof productIdValue === "string" || typeof productIdValue === "number"
-        ? productIdValue
+        ? String(productIdValue)
         : undefined;
     const slugValue = payloadObj?.slug;
     const slug = typeof slugValue === "string" ? slugValue : undefined;
@@ -26,9 +26,13 @@ export async function modelHandler(params: {
 
     const client = resolveWorkerDbClient(tx);
 
-    const whereExpr = productId
-      ? eq(schema.product.id, productId)
-      : eq(schema.product.slug, slug);
+    let whereExpr;
+    if (productId) {
+      whereExpr = eq(schema.product.id, productId);
+    } else {
+      if (!slug) return;
+      whereExpr = eq(schema.product.slug, slug);
+    }
 
     const rows = await client
       .select()

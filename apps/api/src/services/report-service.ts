@@ -390,22 +390,22 @@ export async function getProjectsReport(dateRange: DateRange) {
 
   const activeUsers = await db.select({ id: authUser.id, name: authUser.name, email: authUser.email }).from(authUser).where(eq(authUser.isActive, true));
 
-  const tasksByStatus: Record<string, number> = tasksInPeriod.reduce((acc, t) => {
+  const tasksByStatus = tasksInPeriod.reduce<Record<string, number>>((acc, t) => {
     acc[t.status || "unknown"] = (acc[t.status || "unknown"] || 0) + 1;
     return acc;
   }, {});
 
-  const projectsByStatus: Record<string, number> = projectsInPeriod.reduce((acc, p) => {
+  const projectsByStatus = projectsInPeriod.reduce<Record<string, number>>((acc, p) => {
     acc[p.status || "unknown"] = (acc[p.status || "unknown"] || 0) + 1;
     return acc;
   }, {});
 
-  const projectsByPriority: Record<string, number> = projectsInPeriod.reduce((acc, p) => {
+  const projectsByPriority = projectsInPeriod.reduce<Record<string, number>>((acc, p) => {
     acc[p.priority || "normal"] = (acc[p.priority || "normal"] || 0) + 1;
     return acc;
   }, {});
 
-  const projectActivityCounts: Record<string, number> = activitiesInPeriod.reduce((acc, a) => {
+  const projectActivityCounts = activitiesInPeriod.reduce<Record<string, number>>((acc, a) => {
     acc[a.projectId] = (acc[a.projectId] || 0) + 1;
     return acc;
   }, {});

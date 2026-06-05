@@ -105,7 +105,7 @@ export default function ProductTabs({
     }
 
     return options;
-  }, [dataFlowSnapshots, isDataFlowLoading, isDataFlowPage, turns]);
+  }, [dataFlowSnapshots, isDataFlowLoading, turns]);
 
   const selectedDate = searchParams.get("date");
   const selectedTurn = searchParams.get("turn");

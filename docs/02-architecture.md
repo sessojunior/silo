@@ -6,7 +6,7 @@ Visão técnica da estrutura de pacotes, fronteiras de responsabilidade e fluxo 
 
 ## Visão geral
 
-O projeto usa **Turborepo** para orquestração e **npm workspaces** para gerenciamento de dependências.
+O projeto usa **npm workspaces** para gerenciamento de dependências e scripts do monorepo.
 
 ```
 apps/web          ──┐
@@ -134,15 +134,20 @@ Ver `env.example` na raiz para todas as variáveis disponíveis.
 
 ---
 
-## Turbo tasks
+## Scripts do monorepo
 
-Declaradas em `turbo.json`. O Turborepo garante que `packages/db` seja buildado antes dos apps dependentes.
+Os scripts raiz em [../package.json](../package.json) substituem o antigo orquestrador externo:
 
+```bash
+npm run dev:web
+npm run dev:api
+npm run dev:worker
+npm run build
+npm run lint
+npm run typecheck
 ```
-build  → dependsOn: ["^build"]  → outputs: [".next/**", "dist/**"]
-dev    → cache: false, persistent: true
-lint   → dependsOn: ["^lint"]
-```
+
+Esses comandos chamam diretamente cada workspace e mantêm o fluxo de desenvolvimento explícito.
 
 ---
 

@@ -9,6 +9,7 @@ import Dialog from "@/components/ui/dialog";
 import Button from "@/components/ui/button";
 import UploadButtonLocal from "@/components/ui/upload-button-local";
 import { toast } from "@silo/engine/format/toast";
+import { config } from "@/lib/config";
 import { toPublicUploadsSrc } from "@/lib/uploads";
 import Image from "next/image";
 import Lightbox from "@/components/ui/lightbox";

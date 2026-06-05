@@ -23,7 +23,7 @@ type ContactUpdateInput = import("zod").infer<typeof contactUpdateSchema>;
 router.get(
   "/",
   authMiddleware,
-  requirePermission("contacts", "list"),
+  requirePermission("contacts", "view"),
   validate(contactListQuerySchema, "query"),
   async (req: Request<Record<string, never>, unknown, never, ContactListQueryInput>, res) => {
   try {
@@ -41,7 +41,7 @@ router.get(
 router.post(
   "/",
   authMiddleware,
-  requirePermission("contacts", "create"),
+  requirePermission("contacts", "manage"),
   validate(contactCreateSchema),
   async (req: Request<Record<string, never>, unknown, ContactCreateInput>, res) => {
   try {
@@ -72,7 +72,7 @@ router.post(
 router.put(
   "/",
   authMiddleware,
-  requirePermission("contacts", "update"),
+  requirePermission("contacts", "manage"),
   validate(contactUpdateSchema),
   async (req: Request<Record<string, never>, unknown, ContactUpdateInput>, res) => {
   try {
@@ -102,7 +102,7 @@ router.put(
 router.delete(
   "/",
   authMiddleware,
-  requirePermission("contacts", "delete"),
+  requirePermission("contacts", "manage"),
   validate(contactDeleteSchema),
   async (req: Request<Record<string, never>, unknown, ContactDeleteInput>, res) => {
   try {

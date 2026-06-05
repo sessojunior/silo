@@ -1,8 +1,8 @@
 ---
-description: "Use when creating new packages, configuring workspaces, setting up shared configs, or working with the Turborepo monorepo structure. Covers npm workspaces, @silo/* packages, and cross-package dependency rules."
+description: "Use when creating new packages, configuring workspaces, setting up shared configs, or working with the SILO npm workspaces monorepo structure. Covers @silo/* packages and cross-package dependency rules."
 ---
 
-# Monorepo SILO — Turborepo + npm workspaces
+# Monorepo SILO — npm workspaces
 
 Referência: [docs/02-architecture.md](../../docs/02-architecture.md)
 
@@ -100,15 +100,18 @@ import { getProductStatus } from "@silo/legacy-domain";
 
 ---
 
-## Turborepo — tasks
+## Scripts do monorepo
 
-`turbo.json` define o pipeline. Tasks importantes:
+Os scripts raiz em `package.json` chamam diretamente cada workspace. Os principais são:
 
-| Task | Descrição |
+| Script | Descrição |
 |---|---|
-| `build` | Compila todos os pacotes em ordem de dependência |
-| `dev` | Hot-reload em todos os apps |
-| `lint` | Lint de todos os pacotes |
+| `build` | Compila todos os workspaces em sequência |
+| `dev:web` | Inicia o frontend |
+| `dev:api` | Inicia a API |
+| `dev:worker` | Inicia o worker |
+| `lint` | Executa lint em todos os workspaces |
+| `typecheck` | Executa typecheck em todos os workspaces |
 | `db:generate` | Gera migrations do Drizzle |
 | `db:migrate` | Aplica migrations do Drizzle |
 | `db:push` | Push do schema sem migrations |
@@ -120,8 +123,8 @@ import { getProductStatus } from "@silo/legacy-domain";
 
 ```bash
 npm run dev -w @silo/worker           # roda apenas o worker
-turbo run build --filter=@silo/web    # build apenas do web
-turbo run dev --filter=@silo/api      # dev apenas da api
+npm run build -w @silo/web            # build apenas do web
+npm run dev -w @silo/api              # dev apenas da api
 ```
 
 

@@ -14,7 +14,7 @@ const getQueryStringValue = (
 ): string | undefined => (typeof value === "string" && value.length > 0 ? value : undefined);
 
 // GET /api/help
-router.get("/", authMiddleware, requirePermission("help", "list"), async (_req, res) => {
+router.get("/", authMiddleware, requirePermission("help", "view"), async (_req, res) => {
   try {
     const helpDoc = await helpService.getHelp();
     res.json({ success: true, data: helpDoc.data });
@@ -25,7 +25,7 @@ router.get("/", authMiddleware, requirePermission("help", "list"), async (_req, 
 });
 
 // PUT /api/help
-router.put("/", authMiddleware, requirePermission("help", "update"), async (req, res) => {
+router.put("/", authMiddleware, requirePermission("help", "manage"), async (req, res) => {
   try {
     const body = isRecord(req.body) ? req.body : null;
     const description = typeof body?.description === "string" ? body.description : "";
@@ -38,7 +38,7 @@ router.put("/", authMiddleware, requirePermission("help", "update"), async (req,
 });
 
 // GET /api/help/images
-router.get("/images", authMiddleware, requirePermission("help", "list"), async (_req, res) => {
+router.get("/images", authMiddleware, requirePermission("help", "view"), async (_req, res) => {
   try {
     const items = await listUploadFiles("help");
     res.json({ success: true, data: { items } });
@@ -49,7 +49,7 @@ router.get("/images", authMiddleware, requirePermission("help", "list"), async (
 });
 
 // DELETE /api/help/images?filename=
-router.delete("/images", authMiddleware, requirePermission("help", "delete"), async (req, res) => {
+router.delete("/images", authMiddleware, requirePermission("help", "manage"), async (req, res) => {
   try {
     const filename = getQueryStringValue(req.query.filename);
     if (!filename || !isSafeFilename(filename)) {

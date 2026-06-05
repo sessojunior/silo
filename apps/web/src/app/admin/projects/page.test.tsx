@@ -181,7 +181,7 @@ function createProjectsFetchMock() {
     "http://localhost",
   ).pathname;
 
-  const projects = [
+  const projects: Project[] = [
     {
       id: "project-1",
       name: "Projeto Alfa",

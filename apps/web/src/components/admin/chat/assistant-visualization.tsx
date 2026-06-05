@@ -224,6 +224,8 @@ export default function AssistantVisualizationBlock({
 
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
           {safeSource ? (
+            // Using a raw <img> here for arbitrary image sources (SVG/data URLs)
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={safeSource}
               alt={visualization.alt}

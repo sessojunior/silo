@@ -115,7 +115,7 @@ const getQueryStringValue = (
 
 // ── Projects CRUD ──────────────────────────────────────────────────────────
 
-router.get("/", requirePermission("projects", "list"), async (req, res) => {
+router.get("/", requirePermission("projects", "view"), async (req, res) => {
   try {
     const search = getQueryStringValue(req.query.search);
     const status = getQueryStringValue(req.query.status);
@@ -132,7 +132,7 @@ router.get("/", requirePermission("projects", "list"), async (req, res) => {
   }
 });
 
-router.post("/", requirePermission("projects", "create"), validate(ProjectSchema), async (req, res) => {
+router.post("/", requirePermission("projects", "manage"), validate(ProjectSchema), async (req, res) => {
   try {
     const result = await createProject(req.body);
     if (respondProjectServiceError(res, result, "Erro ao criar projeto.")) {
@@ -145,7 +145,7 @@ router.post("/", requirePermission("projects", "create"), validate(ProjectSchema
   }
 });
 
-router.put("/", requirePermission("projects", "update"), validate(UpdateProjectSchema), async (req, res) => {
+router.put("/", requirePermission("projects", "manage"), validate(UpdateProjectSchema), async (req, res) => {
   try {
     const result = await updateProject(req.body);
     if ("error" in result) { respondProjectServiceError(res, result, "Erro ao atualizar projeto."); return; }
@@ -156,7 +156,7 @@ router.put("/", requirePermission("projects", "update"), validate(UpdateProjectS
   }
 });
 
-router.delete("/", requirePermission("projects", "delete"), async (req, res) => {
+router.delete("/", requirePermission("projects", "manage"), async (req, res) => {
   const id = getQueryStringValue(req.query.id);
   if (!id) {
     res.status(400).json({ success: false, error: "ID do projeto é obrigatório." });
@@ -174,7 +174,7 @@ router.delete("/", requirePermission("projects", "delete"), async (req, res) => 
 
 // ── Project Activities ────────────────────────────────────────────────────
 
-router.get("/:projectId/activities", requirePermission("projectActivities", "list"), async (req, res) => {
+router.get("/:projectId/activities", requirePermission("projectActivities", "view"), async (req, res) => {
   try {
     const result = await listProjectActivities(String(req.params.projectId));
     if ("error" in result) { respondProjectServiceError(res, result, "Erro ao listar atividades."); return; }
@@ -185,7 +185,7 @@ router.get("/:projectId/activities", requirePermission("projectActivities", "lis
   }
 });
 
-router.post("/:projectId/activities", requirePermission("projectActivities", "create"), validate(ActivityBaseSchema), async (req, res) => {
+router.post("/:projectId/activities", requirePermission("projectActivities", "manage"), validate(ActivityBaseSchema), async (req, res) => {
   try {
     const result = await createProjectActivity(String(req.params.projectId), req.body);
     if (result && "error" in result) { respondProjectServiceError(res, result, "Erro ao criar atividade."); return; }
@@ -196,7 +196,7 @@ router.post("/:projectId/activities", requirePermission("projectActivities", "cr
   }
 });
 
-router.put("/:projectId/activities", requirePermission("projectActivities", "update"), validate(UpdateActivitySchema), async (req, res) => {
+router.put("/:projectId/activities", requirePermission("projectActivities", "manage"), validate(UpdateActivitySchema), async (req, res) => {
   try {
     const result = await updateProjectActivity(String(req.params.projectId), req.body);
     if ("error" in result) { respondProjectServiceError(res, result, "Erro ao atualizar atividade."); return; }
@@ -207,7 +207,7 @@ router.put("/:projectId/activities", requirePermission("projectActivities", "upd
   }
 });
 
-router.delete("/:projectId/activities", requirePermission("projectActivities", "delete"), async (req, res) => {
+router.delete("/:projectId/activities", requirePermission("projectActivities", "manage"), async (req, res) => {
   const activityId = getQueryStringValue(req.query.activityId);
   if (!activityId) {
     res.status(400).json({ success: false, error: "ID da atividade é obrigatório." });
@@ -225,7 +225,7 @@ router.delete("/:projectId/activities", requirePermission("projectActivities", "
 
 router.get(
   "/:projectId/activities/:activityId/tasks",
-  requirePermission("projectTasks", "list"),
+  requirePermission("projectTasks", "view"),
   async (req, res) => {
     try {
       const result = await listProjectActivityTasks(
@@ -248,7 +248,7 @@ router.get(
 
 router.post(
   "/:projectId/activities/:activityId/tasks",
-  requirePermission("projectTasks", "create"),
+  requirePermission("projectTasks", "manage"),
   validate(CreateTaskSchema),
   async (req, res) => {
     try {
@@ -280,7 +280,7 @@ router.post(
 
 router.put(
   "/:projectId/activities/:activityId/tasks",
-  requirePermission("projectTasks", "update"),
+  requirePermission("projectTasks", "manage"),
   validate(UpdateTaskSchema),
   async (req, res) => {
     try {
@@ -312,7 +312,7 @@ router.put(
 
 router.delete(
   "/:projectId/activities/:activityId/tasks",
-  requirePermission("projectTasks", "delete"),
+  requirePermission("projectTasks", "manage"),
   validate(DeleteTaskSchema),
   async (req, res) => {
     try {
@@ -337,7 +337,7 @@ router.delete(
 
 router.patch(
   "/:projectId/activities/:activityId/tasks",
-  requirePermission("projectTasks", "update"),
+  requirePermission("projectTasks", "manage"),
   validate(ReorderTasksSchema),
   async (req, res) => {
     try {

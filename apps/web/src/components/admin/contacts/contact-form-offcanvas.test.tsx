@@ -65,7 +65,7 @@ vi.mock("@/components/ui/upload-button-local", () => ({
 vi.mock("next/image", () => ({
   default: function MockNextImage({ src, alt, className }: NextImageMockProps) {
     const imageSrc = typeof src === "string" ? src : src.src;
-    return <img alt={alt} src={imageSrc} className={className} />;
+    return <div data-testid="next-image" aria-label={alt} data-src={imageSrc} className={className} />;
   },
 }));
 

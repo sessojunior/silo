@@ -47,7 +47,7 @@ GET /api/admin/products/{slug}/data-flow
 GET /api/admin/products/{slug}/data-flow?date=2026-03-06&turn=18
 ```
 
-Permissão necessária: `products:list`.
+Permissão necessária: `products:view`.
 
 Resposta:
 

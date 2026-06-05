@@ -1,4 +1,4 @@
-import { spawnSync } from "child_process";
+const { spawnSync } = require("node:child_process");
 
 process.env.OLLAMA_IMAGE ??= "ollama/ollama:0.30.0-rc7";
 

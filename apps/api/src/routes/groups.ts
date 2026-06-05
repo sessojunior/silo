@@ -21,7 +21,7 @@ const router = Router();
 router.get(
   "/",
   authMiddleware,
-  requirePermission("groups", "list"),
+  requirePermission("groups", "view"),
   validate(groupListQuerySchema, "query"),
   async (req, res) => {
   try {
@@ -36,7 +36,7 @@ router.get(
 );
 
 // POST /api/groups
-router.post("/", authMiddleware, requirePermission("groups", "create"), validate(groupCreateSchema), async (req, res) => {
+router.post("/", authMiddleware, requirePermission("groups", "manage"), validate(groupCreateSchema), async (req, res) => {
   try {
     const result = await groupService.createGroup(req.body);
     if (!result.ok) {
@@ -51,7 +51,7 @@ router.post("/", authMiddleware, requirePermission("groups", "create"), validate
 });
 
 // PUT /api/groups
-router.put("/", authMiddleware, requirePermission("groups", "update"), validate(groupUpdateSchema), async (req, res) => {
+router.put("/", authMiddleware, requirePermission("groups", "manage"), validate(groupUpdateSchema), async (req, res) => {
   try {
     const result = await groupService.updateGroup(req.body);
     if (!result.ok) {
@@ -69,7 +69,7 @@ router.put("/", authMiddleware, requirePermission("groups", "update"), validate(
 router.delete(
   "/",
   authMiddleware,
-  requirePermission("groups", "delete"),
+  requirePermission("groups", "manage"),
   validate(groupDeleteQuerySchema, "query"),
   async (req, res) => {
   try {
@@ -88,7 +88,7 @@ router.delete(
 router.get(
   "/permissions",
   authMiddleware,
-  requirePermission("groups", "list"),
+  requirePermission("groups", "view"),
   validate(groupPermissionsQuerySchema, "query"),
   async (req, res) => {
   try {
@@ -111,7 +111,7 @@ router.get(
 router.put(
   "/permissions",
   authMiddleware,
-  requirePermission("groups", "update"),
+  requirePermission("groups", "manage"),
   validate(groupPermissionUpdateSchema),
   async (req, res) => {
   try {
@@ -134,7 +134,7 @@ router.put(
 router.delete(
   "/users",
   authMiddleware,
-  requirePermission("groups", "update"),
+  requirePermission("groups", "manage"),
   validate(groupRemoveUserSchema, "query"),
   async (req, res) => {
   try {

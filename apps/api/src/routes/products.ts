@@ -30,7 +30,7 @@ type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 // GET /products — list or get by slug
 router.get(
   "/",
-  requirePermission("products", "list"),
+  requirePermission("products", "view"),
   validate(productListQuerySchema, "query"),
   async (req: Request<Record<string, never>, unknown, never, ProductListQueryInput>, res) => {
   try {
@@ -54,7 +54,7 @@ router.get(
 );
 
 // POST /products — create
-router.post("/", requirePermission("products", "create"), validate(productCreateSchema), async (req: Request<Record<string, never>, unknown, ProductCreateInput>, res) => {
+router.post("/", requirePermission("products", "manage"), validate(productCreateSchema), async (req: Request<Record<string, never>, unknown, ProductCreateInput>, res) => {
   try {
     const payload = req.body;
     const result = await createProduct({
@@ -75,7 +75,7 @@ router.post("/", requirePermission("products", "create"), validate(productCreate
 });
 
 // PUT /products — update
-router.put("/", requirePermission("products", "update"), validate(productUpdateSchema), async (req: Request<Record<string, never>, unknown, ProductUpdateInput>, res) => {
+router.put("/", requirePermission("products", "manage"), validate(productUpdateSchema), async (req: Request<Record<string, never>, unknown, ProductUpdateInput>, res) => {
   try {
     const payload = req.body;
     const result = await updateProduct({
@@ -99,7 +99,7 @@ router.put("/", requirePermission("products", "update"), validate(productUpdateS
 // DELETE /products?id=
 router.delete(
   "/",
-  requirePermission("products", "delete"),
+  requirePermission("products", "manage"),
   validate(productDeleteQuerySchema, "query"),
   async (req: Request<Record<string, never>, unknown, never, ProductDeleteQueryInput>, res) => {
   try {

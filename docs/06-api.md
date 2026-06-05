@@ -471,8 +471,8 @@ Permissões são controladas por **recurso/ação**. Usuários herdam a união d
 Permissões padrão imutáveis para todos os grupos:
 
 - `dashboard:view`
-- `projects:list`
-- `products:list`
+ - `projects:view`
+ - `products:view`
 - `help:view`
 
 ```http
@@ -483,9 +483,9 @@ Response:
   "success": true,
   "data": {
     "permissions": {
-      "projects": ["list", "create"],
-      "products": ["list"]
-    }
+        "projects": ["view", "manage"],
+        "products": ["view"]
+      }
   }
 }
 
@@ -626,7 +626,7 @@ GET /api/admin/products/{slug}/data-flow?date=2026-03-06&turn=18
 
 Retorna os pipelines de fluxo de dados do produto. A fonte é Kafka REST Proxy; enquanto o proxy real não estiver disponível, a API usa dados simulados a partir dos snapshots fake existentes.
 
-Permissão exigida: `products:list`.
+Permissão exigida: `products:view`.
 
 ```json
 {

@@ -78,12 +78,13 @@ export default function ActivityMiniKanban({
   }, [activityId, projectId, loadKanbanTasks]);
 
   // Agrupar tarefas por status (garantir que tasks é um array)
-  const tasksByStatus: Record<string, ProjectTask[]> = (Array.isArray(tasks) ? tasks : []).reduce(
+  const tasksByStatus = (Array.isArray(tasks) ? tasks : []).reduce<Record<string, ProjectTask[]>>(
     (acc, task) => {
-      if (!acc[task.status]) {
-        acc[task.status] = [];
+      const status = task.status as keyof Record<string, ProjectTask[]>;
+      if (!acc[status]) {
+        acc[status] = [];
       }
-      acc[task.status].push(task);
+      acc[status].push(task);
       return acc;
     },
     {},

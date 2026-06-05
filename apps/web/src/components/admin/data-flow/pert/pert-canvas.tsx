@@ -433,17 +433,7 @@ function relationDotClassName(kind: RelationKind): string {
   return "bg-blue-500";
 }
 
-function relationTooltipTitle(kind: RelationKind): string {
-  if (kind === "trigger") return "Fluxo do gatilho";
-  if (kind === "combined") return "Fluxo da dependência e do gatilho";
-  return "Fluxo da dependência";
-}
-
-function relationDescriptor(kind: RelationKind): string {
-  if (kind === "trigger") return "Gatilho lógico";
-  if (kind === "combined") return "Dependência direta + gatilho";
-  return "Dependência direta";
-}
+// relationTooltipTitle and relationDescriptor were removed (unused)
 
 function getImpactLevel(row: TreeRow): "ALTO" | "MÉDIO" | "BAIXO" {
   if (FAILURE_STATUSES.has(row.status)) return "ALTO";
@@ -790,6 +780,8 @@ function nodeIcon(row: TreeRow): string {
 }
 
 function TreeGuides({ row }: { row: TreeRow }) {
+  // Marca o parâmetro como usado para evitar aviso de variável não utilizada
+  void row;
   return null;
 }
 

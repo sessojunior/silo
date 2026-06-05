@@ -53,14 +53,6 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function parseJsonBody(body: BodyInit | null | undefined): Record<string, unknown> {
-  if (typeof body !== "string") {
-    throw new Error("Expected JSON string body");
-  }
-
-  return JSON.parse(body) as Record<string, unknown>;
-}
-
 function createCategoryFetchMock(expectedMethod: "POST" | "PUT") {
   const categoriesPathname = new URL(
     config.getApiUrl("/api/admin/products/problems/categories"),

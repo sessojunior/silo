@@ -94,17 +94,27 @@ export async function getProductDataFlowPipelinesFromKafkaRest({
 export async function getMonitoringProductsFromKafkaRest(activeProducts: ActiveProduct[]): Promise<MonitoringProductsFile> {
   if (!shouldUseMockRestProxyData() && activeProducts.length > 0) {
     try {
-      const pipelineGroups = await Promise.all(activeProducts.map(async (ap) => ({ ap, pipelines: await getProductDataFlowPipelinesFromKafkaRest({ slug: ap.slug }) })));
-      const products = pipelineGroups.map(({ ap, pipelines }) => {
-        if (pipelines.length === 0) return null;
+      const pipelineGroups = await Promise.all(
+        activeProducts.map(async (ap) => ({
+          ap,
+          pipelines: await getProductDataFlowPipelinesFromKafkaRest({ slug: ap.slug }),
+        })),
+      );
+      const products = pipelineGroups.flatMap(({ ap, pipelines }) => {
+        if (pipelines.length === 0) return [];
         const latestDate = pipelines[0].date;
-        const turns = pipelines.filter((p) => p.date === latestDate).map((p) => {
-          const tasks = p.groups.flatMap((g) => g.tasks);
-          const progress = tasks.length > 0 ? Math.round(tasks.reduce((sum, t) => sum + t.progress, 0) / tasks.length) : 0;
-          return { turn: p.turn, status: p.status, progress };
-        });
-        return { productId: ap.slug, model: ap.name, turns } satisfies MonitoringProductItem;
-      }).filter((p): p is MonitoringProductItem => p !== null);
+        const turns = pipelines
+          .filter((p) => p.date === latestDate)
+          .map((p) => {
+            const tasks = p.groups.flatMap((g) => g.tasks);
+            const progress =
+              tasks.length > 0
+                ? Math.round(tasks.reduce((sum, t) => sum + t.progress, 0) / tasks.length)
+                : 0;
+            return { turn: p.turn, status: p.status, progress };
+          });
+        return [{ productId: ap.slug, model: ap.name, turns } satisfies MonitoringProductItem];
+      });
       if (products.length > 0) {
         return { referenceDate: pipelineGroups[0]?.pipelines[0]?.date ?? new Date().toISOString().slice(0, 10), products };
       }
@@ -116,18 +126,26 @@ export async function getMonitoringProductsFromKafkaRest(activeProducts: ActiveP
   const normalized = normalizeModelKey;
   return {
     referenceDate: legacyMonitoringData.referenceDate,
-    products: legacyMonitoringData.products.map((mockProduct) => {
+    products: legacyMonitoringData.products.flatMap((mockProduct) => {
       const mockId = normalized(mockProduct.productId);
       const modelKey = normalized(mockProduct.model);
       const matched = activeProducts.find((ap) => {
         const s = normalized(ap.slug), n = normalized(ap.name);
         return s === mockId || s === modelKey || n === mockId || n === modelKey || s.includes(modelKey) || modelKey.includes(s) || n.includes(modelKey) || modelKey.includes(n);
       });
-      if (!matched) return null;
-      return {
-        ...mockProduct, productId: matched.slug, model: matched.name,
-        turns: mockProduct.turns.map((t) => ({ ...t, status: normalizeProductStatus(t.status), progress: clampProgress(t.progress, normalizeProductStatus(t.status)) })),
-      } satisfies MonitoringProductItem;
-    }).filter((p): p is MonitoringProductItem => p !== null),
+      if (!matched) return [];
+      return [
+        {
+          ...mockProduct,
+          productId: matched.slug,
+          model: matched.name,
+          turns: mockProduct.turns.map((t) => ({
+            ...t,
+            status: normalizeProductStatus(t.status),
+            progress: clampProgress(t.progress, normalizeProductStatus(t.status)),
+          })),
+        } satisfies MonitoringProductItem,
+      ];
+    }),
   };
 }

@@ -8,8 +8,7 @@ import { config } from "@/lib/config";
 import type { 
   PicturePage, 
   PictureLink,
-  PictureLinkStatus,
-  PictureCheckMode,
+  
 } from "@/components/admin/monitoring/picture-pages-accordion";
 import type { MonitoringProductsFile } from "@/lib/dataflow/types";
 

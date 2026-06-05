@@ -1,13 +1,14 @@
 import express from "express";
+import type { NextFunction, Request, Response } from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  authMiddleware: vi.fn((req, _res, next) => {
+  authMiddleware: vi.fn((req: Request & { user?: { id: string } }, _res: Response, next: NextFunction) => {
     Object.assign(req, { user: { id: "user-1" } });
     next();
   }),
-  requirePermission: vi.fn(() => (_req, _res, next) => next()),
+  requirePermission: vi.fn(() => (_req: Request, _res: Response, next: NextFunction) => next()),
   listProjects: vi.fn(),
   createProject: vi.fn(),
   updateProject: vi.fn(),

@@ -1,68 +1,12 @@
 import "dotenv/config";
-import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { eq, inArray, and, sql } from "drizzle-orm";
 
+import { NO_INCIDENTS_CATEGORY_ID, NO_INCIDENTS_CATEGORY_NAME } from "@silo/engine/constants";
+import { hashPassword } from "@silo/engine/auth/hash";
+import { createLocalDate, normalizeUploadsSrc } from "./seed-utils.js";
 import { db } from "./client";
-import * as schema from "./schema";
-
-const NO_INCIDENTS_CATEGORY_NAME = "Não houve incidentes";
-const NO_INCIDENTS_CATEGORY_ID = "no_incidents";
-
-const hashPassword = async (password: string): Promise<string> => {
-  return bcrypt.hash(password, 10);
-};
-
-const createLocalDate = (year: number, month: number, day: number): Date => {
-  return new Date(year, month, day);
-};
-
-const normalizeUploadsSrc = (input: string): string => {
-  const [pathPart, queryPart] = input.split("?");
-  const query = queryPart ? `?${queryPart}` : "";
-  const pathname = pathPart || "";
-
-  if (pathname.startsWith("/uploads/")) return `${pathname}${query}`;
-
-  const uploadsIdx = pathname.indexOf("/uploads/");
-  if (uploadsIdx !== -1) return `${pathname.slice(uploadsIdx)}${query}`;
-
-  const isAllowedKind = (kind: string): boolean => {
-    return (
-      kind === "general" ||
-      kind === "avatars" ||
-      kind === "contacts" ||
-      kind === "problems" ||
-      kind === "solutions" ||
-      kind === "help" ||
-      kind === "projects"
-    );
-  };
-
-  const normalizePathname = (value: string): string => {
-    if (!value.startsWith("/")) return value;
-
-    const segments = value.split("/").filter(Boolean);
-    if (segments.length < 2) return value;
-
-    const [prefix, kind] = segments;
-    if (prefix === "uploads") return value;
-    if (!isAllowedKind(kind)) return value;
-
-    return `/${["uploads", ...segments.slice(1)].join("/")}`;
-  };
-
-  try {
-    const url = new URL(input);
-    const normalizedPathname = normalizePathname(url.pathname);
-    if (normalizedPathname === url.pathname) return input;
-    return `${url.origin}${normalizedPathname}${url.search}`;
-  } catch {
-    const normalizedPathname = normalizePathname(pathname);
-    if (normalizedPathname === pathname) return input;
-    return `${normalizedPathname}${query}`;
-  }
-};
+import * as schema from "./schema.js";
 
 // Importar dados do arquivo separado
 import {
@@ -79,12 +23,11 @@ import {
   projectActivitiesData,
 } from "./seed-data";
 import { seedPictures } from "./seed-pictures";
-import { seedMonitoringProducts } from "./seed-products";
+import { seedMonitoringProducts } from "@silo/engine/dataflow/seed-monitoring-products";
 import { seedRadars } from "./seed-radars";
 import { 
   SeedRadarGroup, 
   SeedPicturePage, 
-  SeedMonitoringProduct 
 } from "./seed-types";
 
 // === TIPAGENS DO SCHEMA ===
@@ -103,90 +46,116 @@ type GroupPermissionSeed = {
   action: string;
 };
 
+// === HELPERS DE MAPEAMENTO PARA V2 (compat-layer) ===
+const mapResourceToV2 = (resource: string): string => {
+  if (!resource) return resource;
+  const r = resource.toLowerCase();
+  if (r.startsWith("product") || r.startsWith("picture") || r.startsWith("radar")) return "products";
+  if (r.startsWith("project")) return "projects";
+  if (r === "groups" || r === "users" || r.startsWith("group")) return "groups";
+  if (r === "reports" || r === "dashboard" || r.includes("report")) return "reports";
+  if (r === "chat" || r.includes("chat")) return "chat";
+  return resource;
+};
+
+const mapActionToV2 = (resource: string, action: string): string => {
+  if (!action) return "manage";
+  const a = action.toLowerCase();
+  // Preserve chat-specific actions verbatim (they are intentionally granular)
+  const r2 = mapResourceToV2(resource);
+  if (r2 === "chat") return action;
+  // Treat legacy list/read/view as view
+  if (["list", "view", "read"].includes(a) || a.includes("view")) return "view";
+  // Creation/edition/deletion/assignment -> manage
+  if (["create", "update", "edit", "delete", "assign", "reorder", "approve", "send", "history"].some((x) => a.includes(x))) return "manage";
+  // Default to manage
+  return "manage";
+};
+
 const defaultGroupPermissions: GroupPermissionSeed[] = [
   { resource: "dashboard", action: "view" },
-  { resource: "projects", action: "list" },
-  { resource: "products", action: "list" },
+  { resource: "projects", action: "view" },
+  { resource: "products", action: "view" },
   { resource: "help", action: "view" },
 ];
 
 const allGroupPermissions: GroupPermissionSeed[] = [
-  { resource: "users", action: "list" },
-  { resource: "users", action: "create" },
-  { resource: "users", action: "update" },
-  { resource: "users", action: "delete" },
-  { resource: "groups", action: "list" },
-  { resource: "groups", action: "create" },
-  { resource: "groups", action: "update" },
-  { resource: "groups", action: "delete" },
-  { resource: "projects", action: "list" },
-  { resource: "projects", action: "create" },
-  { resource: "projects", action: "update" },
-  { resource: "projects", action: "delete" },
-  { resource: "projectActivities", action: "list" },
-  { resource: "projectActivities", action: "create" },
-  { resource: "projectActivities", action: "update" },
-  { resource: "projectActivities", action: "delete" },
-  { resource: "projectTasks", action: "list" },
-  { resource: "projectTasks", action: "create" },
-  { resource: "projectTasks", action: "update" },
-  { resource: "projectTasks", action: "delete" },
-  { resource: "projectTasks", action: "assign" },
-  { resource: "projectTasks", action: "history" },
-  { resource: "products", action: "list" },
-  { resource: "products", action: "create" },
-  { resource: "products", action: "update" },
-  { resource: "products", action: "delete" },
-  { resource: "productActivities", action: "list" },
-  { resource: "productActivities", action: "create" },
-  { resource: "productActivities", action: "update" },
-  { resource: "productActivities", action: "delete" },
-  { resource: "productProblems", action: "list" },
-  { resource: "productProblems", action: "create" },
-  { resource: "productProblems", action: "update" },
-  { resource: "productProblems", action: "delete" },
-  { resource: "productSolutions", action: "list" },
-  { resource: "productSolutions", action: "create" },
-  { resource: "productSolutions", action: "update" },
-  { resource: "productSolutions", action: "delete" },
-  { resource: "productDependencies", action: "list" },
-  { resource: "productDependencies", action: "create" },
-  { resource: "productDependencies", action: "update" },
-  { resource: "productDependencies", action: "delete" },
-  { resource: "productDependencies", action: "reorder" },
+  { resource: "users", action: "view" },
+  { resource: "users", action: "manage" },
+  { resource: "users", action: "manage" },
+  { resource: "users", action: "manage" },
+  { resource: "groups", action: "view" },
+  { resource: "groups", action: "manage" },
+  { resource: "groups", action: "manage" },
+  { resource: "groups", action: "manage" },
+  { resource: "projects", action: "view" },
+  { resource: "projects", action: "manage" },
+  { resource: "projects", action: "manage" },
+  { resource: "projects", action: "manage" },
+  { resource: "projectActivities", action: "view" },
+  { resource: "projectActivities", action: "manage" },
+  { resource: "projectActivities", action: "manage" },
+  { resource: "projectActivities", action: "manage" },
+  { resource: "projectTasks", action: "view" },
+  { resource: "projectTasks", action: "manage" },
+  { resource: "projectTasks", action: "manage" },
+  { resource: "projectTasks", action: "manage" },
+  { resource: "projectTasks", action: "manage" },
+  { resource: "projectTasks", action: "manage" },
+  { resource: "products", action: "view" },
+  { resource: "products", action: "manage" },
+  { resource: "products", action: "manage" },
+  { resource: "products", action: "manage" },
+  { resource: "productActivities", action: "view" },
+  { resource: "productActivities", action: "manage" },
+  { resource: "productActivities", action: "manage" },
+  { resource: "productActivities", action: "manage" },
+  { resource: "productProblems", action: "view" },
+  { resource: "productProblems", action: "manage" },
+  { resource: "productProblems", action: "manage" },
+  { resource: "productProblems", action: "manage" },
+  { resource: "productSolutions", action: "view" },
+  { resource: "productSolutions", action: "manage" },
+  { resource: "productSolutions", action: "manage" },
+  { resource: "productSolutions", action: "manage" },
+  { resource: "productDependencies", action: "view" },
+  { resource: "productDependencies", action: "manage" },
+  { resource: "productDependencies", action: "manage" },
+  { resource: "productDependencies", action: "manage" },
+  { resource: "productDependencies", action: "manage" },
   { resource: "productManual", action: "view" },
-  { resource: "productManual", action: "update" },
-  { resource: "contacts", action: "list" },
-  { resource: "contacts", action: "create" },
-  { resource: "contacts", action: "update" },
-  { resource: "contacts", action: "delete" },
-  { resource: "incidents", action: "list" },
-  { resource: "incidents", action: "create" },
-  { resource: "incidents", action: "update" },
-  { resource: "incidents", action: "delete" },
+  { resource: "productManual", action: "manage" },
+  { resource: "contacts", action: "view" },
+  { resource: "contacts", action: "manage" },
+  { resource: "contacts", action: "manage" },
+  { resource: "contacts", action: "manage" },
+  { resource: "incidents", action: "view" },
+  { resource: "incidents", action: "manage" },
+  { resource: "incidents", action: "manage" },
+  { resource: "incidents", action: "manage" },
   { resource: "dashboard", action: "view" },
-  { resource: "dashboard", action: "update" },
-  { resource: "dashboard", action: "delete" },
+  { resource: "dashboard", action: "manage" },
+  { resource: "dashboard", action: "manage" },
   { resource: "reports", action: "view" },
   { resource: "help", action: "view" },
-  { resource: "help", action: "update" },
+  { resource: "help", action: "manage" },
   { resource: "chat", action: "view_private" },
   { resource: "chat", action: "view_group" },
   { resource: "chat", action: "send_private" },
   { resource: "chat", action: "send_group_all" },
   { resource: "chat", action: "presence" },
-  { resource: "picturePages", action: "list" },
-  { resource: "picturePages", action: "create" },
-  { resource: "picturePages", action: "update" },
-  { resource: "picturePages", action: "delete" },
-  { resource: "radarGroups", action: "list" },
-  { resource: "radarGroups", action: "create" },
-  { resource: "radarGroups", action: "update" },
-  { resource: "radarGroups", action: "delete" },
-  { resource: "radars", action: "list" },
-  { resource: "radars", action: "create" },
-  { resource: "radars", action: "update" },
-  { resource: "radars", action: "delete" },
+  { resource: "picturePages", action: "view" },
+  { resource: "picturePages", action: "manage" },
+  { resource: "picturePages", action: "manage" },
+  { resource: "picturePages", action: "manage" },
+  { resource: "radarGroups", action: "view" },
+  { resource: "radarGroups", action: "manage" },
+  { resource: "radarGroups", action: "manage" },
+  { resource: "radarGroups", action: "manage" },
+  { resource: "radars", action: "view" },
+  { resource: "radars", action: "manage" },
+  { resource: "radars", action: "manage" },
+  { resource: "radars", action: "manage" },
 ];
 
 // === FUNÇÕES AUXILIARES ===
@@ -373,7 +342,7 @@ export async function seedMonitoring() {
 
   // 3. PRODUTOS (SINCRONIZAR Slugs)
   console.log("   - Sincronizando produtos de monitoramento...");
-  const pData = (seedMonitoringProducts as unknown as { products: SeedMonitoringProduct[] }).products;
+  const pData = seedMonitoringProducts.products;
   for (const prod of pData) {
     // Transformamos turnos de objetos para array de strings (apenas as horas)
     const turnStrings = prod.turns.map(t => t.turn);
@@ -623,14 +592,15 @@ async function seed() {
     // === 1. CRIAR GRUPOS ===
     if (!groupsCheck.hasData) {
       console.log("🔵 Criando grupos do sistema...");
+      const groupRows: Array<typeof schema.group.$inferInsert> = groups.map(
+        (group) => ({
+          id: randomUUID(),
+          ...group,
+        }),
+      );
       insertedGroups = await db
         .insert(schema.group)
-        .values(
-          groups.map((group) => ({
-            id: randomUUID(),
-            ...group,
-          })),
-        )
+        .values(groupRows)
         .returning();
 
       defaultGroup = insertedGroups.find((g) => g.isDefault) || null;
@@ -652,34 +622,39 @@ async function seed() {
           ? allGroupPermissions
           : defaultGroupPermissions;
 
+      // Read existing permissions preferring v2 values when present
       const existingPermissions = await db
         .select({
-          resource: schema.groupPermission.resource,
-          action: schema.groupPermission.action,
+          resource: sql<string>`COALESCE(${schema.groupPermission.resourceV2}, ${schema.groupPermission.resource})`,
+          action: sql<string>`COALESCE(${schema.groupPermission.actionV2}, ${schema.groupPermission.action})`,
         })
         .from(schema.groupPermission)
         .where(eq(schema.groupPermission.groupId, groupItem.id));
 
-      const existingSet = new Set(
-        existingPermissions.map(
-          (permission) => `${permission.resource}:${permission.action}`,
-        ),
-      );
+      const existingSet = new Set(existingPermissions.map((permission) => `${permission.resource}:${permission.action}`));
 
-      const missingPermissions = targetPermissions.filter(
-        (permission) =>
-          !existingSet.has(`${permission.resource}:${permission.action}`),
-      );
+      const missingPermissions = targetPermissions.filter((permission) => {
+        const r2 = mapResourceToV2(permission.resource);
+        const a2 = mapActionToV2(permission.resource, permission.action);
+        return !existingSet.has(`${r2}:${a2}`);
+      });
 
       if (missingPermissions.length > 0) {
         await db.insert(schema.groupPermission).values(
-          missingPermissions.map((permission) => ({
-            groupId: groupItem.id,
-            resource: permission.resource,
-            action: permission.action,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })),
+          missingPermissions.map((permission) => {
+            const r2 = mapResourceToV2(permission.resource);
+            const a2 = mapActionToV2(permission.resource, permission.action);
+            return {
+              groupId: groupItem.id,
+              // write canonical (v2) values into both legacy and v2 columns
+              resource: r2,
+              action: a2,
+              resourceV2: r2,
+              actionV2: a2,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+          }),
         );
       }
     }
@@ -1178,9 +1153,15 @@ Investigação inicial aponta para falha no sistema RAID do servidor principal d
     // === 5. CRIAR CONTATOS ===
     if (!contactsCheck.hasData) {
       console.log("🔵 Criando contatos globais...");
+      const contactRows: Array<typeof schema.contact.$inferInsert> = contacts.map(
+        (contact) => ({
+          id: randomUUID(),
+          ...contact,
+        }),
+      );
       insertedContacts = await db
         .insert(schema.contact)
-        .values(contacts.map((contact) => ({ id: randomUUID(), ...contact })))
+        .values(contactRows)
         .returning();
 
       console.log(`✅ ${insertedContacts.length} contatos criados!`);

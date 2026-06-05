@@ -65,20 +65,20 @@ npm install
 npm run db:migrate
 ```
 
-Exemplo em PowerShell (via Turborepo):
+Exemplo em PowerShell (via workspace npm):
 
 ```powershell
 $env:KAFKA_REST_PROXY_URL = "http://rest-proxy:8082"
 $env:KAFKA_TOPIC = "model.products"
 $env:KAFKA_GROUP_ID = "silo-consumer-group"
 $env:KAFKA_DLQ_PREFIX = "dlq."
-npm run dev -w worker
+npm run dev -w @silo/worker
 ```
 
 Em produção (container):
 
 ```bash
-npm run start -w worker
+npm run start -w @silo/worker
 ```
 
 O worker também aceita o tópico como primeiro argumento CLI quando `KAFKA_TOPIC` não estiver definido.

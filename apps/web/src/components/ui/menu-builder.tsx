@@ -636,7 +636,7 @@ export function MenuBuilder({
                     clone
                     childCount={getChildCount(items, activeId) + 1}
                     value={activeId.toString()}
-                    otherfields={activeItem.otherfields || activeItem}
+                    otherfields={activeItem.otherfields || {}}
                     indentationWidth={indentationWidth}
                     childs={getChildrens(items, activeId)}
                   />

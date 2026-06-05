@@ -56,6 +56,10 @@ interface UserContextType {
   loading: boolean;
   error: string | null;
 
+  // Permission helpers
+  hasPermission: (resource: string, action: string) => boolean;
+  hasAnyPermission: (resource: string, actions: string[]) => boolean;
+
   // Funções de atualização
   updateUser: (updates: Partial<User>) => void;
   updateUserProfile: (updates: Partial<UserProfile>) => void;
@@ -100,6 +104,44 @@ const fetchApiResponse = async <T,>(
   }
 
   return { status, api: parseApiResponse<T>(payload) };
+};
+
+// Helpers to canonicalize permissions on the client to the new model (view/manage)
+const mapResourceToV2 = (resource: string): string => {
+  if (!resource) return resource;
+  const r = resource.toLowerCase();
+  if (r.startsWith("product") || r.startsWith("picture") || r.startsWith("radar")) return "products";
+  if (r.startsWith("project")) return "projects";
+  if (r === "groups" || r === "users" || r.startsWith("group")) return "groups";
+  if (r === "reports" || r === "dashboard" || r.includes("report")) return "reports";
+  if (r === "chat" || r.includes("chat")) return "chat";
+  return resource;
+};
+
+const mapActionToV2 = (resource: string, action: string): string => {
+  if (!action) return "manage";
+  const a = action.toLowerCase();
+  if (["list", "view", "read"].includes(a) || a.includes("view")) return "view";
+  if (["create", "update", "edit", "delete", "assign", "reorder", "approve", "send"].some((x) => a.includes(x))) return "manage";
+  return "manage";
+};
+
+const canonicalizePermissions = (raw: PermissionsSummary | undefined): PermissionsSummary => {
+  const out: PermissionsSummary = {};
+  if (!raw) return out;
+  Object.entries(raw).forEach(([resource, actions]) => {
+    const r2 = mapResourceToV2(resource);
+    const set = new Set<string>();
+    (actions || []).forEach((a) => {
+      if (!a) return;
+      // For chat, follow same mapping rules; keep specific chat actions only if they don't map
+      const mapped = mapActionToV2(resource, a);
+      set.add(mapped);
+    });
+    if (set.has("manage")) set.add("view");
+    out[r2] = Array.from(set);
+  });
+  return out;
 };
 
 // === PROVIDER ===
@@ -148,7 +190,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         image: userFromApi.image || "/images/profile.png",
       };
       setUserGroups(api?.data?.groups ?? []);
-      setPermissions(api?.data?.permissions ?? {});
+      // Normalize permissions to simplified model (view/manage)
+      setPermissions(canonicalizePermissions(api?.data?.permissions ?? {}));
       setIsAdmin(api?.data?.isAdmin ?? false);
       return userData;
     } catch (err) {
@@ -315,6 +358,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // === VALOR DO CONTEXTO ===
 
+  const hasPermissionFn = React.useCallback((resource: string, action: string): boolean => {
+    if (isAdmin) return true;
+    const r2 = mapResourceToV2(resource);
+    const perms = permissions[r2] ?? [];
+    const req = mapActionToV2(resource, action);
+    if (perms.includes(req)) return true;
+    if (req === "view" && perms.includes("manage")) return true;
+    return false;
+  }, [isAdmin, permissions]);
+
+  const hasAnyPermissionFn = React.useCallback((resource: string, actions: string[]) => {
+    return actions.some((a) => hasPermissionFn(resource, a));
+  }, [hasPermissionFn]);
+
   const value: UserContextType = {
     user,
     userProfile,
@@ -331,6 +388,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     refreshUserProfile,
     refreshUserPreferences,
     syncUserData,
+    hasPermission: hasPermissionFn,
+    hasAnyPermission: hasAnyPermissionFn,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

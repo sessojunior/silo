@@ -8,7 +8,7 @@ const router = Router();
 router.use(authMiddleware);
 
 // GET /tasks/:taskId/history
-router.get("/:taskId/history", requirePermission("projectTasks", "list"), async (req, res) => {
+router.get("/:taskId/history", requirePermission("projectTasks", "view"), async (req, res) => {
   try {
     const result = await getTaskHistory(String(req.params.taskId));
     if (!result.ok) {
@@ -23,7 +23,7 @@ router.get("/:taskId/history", requirePermission("projectTasks", "list"), async 
 });
 
 // GET /tasks/:taskId/users
-router.get("/:taskId/users", requirePermission("projectTasks", "list"), async (req, res) => {
+router.get("/:taskId/users", requirePermission("projectTasks", "view"), async (req, res) => {
   try {
     const users = await getTaskUsers(String(req.params.taskId));
     if (!users.ok) {
@@ -38,7 +38,7 @@ router.get("/:taskId/users", requirePermission("projectTasks", "list"), async (r
 });
 
 // POST /tasks/:taskId/users
-router.post("/:taskId/users", requirePermission("projectTasks", "update"), async (req, res) => {
+router.post("/:taskId/users", requirePermission("projectTasks", "manage"), async (req, res) => {
   const { userIds, role } = req.body as { userIds?: unknown; role?: string };
   if (!Array.isArray(userIds)) {
     res.status(400).json({ success: false, error: "IDs de usuários são obrigatórios." });

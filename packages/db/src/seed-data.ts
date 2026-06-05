@@ -1,4 +1,4 @@
-import * as schema from "@/lib/db/schema";
+import * as schema from "./schema.js";
 
 // === TIPAGENS DO SCHEMA ===
 export type ProductData = Pick<

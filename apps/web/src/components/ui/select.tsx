@@ -57,7 +57,6 @@ export default function Select({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [highlight, setHighlight] = useState(0);
-  const [openUpwards, setOpenUpwards] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -97,7 +96,6 @@ export default function Select({
       const spaceBelow = viewportHeight - rect.bottom;
       const spaceAbove = rect.top;
       const openUp = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
-      setOpenUpwards(openUp);
       setDropdownRect({ left: rect.left + window.scrollX, top: rect.bottom + window.scrollY, width: rect.width, openUpwards: openUp });
     }
   }, [isOpen]);
@@ -112,7 +110,6 @@ export default function Select({
       const spaceBelow = viewportHeight - rect.bottom;
       const spaceAbove = rect.top;
       const openUp = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
-      setOpenUpwards(openUp);
       setDropdownRect({ left: rect.left + window.scrollX, top: rect.bottom + window.scrollY, width: rect.width, openUpwards: openUp });
     };
     window.addEventListener("resize", onResize);

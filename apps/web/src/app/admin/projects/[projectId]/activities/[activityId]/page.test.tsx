@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { config } from "@/lib/config";
-import type { ActivityFormData, Project, ProjectTask, TaskFormData } from "@/types/projects";
+import type { Project, ProjectTask, TaskFormData } from "@/types/projects";
 import TaskKanbanPage from "./page";
 
 const pageMocks = vi.hoisted(() => ({
@@ -151,6 +151,7 @@ vi.mock("@/components/admin/projects/task-form-offcanvas", () => ({
           endDate: "2025-05-14",
           priority: "urgent",
           status: "done",
+          sort: 1,
           assignedUsers: ["user-3"],
         }
       : {
@@ -162,6 +163,7 @@ vi.mock("@/components/admin/projects/task-form-offcanvas", () => ({
           endDate: "2025-05-11",
           priority: "high",
           status: "todo",
+          sort: 0,
           assignedUsers: ["user-1", "user-2"],
         };
 
@@ -252,7 +254,8 @@ function groupTasks(tasks: TaskRecord[]) {
   };
 
   for (const task of tasks) {
-    grouped[task.status].push(task);
+    const status = task.status as keyof typeof grouped;
+    grouped[status].push(task);
   }
 
   for (const status of Object.keys(grouped) as Array<keyof typeof grouped>) {

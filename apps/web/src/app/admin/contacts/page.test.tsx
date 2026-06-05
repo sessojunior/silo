@@ -92,7 +92,7 @@ vi.mock("@/components/ui/upload-button-local", () => ({
 
 vi.mock("next/image", () => ({
   default: function MockNextImage({ alt }: { alt: string }) {
-    return <img alt={alt} />;
+    return <div data-testid="next-image" aria-label={alt} />;
   },
 }));
 

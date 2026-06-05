@@ -2,7 +2,7 @@
 
 Projeto **SILO** — sistema de gerenciamento de produtos industriais.
 Stack: **Next.js 16 (App Router)**, React 19, Drizzle ORM + PostgreSQL, Kafka REST Proxy, TypeScript.
-Estrutura: **Turborepo + npm workspaces** (monorepo).
+Estrutura: **npm workspaces** (monorepo).
 
 ---
 

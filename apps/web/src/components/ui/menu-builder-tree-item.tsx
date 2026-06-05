@@ -166,8 +166,8 @@ export const TreeItem = memo(
       setIsMounted(true);
     }, []);
 
-    // Dados do item
-    const itemData = props?.otherfields ?? {};
+    // Dados do item (memoizados para estabilizar dependências)
+    const itemData = useMemo(() => props?.otherfields ?? {}, [props.otherfields]);
     const itemName = typeof itemData.name === "string" && itemData.name.length > 0 ? itemData.name : value || "Item sem nome";
     const itemHref = typeof itemData.href === "string" ? itemData.href : "";
     const itemIcon = typeof itemData.icon === "string" ? itemData.icon : undefined;

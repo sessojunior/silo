@@ -76,8 +76,8 @@ function request(path, method = 'GET', body = null, cookies = null) {
     }
     console.log('Using groupId:', groupId);
 
-    const permBody = JSON.stringify({ groupId, resource: 'products', action: 'list', enabled: true });
-    console.log('Updating permission products:list for group', groupId);
+    const permBody = JSON.stringify({ groupId, resource: 'products', action: 'view', enabled: true });
+    console.log('Updating permission products:view for group', groupId);
     const updRes = await request('/api/groups/permissions', 'PUT', permBody, cookies);
     console.log('Update status:', updRes.status);
     console.log('Update response body:', updRes.body);

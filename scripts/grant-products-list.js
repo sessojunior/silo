@@ -43,16 +43,16 @@ async function main() {
       // Verificar permissão existente
       let hasPermission = false;
       for (const group of resGroups.rows) {
-        const resPerm = await client.query('SELECT id FROM group_permissions WHERE group_id = $1 AND resource = $2 AND action = $3 LIMIT 1', [group.id, 'products', 'list']);
+        const resPerm = await client.query('SELECT id FROM group_permissions WHERE group_id = $1 AND (COALESCE(resource_v2, resource) = $2) AND (COALESCE(action_v2, action) = $3) LIMIT 1', [group.id, 'products', 'view']);
         if (resPerm.rowCount > 0) {
-          console.log(`Grupo ${group.name} já possui products:list`);
+          console.log(`Grupo ${group.name} já possui products:view`);
           hasPermission = true;
           break;
         }
       }
 
       if (hasPermission) {
-        console.log('Permissão `products:list` já presente via grupo. Nada a fazer.');
+        console.log('Permissão `products:view` já presente via grupo. Nada a fazer.');
         return;
       }
 
@@ -70,8 +70,8 @@ async function main() {
       }
 
       const permissionId = randomUUID();
-      await client.query('INSERT INTO group_permissions (id, group_id, resource, action, created_at, updated_at) VALUES ($1,$2,$3,$4, now(), now())', [permissionId, targetGroup.id, 'products', 'list']);
-      console.log(`Permissão \'products:list\' concedida ao grupo ${targetGroup.name} (id=${targetGroup.id}).`);
+      await client.query('INSERT INTO group_permissions (id, group_id, resource, action, resource_v2, action_v2, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6, now(), now())', [permissionId, targetGroup.id, 'products', 'view', 'products', 'view']);
+      console.log(`Permissão 'products:view' concedida ao grupo ${targetGroup.name} (id=${targetGroup.id}).`);
     } finally {
       client.release();
     }

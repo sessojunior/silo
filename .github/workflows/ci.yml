@@ -35,3 +35,9 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
           DRIZZLE_TELEMETRY_DISABLED: 1
+
+      - name: Check legacy permissions
+        run: node scripts/check-no-legacy-permissions.mjs
+
+      - name: Run tests
+        run: npm test --if-present

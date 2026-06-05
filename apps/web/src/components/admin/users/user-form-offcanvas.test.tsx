@@ -33,6 +33,8 @@ interface AuthUserLike {
   email: string;
   emailVerified: boolean;
   isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
   groups?: Array<{
     groupId: string;
     groupName: string;
@@ -184,6 +186,8 @@ const editingUser: AuthUserLike = {
   email: "alfa@inpe.br",
   emailVerified: true,
   isActive: true,
+  createdAt: "2025-05-19T00:00:00.000Z",
+  updatedAt: "2025-05-20T00:00:00.000Z",
   needsPasswordSetup: true,
   groups: [
     {
