@@ -148,6 +148,7 @@ export function ProblemDetailColumn({
                   height={128}
                   style={{ objectFit: "cover", height: "auto" }}
                   priority
+                  unoptimized
                 />
               </div>
             ))}

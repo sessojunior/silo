@@ -166,6 +166,7 @@ export function ProblemSolutionsSection({
                         width={200}
                         height={128}
                         style={{ objectFit: "cover" }}
+                        unoptimized
                       />
                     </div>
                   ))}
@@ -381,6 +382,7 @@ export function ProblemSolutionsSection({
                               width={200}
                               height={128}
                               style={{ objectFit: "cover" }}
+                              unoptimized
                             />
                           </div>
                         ))}

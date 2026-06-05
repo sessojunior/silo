@@ -165,6 +165,7 @@ export default function SolutionFormModal({
                         width={128}
                         height={128}
                         style={{ objectFit: "contain" }}
+                        unoptimized
                       />
                       {/* Botão de apagar no canto superior direito */}
                       <button
