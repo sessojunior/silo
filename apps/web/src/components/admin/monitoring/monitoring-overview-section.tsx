@@ -651,7 +651,7 @@ export default function MonitoringOverviewSection({
   const hasMoreProducts = visibleProductCount < productsData.products.length;
 
   return (
-    <section className="grid gap-4 p-4 border-b border-zinc-200/80 dark:border-zinc-700/80 xl:grid-cols-3">
+    <section className="grid gap-4 p-4 pb-0 dark:border-zinc-700/80 xl:grid-cols-3">
       <MonitoringTopCard
         title="Modelos (produtos)"
         icon={<span className="icon-[lucide--check-circle-2] size-5" />}
