@@ -1,7 +1,6 @@
 services:
   db:
     image: postgres:17-alpine
-    profiles: [ "db" ]
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
@@ -19,14 +18,14 @@ services:
     image: silo-api
     container_name: silo-api
     ports:
-      - "3001:3001"
+      - "${API_PORT:-4000}:4000"
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL_PROD: ${DATABASE_URL_PROD}
       DATABASE_URL: ${DATABASE_URL_PROD}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      APP_URL_DEV: ${APP_URL_DEV:-http://localhost:3000}
-      APP_URL_PROD: ${APP_URL_PROD:-http://localhost:3000}
+      APP_URL_DEV: ${APP_URL_DEV:-http://localhost}
+      APP_URL_PROD: ${APP_URL_PROD:-http://localhost}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_SECURE: ${SMTP_SECURE:-false}
@@ -36,13 +35,15 @@ services:
       KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH}
       PRODUCT_FLOW_API_KEY: ${PRODUCT_FLOW_API_KEY}
       OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct-q4_K_M}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct-q4_K_M}
       OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
       OLLAMA_MAX_CONCURRENT_REQUESTS: ${OLLAMA_MAX_CONCURRENT_REQUESTS:-1}
       TZ: America/Sao_Paulo
     volumes:
       - uploads_data:/app/uploads
     depends_on:
+      db:
+        condition: service_started
       ollama-init:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -55,7 +56,7 @@ services:
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
       OLLAMA_KEEP_ALIVE: 24h
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct-q4_K_M}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct-q4_K_M}
     command: ["serve"]
     volumes:
       - ollama_data:/root/.ollama
@@ -72,7 +73,7 @@ services:
       - ollama
     environment:
       OLLAMA_HOST: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct-q4_K_M}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct-q4_K_M}
     volumes:
       - ollama_data:/root/.ollama
     entrypoint: ["sh", "-lc"]
@@ -85,7 +86,6 @@ services:
       dockerfile: apps/worker/Dockerfile
     image: silo-worker
     container_name: silo-worker
-    profiles: ["worker"]
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL_PROD: ${DATABASE_URL_PROD}
@@ -97,6 +97,7 @@ services:
       TZ: America/Sao_Paulo
     depends_on:
       - api
+      - db
     restart: unless-stopped
 
   web:
@@ -106,12 +107,12 @@ services:
     image: silo-web
     container_name: silo-web
     ports:
-      - "8084:3000"
+      - "${SILO_HOST_PORT:-80}:3000"
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      API_URL: http://api:3001
-      APP_URL_DEV: ${APP_URL_DEV:-http://localhost:3000}
-      APP_URL_PROD: ${APP_URL_PROD:-http://localhost:3000}
+      API_URL: http://api:4000
+      APP_URL_DEV: ${APP_URL_DEV:-http://localhost}
+      APP_URL_PROD: ${APP_URL_PROD:-http://localhost}
       NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
       TZ: America/Sao_Paulo
     volumes:
@@ -130,6 +131,5 @@ volumes:
 
 networks:
   frontend:
-    external: true
-    name: frontend
+    driver: bridge
 

@@ -124,7 +124,7 @@ KAFKA_RETRY_BACKOFF_MS=1000
 
 # Assistente de IA / Ollama
 OLLAMA_URL=http://ollama:11434
-OLLAMA_MODEL=qwen2.5:7b-instruct-q4_K_M
+OLLAMA_MODEL=qwen2.5:3b-instruct-q4_K_M
 OLLAMA_TIMEOUT_MS=30000
 OLLAMA_MAX_CONCURRENT_REQUESTS=1
 ```
@@ -134,8 +134,8 @@ Observações:
 - Para Docker Compose, evite aspas no `.env` para não incluir aspas no valor final.
 - O caminho base público do sistema é configurado em `NEXT_PUBLIC_BASE_PATH` (sem barra final). Exemplos: `/silo` ou `/` (raiz).
 - `APP_URL_DEV` e `APP_URL_PROD` devem ser apenas a origem (sem subdiretório). O subdiretório base é sempre definido em `NEXT_PUBLIC_BASE_PATH`.
-- O `docker-compose.yml` suporta subir um PostgreSQL junto com a aplicação usando o profile `db`.
-- Se você não ativar o profile `db`, as variáveis `DATABASE_URL_DEV`/`DATABASE_URL_PROD` devem apontar para um PostgreSQL externo (gerenciado ou já existente).
+- O `docker-compose.yml` sobe PostgreSQL junto com a aplicação por padrão.
+- Para usar PostgreSQL externo, ajuste `DATABASE_URL_DEV`/`DATABASE_URL_PROD` e, se quiser, pare o serviço `db` explicitamente.
 - `KAFKA_REST_PROXY_USE_MOCK_DATA=true` mantém as telas de monitoramento e fluxo de dados funcionando com dados fake simulados. Use `false` apenas quando o REST Proxy real estiver disponível.
 
 ### **Arquivo docker-compose.yml**
@@ -214,9 +214,9 @@ npm run docker:ps
 npm run docker:logs
 ```
 
-### **Subir Postgres junto (profile db)**
+### **Subir stack completa (padrão)**
 
-O comando padrão já inclui o profile `db` para garantir que o banco suba junto. Na prática, rode apenas:
+O comando padrão já sobe banco + API + Web + Worker + Ollama. Na prática, rode apenas:
 
 ```bash
 npm run docker:up
@@ -225,7 +225,7 @@ npm run docker:up
 Se você realmente precisar depurar o Compose, aí sim pode usar o comando manual abaixo:
 
 ```bash
-docker compose --profile db up -d --build
+docker compose up -d --build
 ```
 
 Configuração típica no `.env`:
@@ -245,7 +245,7 @@ DATABASE_URL_PROD=postgresql://silo:uma_senha_forte@db:5432/silo
 Para rodar consumers Kafka via REST Proxy em containers separados, use o arquivo `docker-compose.kafka.yml` junto do compose principal:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.kafka.yml --profile db up -d --build
+docker compose -f docker-compose.yml -f docker-compose.kafka.yml up -d --build
 ```
 
 Cada serviço em `docker-compose.kafka.yml` deve definir um `KAFKA_TOPIC`. A recomendação operacional é manter um container por tópico para isolar checkpoints, retries e logs.

@@ -32,17 +32,22 @@
     "typecheck": "npm run typecheck:web && npm run typecheck:api && npm run typecheck:worker",
 
     "format": "prettier --write .",
-    "docker:up": "node deploy.js",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d --build && docker compose ps && docker compose logs -f api web",
     "docker:down": "docker compose down",
     "docker:ps": "docker compose ps",
     "docker:logs": "docker compose logs -f",
 
     "db:generate": "npm --workspace @silo/database run db:generate",
-    "db:push": "npm --workspace @silo/database run db:push",
     "db:migrate": "npm --workspace @silo/database run db:migrate",
+    "db:seed": "npm --workspace @silo/database run db:seed",
     "db:studio": "npm --workspace @silo/database run db:studio",
 
-    "deploy": "node deploy.js"
+    "docker:db:generate": "docker compose exec api npm run db:generate -w @silo/database",
+    "docker:db:migrate": "docker compose exec api npm run db:migrate -w @silo/database",
+    "docker:db:seed": "docker compose exec api npm run db:seed -w @silo/database",
+
+    "deploy": "npm run docker:up"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.1",

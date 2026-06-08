@@ -622,14 +622,26 @@ async function seed() {
           ? allGroupPermissions
           : defaultGroupPermissions;
 
-      // Read existing permissions preferring v2 values when present
-      const existingPermissions = await db
-        .select({
-          resource: sql<string>`COALESCE(${schema.groupPermission.resourceV2}, ${schema.groupPermission.resource})`,
-          action: sql<string>`COALESCE(${schema.groupPermission.actionV2}, ${schema.groupPermission.action})`,
-        })
-        .from(schema.groupPermission)
-        .where(eq(schema.groupPermission.groupId, groupItem.id));
+      // Lê permissões existentes — prefere v2, com fallback para legacy
+      let existingPermissions: { resource: string; action: string }[] = [];
+      try {
+        existingPermissions = await db
+          .select({
+            resource: sql<string>`COALESCE(${schema.groupPermission.resourceV2}, ${schema.groupPermission.resource})`,
+            action: sql<string>`COALESCE(${schema.groupPermission.actionV2}, ${schema.groupPermission.action})`,
+          })
+          .from(schema.groupPermission)
+          .where(eq(schema.groupPermission.groupId, groupItem.id));
+      } catch {
+        // fallback: colunas v2 podem não existir ainda (migration pendente)
+        existingPermissions = await db
+          .select({
+            resource: schema.groupPermission.resource,
+            action: schema.groupPermission.action,
+          })
+          .from(schema.groupPermission)
+          .where(eq(schema.groupPermission.groupId, groupItem.id));
+      }
 
       const existingSet = new Set(existingPermissions.map((permission) => `${permission.resource}:${permission.action}`));
 
@@ -640,22 +652,24 @@ async function seed() {
       });
 
       if (missingPermissions.length > 0) {
-        await db.insert(schema.groupPermission).values(
-          missingPermissions.map((permission) => {
-            const r2 = mapResourceToV2(permission.resource);
-            const a2 = mapActionToV2(permission.resource, permission.action);
-            return {
-              groupId: groupItem.id,
-              // write canonical (v2) values into both legacy and v2 columns
-              resource: r2,
-              action: a2,
-              resourceV2: r2,
-              actionV2: a2,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            };
-          }),
-        );
+        await db
+          .insert(schema.groupPermission)
+          .values(
+            missingPermissions.map((permission) => {
+              const r2 = mapResourceToV2(permission.resource);
+              const a2 = mapActionToV2(permission.resource, permission.action);
+              return {
+                groupId: groupItem.id,
+                resource: r2,
+                action: a2,
+                resourceV2: r2,
+                actionV2: a2,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+            }),
+          )
+          .onConflictDoNothing();
       }
     }
 
@@ -741,6 +755,29 @@ async function seed() {
         .limit(1);
       if (existingUser.length > 0) {
         userId = existingUser[0].id;
+      }
+    }
+
+    if (userId.length > 0) {
+      await db
+        .update(schema.authUser)
+        .set({
+          emailVerified: true,
+          isActive: true,
+        })
+        .where(eq(schema.authUser.id, userId));
+
+      for (const groupName of ["Administradores", "Suporte"]) {
+        const targetGroup = insertedGroups.find((g) => g.name === groupName);
+        if (!targetGroup) continue;
+
+        await db
+          .insert(schema.userGroup)
+          .values({
+            userId,
+            groupId: targetGroup.id,
+          })
+          .onConflictDoNothing();
       }
     }
 

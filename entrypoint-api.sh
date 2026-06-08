@@ -49,6 +49,9 @@ echo "📦 Executando migrações..."
 export DRIZZLE_DATABASE_URL="${DATABASE_URL}"
 npm run db:migrate -w @silo/database
 
+echo "🌱 Executando seed (cria usuários iniciais se necessário)..."
+npm run db:seed -w @silo/database || echo "⚠️ Seed falhou, mas API subirá mesmo assim."
+
 echo "✅ Iniciando API..."
 if [ $# -eq 0 ]; then
   exec ./node_modules/.bin/tsx apps/api/src/index.ts

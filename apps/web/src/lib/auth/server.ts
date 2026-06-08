@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { errorResponse } from "@/lib/api-response";
 import { config } from "@/lib/config";
 
@@ -19,18 +19,26 @@ type AuthGuardResult =
   | { ok: false; response: Response };
 
 const getAuthApiUrl = (path: string): string => {
-  if (config.apiOrigin) {
-    return new URL(path, config.apiOrigin).toString();
+  if (config.serverApiOrigin) {
+    return new URL(path, config.serverApiOrigin).toString();
   }
 
   return config.getApiUrl(path);
 };
 
+const getRequestCookieHeader = async (): Promise<string> => {
+  const cookieStore = await cookies();
+  return cookieStore
+    .getAll()
+    .map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join("; ");
+};
+
 export async function getAuthUser(): Promise<AuthUser | null> {
   try {
-    const reqHeaders = await headers();
+    const cookieHeader = await getRequestCookieHeader();
     const res = await fetch(getAuthApiUrl("/api/auth/get-session"), {
-      headers: { cookie: reqHeaders.get("cookie") ?? "" },
+      headers: { cookie: cookieHeader },
       cache: "no-store",
     });
     if (!res.ok) return null;
@@ -54,10 +62,10 @@ export async function requireAdminAuthUser(): Promise<AuthGuardResult> {
   if (!userResult.ok) return userResult;
 
   try {
-    const reqHeaders = await headers();
+    const cookieHeader = await getRequestCookieHeader();
     const res = await fetch(getAuthApiUrl("/api/check-admin"), {
       headers: {
-        cookie: reqHeaders.get("cookie") ?? "",
+        cookie: cookieHeader,
         "content-type": "application/json",
       },
       cache: "no-store",

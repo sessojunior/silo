@@ -530,7 +530,7 @@ Critérios mínimos por bloco:
 
 ```bash
 npm run api:smoke -- --inventory
-API_SMOKE_BASE_URL=http://localhost:3001 npm run api:smoke
+API_SMOKE_BASE_URL=http://localhost:4000 npm run api:smoke
 API_SMOKE_EMAIL=seu-email API_SMOKE_PASSWORD=sua-senha API_SMOKE_EXPECT_ADMIN=true npm run api:smoke
 ```
 
@@ -1259,7 +1259,7 @@ Content-Type: application/json
 
 ### **Persistência**
 
-As mensagens são salvas nas tabelas `ai_assistant_thread` e `ai_assistant_message`. Cada resposta do assistente grava também metadados de geração com `provider`, `model`, `status`, `latencyMs`, `generatedTokens` e `thinkingTimeMs` para auditoria, fallback e exibição do rodapé na UI. A configuração padrão do runtime usa o modelo quantizado `qwen2.5:7b-instruct-q4_K_M`.
+As mensagens são salvas nas tabelas `ai_assistant_thread` e `ai_assistant_message`. Cada resposta do assistente grava também metadados de geração com `provider`, `model`, `status`, `latencyMs`, `generatedTokens` e `thinkingTimeMs` para auditoria, fallback e exibição do rodapé na UI. A configuração padrão do runtime usa o modelo quantizado `qwen2.5:3b-instruct-q4_K_M`.
 
 O backend chama o Ollama com `think: true` por padrão e reaproveita o histórico recente da thread, além do último resumo de contexto salvo, como memória da conversa para responder seguimentos no mesmo tópico.
 

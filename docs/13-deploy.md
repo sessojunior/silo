@@ -74,7 +74,7 @@ npm run docker:ps
 npm run docker:logs
 ```
 
-Não use o `docker compose --profile db up -d --build` no fluxo normal. Ele é um detalhe interno do `npm run docker:up` e só serve para troubleshooting avançado.
+Não use o `docker compose up -d --build` no fluxo normal. Ele é um detalhe interno do `npm run docker:up` e só serve para troubleshooting avançado.
 
 O que acontece aqui:
 
@@ -194,7 +194,7 @@ No Silo:
 - `worker` → consumer Kafka
 - `db` → o banco de dados
 
-O `--profile db` liga o banco junto.
+No compose local, o banco já sobe junto por padrão.
 
 ---
 

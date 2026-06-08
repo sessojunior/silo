@@ -5,14 +5,14 @@ import { errorResponse } from "@/lib/api-response";
 import { config as appConfig } from "@/lib/config";
 
 const getApiBaseUrl = (): URL => {
-  const raw = appConfig.apiOrigin || "http://localhost:3001";
+  const raw = process.env.API_URL || appConfig.apiOrigin || "http://localhost:4000";
   const normalized =
-    raw.length === 0 ? "http://localhost:3001/" : raw.endsWith("/") ? raw : `${raw}/`;
+    raw.length === 0 ? "http://localhost:4000/" : raw.endsWith("/") ? raw : `${raw}/`;
 
   try {
     return new URL(normalized);
   } catch {
-    return new URL("http://localhost:3001/");
+    return new URL("http://localhost:4000/");
   }
 };
 

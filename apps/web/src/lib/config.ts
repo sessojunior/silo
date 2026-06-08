@@ -100,15 +100,30 @@ export const config = {
   },
 
   /**
+   * Origem interna do apps/api para uso no servidor do web.
+   * Em Docker, deve apontar para o serviço interno (ex.: http://api:4000).
+   */
+  get serverApiOrigin(): string {
+    const raw = (process.env.API_URL || "").trim();
+    if (!raw) return this.apiOrigin;
+
+    try {
+      return new URL(raw).origin;
+    } catch {
+      return this.apiOrigin;
+    }
+  },
+
+  /**
    * Constrói URL para chamadas de API respeitando o basePath da aplicação.
    *
    * - Em ambiente client, retorna sempre um path relativo (ex.: /silo/api/auth/login)
-   * - Em ambiente server, concatena APP_URL_DEV/APP_URL_PROD com o path normalizado.
+   * - Em ambiente server, prioriza a origem interna da API no Docker e cai para a origem pública apenas como fallback.
    *
    * Exemplo:
    * const url = config.getApiUrl('/api/auth/login')
    * // Client: '/silo/api/auth/login'
-   * // Server (dev): 'http://localhost:3000/silo/api/auth/login'
+   * // Server (Docker): 'http://api:4000/api/auth/login'
    */
   getApiUrl(path: string): string {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -116,7 +131,7 @@ export const config = {
       return this.getPublicPath(normalizedPath);
     }
 
-    const base = this.appUrl;
+    const base = this.serverApiOrigin || this.appUrl;
     if (!base) return normalizedPath;
     return `${base.replace(/\/$/, "")}${normalizedPath}`;
   },

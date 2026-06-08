@@ -48,8 +48,8 @@ export const config = {
       process.env.APP_URL_PROD,
       "http://localhost:3002",
       "http://127.0.0.1:3002",
-      "http://localhost:3001",
-      "http://127.0.0.1:3001",
+      "http://localhost:4000",
+      "http://127.0.0.1:4000",
       "http://localhost:3000",
       "http://127.0.0.1:3000",
     ];
@@ -76,8 +76,8 @@ export const config = {
   },
 
   get apiPort(): number {
-    const parsedPort = Number.parseInt(process.env.PORT ?? "3001", 10);
-    return Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 3001;
+    const parsedPort = Number.parseInt(process.env.PORT ?? "4000", 10);
+    return Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 4000;
   },
 
   get apiCorsOrigins(): string[] {
@@ -98,7 +98,7 @@ export const config = {
         ? "http://ollama:11434"
         : "http://localhost:11434";
     const rawUrl = (process.env.OLLAMA_URL || defaultUrl).trim();
-    const rawModel = (process.env.OLLAMA_MODEL || "qwen2.5:7b-instruct-q4_K_M").trim();
+    const rawModel = (process.env.OLLAMA_MODEL || "qwen2.5:3b-instruct-q4_K_M").trim();
 
     const timeoutMsRaw = Number.parseInt(process.env.OLLAMA_TIMEOUT_MS || "30000", 10);
     const maxConcurrentRequestsRaw = Number.parseInt(
@@ -115,7 +115,7 @@ export const config = {
 
     return {
       url,
-      model: rawModel.length > 0 ? rawModel : "qwen2.5:7b-instruct-q4_K_M",
+      model: rawModel.length > 0 ? rawModel : "qwen2.5:3b-instruct-q4_K_M",
       timeoutMs:
         Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 30000,
       maxConcurrentRequests:

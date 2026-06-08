@@ -25,6 +25,8 @@ COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
+RUN mkdir -p ./apps/web/.next/cache && chown -R nextjs:nodejs ./apps/web/.next
+
 RUN mkdir -p uploads && chown nextjs:nodejs uploads
 USER nextjs
 

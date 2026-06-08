@@ -162,7 +162,7 @@ O healthcheck usa a rota [../apps/web/src/app/health/route.ts](../apps/web/src/a
 O [../docker-compose.yml](../docker-compose.yml) atual continua bom para desenvolvimento local porque ele:
 
 - Sobe a aplicacao com `build: .`
-- Pode subir o Postgres local via profile `db`
+- Pode subir o Postgres local junto com a stack por padrão
 - Mantem volumes locais para uploads e banco
 
 O [../docker-compose.deploy.yml](../docker-compose.deploy.yml) existe para o CD porque ele:

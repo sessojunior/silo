@@ -307,6 +307,7 @@ export default function LoginPage() {
         const res = await fetch(config.getApiUrl("/api/auth/login/password"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ email: normalizedEmail, password }),
         });
 
@@ -439,7 +440,7 @@ export default function LoginPage() {
           return;
         }
 
-        router.push(postLoginRedirectPath);
+        window.location.href = window.location.origin + config.getPublicPath(postLoginRedirectPath);
       } catch (err) {
         console.error("? [PAGE_LOGIN] Erro inesperado:", { error: err });
         toast({
@@ -588,7 +589,7 @@ export default function LoginPage() {
           title: "Conta verificada com sucesso.",
         });
 
-        router.push(postLoginRedirectPath);
+        window.location.href = window.location.origin + config.getPublicPath(postLoginRedirectPath);
       } catch (err) {
         console.error("? [PAGE_LOGIN] Erro ao verificar o código:", {
           error: err,

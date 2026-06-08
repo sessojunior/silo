@@ -38,10 +38,12 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
 RUN mkdir -p uploads && chown apiuser:nodejs uploads
+# Garante que o usuário apiuser possa escrever no diretório de migrations (db:generate)
+RUN mkdir -p /app/packages/db/drizzle/meta && chown -R apiuser:nodejs /app/packages/db/drizzle
 COPY entrypoint-api.sh ./entrypoint.sh
 RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 USER apiuser
-EXPOSE 3001
+EXPOSE 4000
 
 ENTRYPOINT ["./entrypoint.sh"]
