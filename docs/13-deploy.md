@@ -16,7 +16,7 @@ Siga exatamente na ordem:
 ### 2) Abrir o terminal na pasta do projeto
 
 ```bash
-cd /caminho/para/silo-sessojunior
+cd /caminho/para/silo
 ```
 
 ### 2.1) Criar a rede Docker (Frontend)
@@ -133,7 +133,7 @@ docker compose exec db sh -c "ls -la /var/lib/postgresql/data"
 
 Uploads são arquivos persistidos em um volume do Docker:
 
-- Volume: `uploads_data` (Gerenciado pelo Docker)
+- Volume: `silo-storage-data` (Gerenciado pelo Docker)
 - Dentro do container: `/app/uploads`
 
 Para conferir dentro do container:

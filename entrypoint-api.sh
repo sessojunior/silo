@@ -43,14 +43,33 @@ NODE
   sleep 2
 done
 
-echo "📦 Executando migrações..."
-# The DATABASE_URL is set, but packages/db drizzle.config expects DATABASE_URL_PROD in production.
-# Override via DRIZZLE_DATABASE_URL (takes precedence in drizzle.config.ts).
+echo "📦 Sincronizando schema do banco..."
+# drizzle-kit push sincroniza o schema direto, sem depender de journal/migrations.
+# Remove a tabela de tracking do migrate antigo (se existir) para evitar o prompt
+# interativo de "data-loss" que trava o entrypoint.
+node - <<NODE
+const { Client } = require('pg');
+(async () => {
+  const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: false });
+  try {
+    await client.connect();
+    await client.query('DROP TABLE IF EXISTS __drizzle_migrations CASCADE');
+    console.log('✅ Tabela __drizzle_migrations removida (se existia).');
+    await client.end();
+  } catch (e) {
+    try { await client.end(); } catch {}
+    console.log('⚠️ Não foi possível remover __drizzle_migrations, continuando...');
+  }
+})();
+NODE
 export DRIZZLE_DATABASE_URL="${DATABASE_URL}"
-npm run db:migrate -w @silo/database
+cd /app/packages/db && npx drizzle-kit push --config drizzle.config.ts
 
 echo "🌱 Executando seed (cria usuários iniciais se necessário)..."
 npm run db:seed -w @silo/database || echo "⚠️ Seed falhou, mas API subirá mesmo assim."
+
+# Volta para o diretório raiz para que ./node_modules/.bin/tsx funcione
+cd /app
 
 echo "✅ Iniciando API..."
 if [ $# -eq 0 ]; then

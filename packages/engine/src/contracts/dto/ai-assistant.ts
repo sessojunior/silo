@@ -183,6 +183,7 @@ export const AiAssistantMessageResponseSchema = z.object({
   isInScope: z.boolean(),
   refusalReason: z.string().optional().nullable(),
   answer: z.string(),
+  thinking: z.string().optional(),
   suggestedQuestions: z.array(z.string()),
   citations: z.array(AiAssistantCitationSchema),
   visualization: AiAssistantVisualizationSchema.optional(),

@@ -1,6 +1,6 @@
 import { db } from "@silo/database";
 import { group, groupPermission, userGroup, userPreferences } from "@silo/database/schema";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { AuthUser } from "../auth/setup";
 import type { Request, Response, NextFunction } from "express";
 
@@ -68,11 +68,11 @@ export const getPermissions = async (
 ): Promise<PermissionsMap> => {
   if (groups.length === 0) return {};
   const groupIds = groups.map((g) => g.id);
-  // Read compatibly from new v2 columns if present (resource_v2/action_v2) falling back to legacy cols
+  // Lê permissões diretamente de resource/action
   const rows = await db
     .select({
-      resource: sql<string>`COALESCE(${groupPermission.resourceV2}, ${groupPermission.resource})`,
-      action: sql<string>`COALESCE(${groupPermission.actionV2}, ${groupPermission.action})`,
+      resource: groupPermission.resource,
+      action: groupPermission.action,
     })
     .from(groupPermission)
     .where(inArray(groupPermission.groupId, groupIds));

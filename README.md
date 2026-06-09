@@ -9,6 +9,7 @@ Sistema de **gestão de produtos meteorológicos** para colaboração, monitoram
 O **Silo** centraliza e estrutura operações críticas em uma única plataforma:
 
 - ✅ **Dashboard unificado** com visão consolidada de status e métricas
+- ✅ **Assistente de IA** integrado com Ollama (modelo Qwen 2.5 3B local) para análise de dados, geração de gráficos ECharts, imagens SVG e relatórios
 - ✅ **Base de conhecimento** hierarquicamente organizada por produto
 - ✅ **Sistema integrado** de problemas e soluções colaborativas
 - ✅ **Gestão completa** de projetos e atividades com Kanban
@@ -148,6 +149,7 @@ npm run dev:worker
 - **Upload/Arquivos:** Route Handlers do Next (Sharp)
 - **UI:** Tailwind CSS 4 + Design System customizado
 - **Auth:** Better Auth + sessão via cookie HTTP-only + Google OAuth
+- **IA:** Ollama + Qwen 2.5 3B (local, sem cloud) — assistente analítico com geração de gráficos ECharts e imagens SVG
 - **Charts:** Apache ECharts
 
 ### **Estrutura**
@@ -168,7 +170,7 @@ silo/
 
 ### **Container Next.js (`app`)**
 
-- **Porta**: 3000 (mapeada para localhost:3000)
+- **Porta**: 3000 (mapeada para localhost:80)
 - **Função**: Aplicação frontend e APIs
 - **Volume**: `uploads_data` (Volume Docker gerenciado)
 - **Restart**: Automático (`unless-stopped`)
@@ -186,6 +188,7 @@ silo/
 | ---------------- | ------------------------------------------------ |
 | **Autenticação** | Login, registro, OAuth, recuperação de senha     |
 | **Dashboard**    | Estatísticas, gráficos, resumo executivo         |
+| **Assistente IA** | Chat com IA (Ollama + Qwen 2.5), gráficos ECharts, imagens SVG, raciocínio em accordion |
 | **Produtos**     | CRUD, dependências, problemas, soluções, manuais |
 | **Projetos**     | Kanban, atividades, tarefas, histórico           |
 | **Chat**         | Grupos, DMs, presença, notificações              |

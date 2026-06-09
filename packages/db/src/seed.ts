@@ -46,31 +46,9 @@ type GroupPermissionSeed = {
   action: string;
 };
 
-// === HELPERS DE MAPEAMENTO PARA V2 (compat-layer) ===
-const mapResourceToV2 = (resource: string): string => {
-  if (!resource) return resource;
-  const r = resource.toLowerCase();
-  if (r.startsWith("product") || r.startsWith("picture") || r.startsWith("radar")) return "products";
-  if (r.startsWith("project")) return "projects";
-  if (r === "groups" || r === "users" || r.startsWith("group")) return "groups";
-  if (r === "reports" || r === "dashboard" || r.includes("report")) return "reports";
-  if (r === "chat" || r.includes("chat")) return "chat";
-  return resource;
-};
-
-const mapActionToV2 = (resource: string, action: string): string => {
-  if (!action) return "manage";
-  const a = action.toLowerCase();
-  // Preserve chat-specific actions verbatim (they are intentionally granular)
-  const r2 = mapResourceToV2(resource);
-  if (r2 === "chat") return action;
-  // Treat legacy list/read/view as view
-  if (["list", "view", "read"].includes(a) || a.includes("view")) return "view";
-  // Creation/edition/deletion/assignment -> manage
-  if (["create", "update", "edit", "delete", "assign", "reorder", "approve", "send", "history"].some((x) => a.includes(x))) return "manage";
-  // Default to manage
-  return "manage";
-};
+// === HELPERS DE MAPEAMENTO PARA CANONICAL ===
+// Os nomes de resource e action já são os valores canônicos (ex.: "projects", "products", "view", "manage").
+// Não há mais colunas versionadas — resource e action são a fonte única de verdade.
 
 const defaultGroupPermissions: GroupPermissionSeed[] = [
   { resource: "dashboard", action: "view" },
@@ -622,52 +600,34 @@ async function seed() {
           ? allGroupPermissions
           : defaultGroupPermissions;
 
-      // Lê permissões existentes — prefere v2, com fallback para legacy
-      let existingPermissions: { resource: string; action: string }[] = [];
-      try {
-        existingPermissions = await db
-          .select({
-            resource: sql<string>`COALESCE(${schema.groupPermission.resourceV2}, ${schema.groupPermission.resource})`,
-            action: sql<string>`COALESCE(${schema.groupPermission.actionV2}, ${schema.groupPermission.action})`,
-          })
-          .from(schema.groupPermission)
-          .where(eq(schema.groupPermission.groupId, groupItem.id));
-      } catch {
-        // fallback: colunas v2 podem não existir ainda (migration pendente)
-        existingPermissions = await db
-          .select({
-            resource: schema.groupPermission.resource,
-            action: schema.groupPermission.action,
-          })
-          .from(schema.groupPermission)
-          .where(eq(schema.groupPermission.groupId, groupItem.id));
-      }
+      // Lê permissões existentes diretamente de resource/action
+      const existingPermissions = await db
+        .select({
+          resource: schema.groupPermission.resource,
+          action: schema.groupPermission.action,
+        })
+        .from(schema.groupPermission)
+        .where(eq(schema.groupPermission.groupId, groupItem.id));
 
-      const existingSet = new Set(existingPermissions.map((permission) => `${permission.resource}:${permission.action}`));
+      const existingSet = new Set(
+        existingPermissions.map((p) => `${p.resource}:${p.action}`),
+      );
 
-      const missingPermissions = targetPermissions.filter((permission) => {
-        const r2 = mapResourceToV2(permission.resource);
-        const a2 = mapActionToV2(permission.resource, permission.action);
-        return !existingSet.has(`${r2}:${a2}`);
-      });
+      const missingPermissions = targetPermissions.filter(
+        (p) => !existingSet.has(`${p.resource}:${p.action}`),
+      );
 
       if (missingPermissions.length > 0) {
         await db
           .insert(schema.groupPermission)
           .values(
-            missingPermissions.map((permission) => {
-              const r2 = mapResourceToV2(permission.resource);
-              const a2 = mapActionToV2(permission.resource, permission.action);
-              return {
-                groupId: groupItem.id,
-                resource: r2,
-                action: a2,
-                resourceV2: r2,
-                actionV2: a2,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              };
-            }),
+            missingPermissions.map((permission) => ({
+              groupId: groupItem.id,
+              resource: permission.resource,
+              action: permission.action,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })),
           )
           .onConflictDoNothing();
       }

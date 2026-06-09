@@ -1219,14 +1219,49 @@ POST /api/admin/chat/sync
 
 O assistente é consumido pelo frontend em `apps/web` via as rotas administrativas e a geração fica na API do SILO. O browser nunca chama o Ollama diretamente.
 
+### **Arquitetura**
+
+```
+Browser → Next.js (proxy) → API do SILO → Ollama (container) → Qwen 2.5 3B
+```
+
+O fluxo completo de uma pergunta:
+1. **Classificação de escopo** — o modelo classifica a pergunta em `models`, `problems`, `solutions`, `projects`, `pending`, `reports` ou `general`
+2. **Coleta de dados** — a API busca dados reais dos relatórios e dashboards do Silo
+3. **Montagem da resposta base** — os dados são formatados em uma resposta factual
+4. **Refinamento com Ollama** — o modelo reescreve a resposta para ficar mais clara, separando `thinking` (raciocínio) de `answer` (resposta final)
+5. **Geração de visualização** — se a pergunta contiver "gráfico", "imagem" ou "visualização", gera um gráfico ECharts ou imagem SVG
+
 ### **Base de rotas**
 
 ```http
-GET /api/admin/ai-assistant/examples
-GET /api/admin/ai-assistant/threads
-POST /api/admin/ai-assistant/threads
-GET /api/admin/ai-assistant/threads/[threadId]
-POST /api/admin/ai-assistant/messages
+GET  /api/admin/ai-assistant/status        # Status do runtime (Ollama reachable?)
+GET  /api/admin/ai-assistant/examples      # Exemplos de perguntas sugeridas
+GET  /api/admin/ai-assistant/threads       # Listar conversas do usuário
+POST /api/admin/ai-assistant/threads       # Criar nova conversa
+GET  /api/admin/ai-assistant/threads/:id   # Detalhes de uma conversa
+POST /api/admin/ai-assistant/messages      # Enviar pergunta ao assistente
+
+POST /api/warmup                           # Warm-up público do modelo (sem auth)
+```
+
+### **Status do runtime**
+
+```http
+GET /api/admin/ai-assistant/status
+
+Response:
+{
+  "success": true,
+  "data": {
+    "provider": "ollama",
+    "model": "qwen2.5:3b-instruct-q4_K_M",
+    "mode": "ollama",           // "ollama" | "fallback"
+    "latencyMs": 7,
+    "checkedAt": "2026-06-08T21:27:04.611Z",
+    "fallbackReason": null      // null quando ollama está reachable
+  }
+}
 ```
 
 ### **Exemplos e contexto**
@@ -1238,9 +1273,17 @@ Response:
 {
   "success": true,
   "data": {
-    "guidance": "...",
-    "scopePolicy": "...",
-    "examples": [ ... ]
+    "guidance": "Pergunte sobre modelos, problemas, causas, intervenções...",
+    "scopePolicy": "Se a pergunta for analítica, comparativa ou de priorização...",
+    "examples": [
+      {
+        "id": "models",
+        "title": "Modelos e rodadas",
+        "prompt": "Quais modelos estão com menor disponibilidade nos últimos 30 dias?",
+        "description": "Usa disponibilidade, intervenções e sinais de rodada.",
+        "scope": "models"
+      }
+    ]
   }
 }
 ```
@@ -1253,27 +1296,124 @@ Content-Type: application/json
 
 {
   "threadId": "550e8400-e29b-41d4-a716-446655440000",
-  "content": "Quais problemas ocorreram com mais frequência na última semana?"
+  "content": "Gere um gráfico de desempenho dos modelos com menor disponibilidade"
 }
 ```
+
+### **Resposta do assistente**
+
+```json
+{
+  "success": true,
+  "data": {
+    "threadId": "abc123",
+    "thread": {
+      "id": "abc123",
+      "title": "Gere um gráfico de desempenho...",
+      "lastMessagePreview": "O recorte atual mostra...",
+      "messageCount": 2,
+      "lastMessageAt": "2026-06-08T21:30:00.000Z"
+    },
+    "scope": "models",
+    "isInScope": true,
+    "answer": "Os produtos com menor disponibilidade são BAM, BRAMS AMS 15KM e SMEC...",
+    "thinking": "Comparando a disponibilidade dos modelos, o BAM está com 0%...",
+    "suggestedQuestions": [
+      "Quais produtos estão com pior disponibilidade?",
+      "Onde houve mais intervenções nos últimos 30 dias?"
+    ],
+    "citations": [
+      {
+        "label": "Relatório de disponibilidade",
+        "detail": "4 produtos e média de 0%"
+      }
+    ],
+    "contextSummary": "Contexto de modelos montado com disponibilidade...",
+    "generation": {
+      "provider": "ollama",
+      "model": "qwen2.5:3b-instruct-q4_K_M",
+      "status": "success",
+      "latencyMs": 23334,
+      "generatedTokens": 144,
+      "thinkingTimeMs": 11358
+    },
+    "visualization": {
+      "kind": "chart",
+      "chartType": "bar",
+      "title": "Disponibilidade por produto",
+      "subtitle": "Produtos mais sensíveis no recorte atual.",
+      "categories": ["BAM", "BRAMS AMS 15KM", "SMEC", "WRF"],
+      "series": [
+        {
+          "name": "Disponibilidade (%)",
+          "values": [0, 0, 0, 0],
+          "color": "#3b82f6"
+        }
+      ],
+      "height": 300
+    }
+  }
+}
+```
+
+**Campos da resposta:**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `answer` | string | Resposta final limpa, sem raciocínio |
+| `thinking` | string? | Raciocínio do modelo (exibido em accordion na UI) |
+| `scope` | string | Escopo detectado: models, problems, solutions, projects, pending, reports, general |
+| `isInScope` | boolean | false = pergunta fora do domínio do Silo |
+| `generation` | object | Metadados: provider, model, status (success/fallback/error), latencyMs, generatedTokens, thinkingTimeMs |
+| `visualization` | object? | Gráfico ECharts (`kind: "chart"`) ou imagem SVG (`kind: "image"`) |
+
+### **Modos de visualização**
+
+O assistente detecta automaticamente a intenção de visualização por palavras-chave na pergunta:
+
+| Palavras-chave | Modo | Descrição |
+|---|---|---|
+| `gráfico`, `chart`, `visualização`, `plot` | `chart` | Gráfico ECharts interativo (bar, line, donut) |
+| `imagem`, `figura`, `ilustração`, `foto`, `visual` | `image` | Imagem SVG estática com métricas |
+
+### **Warm-up do modelo**
+
+```http
+POST /api/warmup
+
+Response (sucesso):
+{
+  "success": true,
+  "data": {
+    "model": "qwen2.5:3b-instruct-q4_K_M",
+    "latencyMs": 580,
+    "warmedAt": "2026-06-08T19:48:00.000Z"
+  }
+}
+```
+
+Endpoint público (sem autenticação) que força o carregamento do modelo na memória do Ollama.
+Chamado automaticamente pelo servidor Next.js a cada 23 horas via `instrumentation.ts`.
 
 ### **Persistência**
 
 As mensagens são salvas nas tabelas `ai_assistant_thread` e `ai_assistant_message`. Cada resposta do assistente grava também metadados de geração com `provider`, `model`, `status`, `latencyMs`, `generatedTokens` e `thinkingTimeMs` para auditoria, fallback e exibição do rodapé na UI. A configuração padrão do runtime usa o modelo quantizado `qwen2.5:3b-instruct-q4_K_M`.
 
-O backend chama o Ollama com `think: true` por padrão e reaproveita o histórico recente da thread, além do último resumo de contexto salvo, como memória da conversa para responder seguimentos no mesmo tópico.
+O backend chama o Ollama sem `think: true` (o modelo Qwen 2.5 3B não suporta o parâmetro `think` nativo; o cliente tenta com `think` primeiro e faz fallback automático sem o parâmetro se o Ollama retornar erro). O raciocínio do modelo é extraído do campo `thinking` do JSON de resposta.
 
 A janela de contexto da conversa é ajustada automaticamente ao maior `num_ctx` reportado pelo modelo no Ollama, e o histórico da thread deixa de ser limitado por um corte fixo artificial.
 
-### **Resposta do assistente**
+### **Status progressivo na UI**
 
-O retorno do `POST /api/admin/ai-assistant/messages` usa o envelope padrão `{ success, data }` e inclui:
+Enquanto aguarda a resposta, o frontend exibe um spinner com mensagens que evoluem conforme o tempo:
 
-- `answer`
-- `citations`
-- `suggestedQuestions`
-- `contextSummary`
-- `generation` com os dados do modelo usado, incluindo tokens gerados e tempo de inferência
+| Tempo | Mensagem |
+|---|---|
+| 0-3s | Pensando... |
+| 3-7s | Analisando dados do Silo... |
+| 7-12s | Consultando modelo de IA... |
+| 12-20s | Gerando resposta... |
+| 20s+ | Criando visualização... |
 
 ---
 

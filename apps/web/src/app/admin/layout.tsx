@@ -3,7 +3,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth/server";
 import { ChatProvider } from "@/context/chat-context";
-import { UserProvider } from "@/context/user-context";
+import {
+  UserProvider,
+  type InitialUserData,
+  type UserGroupInfo,
+  type PermissionsSummary,
+} from "@/context/user-context";
 
 import { SidebarProvider } from "@/context/sidebar-context";
 import { LogoutProvider } from "@/context/logout-context";
@@ -31,15 +36,65 @@ export default async function AdminLayout({
   const smokeMode = requestCookies.get("silo_smoke_mode")?.value === "1";
 
   // Verificar se o usuário está autenticado
-  // Se o usuário não estiver autenticado, redireciona para a tela de login
   const currentUser = await getAuthUser();
   if (!currentUser && !smokeMode) {
     redirect("/login");
   }
 
-  // Sessão válida - o UserContext fará a busca dos dados completos
+  // Busca dados completos do perfil (grupos, permissões) no servidor
+  // para evitar depender de chamada client-side que pode falhar
+  let initialData: InitialUserData | null = null;
+
+  if (currentUser) {
+    try {
+      const cookieHeader = requestCookies
+        .getAll()
+        .map((c) => `${c.name}=${c.value}`)
+        .join("; ");
+
+      const apiOrigin = process.env.API_URL || "http://api:4000";
+      const res = await fetch(`${apiOrigin}/api/users/profile`, {
+        headers: { cookie: cookieHeader },
+        cache: "no-store",
+      });
+
+      if (res.ok) {
+        const body = (await res.json()) as {
+          success: boolean;
+          data?: {
+            user: { id: string; name: string; email: string; isActive: boolean; emailVerified: boolean; image?: string | null };
+            userProfile?: Record<string, unknown>;
+            groups?: { id: string; name: string; role: string }[];
+            permissions?: Record<string, string[]>;
+            isAdmin?: boolean;
+          };
+        };
+
+        if (body.success && body.data) {
+          initialData = {
+            user: {
+              id: body.data.user.id,
+              name: body.data.user.name,
+              email: body.data.user.email,
+              isActive: body.data.user.isActive,
+              emailVerified: body.data.user.emailVerified,
+              image: body.data.user.image || "/images/profile.png",
+            },
+            userGroups: (body.data.groups ?? []) as UserGroupInfo[],
+            permissions: (body.data.permissions ?? {}) as PermissionsSummary,
+            isAdmin: body.data.isAdmin ?? false,
+            userProfile: (body.data.userProfile ?? undefined) as InitialUserData["userProfile"],
+          };
+        }
+      }
+    } catch (error) {
+      console.error("❌ [ADMIN_LAYOUT] Erro ao buscar perfil no servidor:", error);
+    }
+  }
+
+  // Sessão válida — passa dados iniciais para o UserContext
   return (
-    <UserProvider>
+    <UserProvider initialData={initialData}>
       <ChatProvider>
         <LogoutProvider>
           {/* Inicializador de tema */}

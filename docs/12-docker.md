@@ -42,15 +42,19 @@ Consumers Kafka REST Proxy também podem ser executados em containers separados 
 
 O assistente de IA usa o caminho **Web -> API do SILO -> Ollama -> Qwen**. O browser nunca chama o Ollama diretamente.
 
-No boot da stack, um container `ollama-init` faz o `ollama pull` do modelo configurado antes da API subir. Isso evita deixar o download grande dentro do `command` do servidor Ollama e torna a inicialização mais previsível em produção.
+No boot da stack, um container `ollama-init` faz o `ollama pull` do modelo configurado e em seguida envia uma inferência de warm-up para forçar o carregamento do modelo na memória. Isso evita o cold-start de 30-60s na primeira requisição do assistente de IA.
 
-Por padrão, o deploy usa `OLLAMA_IMAGE=ollama/ollama:0.30.0-rc7`, que foi a imagem que você já baixou e validou na máquina local.
+Além disso, o servidor Next.js (`apps/web`) contém um arquivo `instrumentation.ts` que faz warm-up do modelo a cada 23 horas via `POST /api/warmup`. Isso garante que o modelo nunca seja descarregado da memória, mesmo após fins de semana ou feriados prolongados sem acesso ao sistema.
+
+O `OLLAMA_KEEP_ALIVE: 24h` no serviço `ollama` mantém o modelo em RAM por 24h após o último uso. Como o warm-up do instrumentation.ts roda a cada 23h, o modelo permanece sempre carregado.
+
+Por padrão, o deploy usa `SILO_OLLAMA_IMAGE=ollama/ollama:0.30.0-rc7`, que foi a imagem que você já baixou e validou na máquina local.
 
 **Dockerfiles:**
 - `apps/web/Dockerfile` — instala as dependências da workspace com `npm ci` e compila `@silo/web`
 - `apps/worker/Dockerfile` — instala as dependências da workspace com `npm ci` e compila `@silo/worker`
 
-O serviço `ollama` deve manter o volume `ollama_data` para persistir os modelos baixados entre reinicializações.
+O serviço `ollama` deve manter o volume `silo-ollama-data` para persistir os modelos baixados entre reinicializações.
 
 O build de ambos usa o contexto da raiz do monorepo para que o npm workspaces resolva os pacotes internos (`@silo/database`, `@silo/engine`, etc.).
 
@@ -385,13 +389,13 @@ O Vercel fará deploy automaticamente apenas do frontend Next.js.
 
 - **Porta**: 3000 (mapeada para localhost:3000)
 - **Função**: Aplicação frontend e APIs
-- **Volume**: `uploads_data` (Volume Docker gerenciado)
+- **Volume**: `silo-storage-data` (Volume Docker gerenciado)
 - **Restart**: Automático (`unless-stopped`)
 
 ### **Persistência de Dados**
 
-- ✅ Arquivos de upload são salvos no volume `uploads_data` (persistência garantida e isolada)
-- ✅ Banco de dados é persistido no volume `postgres_data`
+- ✅ Arquivos de upload são salvos no volume `silo-storage-data` (persistência garantida e isolada)
+- ✅ Banco de dados é persistido no volume `silo-postgres-data`
 - ✅ **Inicialização Automática (`entrypoint.sh`)**:
   - Toda vez que o container sobe, ele tenta rodar as migrações.
   - Depois, roda o seed (que verifica se os dados já existem antes de criar).
@@ -485,7 +489,22 @@ docker stats
 
 # Verificar logs de erro específicos
 docker compose logs silo | findstr ERROR
+
+# Forçar warm-up do modelo de IA (útil se o instrumentation falhar)
+docker compose exec api wget -q -O - --post-data='{"model":"qwen2.5:3b-instruct-q4_K_M","messages":[{"role":"user","content":"oi"}],"stream":false,"options":{"num_predict":1}}' --header='Content-Type: application/json' http://ollama:11434/api/chat
+
+# Verificar se o modelo está carregado na memória
+docker compose exec ollama ollama ps
 ```
+
+### **Assistente de IA lento na primeira requisição**
+
+Se o assistente demorar 30-60s para responder na primeira pergunta após um deploy ou reinicialização:
+
+1. Verifique se o warm-up rodou: `docker compose logs silo-web | findstr INSTRUMENTATION`
+2. A mensagem `Modelo aquecido em Xms` confirma que o warm-up funcionou
+3. Se não aparecer, force manualmente: `docker compose exec api wget ...` (comando acima)
+4. O `OLLAMA_KEEP_ALIVE: 24h` mantém o modelo em RAM; se ninguém usou por mais de 24h, o warm-up do instrumentation.ts recarrega automaticamente a cada 23h
 
 ---
 

@@ -3,31 +3,7 @@ import { group, userGroup, chatMessage, groupPermission } from "@silo/database/s
 import { eq, desc, ilike, and, sql, not, inArray, count, or } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
-// Helpers to canonicalize resources/actions to v2
-const mapResourceToV2 = (resource: string): string => {
-  if (!resource) return resource;
-  const r = resource.toLowerCase();
-  if (r.startsWith("product") || r.startsWith("picture") || r.startsWith("radar")) return "products";
-  if (r.startsWith("project")) return "projects";
-  if (r === "groups" || r === "users" || r.startsWith("group")) return "groups";
-  if (r === "reports" || r === "dashboard" || r.includes("report")) return "reports";
-  if (r === "chat" || r.includes("chat")) return "chat";
-  return resource;
-};
-
-const mapActionToV2 = (_resource: string, action: string): string => {
-  if (!action) return "manage";
-  const a = action.toLowerCase();
-  // preserve chat actions as-is
-  const r2 = mapResourceToV2(_resource);
-  if (r2 === "chat") return action;
-  if (["list", "view", "read"].includes(a) || a.includes("view")) return "view";
-  if (["create", "update", "edit", "delete", "assign", "reorder", "approve", "send", "history"].some((x) => a.includes(x))) return "manage";
-  return "manage";
-};
-
 // Default permissions for new groups (read-only)
-// Defaults use the simplified model (view/manage)
 export const DEFAULT_GROUP_PERMISSIONS: Array<{ resource: string; action: string }> = [
   { resource: "products", action: "view" },
   { resource: "projects", action: "view" },
@@ -123,16 +99,11 @@ export async function createGroup(data: {
     if (DEFAULT_GROUP_PERMISSIONS.length > 0) {
       await tx.insert(groupPermission).values(
         DEFAULT_GROUP_PERMISSIONS.map((p) => {
-          const r2 = p.resource; // defaults are already canonical (view/manage)
-          const a2 = p.action;
           return {
             id: randomUUID(),
             groupId: newGroup.id,
-            // write canonical values to both legacy and v2 cols
-            resource: r2,
-            action: a2,
-            resourceV2: r2,
-            actionV2: a2,
+            resource: p.resource,
+            action: p.action,
             createdAt: new Date(),
             updatedAt: new Date(),
           };
@@ -203,35 +174,27 @@ export async function getGroupPermissions(groupId: string) {
   const existingGroup = await db.select({ id: group.id, role: group.role }).from(group).where(eq(group.id, groupId)).limit(1);
   if (!existingGroup.length) return failure("Grupo não encontrado.", 404);
 
-  // Read compatibly (prefer v2 values)
+  // Lê permissões diretamente de resource/action
   const rows = await db.select({
-    resource: sql<string>`COALESCE(${groupPermission.resourceV2}, ${groupPermission.resource})`,
-    action: sql<string>`COALESCE(${groupPermission.actionV2}, ${groupPermission.action})`,
+    resource: groupPermission.resource,
+    action: groupPermission.action,
   }).from(groupPermission).where(eq(groupPermission.groupId, groupId));
 
   const existingSet = new Set(rows.map((r) => `${r.resource}:${r.action}`));
   const missingDefaults = DEFAULT_GROUP_PERMISSIONS.filter((p) => {
-    const r2 = mapResourceToV2(p.resource);
-    const a2 = mapActionToV2(p.resource, p.action);
-    return !existingSet.has(`${r2}:${a2}`);
+    return !existingSet.has(`${p.resource}:${p.action}`);
   });
 
   if (missingDefaults.length > 0) {
     await db.insert(groupPermission).values(
-      missingDefaults.map((p) => {
-        const r2 = mapResourceToV2(p.resource);
-        const a2 = mapActionToV2(p.resource, p.action);
-        return {
-          id: randomUUID(),
-          groupId,
-          resource: r2,
-          action: a2,
-          resourceV2: r2,
-          actionV2: a2,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-      }),
+      missingDefaults.map((p) => ({
+        id: randomUUID(),
+        groupId,
+        resource: p.resource,
+        action: p.action,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })),
     );
   }
 
@@ -258,9 +221,9 @@ export async function updateGroupPermission(params: {
     return failure("Não é possível alterar permissões do grupo administrador.", 400);
   }
 
-  const reqR2 = mapResourceToV2(resource);
-  const reqA2 = mapActionToV2(resource, action);
-  const isImmutable = DEFAULT_GROUP_PERMISSIONS.some((p) => mapResourceToV2(p.resource) === reqR2 && mapActionToV2(p.resource, p.action) === reqA2);
+  const isImmutable = DEFAULT_GROUP_PERMISSIONS.some(
+    (p) => p.resource === resource && p.action === action,
+  );
   if (!enabled && isImmutable) {
     return failure("Esta permissão é obrigatória e não pode ser desativada.", 400);
   }
@@ -270,24 +233,17 @@ export async function updateGroupPermission(params: {
       .where(
         and(
           eq(groupPermission.groupId, groupId),
-          or(
-            and(eq(groupPermission.resource, resource), eq(groupPermission.action, action)),
-            and(eq(groupPermission.resourceV2, resource), eq(groupPermission.actionV2, action)),
-          ),
+          eq(groupPermission.groupId, groupId),
+          and(eq(groupPermission.resource, resource), eq(groupPermission.action, action)),
         ),
       )
       .limit(1);
     if (!existing.length) {
-      const r2 = mapResourceToV2(resource);
-      const a2 = mapActionToV2(resource, action);
       await db.insert(groupPermission).values({
         id: randomUUID(),
         groupId,
-        // store canonical values into both legacy and v2 columns
-        resource: r2,
-        action: a2,
-        resourceV2: r2,
-        actionV2: a2,
+        resource,
+        action,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -296,10 +252,7 @@ export async function updateGroupPermission(params: {
     await db.delete(groupPermission).where(
       and(
         eq(groupPermission.groupId, groupId),
-        or(
-          and(eq(groupPermission.resource, resource), eq(groupPermission.action, action)),
-          and(eq(groupPermission.resourceV2, resource), eq(groupPermission.actionV2, action)),
-        ),
+        and(eq(groupPermission.resource, resource), eq(groupPermission.action, action)),
       ),
     );
   }

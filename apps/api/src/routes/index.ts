@@ -3,6 +3,7 @@ import type { Express } from "express";
 import { authMiddleware } from "../middleware/auth.js";
 import { getUserGroups, isAdmin } from "../middleware/permissions.js";
 import type { AuthUser } from "../auth/setup";
+import { config } from "@silo/engine/config";
 import authRouter from "./auth-router.js";
 import productsRouter from "./products-router.js";
 import projectsRouter from "./projects.js";
@@ -45,6 +46,40 @@ export function registerRoutes(app: Express): void {
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", app: "silo-api", timestamp: new Date().toISOString() });
+  });
+
+  // POST /api/warmup — mantém o modelo de IA carregado em memória
+  app.post("/api/warmup", async (_req, res) => {
+    const startedAt = Date.now();
+    try {
+      const ollamaUrl = new URL("/api/chat", config.ollama.url).toString();
+      await fetch(ollamaUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: config.ollama.model,
+          messages: [{ role: "user", content: "oi" }],
+          stream: false,
+          options: { num_predict: 1 },
+        }),
+        signal: AbortSignal.timeout(60_000),
+      });
+
+      res.json({
+        success: true,
+        data: {
+          model: config.ollama.model,
+          latencyMs: Date.now() - startedAt,
+          warmedAt: new Date().toISOString(),
+        },
+      });
+    } catch (err) {
+      console.error("❌ [API_WARMUP] Falha ao aquecer modelo:", err);
+      res.status(500).json({
+        success: false,
+        error: "Falha ao carregar modelo de IA.",
+      });
+    }
   });
 
   // GET /api/check-admin

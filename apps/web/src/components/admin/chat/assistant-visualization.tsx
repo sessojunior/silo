@@ -203,23 +203,15 @@ export default function AssistantVisualizationBlock({
 
     return (
       <div className="mt-3 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white/90 p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/70">
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-500 dark:text-blue-300">
-              Imagem
+        <div className="mb-3 min-w-0">
+          <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            {visualization.alt}
+          </h4>
+          {visualization.caption ? (
+            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+              {visualization.caption}
             </p>
-            <h4 className="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              {visualization.alt}
-            </h4>
-            {visualization.caption ? (
-              <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                {visualization.caption}
-              </p>
-            ) : null}
-          </div>
-          <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-300">
-            SVG
-          </span>
+          ) : null}
         </div>
 
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
@@ -248,23 +240,15 @@ export default function AssistantVisualizationBlock({
 
   return (
     <div className="mt-3 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white/90 p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/70">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-500 dark:text-blue-300">
-            Gráfico
+      <div className="mb-3 min-w-0">
+        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          {visualization.title}
+        </h4>
+        {visualization.subtitle ? (
+          <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+            {visualization.subtitle}
           </p>
-          <h4 className="mt-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            {visualization.title}
-          </h4>
-          {visualization.subtitle ? (
-            <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-              {visualization.subtitle}
-            </p>
-          ) : null}
-        </div>
-        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-300">
-          ECharts
-        </span>
+        ) : null}
       </div>
 
       <div

@@ -224,36 +224,72 @@ export async function chatWithOllama({
   return withConcurrencyLimit(config.ollama.maxConcurrentRequests, async () => {
     const resolvedContextLength = await resolveModelContextLength(model, timeoutMs);
     const startedAt = Date.now();
-    const response = await fetchWithTimeout(
-      new URL("/api/chat", config.ollama.url).toString(),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+
+    const buildChatBody = (useThink: boolean) =>
+      JSON.stringify({
+        model,
+        messages,
+        think: useThink,
+        stream: false,
+        format: "json",
+        options: {
+          temperature: 0.2,
+          top_p: 0.9,
+          num_predict: 2048,
+          num_ctx: resolvedContextLength,
         },
-        body: JSON.stringify({
-          model,
-          messages,
-          think,
-          stream: false,
-          format: "json",
-          options: {
-            temperature: 0.2,
-            top_p: 0.9,
-            num_predict: 512,
-            num_ctx: resolvedContextLength,
+      });
+
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(
+        new URL("/api/chat", config.ollama.url).toString(),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: buildChatBody(think),
+        },
+        timeoutMs,
+      );
+
+      // Se o modelo não suportar thinking, tenta sem
+      if (!response.ok && think) {
+        const errorText = await response.text();
+        if (errorText.toLowerCase().includes("thinking")) {
+          response = await fetchWithTimeout(
+            new URL("/api/chat", config.ollama.url).toString(),
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: buildChatBody(false),
+            },
+            timeoutMs,
+          );
+        }
+      }
+    } catch {
+      // Se falhar por timeout/abort com think, retry sem
+      if (think) {
+        response = await fetchWithTimeout(
+          new URL("/api/chat", config.ollama.url).toString(),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: buildChatBody(false),
           },
-        }),
-      },
-      timeoutMs,
-    );
+          timeoutMs,
+        );
+      } else {
+        throw new Error("Falha ao conectar com o Ollama.");
+      }
+    }
 
     const latencyMs = Date.now() - startedAt;
 
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
-        `Falha no Ollama (${response.status} ${response.statusText}): ${errorText}`,
+        `Falha no Ollama (${response.status}): ${errorText}`,
       );
     }
 
@@ -269,4 +305,95 @@ export async function chatWithOllama({
           : null,
     };
   });
+}
+
+type OllamaStreamChunk = {
+  token: string;
+  done: boolean;
+};
+
+/**
+ * Versão streaming do chatWithOllama — retorna tokens conforme são gerados.
+ * Usa stream: true no Ollama e faz yield de cada chunk via AsyncGenerator.
+ */
+export async function* chatWithOllamaStream({
+  messages,
+  model = config.ollama.model,
+  timeoutMs = config.ollama.timeoutMs,
+}: ChatOptions): AsyncGenerator<OllamaStreamChunk> {
+  const resolvedContextLength = await resolveModelContextLength(model, timeoutMs);
+
+  const body = JSON.stringify({
+    model,
+    messages,
+    stream: true,
+    options: {
+      temperature: 0.2,
+      top_p: 0.9,
+      num_predict: 2048,
+      num_ctx: resolvedContextLength,
+    },
+  });
+
+  const response = await fetchWithTimeout(
+    new URL("/api/chat", config.ollama.url).toString(),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    },
+    timeoutMs,
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Falha no Ollama (${response.status}): ${errorText}`);
+  }
+
+  if (!response.body) {
+    throw new Error("Ollama retornou resposta sem corpo.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.length === 0) continue;
+
+        try {
+          const parsed = JSON.parse(trimmed) as {
+            message?: { content?: string };
+            done?: boolean;
+          };
+
+          if (parsed.message?.content) {
+            yield { token: parsed.message.content, done: false };
+          }
+
+          if (parsed.done) {
+            yield { token: "", done: true };
+            return;
+          }
+        } catch {
+          // Ignora linhas malformadas no stream
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  // Se chegou aqui sem done explícito, emite done
+  yield { token: "", done: true };
 }

@@ -1,6 +1,7 @@
 services:
   db:
-    image: postgres:17-alpine
+    image: ${SILO_POSTGRES_IMAGE:-postgres:17-alpine}
+    container_name: silo-db
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
@@ -8,7 +9,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-silo}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silo}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - silo-postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
 
   api:
@@ -40,16 +41,16 @@ services:
       OLLAMA_MAX_CONCURRENT_REQUESTS: ${OLLAMA_MAX_CONCURRENT_REQUESTS:-1}
       TZ: America/Sao_Paulo
     volumes:
-      - uploads_data:/app/uploads
+      - silo-storage-data:/app/uploads
     depends_on:
       db:
         condition: service_started
-      ollama-init:
-        condition: service_completed_successfully
+      ollama:
+        condition: service_started
     restart: unless-stopped
 
   ollama:
-    image: ${OLLAMA_IMAGE:-ollama/ollama:0.30.0-rc7}
+    image: ${SILO_OLLAMA_IMAGE:-ollama/ollama:0.30.0-rc7}
     container_name: silo-ollama
     ports:
       - "11434:11434"
@@ -59,26 +60,13 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct-q4_K_M}
     command: ["serve"]
     volumes:
-      - ollama_data:/root/.ollama
+      - silo-ollama-data:/root/.ollama
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
       timeout: 5s
       retries: 12
     restart: unless-stopped
-
-  ollama-init:
-    image: ${OLLAMA_IMAGE:-ollama/ollama:0.30.0-rc7}
-    depends_on:
-      - ollama
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct-q4_K_M}
-    volumes:
-      - ollama_data:/root/.ollama
-    entrypoint: ["sh", "-lc"]
-    command: ["until ollama list >/dev/null 2>&1; do sleep 1; done; ollama pull \"$$OLLAMA_MODEL\""]
-    restart: "no"
 
   worker:
     build:
@@ -94,10 +82,14 @@ services:
       KAFKA_TOPICS: ${KAFKA_TOPICS}
       KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-worker}
       KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct-q4_K_M}
+      OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
       TZ: America/Sao_Paulo
     depends_on:
       - api
       - db
+      - ollama
     restart: unless-stopped
 
   web:
@@ -116,7 +108,9 @@ services:
       NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
       TZ: America/Sao_Paulo
     volumes:
-      - uploads_data:/app/uploads
+      - silo-storage-data:/app/uploads
+      - silo-web-node-modules:/app/node_modules
+      - silo-web-next-build:/app/apps/web/.next
     depends_on:
       - api
     restart: unless-stopped
@@ -125,9 +119,16 @@ services:
       - default
 
 volumes:
-  postgres_data:
-  uploads_data:
-  ollama_data:
+  silo-postgres-data:
+    name: silo-postgres-data
+  silo-storage-data:
+    name: silo-storage-data
+  silo-ollama-data:
+    name: silo-ollama-data
+  silo-web-node-modules:
+    name: silo-web-node-modules
+  silo-web-next-build:
+    name: silo-web-next-build
 
 networks:
   frontend:

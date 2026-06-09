@@ -519,3 +519,202 @@ export async function sendAssistantMessage(
     messageContent,
   };
 }
+
+/**
+ * Versão streaming do sendAssistantMessage.
+ * Envia eventos SSE enquanto o modelo gera a resposta.
+ */
+export async function sendAssistantMessageStream(
+  user: { id: string; name: string },
+  request: AiAssistantMessageRequestDto,
+  sendEvent: (event: string, data: unknown) => void,
+): Promise<void> {
+  const requestedThreadId = request.threadId ?? randomUUID();
+  const existingThread = request.threadId
+    ? await getThreadRowById(user.id, request.threadId)
+    : null;
+
+  if (request.threadId && !existingThread) {
+    throw new AssistantThreadNotFoundError();
+  }
+
+  const conversationContext = existingThread
+    ? await loadConversationContext(existingThread.id)
+    : {
+        historyMessages: [],
+        conversationMemory: null,
+        lastKnownScope: null,
+      };
+
+  // Etapa 1: Classificação de escopo + coleta de dados (não-streaming)
+  const generatedResponse = await generateAssistantMessage({
+    threadId: requestedThreadId,
+    content: request.content,
+    historyMessages: conversationContext.historyMessages,
+    conversationMemory: conversationContext.conversationMemory,
+    lastKnownScope: conversationContext.lastKnownScope,
+  });
+
+  // Etapa 2: Refinamento via Ollama (streaming)
+  const { composeAssistantAnswerWithOllamaStream } = await import("./ai-assistant-llm-service.js");
+
+  const streamInput = {
+    scope: generatedResponse.scope,
+    question: request.content,
+    fallbackAnswer: generatedResponse.answer,
+    contextSummary: generatedResponse.contextSummary,
+    citations: generatedResponse.citations,
+    suggestedQuestions: generatedResponse.suggestedQuestions,
+    conversationHistory: conversationContext.historyMessages,
+    conversationMemory: conversationContext.conversationMemory,
+  };
+
+  let streamingAnswer = generatedResponse.answer;
+  let streamingContextSummary = generatedResponse.contextSummary;
+  let streamingGeneration = generatedResponse.generation;
+  let finalThinking: string | undefined;
+  let streamingHadError = false;
+
+  try {
+    for await (const event of composeAssistantAnswerWithOllamaStream(streamInput)) {
+      if (event.type === "thinking") {
+        finalThinking = event.content;
+        sendEvent("thinking", { content: event.content });
+      } else if (event.type === "answer") {
+        streamingAnswer = event.content;
+        streamingContextSummary = event.contextSummary;
+        streamingGeneration = event.generation;
+      } else if (event.type === "error") {
+        console.warn("⚠️ [AI_ASSISTANT_STREAM] Ollama refinement failed, using data-collected answer:", event.content);
+        streamingHadError = true;
+        break;
+      }
+    }
+  } catch (error) {
+    console.warn("⚠️ [AI_ASSISTANT_STREAM] Stream error, using data-collected answer:", error instanceof Error ? error.message : String(error));
+    streamingHadError = true;
+  }
+
+  // Se houve erro no refinamento, mantém a resposta original da coleta de dados
+  if (streamingHadError) {
+    streamingAnswer = generatedResponse.answer;
+    streamingContextSummary = generatedResponse.contextSummary;
+    streamingGeneration = generatedResponse.generation;
+  }
+
+  // Envia o resultado final
+  sendEvent("result", {
+    threadId: requestedThreadId,
+    answer: streamingAnswer,
+    contextSummary: streamingContextSummary,
+    generation: streamingGeneration,
+    thinking: finalThinking ?? null,
+    scope: generatedResponse.scope,
+    isInScope: generatedResponse.isInScope,
+    suggestedQuestions: generatedResponse.suggestedQuestions,
+    citations: generatedResponse.citations,
+    visualization: generatedResponse.visualization ?? null,
+  });
+
+  // Salva no banco
+  const generationMetadata = normalizeGenerationMetadata(streamingGeneration);
+  const assistantMetadata = buildAssistantMessageMetadata(
+    { ...generatedResponse, answer: streamingAnswer, thinking: finalThinking },
+    generationMetadata,
+  );
+  const messageContent = formatAssistantReply({
+    ...generatedResponse,
+    answer: streamingAnswer,
+  });
+  const now = new Date();
+  const nextThreadTitle = existingThread
+    ? existingThread.messageCount === 0 || existingThread.title === DEFAULT_THREAD_TITLE
+      ? buildThreadTitle(request.content)
+      : existingThread.title
+    : buildThreadTitle(request.content);
+
+  await db.transaction(async (tx) => {
+    const userMessageCreatedAt = now;
+    const assistantMessageCreatedAt = new Date(now.getTime() + 1);
+
+    if (!existingThread) {
+      const [insertedThread] = await tx
+        .insert(aiAssistantThread)
+        .values({
+          id: requestedThreadId,
+          userId: user.id,
+          title: nextThreadTitle,
+          lastMessagePreview: buildMessagePreview(streamingAnswer),
+          messageCount: 2,
+          lastMessageAt: now,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      await tx.insert(aiAssistantMessage).values([
+        {
+          threadId: insertedThread.id,
+          senderType: "user",
+          senderUserId: user.id,
+          senderName: user.name,
+          content: request.content.trim(),
+          createdAt: userMessageCreatedAt,
+          metadata: {},
+        },
+        {
+          threadId: insertedThread.id,
+          senderType: "assistant",
+          senderUserId: null,
+          senderName: ASSISTANT_SENDER_NAME,
+          createdAt: assistantMessageCreatedAt,
+          provider: generationMetadata.provider,
+          model: generationMetadata.model,
+          generationStatus: generationMetadata.generationStatus,
+          latencyMs: generationMetadata.latencyMs,
+          errorMessage: generationMetadata.errorMessage,
+          content: messageContent,
+          metadata: assistantMetadata,
+        },
+      ]);
+      return;
+    }
+
+    await tx.insert(aiAssistantMessage).values([
+      {
+        threadId: existingThread.id,
+        senderType: "user",
+        senderUserId: user.id,
+        senderName: user.name,
+        content: request.content.trim(),
+        createdAt: userMessageCreatedAt,
+        metadata: {},
+      },
+      {
+        threadId: existingThread.id,
+        senderType: "assistant",
+        senderUserId: null,
+        senderName: ASSISTANT_SENDER_NAME,
+        createdAt: assistantMessageCreatedAt,
+        provider: generationMetadata.provider,
+        model: generationMetadata.model,
+        generationStatus: generationMetadata.generationStatus,
+        latencyMs: generationMetadata.latencyMs,
+        errorMessage: generationMetadata.errorMessage,
+        content: messageContent,
+        metadata: assistantMetadata,
+      },
+    ]);
+
+    await tx
+      .update(aiAssistantThread)
+      .set({
+        title: nextThreadTitle,
+        lastMessagePreview: buildMessagePreview(streamingAnswer),
+        messageCount: sql`${aiAssistantThread.messageCount} + 2`,
+        lastMessageAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(aiAssistantThread.id, existingThread.id), eq(aiAssistantThread.userId, user.id)));
+  });
+}

@@ -61,6 +61,7 @@ export type ChatMessage = {
   messageType: "groupMessage" | "userMessage";
   assistantGeneration?: AiAssistantGenerationDto | null;
   assistantVisualization?: AiAssistantVisualizationDto | null;
+  assistantThinking?: string | null;
 };
 
 export type PresenceStatus = "visible" | "invisible";
@@ -170,7 +171,7 @@ const toChatMessage = (message: ChatRealtimeMessageDto): ChatMessage => ({
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useCurrentUser();
-  const { userPreferences, loading: userPreferencesLoading } = useUser();
+  const { userPreferences, loading: userPreferencesLoading, hasAnyPermission } = useUser();
 
   // Estados principais
   const [groups, setGroups] = useState<ChatGroup[]>([]);
@@ -462,6 +463,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setUsers([]);
       setTotalUnread(0);
       setLastSync(null);
+      return;
+    }
+
+    // Se o usuário não tem permissão de chat, não faz a chamada (evita 403)
+    if (!hasAnyPermission("chat", ["view_private", "view_group"])) {
+      setGroups([]);
+      setUsers([]);
+      setTotalUnread(0);
+      setIsLoading(false);
       return;
     }
 

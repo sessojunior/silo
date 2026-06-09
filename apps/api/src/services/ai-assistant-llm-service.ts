@@ -7,16 +7,18 @@ import type {
 } from "@silo/engine/contracts/dto/ai-assistant";
 import { AiAssistantScopeSchema } from "@silo/engine/contracts/dto/ai-assistant";
 import { config } from "@silo/engine/config";
-import { chatWithOllama, type OllamaChatMessage } from "../infra/llm/ollama-client.js";
+import { chatWithOllama, chatWithOllamaStream, type OllamaChatMessage } from "../infra/llm/ollama-client.js";
 
 const AssistantRewriteSchema = z.object({
-  answer: z.string().min(1),
+  answer: z.string().default(""),
   contextSummary: z.string().default(""),
+  thinking: z.string().optional(),
 });
 
 type AssistantRewriteContent = {
   answer: string;
   contextSummary: string;
+  thinking?: string;
 };
 
 type ComposeAssistantAnswerInput = {
@@ -117,14 +119,16 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
       role: "system",
       content: [
         "Você é o assistente analítico do SILO.",
-        "Use o modo thinking internamente antes de responder, mas nunca exponha o raciocínio ao usuário.",
+        "SEMPRE que precisar raciocinar, analisar dados ou comparar informações, coloque esse raciocínio no campo thinking.",
+        "O campo answer deve conter APENAS a resposta final limpa, sem raciocínio, sem análise, sem passo a passo.",
+        "Nunca misture raciocínio com a resposta final.",
         "Responda sempre em português brasileiro.",
         "Use sempre o contexto factual atual como fonte principal. O histórico da conversa serve apenas para continuidade e memória; se houver conflito, o contexto factual atual vence.",
         "Não invente números, nomes, eventos ou causas.",
         "Reescreva a resposta para ficar mais clara, mais útil e mais detalhada, sem alterar os fatos.",
         'Responda com um objeto JSON estrito, sem markdown, sem bloco de código e sem texto extra.',
-        'Exemplo: {"answer":"Resumo objetivo.","contextSummary":"Contexto curto."}',
-        "Retorne apenas JSON válido com as chaves answer e contextSummary.",
+        'Exemplo: {"thinking":"Analisando os dados, vejo que o BAM tem 0% de disponibilidade...","answer":"Resumo objetivo final.","contextSummary":"Contexto curto."}',
+        "Retorne apenas JSON válido com as chaves thinking (opcional, só se houver raciocínio), answer e contextSummary.",
       ].join(" "),
     },
     ...(memoryMessage ? [memoryMessage] : []),
@@ -185,10 +189,13 @@ function coerceAssistantRewriteContent(content: unknown): AssistantRewriteConten
     return null;
   }
 
+  const thinking = getStringProperty(record, ["thinking", "reasoning", "thought", "thought_process"]);
+
   return {
     answer,
     contextSummary:
       getStringProperty(record, ["contextSummary", "summary", "context"]) ?? "",
+    thinking: thinking ?? undefined,
   };
 }
 
@@ -227,6 +234,7 @@ export function parseAssistantRewriteContent(content: string): AssistantRewriteC
           return {
             answer: validated.data.answer.trim(),
             contextSummary: validated.data.contextSummary.trim(),
+            thinking: validated.data.thinking?.trim() || undefined,
           };
         }
       }
@@ -294,6 +302,7 @@ export async function composeAssistantAnswerWithOllama(
 ): Promise<{
   answer: string;
   contextSummary: string;
+  thinking?: string;
   generation: AiAssistantGenerationDto;
 }> {
   const startedAt = Date.now();
@@ -311,16 +320,18 @@ export async function composeAssistantAnswerWithOllama(
       throw new Error("Resposta do Ollama vazia ou inválida.");
     }
 
+    const finalAnswer = parsedContent.answer.trim();
     return {
-      answer: parsedContent.answer.trim(),
+      answer: finalAnswer.length > 0 ? finalAnswer : input.fallbackAnswer,
       contextSummary:
         parsedContent.contextSummary.trim().length > 0
           ? parsedContent.contextSummary.trim()
           : input.contextSummary,
+      thinking: parsedContent.thinking?.trim() || undefined,
       generation: buildGeneration({
         provider: "ollama",
         model: config.ollama.model,
-        status: "success",
+        status: finalAnswer.length > 0 ? "success" : "fallback",
         latencyMs,
         generatedTokens,
         thinkingTimeMs,
@@ -330,19 +341,97 @@ export async function composeAssistantAnswerWithOllama(
     const latencyMs = Date.now() - startedAt;
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    return {
-      answer: input.fallbackAnswer,
-      contextSummary: input.contextSummary,
+    console.error("❌ [OLLAMA_COMPOSE] Falha ao compor resposta:", errorMessage);
+
+    // Sem fallback — propaga o erro para o chamador tratar
+    throw new Error(`Falha ao gerar resposta com IA: ${errorMessage}`, { cause: error instanceof Error ? error : undefined });
+  }
+}
+
+export type AssistantStreamEvent =
+  | { type: "thinking"; content: string }
+  | { type: "answer"; content: string; contextSummary: string; generation: AiAssistantGenerationDto }
+  | { type: "error"; content: string };
+
+/**
+ * Versão streaming do composeAssistantAnswerWithOllama.
+ * Faz yield de eventos SSE: primeiro os tokens de pensamento (type: "thinking"),
+ * depois o resultado final (type: "answer").
+ */
+export async function* composeAssistantAnswerWithOllamaStream(
+  input: ComposeAssistantAnswerInput,
+): AsyncGenerator<AssistantStreamEvent> {
+  const startedAt = Date.now();
+
+  try {
+    let fullContent = "";
+
+    for await (const chunk of chatWithOllamaStream({
+      model: config.ollama.model,
+      timeoutMs: config.ollama.timeoutMs,
+      messages: buildPrompt(input),
+    })) {
+      if (chunk.done) break;
+      fullContent += chunk.token;
+
+      // Tenta extrair o campo "thinking" do JSON parcial
+      const thinking = extractPartialThinking(fullContent);
+      if (thinking) {
+        yield { type: "thinking", content: thinking };
+      }
+    }
+
+    const latencyMs = Date.now() - startedAt;
+    const parsedContent = parseAssistantRewriteContent(fullContent);
+
+    if (!parsedContent) {
+      throw new Error("Resposta do Ollama vazia ou inválida.");
+    }
+
+    const finalAnswer = parsedContent.answer.trim();
+    yield {
+      type: "answer",
+      content: finalAnswer.length > 0 ? finalAnswer : input.fallbackAnswer,
+      contextSummary:
+        parsedContent.contextSummary.trim().length > 0
+          ? parsedContent.contextSummary.trim()
+          : input.contextSummary,
       generation: buildGeneration({
         provider: "ollama",
         model: config.ollama.model,
-        status: "fallback",
+        status: finalAnswer.length > 0 ? "success" : "fallback",
         latencyMs,
         generatedTokens: null,
         thinkingTimeMs: null,
-        errorMessage,
       }),
     };
+  } catch (error) {
+    const latencyMs = Date.now() - startedAt;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    console.error("❌ [OLLAMA_COMPOSE_STREAM] Falha ao compor resposta:", errorMessage);
+
+    // Sem fallback — envia evento de erro e encerra o stream
+    yield {
+      type: "error",
+      content: `Falha ao gerar resposta com IA: ${errorMessage}`,
+    };
+  }
+}
+
+/**
+ * Extrai o campo "thinking" de um JSON parcial (ainda em construção).
+ * Retorna o valor atual de thinking conforme vai sendo gerado.
+ */
+function extractPartialThinking(partialJson: string): string | null {
+  try {
+    // Tenta parse como JSON completo primeiro
+    const parsed = JSON.parse(partialJson) as Record<string, unknown>;
+    return typeof parsed.thinking === "string" ? parsed.thinking : null;
+  } catch {
+    // JSON ainda incompleto — tenta extrair com regex
+    const match = partialJson.match(/"thinking"\s*:\s*"((?:[^"\\]|\\.)*)/);
+    return match ? match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n') : null;
   }
 }
 

@@ -6,6 +6,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
 import { config } from "@/lib/config";
 import type { ApiResponse } from "@/lib/api-response";
@@ -144,19 +145,63 @@ const canonicalizePermissions = (raw: PermissionsSummary | undefined): Permissio
   return out;
 };
 
+// === TIPO PARA DADOS INICIAIS (SERVER-SIDE) ===
+
+export type { UserGroupInfo, PermissionsSummary };
+
+export type InitialUserData = {
+  user: User;
+  userGroups?: UserGroupInfo[];
+  permissions?: PermissionsSummary;
+  isAdmin?: boolean;
+  userProfile?: UserProfile;
+  userPreferences?: UserPreferences;
+};
+
 // === PROVIDER ===
 
-export function UserProvider({ children }: { children: React.ReactNode }) {
-  // Estados principais
-  const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+export function UserProvider({
+  children,
+  initialData,
+}: {
+  children: React.ReactNode;
+  initialData?: InitialUserData | null;
+}) {
+  // Estados principais — usa initialData do servidor se disponível
+  const [user, setUser] = useState<User | null>(initialData?.user ?? null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(
+    initialData?.userProfile ?? null,
+  );
   const [userPreferences, setUserPreferences] =
-    useState<UserPreferences | null>(null);
-  const [userGroups, setUserGroups] = useState<UserGroupInfo[]>([]);
-  const [permissions, setPermissions] = useState<PermissionsSummary>({});
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+    useState<UserPreferences | null>(initialData?.userPreferences ?? null);
+  const [userGroups, setUserGroups] = useState<UserGroupInfo[]>(
+    initialData?.userGroups ?? [],
+  );
+  const [permissions, setPermissions] = useState<PermissionsSummary>(
+    canonicalizePermissions(initialData?.permissions ?? {}),
+  );
+  const [isAdmin, setIsAdmin] = useState(initialData?.isAdmin ?? false);
+  const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
+  // Rastreia se o usuário já esteve autenticado (para decidir se redireciona no 401)
+  const wasAuthenticatedRef = useRef(Boolean(initialData));
+
+  // === REDIRECIONAMENTO AO PERDER AUTENTICAÇÃO ===
+
+  const redirectToLogin = useCallback(() => {
+    const loginPath = config.isSmokeMode ? "/login" : config.getPublicPath("/login");
+    if (window.location.pathname !== loginPath) {
+      window.location.href = loginPath;
+    }
+  }, []);
+
+  useEffect(() => {
+    // Se o usuário estava autenticado (initialData ou user já foi setado)
+    // e agora user é null E loading é false, redireciona
+    if (!loading && !user && wasAuthenticatedRef.current) {
+      redirectToLogin();
+    }
+  }, [user, loading, redirectToLogin]);
 
   // === FUNÇÕES DE BUSCA ===
 
@@ -176,7 +221,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         isAdmin?: boolean;
       }>("/api/admin/users/profile");
 
-      if (status === 401) return null;
+      if (status === 401) {
+        // Sessão expirou ou é inválida — redireciona para login
+        setUser(null);
+        setUserGroups([]);
+        setPermissions({});
+        setIsAdmin(false);
+        redirectToLogin();
+        return null;
+      }
 
       const userFromApi = api?.success ? api.data?.user : null;
       if (!userFromApi) return null;
@@ -193,6 +246,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Normalize permissions to simplified model (view/manage)
       setPermissions(canonicalizePermissions(api?.data?.permissions ?? {}));
       setIsAdmin(api?.data?.isAdmin ?? false);
+      wasAuthenticatedRef.current = true;
       return userData;
     } catch (err) {
       console.error("❌ [CONTEXT_USER] Erro ao buscar usuário:", {
@@ -200,7 +254,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       });
     }
     return null;
-  }, []);
+  }, [redirectToLogin]);
 
   const fetchUserProfile =
     useCallback(async (): Promise<UserProfile | null> => {

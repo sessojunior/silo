@@ -26,10 +26,13 @@ export function MessageInput({
   const handleSendMessage = async () => {
     if (!messageText.trim() || isSending) return;
 
+    const text = messageText.trim();
+    // Limpa o textarea imediatamente, antes de aguardar a resposta
+    setMessageText("");
+    setShowEmojiPicker(false);
+
     try {
-      await onSendMessage(messageText.trim());
-      setMessageText("");
-      setShowEmojiPicker(false);
+      await onSendMessage(text);
     } catch (error) {
       console.error("❌ [COMPONENT_MESSAGE_INPUT] Erro ao enviar mensagem:", {
         error,

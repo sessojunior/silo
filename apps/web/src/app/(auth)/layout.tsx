@@ -37,13 +37,13 @@ export default function AuthLayout({
           <div className="scrollbar size-full overflow-y-auto">
             <div className="flex h-full w-full flex-col">
               <div className="flex">
-                <div className="flex items-center justify-center px-10 pt-10">
+                <div className="flex items-center justify-center gap-1 px-10 pt-10">
                   <Image
                     src={logoHorizontalLightSrc}
                     alt="Logo do Silo"
                     width={540}
                     height={258}
-                    className="block h-10 w-auto dark:hidden sm:h-11 md:h-12"
+                    className="inline-block h-10 w-auto dark:hidden sm:h-11 md:h-12"
                     unoptimized
                     priority
                   />
@@ -52,7 +52,7 @@ export default function AuthLayout({
                     alt="Logo do Silo"
                     width={540}
                     height={258}
-                    className="hidden h-10 w-auto dark:block sm:h-11 md:h-12"
+                    className="hidden h-10 w-auto dark:inline-block sm:h-11 md:h-12"
                     unoptimized
                     priority
                   />

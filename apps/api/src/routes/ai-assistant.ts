@@ -10,6 +10,7 @@ import {
   getAssistantThreadDetails,
   listAssistantThreads,
   sendAssistantMessage,
+  sendAssistantMessageStream,
 } from "../services/ai-assistant-thread-service.js";
 import { getAssistantRuntimeStatus } from "../services/ai-assistant-service.js";
 
@@ -130,6 +131,69 @@ router.post(
       }
       console.error("❌ [API_AI_ASSISTANT/MESSAGES] POST:", err);
       res.status(500).json({ success: false, error: "Erro interno" });
+    }
+  },
+);
+
+// Streaming: POST /api/ai-assistant/messages/stream
+// Retorna Server-Sent Events com o pensamento do modelo em tempo real
+router.post(
+  "/messages/stream",
+  requirePermission("reports", "view"),
+  async (req, res) => {
+    try {
+      const user = req.user!;
+      const parsedBody = AiAssistantMessageRequestSchema.safeParse(req.body);
+      if (!parsedBody.success) {
+        res.status(400).json({
+          success: false,
+          error: "Mensagem inválida.",
+          field: "content",
+        });
+        return;
+      }
+
+      // Configura headers SSE
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+
+      const sendEvent = (event: string, data: unknown) => {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+
+      // Envia evento inicial imediatamente para manter a conexão viva
+      // enquanto a classificação de escopo e coleta de dados são processadas
+      sendEvent("connected", { status: "processing" });
+
+      // Heartbeat a cada 5s para evitar timeout do proxy durante o processamento inicial
+      const heartbeatInterval = setInterval(() => {
+        res.write(": heartbeat\n\n");
+      }, 5_000);
+
+      try {
+        await sendAssistantMessageStream(user, parsedBody.data, sendEvent);
+      } finally {
+        clearInterval(heartbeatInterval);
+      }
+
+      res.end();
+    } catch (err) {
+      if (err instanceof AssistantThreadNotFoundError) {
+        if (!res.headersSent) {
+          res.status(404).json({ success: false, error: err.message });
+        }
+        return;
+      }
+      console.error("❌ [API_AI_ASSISTANT/MESSAGES/STREAM] POST:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: "Erro interno" });
+      } else {
+        res.end();
+      }
     }
   },
 );

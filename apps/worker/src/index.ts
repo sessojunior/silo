@@ -9,6 +9,7 @@ import {
   type RestRecord,
 } from "@silo/engine/kafka/rest-client";
 import { processRecord, sleep } from "./processor";
+import { initOllama } from "./lib/ollama-init";
 
 console.log("[worker] Starting Silo Worker...");
 
@@ -85,7 +86,18 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
-runConsumer().catch((error) => {
+async function main() {
+  try {
+    await initOllama();
+  } catch (error) {
+    console.error("[WORKER] Falha na inicialização do Ollama:", error);
+    console.warn("[WORKER] Continuando sem Ollama — o assistente AI operará em fallback.");
+  }
+
+  await runConsumer();
+}
+
+main().catch((error) => {
   console.error("Kafka REST consumer failed:", error);
   process.exit(1);
 });

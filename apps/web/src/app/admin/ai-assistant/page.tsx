@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   type AiAssistantCreateThreadResponseDto,
@@ -127,29 +127,13 @@ const buildAssistantMessage = (
   content: string,
   assistantGeneration?: ChatMessage["assistantGeneration"],
   assistantVisualization?: ChatMessage["assistantVisualization"],
+  assistantThinking?: string | null,
 ): ChatMessage => ({
   ...buildChatMessage(content, ASSISTANT_SENDER_ID, ASSISTANT_SENDER_NAME),
   assistantGeneration: assistantGeneration ?? null,
   assistantVisualization: assistantVisualization ?? null,
+  assistantThinking: assistantThinking ?? null,
 });
-
-const buildAssistantFallbackGeneration = (): NonNullable<
-  ChatMessage["assistantGeneration"]
-> => ({
-  provider: "ollama",
-  model: "indisponível",
-  status: "fallback",
-  latencyMs: 0,
-  generatedTokens: null,
-  thinkingTimeMs: null,
-  errorMessage: "Não foi possível consultar o assistente.",
-});
-
-const buildAssistantErrorMessage = (): ChatMessage =>
-  buildAssistantMessage(
-    "Não consegui processar a pergunta agora. Faça outra pergunta sobre modelos, pendências, relatórios, problemas, soluções ou projetos do Silo.",
-    buildAssistantFallbackGeneration(),
-  );
 
 const buildAssistantMessageContent = (
   data: AiAssistantMessageResponseDto,
@@ -251,10 +235,34 @@ export default function AiAssistantPage() {
   const [isLoadingThreads, setIsLoadingThreads] = useState(() => !smokeMode);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [sendingStatus, setSendingStatus] = useState("");
+  const sendingStatusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sendingStartTimeRef = useRef(0);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [runtimeStatus, setRuntimeStatus] = useState<AiAssistantRuntimeStatusDto | null>(null);
   const [isLoadingRuntimeStatus, setIsLoadingRuntimeStatus] = useState(() => !smokeMode);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [assistantError, setAssistantError] = useState<string | null>(null);
+
+  // Ciclo de status enquanto aguarda resposta do assistente
+  useEffect(() => {
+    if (!isSending) {
+      setSendingStatus("");
+      return;
+    }
+
+    setSendingStatus("Pensando...");
+    sendingStatusTimerRef.current = setInterval(() => {
+      // Mantém o status simples — o placeholder do assistente já mostra o raciocínio
+    }, 10_000);
+
+    return () => {
+      if (sendingStatusTimerRef.current) {
+        clearInterval(sendingStatusTimerRef.current);
+        sendingStatusTimerRef.current = null;
+      }
+    };
+  }, [isSending]);
 
   const currentUserId = currentUser?.id ?? "";
   const currentUserName = currentUser?.name ?? "Você";
@@ -416,6 +424,13 @@ export default function AiAssistantPage() {
   const createConversationThread = useCallback(async () => {
     if (!currentUser) return null;
 
+    // Se a conversa atual está vazia (sem mensagens do usuário), reutiliza em vez de criar outra
+    const currentMessages = selectedThreadId ? (messagesByThread[selectedThreadId] ?? []) : [];
+    const hasUserMessage = currentMessages.some((msg) => msg.senderUserId !== ASSISTANT_SENDER_ID);
+    if (selectedThreadId && !hasUserMessage) {
+      return { id: selectedThreadId } as AiAssistantThreadSummaryDto;
+    }
+
     setIsCreatingConversation(true);
     try {
       const response = await fetch(
@@ -445,7 +460,7 @@ export default function AiAssistantPage() {
     } finally {
       setIsCreatingConversation(false);
     }
-  }, [currentUser]);
+  }, [currentUser, selectedThreadId, messagesByThread]);
 
   const ensureActiveThread = useCallback(async () => {
     if (selectedThreadId) return selectedThreadId;
@@ -479,56 +494,177 @@ export default function AiAssistantPage() {
         currentUserName,
       );
 
+      // Placeholder da resposta do assistente — será preenchido em tempo real via streaming SSE
+      const assistantPlaceholder = buildAssistantMessage("", undefined, undefined, "");
+
       setMessagesByThread((current) => ({
         ...current,
-        [threadId]: [...(current[threadId] ?? []), userMessage],
+        [threadId]: [...(current[threadId] ?? []), userMessage, assistantPlaceholder],
       }));
       setIsSending(true);
+      sendingStartTimeRef.current = Date.now();
 
       try {
-        const response = await fetch(
-          config.getAssistantApiUrl("/api/admin/ai-assistant/messages"),
-          {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ content: trimmedMessage, threadId }),
-          },
-        );
-        const apiResponse = await readTypedApiResponse<AiAssistantMessageResponseDto>(response);
+        const apiUrl = config.getAssistantApiUrl("/api/admin/ai-assistant/messages/stream");
+        const abortController = new AbortController();
 
-        if (!response.ok || !apiResponse.success || !apiResponse.data) {
-          throw new Error(
-            apiResponse.error || "Não foi possível consultar o assistente.",
-          );
+        // Timeout de segurança: 5 minutos para o streaming completo
+        const timeoutId = setTimeout(() => abortController.abort(), 300_000);
+
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: trimmedMessage, threadId }),
+          signal: abortController.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error("Erro ao conectar com o assistente.");
         }
 
-        const responseThread = apiResponse.data.thread ??
-          buildFallbackThreadSummary(
-            apiResponse.data.threadId,
-            trimmedMessage,
-            (messagesByThread[threadId] ?? []).length,
-          );
-        const assistantMessage = buildAssistantMessage(
-          buildAssistantMessageContent(apiResponse.data),
-          apiResponse.data.generation,
-          apiResponse.data.visualization,
-        );
+        if (!response.body) {
+          throw new Error("Resposta do servidor sem corpo de stream.");
+        }
 
-        setThreads((current) => upsertThread(current, responseThread));
-        setMessagesByThread((current) => ({
-          ...current,
-          [threadId]: [...(current[threadId] ?? []), assistantMessage],
-        }));
-        setSelectedThreadId(responseThread.id);
+        // Processa o stream SSE
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let currentEvent = "";
+        let currentThinking = "";
+        let hasReceivedResult = false;
+
+        const updatePlaceholder = (
+          thinking: string | null,
+          content?: string,
+          generation?: ChatMessage["assistantGeneration"],
+        ) => {
+          setMessagesByThread((current) => {
+            const msgs = [...(current[threadId] ?? [])];
+            if (msgs.length >= 2) {
+              const prev = msgs[msgs.length - 1];
+              msgs[msgs.length - 1] = {
+                ...prev,
+                assistantThinking: thinking ?? prev.assistantThinking,
+                content: content !== undefined ? content : prev.content,
+                assistantGeneration: generation !== undefined ? generation : prev.assistantGeneration,
+              };
+            }
+            return { ...current, [threadId]: msgs };
+          });
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            // Linha vazia: fim de um evento SSE, reseta tipo
+            if (trimmedLine.length === 0) {
+              currentEvent = "";
+              continue;
+            }
+            // Comentário SSE (heartbeat)
+            if (trimmedLine.startsWith(":")) continue;
+
+            if (trimmedLine.startsWith("event: ")) {
+              currentEvent = trimmedLine.slice(7).trim();
+              continue;
+            }
+
+            if (!trimmedLine.startsWith("data: ")) continue;
+
+            const eventData = trimmedLine.slice(6).trim();
+            if (!eventData) continue;
+
+            try {
+              const parsed = JSON.parse(eventData) as Record<string, unknown>;
+
+              if (currentEvent === "connected" || !currentEvent) {
+                // Conexão estabelecida — placeholder já está visível
+                continue;
+              }
+
+              if (currentEvent === "thinking") {
+                const thinkingText = typeof parsed.content === "string" ? parsed.content : "";
+                currentThinking = thinkingText;
+                updatePlaceholder(thinkingText);
+                continue;
+              }
+
+              if (currentEvent === "result") {
+                hasReceivedResult = true;
+                const data = parsed as unknown as AiAssistantMessageResponseDto;
+                const assistantMessage = buildAssistantMessage(
+                  buildAssistantMessageContent(data),
+                  data.generation,
+                  data.visualization,
+                  data.thinking ?? currentThinking,
+                );
+
+                // Substitui o placeholder pela resposta final
+                setMessagesByThread((current) => {
+                  const msgs = [...(current[threadId] ?? [])];
+                  if (msgs.length >= 2) {
+                    msgs[msgs.length - 1] = assistantMessage;
+                  }
+                  return { ...current, [threadId]: msgs };
+                });
+
+                const responseThread = data.thread ??
+                  buildFallbackThreadSummary(data.threadId, trimmedMessage, (messagesByThread[threadId] ?? []).length);
+                setThreads((current) => upsertThread(current, responseThread));
+                setSelectedThreadId(responseThread.id);
+                continue;
+              }
+
+              if (currentEvent === "error") {
+                // Remove o placeholder e mostra toast de erro
+                const errorMsg = typeof parsed.content === "string" ? parsed.content : "Erro ao gerar resposta.";
+                throw new Error(errorMsg);
+              }
+
+              // Evento desconhecido: ignora
+            } catch (_err) {
+              // JSON parcial ou inválido: ignora silenciosamente
+            }
+          }
+        }
+
+        // Se o stream terminou sem evento "result", considera erro
+        if (!hasReceivedResult) {
+          throw new Error("Stream encerrado sem resposta final.");
+        }
       } catch (error) {
         console.error("❌ [AI_ASSISTANT] Erro ao responder mensagem:", serializeClientError(error));
-        setMessagesByThread((current) => ({
-          ...current,
-          [threadId]: [...(current[threadId] ?? []), buildAssistantErrorMessage()],
-        }));
+
+        const isAbortError = error instanceof DOMException && error.name === "AbortError";
+
+        // Remove o placeholder
+        setMessagesByThread((current) => {
+          const msgs = [...(current[threadId] ?? [])];
+          if (msgs.length >= 2) {
+            msgs.pop();
+          }
+          return { ...current, [threadId]: msgs };
+        });
+
+        // Mostra toast de erro
+        const errorMsg = isAbortError
+          ? "O assistente de IA não está disponível no momento. Tente novamente em instantes."
+          : "Não foi possível consultar o assistente. Verifique sua conexão e tente novamente.";
+        setAssistantError(errorMsg);
+
+        // Auto-limpa o erro após 8 segundos
+        setTimeout(() => setAssistantError(null), 8000);
       } finally {
         setIsSending(false);
       }
@@ -710,7 +846,7 @@ export default function AiAssistantPage() {
               currentUserId={currentUserId}
               activeTargetId={selectedThreadId ?? undefined}
               variant="assistant"
-              assistantStatusText={isSending ? "Pensando..." : null}
+              assistantStatusText={null}
               onLoadOlderMessages={() => undefined}
               onLoadNewerMessages={() => undefined}
             />
@@ -725,6 +861,25 @@ export default function AiAssistantPage() {
           />
         </div>
       </div>
+
+      {/* Toast de erro do assistente */}
+      {assistantError && (
+        <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 px-4 w-full max-w-lg">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-lg dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            <div className="flex items-center gap-2">
+              <span className="icon-[lucide--alert-triangle] size-4 shrink-0 text-red-500" />
+              <p className="flex-1">{assistantError}</p>
+              <button
+                type="button"
+                onClick={() => setAssistantError(null)}
+                className="shrink-0 text-red-400 hover:text-red-600 dark:hover:text-red-300"
+              >
+                <span className="icon-[lucide--x] size-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

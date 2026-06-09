@@ -62,9 +62,7 @@ export const groupPermission = pgTable(
       .notNull()
       .references(() => group.id, { onDelete: "cascade" }),
     resource: text("resource").notNull(),
-      resourceV2: text("resource_v2"),
     action: text("action").notNull(),
-      actionV2: text("action_v2"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -74,16 +72,8 @@ export const groupPermission = pgTable(
       table.resource,
       table.action,
     ),
-      uniqueGroupPermissionV2: unique("unique_group_permission_v2").on(
-        table.groupId,
-        table.resourceV2,
-        table.actionV2,
-      ),
     groupIdIdx: index("idx_group_permission_group_id").on(table.groupId),
     resourceIdx: index("idx_group_permission_resource").on(table.resource),
-      resourceV2Idx: index("idx_group_permission_resource_v2").on(
-        table.resourceV2,
-      ),
   }),
 );
 export type GroupPermission = typeof groupPermission.$inferSelect;

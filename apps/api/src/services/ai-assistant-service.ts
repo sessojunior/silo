@@ -473,23 +473,31 @@ async function finalizeAssistantResponse(
     conversationMemory: string | null;
   },
 ): Promise<AiAssistantMessageResponseDto> {
-  const refinedResponse = await composeAssistantAnswerWithOllama({
-    scope: scopeOverride ?? response.scope,
-    question,
-    fallbackAnswer: response.answer,
-    contextSummary: response.contextSummary,
-    citations: response.citations,
-    suggestedQuestions: response.suggestedQuestions,
-    conversationHistory: conversationContext?.conversationHistory ?? [],
-    conversationMemory: conversationContext?.conversationMemory ?? null,
-  });
+  try {
+    const refinedResponse = await composeAssistantAnswerWithOllama({
+      scope: scopeOverride ?? response.scope,
+      question,
+      fallbackAnswer: response.answer,
+      contextSummary: response.contextSummary,
+      citations: response.citations,
+      suggestedQuestions: response.suggestedQuestions,
+      conversationHistory: conversationContext?.conversationHistory ?? [],
+      conversationMemory: conversationContext?.conversationMemory ?? null,
+    });
 
-  return {
-    ...response,
-    answer: refinedResponse.answer,
-    contextSummary: refinedResponse.contextSummary,
-    generation: refinedResponse.generation,
-  };
+    return {
+      ...response,
+      answer: refinedResponse.answer,
+      contextSummary: refinedResponse.contextSummary,
+      thinking: refinedResponse.thinking,
+      generation: refinedResponse.generation,
+    };
+  } catch (error) {
+    // Ollama refinamento falhou (timeout, etc.) — retorna a resposta original
+    // da coleta de dados em vez de mostrar "Não consegui consolidar"
+    console.warn("⚠️ [AI_ASSISTANT_SERVICE] Ollama refinement failed, using data-collected answer:", error instanceof Error ? error.message : String(error));
+    return response;
+  }
 }
 
 function matchesAny(value: string, keywords: string[]): boolean {
@@ -797,6 +805,7 @@ function buildModelsAnswer(
   executive: Awaited<ReturnType<typeof getExecutiveReport>>,
   previousAvailability?: Awaited<ReturnType<typeof getAvailabilityReport>>,
   previousExecutive?: Awaited<ReturnType<typeof getExecutiveReport>>,
+  periodLabel: string = "dos últimos 30 dias",
 ): AiAssistantMessageResponseDto {
   const weakestProducts = formatTopProducts(availability.products);
   const problemHeavyProducts = formatTopProblemProducts(executive.topProducts);
@@ -819,12 +828,12 @@ function buildModelsAnswer(
   ].filter((line): line is string => Boolean(line));
 
   const answer = [
-    `No recorte atual, o Silo mostra ${availability.totalProducts} produtos monitorados, disponibilidade média de ${availability.avgAvailability}% e ${availability.totalInterventions} intervenções registradas.`,
+    `No recorte ${periodLabel}, o Silo mostra ${availability.totalProducts} produtos monitorados, disponibilidade média de ${availability.avgAvailability}% e ${availability.totalInterventions} intervenções registradas.`,
     weakestProducts.length > 0
       ? `Os pontos mais sensíveis estão em ${formatList(weakestProducts)}.`
       : null,
     problemHeavyProducts.length > 0
-      ? `Os produtos com mais problemas no período são ${formatList(problemHeavyProducts)}.`
+      ? `Os produtos com mais problemas ${periodLabel} são ${formatList(problemHeavyProducts)}.`
       : null,
     topCategories.length > 0
       ? `As categorias de alerta mais recorrentes no dashboard são ${formatList(topCategories)}.`
@@ -852,8 +861,7 @@ function buildModelsAnswer(
         `${dashboardSummary.recentCount} ocorrências recentes`,
       ),
     ],
-    contextSummary:
-      "Contexto de modelos montado com disponibilidade, intervenções e tendência recente de problemas.",
+    contextSummary: `Contexto de modelos montado com disponibilidade, intervenções e tendência recente de problemas ${periodLabel}.`,
   };
 }
 
@@ -939,14 +947,14 @@ function buildProblemsAnswer(
         `${dashboardSolutions.categories.length} séries acompanhadas`,
       ),
     ],
-    contextSummary:
-      "Contexto de problemas e soluções montado com categorias, recorrência, causas e padrões de resposta.",
+    contextSummary: `Contexto de problemas e soluções montado com categorias, recorrência, causas e padrões de resposta ${periodLabel}.`,
   };
 }
 
 function buildProjectsAnswer(
   projects: Awaited<ReturnType<typeof getProjectsReport>>,
   executive: Awaited<ReturnType<typeof getExecutiveReport>>,
+  periodLabel: string = "dos últimos 30 dias",
   previousProjects?: Awaited<ReturnType<typeof getProjectsReport>>,
 ): AiAssistantMessageResponseDto {
   const lowerProgress = formatProjectsWithLowerProgress(projects.projectsWithProgress);
@@ -965,17 +973,17 @@ function buildProjectsAnswer(
       : null,
   ].filter((line): line is string => Boolean(line));
   const answer = [
-    `No recorte atual, o Silo mostra ${projects.summary.totalProjects} projetos, progresso médio de ${projects.summary.avgProgress}% e ${projects.summary.totalTasks} tarefas observadas.`,
+    `No recorte ${periodLabel}, o Silo mostra ${projects.summary.totalProjects} projetos, progresso médio de ${projects.summary.avgProgress}% e ${projects.summary.totalTasks} tarefas observadas.`,
     lowerProgress.length > 0
       ? `Os projetos com menor avanço estão em ${formatList(lowerProgress)}.`
       : null,
     activeProjectLines.length > 0
-      ? `Os projetos mais ativos no período são ${formatList(activeProjectLines)}.`
+      ? `Os projetos mais ativos ${periodLabel} são ${formatList(activeProjectLines)}.`
       : null,
     taskStatusLines.length > 0
       ? `As tarefas se distribuem assim: ${formatList(taskStatusLines)}.`
       : null,
-    `No resumo executivo, há ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas e ${executive.summary.totalSolutions} soluções no recorte atual.`,
+    `No resumo executivo, há ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas e ${executive.summary.totalSolutions} soluções ${periodLabel}.`,
     ...comparisonLines,
     "Se quiser, eu posso sugerir as ações para acelerar os projetos mais lentos.",
   ]
@@ -999,8 +1007,7 @@ function buildProjectsAnswer(
         `${executive.summary.totalProducts} produtos e ${executive.summary.totalProblems} problemas`,
       ),
     ],
-    contextSummary:
-      "Contexto de projetos montado com progresso, tarefas e resumo executivo da operação.",
+    contextSummary: `Contexto de projetos montado com progresso, tarefas e resumo executivo da operação ${periodLabel}.`,
   };
 }
 
@@ -1035,7 +1042,7 @@ function buildPendingAnswer(
     taskStatusLines.length > 0
       ? `As tarefas se distribuem assim: ${formatList(taskStatusLines)}.`
       : null,
-    `No resumo executivo, há ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas e ${executive.summary.totalSolutions} soluções no recorte atual.`,
+    `No resumo executivo, há ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas e ${executive.summary.totalSolutions} soluções ${periodLabel}.`,
     ...comparisonLines,
     "Se quiser, eu posso separar as pendências por prioridade, por time ou por atividade mais crítica.",
   ]
@@ -1059,8 +1066,7 @@ function buildPendingAnswer(
         `${executive.summary.totalProducts} produtos e ${executive.summary.totalProblems} problemas`,
       ),
     ],
-    contextSummary:
-      "Contexto de pendências montado com tarefas em aberto, avanço dos projetos e resumo executivo da operação.",
+    contextSummary: `Contexto de pendências montado com tarefas em aberto, avanço dos projetos e resumo executivo da operação ${periodLabel}.`,
   };
 }
 
@@ -1069,6 +1075,7 @@ function buildGeneralAnswer(
   availability: Awaited<ReturnType<typeof getAvailabilityReport>>,
   problems: Awaited<ReturnType<typeof getProblemsReport>>,
   projects: Awaited<ReturnType<typeof getProjectsReport>>,
+  periodLabel: string = "dos últimos 30 dias",
   previousExecutive?: Awaited<ReturnType<typeof getExecutiveReport>>,
   previousAvailability?: Awaited<ReturnType<typeof getAvailabilityReport>>,
   previousProblems?: Awaited<ReturnType<typeof getProblemsReport>>,
@@ -1096,22 +1103,22 @@ function buildGeneralAnswer(
   ].filter((line): line is string => Boolean(line));
 
   const answer = [
-    `Resumo geral: ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas, ${executive.summary.totalSolutions} soluções e ${executive.summary.totalProjects} projetos no recorte atual.`,
-    `A disponibilidade média é de ${availability.avgAvailability}% e o relatório de problemas aponta ${problems.totalProblems} ocorrências com média de ${problems.avgResolutionHours.toFixed(1)} horas para resolução.`,
+    `Resumo geral ${periodLabel}: ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas, ${executive.summary.totalSolutions} soluções e ${executive.summary.totalProjects} projetos.`,
+    `A disponibilidade média ${periodLabel} é de ${availability.avgAvailability}% e o relatório de problemas aponta ${problems.totalProblems} ocorrências com média de ${problems.avgResolutionHours.toFixed(1)} horas para resolução.`,
     weakProducts.length > 0
-      ? `Os produtos com menor disponibilidade são ${formatList(weakProducts)}.`
+      ? `Os produtos com menor disponibilidade ${periodLabel} são ${formatList(weakProducts)}.`
       : null,
     problemHeavyProducts.length > 0
-      ? `Os produtos/modelos com mais problemas são ${formatList(problemHeavyProducts)}.`
+      ? `Os produtos/modelos com mais problemas ${periodLabel} são ${formatList(problemHeavyProducts)}.`
       : null,
     activeProjectLines.length > 0
-      ? `Os projetos mais ativos são ${formatList(activeProjectLines)}.`
+      ? `Os projetos mais ativos ${periodLabel} são ${formatList(activeProjectLines)}.`
       : null,
     lowerProgressLines.length > 0
       ? `Os projetos com menor avanço estão em ${formatList(lowerProgressLines)}.`
       : null,
     ...comparisonLines,
-    `Nos projetos, o progresso médio está em ${projects.summary.avgProgress}% e há ${projects.summary.totalTasks} tarefas observadas.`,
+    `Nos projetos, o progresso médio está em ${projects.summary.avgProgress}% e há ${projects.summary.totalTasks} tarefas observadas ${periodLabel}.`,
     "Se você quiser, eu posso detalhar por modelo, por problema, por tarefa ou por projeto e indicar a ação prioritária.",
   ].join("\n\n");
 
@@ -1131,8 +1138,7 @@ function buildGeneralAnswer(
       buildCitation("Problemas", `${problems.totalProblems} problemas`),
       buildCitation("Projetos", `${projects.summary.totalTasks} tarefas`),
     ],
-    contextSummary:
-      "Contexto geral da operação montado a partir de relatórios e dashboards consolidados.",
+    contextSummary: `Contexto geral da operação montado a partir de relatórios e dashboards consolidados ${periodLabel}.`,
   };
 }
 
@@ -1140,11 +1146,12 @@ function buildReportsAnswer(
   executive: Awaited<ReturnType<typeof getExecutiveReport>>,
   problems: Awaited<ReturnType<typeof getProblemsReport>>,
   availability: Awaited<ReturnType<typeof getAvailabilityReport>>,
+  periodLabel: string = "dos últimos 30 dias",
 ): AiAssistantMessageResponseDto {
   const answer = [
     "Se a dúvida é por onde começar, eu abriria nesta ordem: disponibilidade por produto, problemas mais frequentes e projetos/atividades.",
-    `No recorte atual, a operação tem ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas e disponibilidade média de ${availability.avgAvailability}%.`,
-    `O relatório de problemas mostra ${problems.totalProblems} ocorrências e tempo médio de resolução de ${problems.avgResolutionHours.toFixed(1)} horas.`,
+    `${periodLabel}, a operação tem ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas e disponibilidade média de ${availability.avgAvailability}%.`,
+    `O relatório de problemas mostra ${problems.totalProblems} ocorrências e tempo médio de resolução de ${problems.avgResolutionHours.toFixed(1)} horas ${periodLabel}.`,
     "Se você quiser, eu posso detalhar cada relatório e comparar os cortes de 7, 30 e 90 dias.",
   ].join("\n\n");
 
@@ -1163,8 +1170,7 @@ function buildReportsAnswer(
       buildCitation("Disponibilidade", `${availability.avgAvailability}% de média`),
       buildCitation("Problemas", `${problems.totalProblems} ocorrências`),
     ],
-    contextSummary:
-      "Contexto de relatórios montado com visão executiva, disponibilidade e problemas.",
+    contextSummary: `Contexto de relatórios montado com visão executiva, disponibilidade e problemas ${periodLabel}.`,
   };
 }
 
@@ -1194,53 +1200,62 @@ function buildAssistantImageVisualization(input: {
   accentColor: string;
   metrics: Array<{ label: string; value: string }>;
 }): AiAssistantVisualizationDto {
-  const width = 1200;
-  const height = 700;
+  const width = 1100;
+  const rowHeight = 80;
+  const topMargin = 160;
+  const metricsHeight = input.metrics.length * (rowHeight + 16) + 32;
+  const height = topMargin + metricsHeight + 120;
   const accentColor = input.accentColor;
-  const safeTitle = escapeSvgText(truncateVisualizationText(input.title, 48));
+  const safeTitle = escapeSvgText(truncateVisualizationText(input.title, 56));
   const safeSubtitle = input.subtitle
-    ? escapeSvgText(truncateVisualizationText(input.subtitle, 90))
+    ? escapeSvgText(truncateVisualizationText(input.subtitle, 100))
     : "";
   const safeFooter = input.footer
-    ? escapeSvgText(truncateVisualizationText(input.footer, 72))
+    ? escapeSvgText(truncateVisualizationText(input.footer, 80))
     : "";
 
-  const metricBoxes = input.metrics.slice(0, 3).map((metric, index) => {
-    const x = 64 + index * 356;
-    const safeLabel = escapeSvgText(truncateVisualizationText(metric.label, 24));
-    const safeValue = escapeSvgText(truncateVisualizationText(metric.value, 28));
+  const metricRows = input.metrics.map((metric, index) => {
+    const y = topMargin + 32 + index * (rowHeight + 16);
+    const safeLabel = escapeSvgText(truncateVisualizationText(metric.label, 36));
+    const safeValue = escapeSvgText(truncateVisualizationText(metric.value, 32));
 
     return `
-      <g transform="translate(${x}, 308)">
-        <rect x="0" y="0" width="320" height="180" rx="28" fill="rgba(255,255,255,0.92)" stroke="rgba(148,163,184,0.22)" />
-        <circle cx="44" cy="44" r="18" fill="${accentColor}" opacity="0.18" />
-        <rect x="30" y="30" width="28" height="28" rx="10" fill="${accentColor}" opacity="0.88" />
-        <text x="30" y="98" font-family="Inter, Arial, sans-serif" font-size="21" fill="#64748b" font-weight="600">${safeLabel}</text>
-        <text x="30" y="142" font-family="Inter, Arial, sans-serif" font-size="42" fill="#0f172a" font-weight="700">${safeValue}</text>
+      <g transform="translate(56, ${y})">
+        <rect x="0" y="0" width="988" height="${rowHeight}" rx="12" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+        <rect x="0" y="0" width="5" height="${rowHeight}" rx="3" fill="${accentColor}" />
+        <text x="28" y="34" font-family="Inter, -apple-system, sans-serif" font-size="18" fill="#64748b" font-weight="500">${safeLabel}</text>
+        <text x="28" y="60" font-family="Inter, -apple-system, sans-serif" font-size="24" fill="#0f172a" font-weight="700">${safeValue}</text>
       </g>`;
   });
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
       <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#f8fafc" />
-          <stop offset="100%" stop-color="#eef2ff" />
-        </linearGradient>
-        <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="${accentColor}" />
-          <stop offset="100%" stop-color="#0f172a" stop-opacity="0.15" />
+        <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="${accentColor}" stop-opacity="0.12" />
+          <stop offset="100%" stop-color="${accentColor}" stop-opacity="0.02" />
         </linearGradient>
       </defs>
-      <rect width="${width}" height="${height}" rx="36" fill="url(#bg)" />
-      <circle cx="1010" cy="118" r="220" fill="${accentColor}" opacity="0.08" />
-      <circle cx="1060" cy="540" r="180" fill="#0f172a" opacity="0.04" />
-      <rect x="64" y="64" width="160" height="12" rx="6" fill="url(#accent)" />
-      <text x="64" y="132" font-family="Inter, Arial, sans-serif" font-size="28" fill="#475569" font-weight="600">SILO</text>
-      <text x="64" y="204" font-family="Inter, Arial, sans-serif" font-size="58" fill="#0f172a" font-weight="800">${safeTitle}</text>
-      <text x="64" y="256" font-family="Inter, Arial, sans-serif" font-size="26" fill="#64748b" font-weight="500">${safeSubtitle}</text>
-      ${metricBoxes.join("")}
-      <text x="64" y="626" font-family="Inter, Arial, sans-serif" font-size="20" fill="#64748b" font-weight="500">${safeFooter}</text>
+
+      <!-- Fundo -->
+      <rect width="${width}" height="${height}" rx="20" fill="#ffffff" />
+
+      <!-- Barra de cabeçalho -->
+      <rect x="56" y="50" width="6" height="70" rx="3" fill="${accentColor}" />
+
+      <!-- Título -->
+      <text x="80" y="78" font-family="Inter, -apple-system, sans-serif" font-size="32" fill="#0f172a" font-weight="700">${safeTitle}</text>
+      <text x="80" y="108" font-family="Inter, -apple-system, sans-serif" font-size="17" fill="#64748b" font-weight="400">${safeSubtitle}</text>
+
+      <!-- Linha separadora -->
+      <line x1="56" y1="138" x2="${width - 56}" y2="138" stroke="#e2e8f0" stroke-width="1" />
+
+      <!-- Métricas -->
+      ${metricRows.join("")}
+
+      <!-- Rodapé -->
+      <line x1="56" y1="${height - 70}" x2="${width - 56}" y2="${height - 70}" stroke="#e2e8f0" stroke-width="1" />
+      <text x="56" y="${height - 38}" font-family="Inter, -apple-system, sans-serif" font-size="15" fill="#94a3b8" font-weight="400">${safeFooter}</text>
     </svg>`;
 
   return {
@@ -1614,6 +1629,7 @@ export async function answerAssistantMessage(
               executive,
               previousAvailability,
               previousExecutive,
+              periodLabel,
             ),
             request.content,
             undefined,
@@ -1656,7 +1672,7 @@ export async function answerAssistantMessage(
         );
         return {
           ...(await finalizeAssistantResponse(
-            buildProjectsAnswer(projects, executive, previousProjects),
+            buildProjectsAnswer(projects, executive, periodLabel, previousProjects),
             request.content,
             undefined,
             conversationContext,
@@ -1738,8 +1754,7 @@ export async function answerAssistantMessage(
           threadId,
           scope: "solutions",
           suggestedQuestions: getSuggestedQuestions("solutions"),
-          contextSummary:
-            "Contexto de soluções montado a partir do comportamento dos problemas e do dashboard.",
+          contextSummary: `Contexto de soluções montado a partir do comportamento dos problemas e do dashboard ${periodLabel}.`,
         };
       }
       case "reports": {
@@ -1756,7 +1771,7 @@ export async function answerAssistantMessage(
         );
         return {
           ...(await finalizeAssistantResponse(
-            buildReportsAnswer(executive, problems, availability),
+            buildReportsAnswer(executive, problems, availability, periodLabel),
             request.content,
             undefined,
             conversationContext,
@@ -1791,6 +1806,7 @@ export async function answerAssistantMessage(
               availability,
               problems,
               projects,
+              periodLabel,
               previousExecutive,
               previousAvailability,
               previousProblems,
