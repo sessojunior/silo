@@ -71,29 +71,34 @@ export function MessageInput({
           />
 
           {/* Botões de ação */}
-          {enableEmojiPicker && (
-            <div className="absolute right-2 bottom-2 flex items-center space-x-1">
-              <Button
+          <div className="absolute right-2 inset-y-0 flex items-center gap-1">
+            {enableEmojiPicker && (
+              <button
+                type="button"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="h-8 w-8 p-0 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 rounded-full transition-all duration-200"
+                className={`h-8 w-8 p-0 flex items-center justify-center rounded-full transition-all duration-200 ${
+                  showEmojiPicker
+                    ? "bg-zinc-200 dark:bg-zinc-600 text-zinc-700 dark:text-zinc-200"
+                    : "bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-700 focus:bg-zinc-100 dark:focus:bg-zinc-600 text-zinc-600 dark:text-zinc-400"
+                }`}
               >
                 <span className="icon-[mdi--emoticon-happy] h-4 w-4" />
-              </Button>
-            </div>
-          )}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSendMessage}
+              disabled={!messageText.trim() || isSending}
+              className="h-8 w-8 p-0 flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-600 text-white rounded-full transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              {isSending ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              ) : (
+                <span className="icon-[mdi--send] h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
-
-        <Button
-          onClick={handleSendMessage}
-          disabled={!messageText.trim() || isSending}
-          className="h-10 w-10 p-0 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-600 text-white rounded-full transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md"
-        >
-          {isSending ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-          ) : (
-            <span className="icon-[mdi--send] h-4 w-4" />
-          )}
-        </Button>
       </div>
 
       {/* Emoji Picker */}

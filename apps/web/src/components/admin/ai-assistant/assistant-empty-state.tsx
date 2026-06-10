@@ -8,7 +8,7 @@ type AssistantEmptyStateProps = {
 };
 
 const getVisibleExamples = (examples: AiAssistantExampleDto[]) => {
-  return examples.slice(0, 4);
+  return examples;
 };
 
 export default function AssistantEmptyState({
@@ -34,7 +34,7 @@ export default function AssistantEmptyState({
             </p>
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {visibleExamples.map((example) => (
               <button
                 key={example.id}

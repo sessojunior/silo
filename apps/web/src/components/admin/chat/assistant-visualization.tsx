@@ -1,11 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { EChartsOption } from "echarts";
 
 import type { AiAssistantVisualizationDto } from "@silo/engine/contracts/dto/ai-assistant";
 import { useDarkMode } from "@/hooks/use-dark-mode";
+import AssistantMermaidBlock from "@/components/admin/chat/assistant-mermaid";
 
 const ReactECharts = dynamic(
   async () => (await import("echarts-for-react")).default,
@@ -189,6 +190,18 @@ export default function AssistantVisualizationBlock({
   visualization: AiAssistantVisualizationDto;
 }) {
   const isDarkMode = useDarkMode();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState("");
+
+  const openLightbox = useCallback((src: string) => {
+    setLightboxSrc(src);
+    setLightboxOpen(true);
+  }, []);
+
+  const closeLightbox = useCallback(() => {
+    setLightboxOpen(false);
+    setLightboxSrc("");
+  }, []);
 
   const chartOptions = useMemo(() => {
     if (visualization.kind !== "chart") {
@@ -199,10 +212,47 @@ export default function AssistantVisualizationBlock({
   }, [isDarkMode, visualization]);
 
   if (visualization.kind === "image") {
-    const safeSource = isSafeImageSource(visualization.src) ? visualization.src : null;
+    const src = visualization.src;
+    const isPdf = src.toLowerCase().endsWith(".pdf");
+    const isImage = src.startsWith("data:image/") || /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(src);
+    const safeSrc = isSafeImageSource(src) ? src : null;
 
     return (
       <div className="mt-3 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white/90 p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/70">
+        {/* Lightbox */}
+        {lightboxOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+            onClick={closeLightbox}
+            onKeyDown={(e) => e.key === "Escape" && closeLightbox()}
+            role="presentation"
+          >
+            <button
+              type="button"
+              onClick={closeLightbox}
+              className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+              aria-label="Fechar"
+            >
+              <span className="icon-[lucide--x] size-6" />
+            </button>
+            {isPdf ? (
+              <iframe
+                src={safeSrc ?? ""}
+                className="h-[90vh] w-full max-w-4xl rounded-lg bg-white"
+                title="Visualização do PDF"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={safeSrc ?? ""}
+                alt={visualization.alt}
+                className="max-h-[90vh] max-w-full rounded-lg object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+          </div>
+        )}
+
         <div className="mb-3 min-w-0">
           <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             {visualization.alt}
@@ -215,27 +265,59 @@ export default function AssistantVisualizationBlock({
         </div>
 
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
-          {safeSource ? (
-            // Using a raw <img> here for arbitrary image sources (SVG/data URLs)
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={safeSource}
-              alt={visualization.alt}
-              width={visualization.width ?? 1200}
-              height={visualization.height ?? 700}
-              loading="lazy"
-              decoding="async"
-              referrerPolicy="no-referrer"
-              className="block h-auto max-h-64 w-full object-contain"
-            />
+          {safeSrc ? (
+            isPdf ? (
+              <div className="flex flex-col items-center justify-center gap-3 px-4 py-8">
+                <span className="icon-[lucide--file-text] size-12 text-zinc-400" />
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Relatório em PDF disponível
+                </p>
+                <div className="flex gap-2">
+                  <a
+                    href={safeSrc}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                  >
+                    <span className="icon-[lucide--download] size-4" />
+                    Baixar PDF
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => openLightbox(safeSrc)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+                  >
+                    <span className="icon-[lucide--eye] size-4" />
+                    Visualizar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={safeSrc}
+                alt={visualization.alt}
+                width={visualization.width ?? 1200}
+                height={visualization.height ?? 700}
+                loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
+                className="block h-auto max-h-64 w-full cursor-pointer object-contain transition-opacity hover:opacity-90"
+                onClick={() => openLightbox(safeSrc)}
+              />
+            )
           ) : (
             <div className="flex min-h-48 items-center justify-center px-4 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-              Imagem indisponível.
+              Conteúdo indisponível.
             </div>
           )}
         </div>
       </div>
     );
+  }
+
+  if (visualization.kind === "mermaid") {
+    return <AssistantMermaidBlock visualization={visualization} />;
   }
 
   return (

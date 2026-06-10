@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ReportChart } from "./report-chart";
 import { ReportFilters } from "./report-filters";
+import { ExportPdfButton } from "./export-pdf-button";
 import Avatar from "@/components/ui/avatar";
 import { formatDate, formatDateBR } from "@silo/engine/date";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -485,14 +486,24 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           onFiltersChange={handleFiltersChange}
           reportType={reportId as "availability" | "problems" | "projects"}
           rightAction={
-            <Button
-              style="bordered"
-              className="w-full sm:w-auto"
-              icon="icon-[lucide--target]"
-              onClick={() => setIsSmartOpen(true)}
-            >
-              Metas
-            </Button>
+            <div className="flex items-center gap-2">
+              <ExportPdfButton
+                reportType={report.id as "availability" | "problems" | "projects"}
+                extraBody={{
+                  dateRange: filters.dateRange,
+                  startDate: filters.startDate ? formatDate(filters.startDate) : undefined,
+                  endDate: filters.endDate ? formatDate(filters.endDate) : undefined,
+                }}
+              />
+              <Button
+                style="bordered"
+                className="w-full sm:w-auto"
+                icon="icon-[lucide--target]"
+                onClick={() => setIsSmartOpen(true)}
+              >
+                Metas
+              </Button>
+            </div>
           }
         />
       </div>

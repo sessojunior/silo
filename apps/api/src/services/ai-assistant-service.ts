@@ -19,6 +19,7 @@ import {
   getProblemsReport,
   getProjectsReport,
 } from "./report-service.js";
+import { generatePdf } from "./pdf-report-generator.js";
 import {
   getDashboardProblemsCauses,
   getDashboardProblemsSolutions,
@@ -260,6 +261,17 @@ const SCOPE_KEYWORDS: Record<AiAssistantScope, ScopeKeywordDefinition[]> = {
     { keyword: "prazo", weight: 2 },
     { keyword: "prazos", weight: 2 },
     { keyword: "cronograma", weight: 2 },
+  ],
+  generate_pdf: [
+    { keyword: "exportar pdf", weight: 3 },
+    { keyword: "gerar pdf", weight: 3 },
+    { keyword: "baixar relatorio", weight: 3 },
+    { keyword: "download relatorio", weight: 3 },
+    { keyword: "salvar relatorio", weight: 3 },
+    { keyword: "pdf", weight: 2.5 },
+    { keyword: "exportar relatorio", weight: 2.5 },
+    { keyword: "arquivo pdf", weight: 2.5 },
+    { keyword: "imprimir relatorio", weight: 2 },
   ],
 };
 
@@ -1293,6 +1305,160 @@ function buildAssistantChartVisualization(input: {
   };
 }
 
+/**
+ * Constrói um diagrama Mermaid a partir de uma definição.
+ *
+ * O diagrama pode ser:
+ * - `graph TD` — fluxograma (tasks, processos)
+ * - `flowchart LR` — fluxo horizontal (organograma)
+ * - `gantt` — gráfico de Gantt (cronograma)
+ *
+ * @param input.diagram  Definição Mermaid (ex.: "graph TD\\nA[Início] --> B[Fim]")
+ * @param input.title    Título exibido acima do diagrama
+ * @param input.caption  Legenda opcional
+ */
+function buildAssistantMermaidVisualization(input: {
+  diagram: string;
+  title: string;
+  caption?: string;
+}): AiAssistantVisualizationDto {
+  return {
+    kind: "mermaid",
+    diagram: input.diagram,
+    title: input.title,
+    caption: input.caption,
+  };
+}
+
+/**
+ * Gera um diagrama de fluxo de projetos no formato Mermaid.
+ * Mostra a relação entre projetos, atividades e tarefas.
+ */
+function buildProjectFlowDiagram(
+  projects: Awaited<ReturnType<typeof getProjectsReport>>,
+): string {
+  const lines: string[] = ["flowchart LR"];
+
+  // Subgraph: projetos
+  lines.push("  subgraph Projetos[Projetos]");
+  lines.push("    direction TB");
+
+  for (const project of projects.projectsWithProgress.slice(0, 6)) {
+    const safeName = project.name.replace(/[^a-zA-Z0-9À-ÿ ]/g, "").slice(0, 20);
+    const id = `P_${project.id.slice(0, 6)}`;
+    const progress = project.progress;
+    const statusEmoji =
+      project.status === "active" ? "🟢" : project.status === "completed" ? "✅" : "⏸️";
+    lines.push(`    ${id}["${statusEmoji} ${safeName} (${progress}%)"]`);
+  }
+  lines.push("  end");
+
+  // Subgraph: status
+  const statusCount = projects.projectsByStatus;
+  lines.push("  subgraph Status[Situação]");
+  lines.push("    direction LR");
+  let statusIdx = 0;
+  for (const [status, count] of Object.entries(statusCount)) {
+    const sId = `S_${statusIdx++}`;
+    const label =
+      status === "active"
+        ? "Ativo"
+        : status === "completed"
+          ? "Concluído"
+          : status === "paused"
+            ? "Pausado"
+            : status;
+    lines.push(`    ${sId}["${label}: ${count}"]`);
+  }
+  lines.push("  end");
+
+  // Subgraph: tarefas
+  const tasks = projects.tasksByStatus;
+  lines.push("  subgraph Tarefas[Tarefas]");
+  lines.push("    direction LR");
+  let taskIdx = 0;
+  for (const [status, count] of Object.entries(tasks)) {
+    const tId = `T_${taskIdx++}`;
+    const label =
+      status === "done"
+        ? "Concluídas"
+        : status === "in_progress"
+          ? "Em andamento"
+          : status === "pending"
+            ? "Pendentes"
+            : status;
+    lines.push(`    ${tId}["${label}: ${count}"]`);
+  }
+  lines.push("  end");
+
+  // Conexões
+  if (projects.projectsWithProgress.length > 0) {
+    const firstProj = `P_${projects.projectsWithProgress[0].id.slice(0, 6)}`;
+    lines.push(`    ${firstProj} --> Status`);
+    lines.push(`    ${firstProj} --> Tarefas`);
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Gera um diagrama Mermaid focado em pendências/tarefas.
+ * Mostra a distribuição de tarefas por status e projetos ativos.
+ */
+function buildPendingFlowDiagram(
+  projects: Awaited<ReturnType<typeof getProjectsReport>>,
+): string {
+  const lines: string[] = ["flowchart TB"];
+
+  lines.push("  subgraph Topo[Visão Geral]");
+  lines.push("    direction LR");
+  lines.push(`    Total["📊 Total: ${projects.summary.totalTasks} tarefas"]`);
+  lines.push(`    Progresso["📈 Progresso médio: ${projects.summary.avgProgress}%"]`);
+  lines.push(`    Ativos["🟢 Projetos ativos: ${projects.projectsByStatus.active ?? 0}"]`);
+  lines.push("  end");
+
+  // Tarefas por status
+  lines.push("  subgraph Tarefas[Distribuição de Tarefas]");
+  lines.push("    direction LR");
+  let tIdx = 0;
+  for (const [status, count] of Object.entries(projects.tasksByStatus)) {
+    const tId = `TS_${tIdx++}`;
+    const emoji =
+      status === "done" ? "✅" : status === "in_progress" ? "🔄" : "⏳";
+    const label =
+      status === "done"
+        ? "Concluídas"
+        : status === "in_progress"
+          ? "Em andamento"
+          : status === "pending"
+            ? "Pendentes"
+            : status;
+    lines.push(`    ${tId}["${emoji} ${label}: ${count}"]`);
+  }
+  lines.push("  end");
+
+  // Projetos em andamento
+  const activeProjects = projects.projectsWithProgress.filter(
+    (p) => p.status === "active",
+  );
+  if (activeProjects.length > 0) {
+    lines.push("  subgraph Ativos[Projetos Ativos]");
+    lines.push("    direction LR");
+    for (const proj of activeProjects.slice(0, 5)) {
+      const pId = `AP_${proj.id.slice(0, 6)}`;
+      const name = proj.name.replace(/[^a-zA-Z0-9À-ÿ ]/g, "").slice(0, 18);
+      lines.push(`    ${pId}["${name} (${proj.progress}%)"]`);
+    }
+    lines.push("  end");
+
+    // Conecta
+    lines.push(`    Topo --> Tarefas`);
+    lines.push(`    Tarefas --> Ativos`);
+  }
+
+  return lines.join("\n");
+}
+
 function buildModelsVisualization(
   intent: AssistantVisualizationIntent,
   availability: Awaited<ReturnType<typeof getAvailabilityReport>>,
@@ -1389,16 +1555,12 @@ function buildProjectsVisualization(
   if (!intent) return undefined;
 
   if (intent === "image") {
-    return buildAssistantImageVisualization({
-      title: "Visão de projetos",
-      subtitle: "Resumo visual dos projetos acompanhados.",
-      footer: `O painel consolidou ${projects.summary.totalProjects} projetos e ${projects.summary.totalTasks} tarefas.`,
-      accentColor: "#8b5cf6",
-      metrics: [
-        { label: "Projetos", value: String(projects.summary.totalProjects) },
-        { label: "Progresso médio", value: `${projects.summary.avgProgress}%` },
-        { label: "Tarefas", value: String(projects.summary.totalTasks) },
-      ],
+    // Gera diagrama Mermaid do fluxo de projetos
+    const diagram = buildProjectFlowDiagram(projects);
+    return buildAssistantMermaidVisualization({
+      diagram,
+      title: "Fluxo dos Projetos",
+      caption: `Diagrama com ${projects.summary.totalProjects} projetos, ${projects.summary.totalActivities} atividades e ${projects.summary.totalTasks} tarefas.`,
     });
   }
 
@@ -1429,21 +1591,12 @@ function buildPendingVisualization(
   if (!intent) return undefined;
 
   if (intent === "image") {
-    const totalTaskCount = Object.values(projects.tasksByStatus).reduce(
-      (total, value) => total + value,
-      0,
-    );
-
-    return buildAssistantImageVisualization({
-      title: "Visão de pendências",
-      subtitle: "Resumo visual das tarefas em aberto.",
-      footer: `O recorte mostra ${totalTaskCount} tarefas distribuídas por status.`,
-      accentColor: "#f59e0b",
-      metrics: [
-        { label: "Projetos", value: String(projects.summary.totalProjects) },
-        { label: "Progresso médio", value: `${projects.summary.avgProgress}%` },
-        { label: "Tarefas", value: String(projects.summary.totalTasks) },
-      ],
+    // Gera diagrama Mermaid focado em tarefas pendentes
+    const diagram = buildPendingFlowDiagram(projects);
+    return buildAssistantMermaidVisualization({
+      diagram,
+      title: "Fluxo de Pendências",
+      caption: `Distribuição de ${projects.summary.totalTasks} tarefas entre projetos e status.`,
     });
   }
 
@@ -1784,6 +1937,66 @@ export async function answerAssistantMessage(
           )),
           visualization,
           threadId,
+        };
+      }
+      case "generate_pdf": {
+        // Detecta qual tipo de relatório gerar baseado na mensagem do usuário
+        const contentLower = request.content.toLowerCase();
+        let pdfType: "availability" | "problems" | "executive" | "projects" = "executive";
+        if (/disponibilidade|modelo|turno|intervenção/i.test(contentLower)) pdfType = "availability";
+        else if (/problema|falha|incidente|erro|solução/i.test(contentLower)) pdfType = "problems";
+        else if (/projeto|atividade|task|cronograma/i.test(contentLower)) pdfType = "projects";
+
+        const [executive, problems, availability, projects] = await Promise.all([
+          getExecutiveReport(dateRange),
+          getProblemsReport(dateRange),
+          getAvailabilityReport(dateRange),
+          getProjectsReport(dateRange),
+        ]);
+
+        // Seleciona os dados conforme o tipo
+        const pdfData = pdfType === "availability" ? availability
+          : pdfType === "problems" ? problems
+          : pdfType === "projects" ? projects
+          : executive;
+
+        let pdfUrl: string | null = null;
+        try {
+          const pdf = await generatePdf({
+            type: pdfType,
+            data: pdfData as unknown as Record<string, unknown>,
+            periodLabel,
+          });
+          pdfUrl = pdf.url;
+          console.log(`✅ [AI_ASSISTANT] PDF gerado: ${pdf.filename}`);
+        } catch (err) {
+          console.error("❌ [AI_ASSISTANT] Erro ao gerar PDF:", err);
+        }
+
+        const visualization: AiAssistantVisualizationDto = pdfUrl
+          ? {
+              kind: "image",
+              src: pdfUrl,
+              alt: `Relatório em PDF — ${pdfType}`,
+              caption: `📄 Relatório de ${pdfType === "availability" ? "Disponibilidade" : pdfType === "problems" ? "Problemas" : pdfType === "projects" ? "Projetos" : "Executivo"} gerado. Clique no link para baixar.`,
+            }
+          : { kind: "image", src: "", alt: "Erro ao gerar PDF", caption: "Não foi possível gerar o PDF." };
+
+        return {
+          ...(await finalizeAssistantResponse(
+            buildReportsAnswer(executive, problems, availability, periodLabel),
+            request.content,
+            undefined,
+            conversationContext,
+          )),
+          visualization,
+          threadId,
+          scope: "generate_pdf",
+          suggestedQuestions: [
+            "Gere um PDF do relatório de disponibilidade",
+            "Exporte o relatório de problemas para PDF",
+            "Quero baixar o relatório executivo em PDF",
+          ],
         };
       }
       case "general":

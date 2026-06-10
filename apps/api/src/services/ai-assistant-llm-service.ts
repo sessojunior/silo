@@ -70,9 +70,12 @@ const buildScopeClassificationPrompt = (
       role: "system",
       content: [
         "Você classifica se a próxima pergunta está no escopo do assistente analítico do SILO.",
+        "",
+        "O SILO é um sistema de gerenciamento de produtos industriais que monitora modelos (produtos) em rodadas/turnos de produção, rastreando disponibilidade, intervenções, problemas, soluções, projetos e tarefas. Ele acompanha execuções, incidentes, causas e tendências operacionais em tempo real.",
+        "",
         "Escopos válidos: models, pending, reports, problems, solutions, projects e general.",
         "Use general para um panorama amplo da operação, resumo do dia, cenário atual ou visão executiva que misture vários temas do SILO.",
-        "Se a pergunta for claramente externa ao SILO, responda com scope null e isInScope false.",
+        "Se a pergunta for claramente externa ao SILO (ex.: filmes, receitas, clima, futebol, política, programação de software, tecnologia em geral), responda com scope null e isInScope false.",
         "Perguntas curtas, elípticas ou de seguimento devem herdar o assunto da thread quando isso fizer sentido.",
         'Responda apenas com JSON válido no formato {"scope":null|"models"|"pending"|"reports"|"problems"|"solutions"|"projects"|"general","isInScope":true|false}.',
       ].join(" "),
@@ -119,6 +122,19 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
       role: "system",
       content: [
         "Você é o assistente analítico do SILO.",
+        "",
+        "O SILO é um sistema de gerenciamento de produtos industriais. Ele monitora modelos (produtos) em rodadas/turnos de produção, rastreando disponibilidade, intervenções, problemas, soluções, projetos e tarefas. O sistema acompanha execuções em tempo real, incidentes, causas, tendências operacionais, dashboards e relatórios executivos.",
+        "",
+        "Domínios de atuação do SILO:",
+        "- models: disponibilidade de modelos/produtos, intervenções por rodada/turno, sinais de rodada, eficácia de intervenções.",
+        "- problems: categorias de problema, incidências, falhas recorrentes, tempo de resolução, causas, impacto por produto.",
+        "- solutions: padrões de correção, soluções registradas, reincidência, eficácia de soluções aplicadas.",
+        "- pending: pendências em aberto, tarefas atrasadas, bloqueios, times sobrecarregados, prioridades.",
+        "- projects: andamento de projetos, progresso, atividades, tarefas por status, gargalos, prazos.",
+        "- reports: dashboards, relatórios executivos, visão consolidada, sumário do período, indicadores-chave.",
+        "- general: panorama amplo que mistura vários domínios — resumo do dia, cenário atual, visão executiva.",
+        "",
+        "Regras de resposta:",
         "SEMPRE que precisar raciocinar, analisar dados ou comparar informações, coloque esse raciocínio no campo thinking.",
         "O campo answer deve conter APENAS a resposta final limpa, sem raciocínio, sem análise, sem passo a passo.",
         "Nunca misture raciocínio com a resposta final.",
@@ -351,7 +367,7 @@ export async function composeAssistantAnswerWithOllama(
 
 export type AssistantStreamEvent =
   | { type: "thinking"; content: string }
-  | { type: "answer"; content: string; contextSummary: string; generation: AiAssistantGenerationDto }
+  | { type: "answer"; content: string; contextSummary: string; generation: AiAssistantGenerationDto; thinking?: string }
   | { type: "error"; content: string };
 
 /**
@@ -390,6 +406,7 @@ export async function* composeAssistantAnswerWithOllamaStream(
     }
 
     const finalAnswer = parsedContent.answer.trim();
+    const finalThinking = parsedContent.thinking?.trim() || undefined;
     yield {
       type: "answer",
       content: finalAnswer.length > 0 ? finalAnswer : input.fallbackAnswer,
@@ -397,6 +414,7 @@ export async function* composeAssistantAnswerWithOllamaStream(
         parsedContent.contextSummary.trim().length > 0
           ? parsedContent.contextSummary.trim()
           : input.contextSummary,
+      thinking: finalThinking,
       generation: buildGeneration({
         provider: "ollama",
         model: config.ollama.model,

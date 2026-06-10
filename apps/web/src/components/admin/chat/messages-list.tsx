@@ -25,6 +25,7 @@ interface MessagesListProps {
   assistantStatusText?: string | null;
   onLoadOlderMessages: () => void;
   onLoadNewerMessages: () => void;
+  onDeleteMessage?: (messageId: string) => void;
 }
 
 export function MessagesList({
@@ -41,6 +42,7 @@ export function MessagesList({
   assistantStatusText,
   onLoadOlderMessages,
   onLoadNewerMessages,
+  onDeleteMessage,
 }: MessagesListProps) {
   const isAssistantVariant = variant === "assistant";
 
@@ -96,7 +98,7 @@ export function MessagesList({
   }, [isAssistantVariant, messages.length]);
 
   if (isLoading) {
-    const loadingClassName = "flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-100 dark:[&::-webkit-scrollbar-track]:bg-zinc-700 relative bg-cover bg-center bg-no-repeat bg-fixed bg-(image:--chat-bg-light) dark:bg-(image:--chat-bg-dark)";
+    const loadingClassName = "flex-1 overflow-y-auto min-h-0 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-100 dark:[&::-webkit-scrollbar-track]:bg-zinc-700 relative bg-cover bg-center bg-no-repeat bg-fixed bg-(image:--chat-bg-light) dark:bg-(image:--chat-bg-dark)";
 
     return (
       <div
@@ -129,7 +131,7 @@ export function MessagesList({
   return (
     <div
       ref={messagesContainerRef}
-      className={`flex-1 flex flex-col overflow-y-auto min-h-0 p-4 lg:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-100 dark:[&::-webkit-scrollbar-track]:bg-zinc-700 bg-cover bg-center bg-no-repeat bg-fixed bg-(image:--chat-bg-light) dark:bg-(image:--chat-bg-dark)`}
+      className={`flex-1 flex flex-col overflow-y-auto min-h-0 p-4 lg:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-300 dark:[&::-webkit-scrollbar-thumb]:bg-zinc-500 [&::-webkit-scrollbar-track]:bg-zinc-100 dark:[&::-webkit-scrollbar-track]:bg-zinc-700 bg-cover bg-center bg-no-repeat bg-fixed bg-(image:--chat-bg-light) dark:bg-(image:--chat-bg-dark)`}
       style={chatBgStyles}
     >
       <div className="flex min-h-0 flex-1 flex-col">
@@ -182,6 +184,7 @@ export function MessagesList({
               isOwnMessage={isOwnMessage}
               showAvatar={true}
               showAssistantFooter={isAssistantVariant && !isOwnMessage}
+              onDelete={isAssistantVariant ? onDeleteMessage : undefined}
             />
           );
         })}

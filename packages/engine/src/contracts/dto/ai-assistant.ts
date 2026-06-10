@@ -8,6 +8,7 @@ export const AI_ASSISTANT_SCOPES = [
   "solutions",
   "projects",
   "general",
+  "generate_pdf",
 ] as const;
 
 export const AiAssistantScopeSchema = z.enum(AI_ASSISTANT_SCOPES);
@@ -167,9 +168,21 @@ export type AiAssistantVisualizationChartDto = z.infer<
   typeof AiAssistantVisualizationChartSchema
 >;
 
+export const AiAssistantVisualizationMermaidSchema = z.object({
+  kind: z.literal("mermaid"),
+  diagram: z.string().min(1),
+  title: z.string().min(1),
+  caption: z.string().optional(),
+});
+
+export type AiAssistantVisualizationMermaidDto = z.infer<
+  typeof AiAssistantVisualizationMermaidSchema
+>;
+
 export const AiAssistantVisualizationSchema = z.discriminatedUnion("kind", [
   AiAssistantVisualizationImageSchema,
   AiAssistantVisualizationChartSchema,
+  AiAssistantVisualizationMermaidSchema,
 ]);
 
 export type AiAssistantVisualizationDto = z.infer<

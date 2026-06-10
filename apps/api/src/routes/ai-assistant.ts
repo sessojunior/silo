@@ -6,6 +6,8 @@ import { requirePermission } from "../middleware/permissions.js";
 import {
   AssistantThreadNotFoundError,
   createAssistantThread,
+  deleteAssistantMessage,
+  deleteAssistantThread,
   getAssistantExamplesResponse,
   getAssistantThreadDetails,
   listAssistantThreads,
@@ -194,6 +196,61 @@ router.post(
       } else {
         res.end();
       }
+    }
+  },
+);
+
+// DELETE /api/ai-assistant/threads/:threadId/messages/:messageId — exclui mensagem e seus artefatos
+router.delete(
+  "/threads/:threadId/messages/:messageId",
+  requirePermission("reports", "view"),
+  async (req, res) => {
+    try {
+      const user = req.user!;
+      const threadId = typeof req.params.threadId === "string" ? req.params.threadId : null;
+      const messageId = typeof req.params.messageId === "string" ? req.params.messageId : null;
+
+      if (!threadId || !messageId) {
+        res.status(400).json({ success: false, error: "Parâmetros inválidos." });
+        return;
+      }
+
+      await deleteAssistantMessage(user.id, threadId, messageId);
+      res.json({ success: true, message: "Mensagem excluída com sucesso." });
+    } catch (err) {
+      if (err instanceof AssistantThreadNotFoundError) {
+        res.status(404).json({ success: false, error: err.message });
+        return;
+      }
+      console.error("❌ [API_AI_ASSISTANT/THREADS/:ID/MESSAGES/:ID] DELETE:", err);
+      res.status(500).json({ success: false, error: "Erro interno" });
+    }
+  },
+);
+
+// DELETE /api/ai-assistant/threads/:threadId — exclui thread inteiro e todos os artefatos
+router.delete(
+  "/threads/:threadId",
+  requirePermission("reports", "view"),
+  async (req, res) => {
+    try {
+      const user = req.user!;
+      const threadId = typeof req.params.threadId === "string" ? req.params.threadId : null;
+
+      if (!threadId) {
+        res.status(400).json({ success: false, error: "Identificador da conversa inválido." });
+        return;
+      }
+
+      await deleteAssistantThread(user.id, threadId);
+      res.json({ success: true, message: "Conversa excluída com sucesso." });
+    } catch (err) {
+      if (err instanceof AssistantThreadNotFoundError) {
+        res.status(404).json({ success: false, error: err.message });
+        return;
+      }
+      console.error("❌ [API_AI_ASSISTANT/THREADS/:ID] DELETE:", err);
+      res.status(500).json({ success: false, error: "Erro interno" });
     }
   },
 );

@@ -109,8 +109,6 @@ services:
       TZ: America/Sao_Paulo
     volumes:
       - silo-storage-data:/app/uploads
-      - silo-web-node-modules:/app/node_modules
-      - silo-web-next-build:/app/apps/web/.next
     depends_on:
       - api
     restart: unless-stopped
@@ -125,10 +123,6 @@ volumes:
     name: silo-storage-data
   silo-ollama-data:
     name: silo-ollama-data
-  silo-web-node-modules:
-    name: silo-web-node-modules
-  silo-web-next-build:
-    name: silo-web-next-build
 
 networks:
   frontend:

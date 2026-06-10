@@ -21,6 +21,8 @@ import { MessageInput } from "@/components/admin/chat/message-input";
 import { MessagesList } from "@/components/admin/chat/messages-list";
 import AssistantSidebar from "@/components/admin/ai-assistant/assistant-sidebar";
 import AssistantEmptyState from "@/components/admin/ai-assistant/assistant-empty-state";
+import Dialog from "@/components/ui/dialog";
+import { toast } from "@silo/engine/format/toast";
 import { readApiResponse, type ApiResponse } from "@silo/engine/contracts/api-response";
 
 const ASSISTANT_SENDER_ID = "ai-assistant";
@@ -128,12 +130,17 @@ const buildAssistantMessage = (
   assistantGeneration?: ChatMessage["assistantGeneration"],
   assistantVisualization?: ChatMessage["assistantVisualization"],
   assistantThinking?: string | null,
-): ChatMessage => ({
-  ...buildChatMessage(content, ASSISTANT_SENDER_ID, ASSISTANT_SENDER_NAME),
-  assistantGeneration: assistantGeneration ?? null,
-  assistantVisualization: assistantVisualization ?? null,
-  assistantThinking: assistantThinking?.trim() || null,
-});
+  messageId?: string,
+): ChatMessage => {
+  const msg = buildChatMessage(content, ASSISTANT_SENDER_ID, ASSISTANT_SENDER_NAME);
+  if (messageId) msg.id = messageId;
+  return {
+    ...msg,
+    assistantGeneration: assistantGeneration ?? null,
+    assistantVisualization: assistantVisualization ?? null,
+    assistantThinking: assistantThinking?.trim() || null,
+  };
+};
 
 const buildAssistantMessageContent = (
   data: AiAssistantMessageResponseDto,
@@ -176,14 +183,17 @@ const mapThreadMessageToChatMessage = (
       message.generation,
       message.visualization,
       message.thinking,
+      message.id, // ← ID real do banco
     );
   }
 
-  return buildChatMessage(
+  const chatMsg = buildChatMessage(
     message.content,
     message.senderUserId ?? currentUserId,
     message.senderName || currentUserName,
   );
+  chatMsg.id = message.id; // ← ID real do banco
+  return chatMsg;
 };
 
 const upsertThread = (
@@ -244,6 +254,10 @@ export default function AiAssistantPage() {
   const [isLoadingRuntimeStatus, setIsLoadingRuntimeStatus] = useState(() => !smokeMode);
   const [showSidebar, setShowSidebar] = useState(false);
   const [assistantError, setAssistantError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmDeleteHasArtifacts, setConfirmDeleteHasArtifacts] = useState(false);
+  const [confirmDeleteThreadId, setConfirmDeleteThreadId] = useState<string | null>(null);
+  const [confirmDeleteThreadHasArtifacts, setConfirmDeleteThreadHasArtifacts] = useState(false);
 
   // Ciclo de status enquanto aguarda resposta do assistente
   useEffect(() => {
@@ -688,6 +702,123 @@ export default function AiAssistantPage() {
     [handleAssistantMessage],
   );
 
+  // Handler de exclusão de mensagem — verifica artefatos e abre confirmação
+  const handleDeleteMessage = useCallback(
+    (messageId: string) => {
+      // Verifica se há artefatos nas mensagens posteriores
+      const threadMessages = selectedThreadId ? messagesByThread[selectedThreadId] ?? [] : [];
+      const msgIndex = threadMessages.findIndex((m) => m.id === messageId);
+      const hasArtifacts = threadMessages
+        .slice(msgIndex)
+        .some((m) => m.assistantVisualization?.kind === "image" && !!m.assistantVisualization.src)
+        || threadMessages.slice(msgIndex).some((m) => m.assistantVisualization?.kind === "mermaid");
+      setConfirmDeleteHasArtifacts(hasArtifacts);
+      setConfirmDeleteId(messageId);
+    },
+    [selectedThreadId, messagesByThread],
+  );
+
+  // Confirma exclusão — remove do banco, artefatos e mensagens posteriores
+  const confirmDelete = useCallback(async () => {
+    if (!selectedThreadId || !confirmDeleteId) return;
+
+    const messageId = confirmDeleteId;
+    setConfirmDeleteId(null);
+
+    try {
+      const url = config.getApiUrl(`/api/admin/ai-assistant/threads/${selectedThreadId}/messages/${messageId}`);
+      const response = await fetch(url, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const apiResponse = await readApiResponse(response);
+      if (!response.ok || !apiResponse.success) {
+        throw new Error(apiResponse.error || "Erro ao excluir mensagem");
+      }
+
+      toast({
+        type: "success",
+        title: "Mensagem excluída",
+        description: "A mensagem e as respostas seguintes foram removidas.",
+      });
+
+      // Recarrega a thread inteira para refletir as exclusões em cascata
+      if (selectedThreadId) {
+        void loadThreadDetail(selectedThreadId);
+      }
+      void loadThreads();
+    } catch (error) {
+      console.error("❌ [AI_ASSISTANT] Erro ao excluir mensagem:", serializeClientError(error));
+      toast({
+        type: "error",
+        title: "Erro ao excluir",
+        description: error instanceof Error ? error.message : "Erro interno ao excluir mensagem.",
+      });
+    }
+  }, [selectedThreadId, confirmDeleteId, loadThreadDetail, loadThreads]);
+
+  // Abre confirmação para excluir thread inteiro da sidebar
+  const handleDeleteThread = useCallback(
+    (threadId: string) => {
+      // Verifica se há artefatos no thread
+      const threadMessages = messagesByThread[threadId] ?? [];
+      const hasArtifacts = threadMessages
+        .some((m) => 
+          (m.assistantVisualization?.kind === "image" && !!m.assistantVisualization.src) ||
+          m.assistantVisualization?.kind === "mermaid"
+        );
+      setConfirmDeleteThreadHasArtifacts(hasArtifacts);
+      setConfirmDeleteThreadId(threadId);
+    },
+    [messagesByThread],
+  );
+
+  // Confirma exclusão do thread
+  const confirmDeleteThread = useCallback(async () => {
+    if (!confirmDeleteThreadId) return;
+    const threadId = confirmDeleteThreadId;
+    setConfirmDeleteThreadId(null);
+
+    try {
+      const url = config.getApiUrl(`/api/admin/ai-assistant/threads/${threadId}`);
+      const response = await fetch(url, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const apiResponse = await readApiResponse(response);
+      if (!response.ok || !apiResponse.success) {
+        throw new Error(apiResponse.error || "Erro ao excluir conversa");
+      }
+
+      // Se a thread excluída era a selecionada, limpa seleção
+      if (selectedThreadId === threadId) {
+        setSelectedThreadId(null);
+        setMessagesByThread((prev) => {
+          const next = { ...prev };
+          delete next[threadId];
+          return next;
+        });
+      }
+
+      toast({
+        type: "success",
+        title: "Conversa excluída",
+        description: "A conversa e todos os artefatos foram removidos.",
+      });
+
+      void loadThreads();
+    } catch (error) {
+      console.error("❌ [AI_ASSISTANT] Erro ao excluir conversa:", serializeClientError(error));
+      toast({
+        type: "error",
+        title: "Erro ao excluir",
+        description: error instanceof Error ? error.message : "Erro interno.",
+      });
+    }
+  }, [confirmDeleteThreadId, selectedThreadId, loadThreads]);
+
   useEffect(() => {
     if (smokeMode || isLoadingUser || !currentUser) return;
 
@@ -756,60 +887,33 @@ export default function AiAssistantPage() {
       {showSidebar && !smokeMode && (
         <aside className="flex h-full min-h-0 w-full shrink-0 border-b border-zinc-200 dark:border-zinc-700 lg:w-96 lg:border-b-0 lg:border-r">
           <AssistantSidebar
-            examples={examples}
             threads={threads}
             selectedThreadId={selectedThreadId}
-            onExampleSelect={handleExampleClick}
             onThreadSelect={handleSelectThread}
             onNewConversation={createConversationThread}
-            isLoadingExamples={isLoadingExamples}
             isLoadingThreads={isLoadingThreads}
             isCreatingConversation={isCreatingConversation}
             runtimeStatus={runtimeStatus}
             isLoadingRuntimeStatus={isLoadingRuntimeStatus}
+            onDeleteThread={handleDeleteThread}
           />
         </aside>
       )}
 
       <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900">
-          <div className="flex min-w-0 items-center gap-3">
-            {!smokeMode && (
-              <Button
-                type="button"
-                onClick={() => setShowSidebar((current) => !current)}
-                className="md:hidden bg-transparent p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                style="unstyled"
-                title="Alternar lateral"
-              >
-                <span className="icon-[mdi--menu] h-5 w-5" />
-              </Button>
-            )}
-
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600/10 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-              <span className="icon-[lucide--bot] h-5 w-5" />
-            </div>
-
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                {selectedThread?.title ?? "Assistente de IA"}
-              </h1>
-              <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                Perguntas focadas em modelos, pendências, relatórios, problemas,
-                soluções e projetos.
-              </p>
-            </div>
+        {!smokeMode && (
+          <div className="flex items-center border-b border-zinc-200 bg-white px-4 py-2 dark:border-zinc-700 dark:bg-zinc-900 md:hidden">
+            <Button
+              type="button"
+              onClick={() => setShowSidebar((current) => !current)}
+              className="bg-transparent p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              style="unstyled"
+              title="Alternar lateral"
+            >
+              <span className="icon-[mdi--menu] h-5 w-5" />
+            </Button>
           </div>
-
-          {selectedThread ? (
-            <div className="hidden shrink-0 items-center lg:flex">
-              <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-blue-50 px-2 text-xs font-medium text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
-                {selectedThread.messageCount}
-              </span>
-            </div>
-          ) : null}
-
-        </div>
+        )}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {isLoadingThreads || isLoadingThread ? (
@@ -828,6 +932,7 @@ export default function AiAssistantPage() {
               assistantStatusText={null}
               onLoadOlderMessages={() => undefined}
               onLoadNewerMessages={() => undefined}
+              onDeleteMessage={handleDeleteMessage}
             />
           ) : activeMessages.length === 0 ? (
             <AssistantEmptyState
@@ -850,6 +955,7 @@ export default function AiAssistantPage() {
               assistantStatusText={null}
               onLoadOlderMessages={() => undefined}
               onLoadNewerMessages={() => undefined}
+              onDeleteMessage={handleDeleteMessage}
             />
           )}
 
@@ -862,6 +968,84 @@ export default function AiAssistantPage() {
           />
         </div>
       </div>
+
+      {/* Diálogo de confirmação de exclusão de mensagem */}
+      <Dialog
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        title="Excluir mensagem?"
+      >
+        <div className="p-6">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+            Esta ação vai apagar sua mensagem e todas as respostas do assistente a partir dela.
+          </p>
+          {confirmDeleteHasArtifacts && (
+            <div className="flex items-start gap-2 mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              <span className="icon-[lucide--alert-triangle] size-4 mt-0.5 shrink-0" />
+              <span>Imagens, PDFs e outros arquivos gerados nestas mensagens também serão excluídos permanentemente.</span>
+            </div>
+          )}
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5">
+            Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button
+              type="button"
+              style="bordered"
+              onClick={() => setConfirmDeleteId(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700 focus:bg-red-700"
+            >
+              <span className="icon-[lucide--trash-2] size-4 mr-2" />
+              Excluir
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Diálogo de confirmação de exclusão de conversa inteira — mesmo design do Confirmar saída */}
+      <Dialog
+        open={!!confirmDeleteThreadId}
+        onClose={() => setConfirmDeleteThreadId(null)}
+        title="Excluir conversa?"
+      >
+        <div className="p-6">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+            Tem certeza que deseja excluir esta conversa? Todas as mensagens serão removidas.
+          </p>
+          {confirmDeleteThreadHasArtifacts && (
+            <div className="flex items-start gap-2 mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              <span className="icon-[lucide--alert-triangle] size-4 mt-0.5 shrink-0" />
+              <span>Imagens, PDFs e outros arquivos gerados nesta conversa também serão excluídos permanentemente.</span>
+            </div>
+          )}
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5">
+            Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button
+              type="button"
+              style="bordered"
+              onClick={() => setConfirmDeleteThreadId(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmDeleteThread}
+              className="bg-red-600 hover:bg-red-700 focus:bg-red-700"
+            >
+              <span className="icon-[lucide--trash-2] size-4 mr-2" />
+              Excluir conversa
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       {/* Toast de erro do assistente */}
       {assistantError && (

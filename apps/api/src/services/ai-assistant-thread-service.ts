@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
+import { unlink } from "node:fs";
+import path from "node:path";
 
 import { db } from "@silo/database";
 import {
   aiAssistantMessage,
   aiAssistantThread,
 } from "@silo/database/schema";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
 import {
   AI_ASSISTANT_SCOPES,
   AiAssistantCreateThreadResponseDto,
@@ -31,6 +33,13 @@ const DEFAULT_THREAD_TITLE = "Nova conversa";
 const THREAD_TITLE_MAX_LENGTH = 64;
 const MESSAGE_PREVIEW_MAX_LENGTH = 120;
 const ASSISTANT_SCOPE_SET = new Set<string>(AI_ASSISTANT_SCOPES);
+
+/**
+ * Número máximo de mensagens do histórico enviadas para o LLM como contexto.
+ * Mantém apenas as trocas mais recentes, evitando estouro de tokens
+ * e mantendo o foco na conversa atual.
+ */
+const MAX_CONTEXT_MESSAGES = 25; // aumentado para incluir mais contexto de memória
 
 type ConversationContext = {
   historyMessages: OllamaChatMessage[];
@@ -247,8 +256,15 @@ const loadConversationContext = async (
     });
   }
 
+  /* 
+   * Limita o histórico ao máximo de mensagens configurado.
+   * Mantém apenas as trocas mais recentes para evitar estouro de tokens
+   * e manter a janela de contexto focada na conversa atual do Silo.
+   */
+  const trimmedHistory = historyMessages.slice(-MAX_CONTEXT_MESSAGES);
+
   return {
-    historyMessages,
+    historyMessages: trimmedHistory,
     conversationMemory,
     lastKnownScope,
   };
@@ -589,6 +605,14 @@ export async function sendAssistantMessageStream(
         streamingAnswer = event.content;
         streamingContextSummary = event.contextSummary;
         streamingGeneration = event.generation;
+        /* 
+         * O evento answer carrega o thinking final do JSON completo,
+         * que pode ser mais preciso que o thinking extraído durante o streaming.
+         * Prefere o thinking final do parsing completo.
+         */
+        if (event.thinking) {
+          finalThinking = event.thinking;
+        }
       } else if (event.type === "error") {
         console.warn("⚠️ [AI_ASSISTANT_STREAM] Ollama refinement failed, using data-collected answer:", event.content);
         streamingHadError = true;
@@ -605,7 +629,14 @@ export async function sendAssistantMessageStream(
     streamingAnswer = generatedResponse.answer;
     streamingContextSummary = generatedResponse.contextSummary;
     streamingGeneration = generatedResponse.generation;
+    /* Se o stream falhou antes de produzir thinking, usa o thinking da coleta inicial */
+    if (!finalThinking && generatedResponse.thinking) {
+      finalThinking = generatedResponse.thinking;
+    }
   }
+
+  /* Fallback: se o stream não produziu thinking, usa o da coleta inicial */
+  const persistedThinking = finalThinking ?? generatedResponse.thinking;
 
   // Envia o resultado final
   sendEvent("result", {
@@ -613,7 +644,7 @@ export async function sendAssistantMessageStream(
     answer: streamingAnswer,
     contextSummary: streamingContextSummary,
     generation: streamingGeneration,
-    thinking: finalThinking ?? null,
+    thinking: persistedThinking ?? null,
     scope: generatedResponse.scope,
     isInScope: generatedResponse.isInScope,
     suggestedQuestions: generatedResponse.suggestedQuestions,
@@ -624,7 +655,7 @@ export async function sendAssistantMessageStream(
   // Salva no banco
   const generationMetadata = normalizeGenerationMetadata(streamingGeneration);
   const assistantMetadata = buildAssistantMessageMetadata(
-    { ...generatedResponse, answer: streamingAnswer, thinking: finalThinking },
+    { ...generatedResponse, answer: streamingAnswer, thinking: persistedThinking },
     generationMetadata,
   );
   const messageContent = formatAssistantReply({
@@ -722,4 +753,177 @@ export async function sendAssistantMessageStream(
       })
       .where(and(eq(aiAssistantThread.id, existingThread.id), eq(aiAssistantThread.userId, user.id)));
   });
+}
+
+// ─── Delete / Exclusão de mensagens e threads ───────────────────
+
+/**
+ * Tenta excluir um arquivo do storage se ele existir.
+ * Apenas arquivos em /uploads/serve/ são elegíveis por segurança.
+ */
+function tryDeleteArtifactFile(src: string): void {
+  try {
+    if (!src.startsWith("/uploads/serve/")) return;
+
+    // Converte URL relativa para path absoluto
+    // /uploads/serve/reports/file.pdf → {uploadsDir}/reports/file.pdf
+    const relativePath = src.replace("/uploads/serve/", "");
+    const { config } = require("@silo/engine/config");
+    const fullPath = path.join(config.uploadsDir, relativePath);
+
+    unlink(fullPath, (err) => {
+      if (err && err.code !== "ENOENT") {
+        console.error(`⚠️ [AI_ASSISTANT] Erro ao excluir artefato: ${fullPath}`, err.message);
+      }
+    });
+  } catch {
+    // Falha silenciosa — não deve quebrar a exclusão da mensagem
+  }
+}
+
+/**
+ * Exclui uma mensagem do usuário e todas as mensagens posteriores.
+ *
+ * Regras:
+ * - Só permite excluir mensagens do usuário (senderType = "user")
+ * - Exclui todas as mensagens com createdAt >= ao da mensagem alvo
+ * - Remove artefatos (imagens, PDFs) das mensagens excluídas
+ * - Se o thread ficar vazio, exclui o thread também
+ */
+export async function deleteAssistantMessage(
+  userId: string,
+  threadId: string,
+  messageId: string,
+): Promise<{ success: boolean }> {
+  // Verifica se o thread pertence ao usuário
+  const [thread] = await db
+    .select({ id: aiAssistantThread.id })
+    .from(aiAssistantThread)
+    .where(and(eq(aiAssistantThread.id, threadId), eq(aiAssistantThread.userId, userId)))
+    .limit(1);
+
+  if (!thread) {
+    throw new AssistantThreadNotFoundError();
+  }
+
+  // Busca a mensagem e verifica se é do usuário
+  const [message] = await db
+    .select({
+      senderType: aiAssistantMessage.senderType,
+      createdAt: aiAssistantMessage.createdAt,
+      metadata: aiAssistantMessage.metadata,
+    })
+    .from(aiAssistantMessage)
+    .where(and(eq(aiAssistantMessage.id, messageId), eq(aiAssistantMessage.threadId, threadId)))
+    .limit(1);
+
+  if (!message) {
+    throw new Error("Mensagem não encontrada.");
+  }
+
+  // Apenas mensagens do usuário podem ser excluídas
+  if (message.senderType !== "user") {
+    throw new Error("Apenas mensagens do usuário podem ser excluídas.");
+  }
+
+  // Busca todas as mensagens a partir desta (incluindo ela) para remover artefatos
+  const messagesToDelete = await db
+    .select({ id: aiAssistantMessage.id, metadata: aiAssistantMessage.metadata })
+    .from(aiAssistantMessage)
+    .where(
+      and(
+        eq(aiAssistantMessage.threadId, threadId),
+        gte(aiAssistantMessage.createdAt, message.createdAt),
+      ),
+    )
+    .orderBy(asc(aiAssistantMessage.createdAt));
+
+  // Remove artefatos do storage
+  for (const msg of messagesToDelete) {
+    const metadata = isRecord(msg.metadata) ? msg.metadata : {};
+    const visualization = metadata.visualization as { kind: string; src?: string } | undefined;
+    if (visualization?.src) {
+      tryDeleteArtifactFile(visualization.src);
+    }
+  }
+
+  // Exclui todas as mensagens a partir da marcada (inclusive)
+  await db
+    .delete(aiAssistantMessage)
+    .where(
+      and(
+        eq(aiAssistantMessage.threadId, threadId),
+        gte(aiAssistantMessage.createdAt, message.createdAt),
+      ),
+    );
+
+  // Atualiza contagem e preview do thread
+  const [remaining] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(aiAssistantMessage)
+    .where(eq(aiAssistantMessage.threadId, threadId));
+
+  const count = Number(remaining?.count ?? 0);
+
+  if (count === 0) {
+    await db.delete(aiAssistantThread).where(eq(aiAssistantThread.id, threadId));
+  } else {
+    const [lastMsg] = await db
+      .select({ content: aiAssistantMessage.content, createdAt: aiAssistantMessage.createdAt })
+      .from(aiAssistantMessage)
+      .where(eq(aiAssistantMessage.threadId, threadId))
+      .orderBy(desc(aiAssistantMessage.createdAt))
+      .limit(1);
+
+    await db
+      .update(aiAssistantThread)
+      .set({
+        messageCount: count,
+        lastMessagePreview: lastMsg ? buildMessagePreview(lastMsg.content) : "",
+        lastMessageAt: lastMsg?.createdAt ?? new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(aiAssistantThread.id, threadId));
+  }
+
+  return { success: true };
+}
+
+/**
+ * Exclui um thread inteiro e todos os artefatos das mensagens.
+ */
+export async function deleteAssistantThread(
+  userId: string,
+  threadId: string,
+): Promise<{ success: boolean }> {
+  // Verifica se o thread pertence ao usuário
+  const thread = await db
+    .select({ id: aiAssistantThread.id })
+    .from(aiAssistantThread)
+    .where(and(eq(aiAssistantThread.id, threadId), eq(aiAssistantThread.userId, userId)))
+    .limit(1);
+
+  if (thread.length === 0) {
+    throw new AssistantThreadNotFoundError();
+  }
+
+  // Remove todos os artefatos
+  const messages = await db
+    .select({ metadata: aiAssistantMessage.metadata })
+    .from(aiAssistantMessage)
+    .where(eq(aiAssistantMessage.threadId, threadId));
+
+  for (const msg of messages) {
+    const metadata = isRecord(msg.metadata) ? msg.metadata : {};
+    const visualization = metadata.visualization as { kind: string; src?: string } | undefined;
+    if (visualization?.src) {
+      tryDeleteArtifactFile(visualization.src);
+    }
+  }
+
+  // Exclui mensagens e thread
+  await db.delete(aiAssistantMessage).where(eq(aiAssistantMessage.threadId, threadId));
+  await db.delete(aiAssistantThread).where(eq(aiAssistantThread.id, threadId));
+
+  return { success: true };
 }

@@ -9,8 +9,9 @@ type MessageBubbleProps = {
   isOwnMessage: boolean;
   showAvatar: boolean;
   showAssistantFooter?: boolean;
-  readCount?: number; // Quantos usuários leram (apenas para groupMessage)
-  totalParticipants?: number; // Total de participantes do grupo (apenas para groupMessage)
+  readCount?: number;
+  totalParticipants?: number;
+  onDelete?: (messageId: string) => void;
 };
 
 export default function MessageBubble({
@@ -20,6 +21,7 @@ export default function MessageBubble({
   showAssistantFooter = false,
   readCount = 0,
   totalParticipants = 0,
+  onDelete,
 }: MessageBubbleProps) {
   // Garantir que isOwnMessage seja boolean e consistente
   // Agora recebe valor estável do MessagesList, não precisa de useMemo
@@ -118,15 +120,6 @@ export default function MessageBubble({
       return "Sem IA.";
     }
 
-    const sourceLabel =
-      generation.provider === "ollama"
-        ? generation.model.trim()
-        : `${generation.provider.trim()}/${generation.model.trim()}`.trim();
-
-    if (sourceLabel.length === 0) {
-      return "Sem IA.";
-    }
-
     const details: string[] = [];
 
     if (typeof generation.generatedTokens === "number") {
@@ -138,8 +131,8 @@ export default function MessageBubble({
     }
 
     return details.length > 0
-      ? `Mensagem de ${sourceLabel} · ${details.join(" · ")}`
-      : `Mensagem de ${sourceLabel}`;
+      ? `Mensagem de IA · ${details.join(" · ")}`
+      : `Mensagem de IA`;
   };
 
   // Renderizar ícone de status de leitura
@@ -204,7 +197,7 @@ export default function MessageBubble({
 
   return (
     <div
-      className={`flex gap-2 pb-4 ${isOwnMessageFinal ? "flex-row-reverse" : "flex-row"}`}
+      className={`group flex gap-2 pb-4 ${isOwnMessageFinal ? "flex-row-reverse" : "flex-row"}`}
     >
       {/* Avatar (apenas para mensagens de outros usuários) */}
       {showAvatar && !isOwnMessageFinal && (
@@ -262,15 +255,44 @@ export default function MessageBubble({
                 ))}
               </div>
             ) : isStreaming ? (
-              <div className="min-w-0 space-y-2">
-                <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                  <span className="icon-[lucide--brain] size-3.5 shrink-0 text-amber-500" />
-                  <span>Pensando<span className="animate-pulse">...</span></span>
+              <div className="min-w-0 space-y-3">
+                {/* Indicador animado de pensamento */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="relative flex size-5 shrink-0 items-center justify-center">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/40 duration-1000" />
+                    <span className="icon-[lucide--brain] size-4 relative text-amber-500 animate-[spin_3s_linear_infinite]" />
+                  </span>
+                  <span className="font-medium text-amber-600 dark:text-amber-400">
+                    Pensando
+                  </span>
+                  <span className="flex gap-0.5">
+                    <span className="size-1 animate-bounce rounded-full bg-amber-500 [animation-delay:0ms]" />
+                    <span className="size-1 animate-bounce rounded-full bg-amber-500 [animation-delay:150ms]" />
+                    <span className="size-1 animate-bounce rounded-full bg-amber-500 [animation-delay:300ms]" />
+                  </span>
                   <span className="text-zinc-400 dark:text-zinc-500">· Gerando resposta</span>
                 </div>
-                <p className="text-xs leading-relaxed whitespace-pre-wrap break-words text-zinc-600 dark:text-zinc-400 max-h-48 overflow-y-auto">
-                  {message.assistantThinking}
-                </p>
+
+                {/* Thinking content with animated shimmer background */}
+                {message.assistantThinking ? (
+                  <div className="relative overflow-hidden rounded-lg bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-800/40">
+                    <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-linear-to-r from-transparent via-amber-200/20 dark:via-amber-700/20 to-transparent" />
+                    <p className="relative text-xs leading-relaxed whitespace-pre-wrap wrap-break-word text-amber-800/80 dark:text-amber-200/80 max-h-48 overflow-y-auto p-3">
+                      {message.assistantThinking}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2.5">
+                    <div className="flex items-center gap-1">
+                      <span className="size-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-[pulse_1.2s_ease-in-out_infinite] [animation-delay:0ms]" />
+                      <span className="size-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-[pulse_1.2s_ease-in-out_infinite] [animation-delay:400ms]" />
+                      <span className="size-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500 animate-[pulse_1.2s_ease-in-out_infinite] [animation-delay:800ms]" />
+                    </div>
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 italic">
+                      Analisando dados do Silo...
+                    </span>
+                  </div>
+                )}
               </div>
             ) : null}
 
@@ -285,7 +307,7 @@ export default function MessageBubble({
                   <span
                     className={`icon-[lucide--brain] size-3.5 shrink-0 ${isThinkingExpanded ? "text-amber-500" : "text-zinc-400 dark:text-zinc-500"}`}
                   />
-                  <span>Raciocínio da IA</span>
+                  <span>Raciocínio de {message.assistantGeneration?.model ?? "IA"}</span>
                   <span
                     className={`icon-[lucide--chevron-down] size-3 shrink-0 transition-transform duration-200 ${
                       isThinkingExpanded ? "rotate-180" : ""
@@ -314,38 +336,49 @@ export default function MessageBubble({
               </div>
             )}
 
-            {/* Timestamp e status de leitura */}
+            {/* Timestamp e ações — linha única */}
             <div
-              className={`flex items-center mt-2 text-[10px] ${isOwnMessageFinal ? "text-blue-200" : "text-zinc-400 dark:text-zinc-500"}`}
+              className={`flex items-center justify-between mt-2 text-[10px] ${isOwnMessageFinal ? "text-blue-200" : "text-zinc-400 dark:text-zinc-500"}`}
             >
-              <span>{timeDisplay}</span>
+              {/* Lado esquerdo: timestamp + status */}
+              <div className="flex items-center gap-1">
+                <span>{timeDisplay}</span>
 
-              {/* Status de entrega/leitura */}
-              <div className="flex items-center">
-                {renderReadStatus()}
-                {/* Contador de leitura para grupos (apenas mensagens próprias) */}
+                {/* Footer do assistente na mesma linha */}
+                {showAssistantFooter && !isStreaming && !isOwnMessageFinal ? (
+                  <span className="truncate ml-1 px-1">
+                    · <span>{formatAssistantFooter(message.assistantGeneration, hasThinking)}</span>
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Lado direito: botão Excluir (só para mensagens do usuário) */}
+              <div className="flex items-center gap-1">
+                {onDelete && isOwnMessageFinal && !isStreaming && !message.deletedAt ? (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(message.id)}
+                    className={`text-[10px] transition-all flex items-center gap-1 opacity-0 group-hover:opacity-100 hover:scale-105 ${isOwnMessageFinal ? "text-blue-200 hover:text-red-300" : "text-zinc-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400"}`}
+                    title="Excluir mensagem e respostas seguintes"
+                  >
+                    <span className="icon-[lucide--trash-2] size-3" />
+                    <span>Excluir</span>
+                  </button>
+                ) : null}
+
+                {/* Status de leitura para grupos */}
                 {isOwnMessageFinal &&
                   message.messageType === "groupMessage" &&
                   totalParticipants > 1 &&
                   readCount > 0 && (
-                    <span className="opacity-75">
+                    <span className="opacity-75 ml-1">
                       {readCount}/{totalParticipants}
                     </span>
                   )}
               </div>
-
-              {/* Footer do assistente na mesma linha, separado por · */}
-              {showAssistantFooter && !isStreaming && !isOwnMessageFinal ? (
-                <span className="truncate">
-                  <span className="mx-1 px-1">·</span>
-                  <span>
-                    {formatAssistantFooter(message.assistantGeneration, hasThinking)}
-                  </span>
-                </span>
-              ) : null}
             </div>
 
-            {/* Footer separado para mensagens próprias quando aplicável */}
+            {/* Footer separado para mensagens próprias com info do assistente */}
             {showAssistantFooter && !isStreaming && isOwnMessageFinal ? (
               <div className="mt-2 text-[10px] leading-tight text-zinc-400 dark:text-zinc-500">
                 {formatAssistantFooter(message.assistantGeneration, hasThinking)}
