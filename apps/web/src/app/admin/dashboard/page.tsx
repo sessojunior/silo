@@ -467,7 +467,7 @@ export default function DashboardPage() {
                   <p className="wrap-break-word">
                     {summary.recentCount === 0 ? (
                       <span className="text-green-600 dark:text-green-400 font-semibold">
-                        ?? Excelente! Não houve problemas nos últimos 7 dias.
+                        Excelente! Não houve problemas nos últimos 7 dias.
                       </span>
                     ) : summary.percentChange === 0 ? (
                       <>
@@ -528,7 +528,6 @@ export default function DashboardPage() {
                   </p>
 
                   <p className="text-sm wrap-break-word text-zinc-600 dark:text-zinc-400 pt-5 border-t border-zinc-200 dark:border-zinc-700">
-                    <span className="text-lg">??</span>
                     <span>Consulte os </span>
                     <Link
                       href="./reports/availability"

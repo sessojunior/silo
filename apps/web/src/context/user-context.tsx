@@ -6,7 +6,6 @@ import React, {
   useState,
   useCallback,
   useEffect,
-  useRef,
 } from "react";
 import { config } from "@/lib/config";
 import type { ApiResponse } from "@/lib/api-response";
@@ -183,9 +182,6 @@ export function UserProvider({
   const [isAdmin, setIsAdmin] = useState(initialData?.isAdmin ?? false);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
-  // Rastreia se o usuário já esteve autenticado (para decidir se redireciona no 401)
-  const wasAuthenticatedRef = useRef(Boolean(initialData));
-
   // === REDIRECIONAMENTO AO PERDER AUTENTICAÇÃO ===
 
   const redirectToLogin = useCallback(() => {
@@ -196,9 +192,9 @@ export function UserProvider({
   }, []);
 
   useEffect(() => {
-    // Se o usuário estava autenticado (initialData ou user já foi setado)
-    // e agora user é null E loading é false, redireciona
-    if (!loading && !user && wasAuthenticatedRef.current) {
+    // Quando o carregamento terminar e o usuário não estiver autenticado,
+    // redireciona para a página de login (independente de já ter estado logado antes)
+    if (!loading && !user) {
       redirectToLogin();
     }
   }, [user, loading, redirectToLogin]);
@@ -246,7 +242,6 @@ export function UserProvider({
       // Normalize permissions to simplified model (view/manage)
       setPermissions(canonicalizePermissions(api?.data?.permissions ?? {}));
       setIsAdmin(api?.data?.isAdmin ?? false);
-      wasAuthenticatedRef.current = true;
       return userData;
     } catch (err) {
       console.error("❌ [CONTEXT_USER] Erro ao buscar usuário:", {

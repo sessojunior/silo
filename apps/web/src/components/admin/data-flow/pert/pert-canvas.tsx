@@ -973,8 +973,14 @@ export function PertCanvas({ graph, ecflowRoot, selectedTaskId, onSelectTask }: 
     });
   }
 
-  function expandAllRows() {
-    setExpandedIds(buildInitialExpandedRows(rows));
+  const allExpanded = rows.filter((row) => row.hasChildren).every((row) => expandedIds.has(row.id));
+
+  function toggleExpandAllRows() {
+    if (allExpanded) {
+      setExpandedIds(new Set());
+    } else {
+      setExpandedIds(buildInitialExpandedRows(rows));
+    }
   }
 
   return (
@@ -1011,9 +1017,9 @@ export function PertCanvas({ graph, ecflowRoot, selectedTaskId, onSelectTask }: 
           style="bordered"
           className="h-10 w-10 px-0 py-0"
           icon="icon-[lucide--folder-tree]"
-          title="Expandir tudo"
-          aria-label="Expandir tudo"
-          onClick={expandAllRows}
+          title={allExpanded ? "Recolher tudo" : "Expandir tudo"}
+          aria-label={allExpanded ? "Recolher tudo" : "Expandir tudo"}
+          onClick={toggleExpandAllRows}
         />
         <div className="ml-auto flex items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
           <span>Últ. {lastUpdateLabel}</span>

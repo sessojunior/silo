@@ -229,8 +229,7 @@ export default function MonitoringRadarPanel({ radarGroups }: MonitoringRadarPan
             </p>
 
             <p className="flex justify-center text-sm text-zinc-600 dark:text-zinc-400">
-              <span className="icon-[lucide--alert-triangle] size-6" />
-              <span className="ml-1">
+              <span>
                 Clique em um radar para ver descricao, data do log, URL, atraso e status.
               </span>
             </p>
