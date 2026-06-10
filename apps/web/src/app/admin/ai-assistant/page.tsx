@@ -132,7 +132,7 @@ const buildAssistantMessage = (
   ...buildChatMessage(content, ASSISTANT_SENDER_ID, ASSISTANT_SENDER_NAME),
   assistantGeneration: assistantGeneration ?? null,
   assistantVisualization: assistantVisualization ?? null,
-  assistantThinking: assistantThinking ?? null,
+  assistantThinking: assistantThinking?.trim() || null,
 });
 
 const buildAssistantMessageContent = (
@@ -175,6 +175,7 @@ const mapThreadMessageToChatMessage = (
       message.content,
       message.generation,
       message.visualization,
+      message.thinking,
     );
   }
 
@@ -495,7 +496,7 @@ export default function AiAssistantPage() {
       );
 
       // Placeholder da resposta do assistente — será preenchido em tempo real via streaming SSE
-      const assistantPlaceholder = buildAssistantMessage("", undefined, undefined, "");
+      const assistantPlaceholder = buildAssistantMessage("", undefined, undefined, null);
 
       setMessagesByThread((current) => ({
         ...current,

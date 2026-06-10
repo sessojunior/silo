@@ -66,7 +66,7 @@ export function MessageInput({
             onChange={(e) => setMessageText(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder={placeholder}
-            className={`min-h-10 max-h-32 resize-none ${enableEmojiPicker ? "pr-12" : "pr-4"} rounded-lg border-zinc-300 dark:border-zinc-600 focus:border-blue-500 dark:focus:border-blue-400 transition-colors duration-200`}
+            className={`min-h-10 max-h-32 text-sm resize-none ${enableEmojiPicker ? "pr-12" : "pr-4"} rounded-lg border-zinc-300 dark:border-zinc-600 focus:border-blue-500 dark:focus:border-blue-400 transition-colors duration-200`}
             rows={1}
           />
 

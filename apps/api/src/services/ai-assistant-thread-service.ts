@@ -161,6 +161,10 @@ const buildAssistantMessageMetadata = (
     contextSummary: response.contextSummary,
   };
 
+  if (response.thinking) {
+    metadata.thinking = response.thinking;
+  }
+
   if (response.visualization) {
     metadata.visualization = response.visualization;
   }
@@ -295,6 +299,7 @@ const toThreadMessage = (
   senderUserId: message.senderUserId,
   senderName: message.senderName,
   content: message.content,
+  thinking: isRecord(message.metadata) ? (readStringValue(message.metadata.thinking) ?? undefined) : undefined,
   generation: normalizeThreadMessageGeneration(message),
   visualization: normalizeThreadMessageVisualization(message),
   createdAt: message.createdAt.toISOString(),

@@ -126,6 +126,7 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
         "Use sempre o contexto factual atual como fonte principal. O histórico da conversa serve apenas para continuidade e memória; se houver conflito, o contexto factual atual vence.",
         "Não invente números, nomes, eventos ou causas.",
         "Reescreva a resposta para ficar mais clara, mais útil e mais detalhada, sem alterar os fatos.",
+        "SEMPRE que a pergunta envolver dados de um período específico (dias, meses, horas), mencione explicitamente o período analisado na resposta, como por exemplo: 'nos últimos 30 dias', 'no recorte de 7 dias', 'de ontem', etc.",
         'Responda com um objeto JSON estrito, sem markdown, sem bloco de código e sem texto extra.',
         'Exemplo: {"thinking":"Analisando os dados, vejo que o BAM tem 0% de disponibilidade...","answer":"Resumo objetivo final.","contextSummary":"Contexto curto."}',
         "Retorne apenas JSON válido com as chaves thinking (opcional, só se houver raciocínio), answer e contextSummary.",

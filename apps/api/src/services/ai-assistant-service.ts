@@ -828,6 +828,7 @@ function buildModelsAnswer(
   ].filter((line): line is string => Boolean(line));
 
   const answer = [
+    `📅 **Período analisado:** ${periodLabel}.`,
     `No recorte ${periodLabel}, o Silo mostra ${availability.totalProducts} produtos monitorados, disponibilidade média de ${availability.avgAvailability}% e ${availability.totalInterventions} intervenções registradas.`,
     weakestProducts.length > 0
       ? `Os pontos mais sensíveis estão em ${formatList(weakestProducts)}.`
@@ -904,6 +905,7 @@ function buildProblemsAnswer(
     );
 
   const answer = [
+    `📅 **Período analisado:** ${periodLabel}.`,
     `No recorte ${periodLabel}, o Silo registrou ${problems.totalProblems} problemas e tempo médio de resolução de ${problems.avgResolutionHours.toFixed(1)} horas.`,
     categoryLines.length > 0
       ? `As categorias mais recorrentes são ${formatList(categoryLines)}.`
@@ -973,6 +975,7 @@ function buildProjectsAnswer(
       : null,
   ].filter((line): line is string => Boolean(line));
   const answer = [
+    `📅 **Período analisado:** ${periodLabel}.`,
     `No recorte ${periodLabel}, o Silo mostra ${projects.summary.totalProjects} projetos, progresso médio de ${projects.summary.avgProgress}% e ${projects.summary.totalTasks} tarefas observadas.`,
     lowerProgress.length > 0
       ? `Os projetos com menor avanço estão em ${formatList(lowerProgress)}.`
@@ -1035,6 +1038,7 @@ function buildPendingAnswer(
   ].filter((line): line is string => Boolean(line));
 
   const answer = [
+    `📅 **Período analisado:** ${periodLabel}.`,
     `No recorte ${periodLabel}, o Silo mostra ${projects.summary.totalProjects} projetos, ${projects.summary.totalTasks} tarefas observadas e ${openTaskCount} pendências em aberto.`,
     lowerProgress.length > 0
       ? `Os projetos com menor avanço estão em ${formatList(lowerProgress)}.`
@@ -1103,6 +1107,7 @@ function buildGeneralAnswer(
   ].filter((line): line is string => Boolean(line));
 
   const answer = [
+    `📅 **Período analisado:** ${periodLabel}.`,
     `Resumo geral ${periodLabel}: ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas, ${executive.summary.totalSolutions} soluções e ${executive.summary.totalProjects} projetos.`,
     `A disponibilidade média ${periodLabel} é de ${availability.avgAvailability}% e o relatório de problemas aponta ${problems.totalProblems} ocorrências com média de ${problems.avgResolutionHours.toFixed(1)} horas para resolução.`,
     weakProducts.length > 0
@@ -1149,6 +1154,7 @@ function buildReportsAnswer(
   periodLabel: string = "dos últimos 30 dias",
 ): AiAssistantMessageResponseDto {
   const answer = [
+    `📅 **Período analisado:** ${periodLabel}.`,
     "Se a dúvida é por onde começar, eu abriria nesta ordem: disponibilidade por produto, problemas mais frequentes e projetos/atividades.",
     `${periodLabel}, a operação tem ${executive.summary.totalProducts} produtos, ${executive.summary.totalProblems} problemas e disponibilidade média de ${availability.avgAvailability}%.`,
     `O relatório de problemas mostra ${problems.totalProblems} ocorrências e tempo médio de resolução de ${problems.avgResolutionHours.toFixed(1)} horas ${periodLabel}.`,

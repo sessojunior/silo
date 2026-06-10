@@ -54,6 +54,7 @@ export const AiAssistantThreadMessageSchema = z.object({
   senderUserId: z.string().nullable(),
   senderName: z.string(),
   content: z.string(),
+  thinking: z.string().optional(),
   generation: z.lazy(() => AiAssistantGenerationSchema).optional(),
   visualization: z.lazy(() => AiAssistantVisualizationSchema).optional(),
   createdAt: z.string(),
