@@ -42,7 +42,8 @@ const failure = (
 
 type ProductProblemRecord = typeof productProblem.$inferSelect;
 
-type ProductProblemListItem = ProductProblemRecord & {
+// Embedding é gerenciado via SQL puro — não faz parte da resposta da API
+type ProductProblemListItem = Omit<ProductProblemRecord, "embedding"> & {
   categoryName: string | null;
   categoryColor: string | null;
   userName: string | null;

@@ -61,4 +61,12 @@ server.listen(PORT, () => {
   console.log(`[api] Running on http://localhost:${PORT}`);
 });
 
+// Pré-aquece os embeddings dos escopos do assistente de IA em background.
+// Não bloqueia o boot — se falhar, a primeira requisição fará o warmup sob demanda.
+import("./services/ai-assistant-scope-embedding.js")
+  .then(({ warmupScopeEmbeddings }) => warmupScopeEmbeddings())
+  .catch((err) => {
+    console.warn("⚠️ [BOOT] Falha ao pré-aquecer embeddings de escopo:", err instanceof Error ? err.message : String(err));
+  });
+
 export default app;

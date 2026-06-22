@@ -9,7 +9,18 @@ import {
   date,
   uuid,
   jsonb,
+  customType,
 } from "drizzle-orm/pg-core";
+
+// Tipo customizado para coluna vector(768) do pgvector.
+// O Drizzle não tem tipo nativo para pgvector — usamos customType para que
+// o drizzle-kit push reconheça a coluna e NÃO a apague durante a sincronização.
+// Operações de leitura/escrita no vetor são feitas via SQL puro (db.execute).
+const vector768 = customType<{ data: number[] | null; driverData: string | null }>({
+  dataType() {
+    return "vector(768)";
+  },
+});
 
 // Grupos de usuários (categorias para futuro chat)
 export const group = pgTable("group", {
@@ -309,6 +320,8 @@ export const productProblem = pgTable(
     problemCategoryId: text("problem_category_id").references(
       () => productProblemCategory.id,
     ),
+    // Embedding para busca semântica (RAG). Gerenciado via SQL puro.
+    embedding: vector768("embedding"),
   },
   (table) => ({
     productIdx: index("idx_product_problem_product").on(table.productId),
@@ -341,6 +354,8 @@ export const productSolution = pgTable("product_solution", {
     .references(() => productProblem.id),
   description: text("description").notNull(),
   replyId: text("reply_id"),
+  // Embedding para busca semântica (RAG). Gerenciado via SQL puro.
+  embedding: vector768("embedding"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -528,6 +543,9 @@ export const aiAssistantMessage = pgTable(
     errorMessage: text("error_message"),
     content: text("content").notNull(),
     metadata: jsonb("metadata").notNull().default({}),
+    // Coluna gerenciada via SQL puro (pgvector). O Drizzle só a reconhece
+    // para evitar que o drizzle-kit push a apague durante a sincronização.
+    embedding: vector768("embedding"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

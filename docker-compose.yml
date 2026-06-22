@@ -1,6 +1,6 @@
 services:
   db:
-    image: ${SILO_POSTGRES_IMAGE:-postgres:17-alpine}
+    image: ${SILO_POSTGRES_IMAGE:-pgvector/pgvector:pg17}
     container_name: silo-db
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
@@ -36,7 +36,8 @@ services:
       KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH}
       PRODUCT_FLOW_API_KEY: ${PRODUCT_FLOW_API_KEY}
       OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct-q4_K_M}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
       OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
       OLLAMA_MAX_CONCURRENT_REQUESTS: ${OLLAMA_MAX_CONCURRENT_REQUESTS:-1}
       TZ: America/Sao_Paulo
@@ -57,7 +58,7 @@ services:
     environment:
       OLLAMA_HOST: 0.0.0.0:11434
       OLLAMA_KEEP_ALIVE: 24h
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct-q4_K_M}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
     command: ["serve"]
     volumes:
       - silo-ollama-data:/root/.ollama
@@ -83,7 +84,7 @@ services:
       KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-worker}
       KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq}
       OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b-instruct-q4_K_M}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
       OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
       TZ: America/Sao_Paulo
     depends_on:

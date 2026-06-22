@@ -30,6 +30,8 @@ type ComposeAssistantAnswerInput = {
   suggestedQuestions: string[];
   conversationHistory: OllamaChatMessage[];
   conversationMemory: string | null;
+  /** Contexto RAG: problemas e soluções similares encontrados por busca vetorial. */
+  ragContext?: string | null;
 };
 
 type ClassifyAssistantScopeInput = {
@@ -121,32 +123,26 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
     {
       role: "system",
       content: [
-        "Você é o assistente analítico do SILO.",
+        "Você é o analista operacional do SILO, sistema de gestão de produtos industriais.",
         "",
-        "O SILO é um sistema de gerenciamento de produtos industriais. Ele monitora modelos (produtos) em rodadas/turnos de produção, rastreando disponibilidade, intervenções, problemas, soluções, projetos e tarefas. O sistema acompanha execuções em tempo real, incidentes, causas, tendências operacionais, dashboards e relatórios executivos.",
+        "Seu trabalho é analisar os DADOS FORNECIDOS abaixo e responder à pergunta do usuário.",
+        "Os dados estão nos campos 'Dados operacionais' e 'Análise base'. USE-OS. Não os ignore.",
         "",
-        "Domínios de atuação do SILO:",
-        "- models: disponibilidade de modelos/produtos, intervenções por rodada/turno, sinais de rodada, eficácia de intervenções.",
-        "- problems: categorias de problema, incidências, falhas recorrentes, tempo de resolução, causas, impacto por produto.",
-        "- solutions: padrões de correção, soluções registradas, reincidência, eficácia de soluções aplicadas.",
-        "- pending: pendências em aberto, tarefas atrasadas, bloqueios, times sobrecarregados, prioridades.",
-        "- projects: andamento de projetos, progresso, atividades, tarefas por status, gargalos, prazos.",
-        "- reports: dashboards, relatórios executivos, visão consolidada, sumário do período, indicadores-chave.",
-        "- general: panorama amplo que mistura vários domínios — resumo do dia, cenário atual, visão executiva.",
+        "Regras CRÍTICAS:",
+        "- NUNCA invente números. Se os dados mostram 0 problemas, diga que não houve problemas.",
+        "- Se os dados forem insuficientes, diga o que falta, não invente.",
+        "- Compare período atual com anterior se disponível.",
+        "- Destaque o que piorou e o que melhorou.",
+        "- Responda em português brasileiro, linguagem direta de fábrica.",
+        "- NÃO repita o exemplo de formato como resposta real.",
         "",
-        "Regras de resposta:",
-        "SEMPRE que precisar raciocinar, analisar dados ou comparar informações, coloque esse raciocínio no campo thinking.",
-        "O campo answer deve conter APENAS a resposta final limpa, sem raciocínio, sem análise, sem passo a passo.",
-        "Nunca misture raciocínio com a resposta final.",
-        "Responda sempre em português brasileiro.",
-        "Use sempre o contexto factual atual como fonte principal. O histórico da conversa serve apenas para continuidade e memória; se houver conflito, o contexto factual atual vence.",
-        "Não invente números, nomes, eventos ou causas.",
-        "Reescreva a resposta para ficar mais clara, mais útil e mais detalhada, sem alterar os fatos.",
-        "SEMPRE que a pergunta envolver dados de um período específico (dias, meses, horas), mencione explicitamente o período analisado na resposta, como por exemplo: 'nos últimos 30 dias', 'no recorte de 7 dias', 'de ontem', etc.",
-        'Responda com um objeto JSON estrito, sem markdown, sem bloco de código e sem texto extra.',
-        'Exemplo: {"thinking":"Analisando os dados, vejo que o BAM tem 0% de disponibilidade...","answer":"Resumo objetivo final.","contextSummary":"Contexto curto."}',
-        "Retorne apenas JSON válido com as chaves thinking (opcional, só se houver raciocínio), answer e contextSummary.",
-      ].join(" "),
+        "Formato de saída (JSON estrito, sem markdown):",
+        '{"thinking":"raciocínio detalhado: analise os dados, compare períodos, identifique tendências e anomalias","answer":"resposta final objetiva","contextSummary":"resumo do contexto"}',
+        "",
+        "O campo thinking deve conter seu raciocínio COMPLETO: interprete os dados, compare valores, aponte o que mudou.",
+        "O campo answer deve conter apenas a conclusão final, sem repetir o raciocínio.",
+        "NÃO use o exemplo como resposta real — analise os dados fornecidos.",
+      ].join("\n"),
     },
     ...(memoryMessage ? [memoryMessage] : []),
     ...input.conversationHistory,
@@ -154,19 +150,19 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
       role: "user",
       content: [
         `Escopo: ${input.scope}`,
-        `Pergunta original: ${input.question}`,
+        `Pergunta: ${input.question}`,
         "",
-        "Resumo factual base:",
+        "Dados operacionais:",
         input.contextSummary,
         "",
-        "Resposta base para reescrita:",
+        "Análise base:",
         input.fallbackAnswer,
+        ...(input.ragContext
+          ? ["", "Contexto adicional (RAG):", input.ragContext]
+          : []),
         "",
-        "Citações disponíveis:",
+        "Citações:",
         citationLines.length > 0 ? citationLines : "- Nenhuma",
-        "",
-        "Perguntas sugeridas:",
-        suggestedQuestions.length > 0 ? suggestedQuestions : "- Nenhuma",
       ].join("\n"),
     },
   ];

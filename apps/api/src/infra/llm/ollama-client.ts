@@ -214,7 +214,7 @@ export async function chatWithOllama({
   messages,
   model = config.ollama.model,
   timeoutMs = config.ollama.timeoutMs,
-  think = true,
+  think = false,
 }: ChatOptions): Promise<{
   content: string;
   latencyMs: number;
@@ -225,6 +225,10 @@ export async function chatWithOllama({
     const resolvedContextLength = await resolveModelContextLength(model, timeoutMs);
     const startedAt = Date.now();
 
+    // Contexto limitado a 16K para reduzir prompt processing em CPU.
+    // O modelo 1.5B não precisa de 131K de janela para prompts de ~3K tokens.
+    const cappedContextLength = Math.min(resolvedContextLength, 16384);
+
     const buildChatBody = (useThink: boolean) =>
       JSON.stringify({
         model,
@@ -233,10 +237,12 @@ export async function chatWithOllama({
         stream: false,
         format: "json",
         options: {
-          temperature: 0.2,
-          top_p: 0.9,
-          num_predict: 2048,
-          num_ctx: resolvedContextLength,
+          temperature: 0.1,
+          top_p: 0.85,
+          num_predict: 512,
+          num_ctx: cappedContextLength,
+          repeat_penalty: 1.05,
+          seed: 42,
         },
       });
 
@@ -323,15 +329,20 @@ export async function* chatWithOllamaStream({
 }: ChatOptions): AsyncGenerator<OllamaStreamChunk> {
   const resolvedContextLength = await resolveModelContextLength(model, timeoutMs);
 
+  // Contexto limitado a 16K também no streaming.
+  const cappedContextLength = Math.min(resolvedContextLength, 16384);
+
   const body = JSON.stringify({
     model,
     messages,
     stream: true,
     options: {
-      temperature: 0.2,
-      top_p: 0.9,
-      num_predict: 2048,
-      num_ctx: resolvedContextLength,
+      temperature: 0.1,
+      top_p: 0.85,
+      num_predict: 512,
+      num_ctx: cappedContextLength,
+      repeat_penalty: 1.05,
+      seed: 42,
     },
   });
 

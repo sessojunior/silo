@@ -65,6 +65,7 @@ export function parsePeriod(query: Record<string, string | undefined>): DateRang
 
 /**
  * Gera relatório de disponibilidade de produtos
+ * Otimizado: 2 queries em vez de N+1 (uma para produtos, uma para TODAS as atividades)
  */
 export async function getAvailabilityReport(dateRange: DateRange) {
   const { start, end } = dateRange;
@@ -79,61 +80,74 @@ export async function getAvailabilityReport(dateRange: DateRange) {
     };
   }
 
-  const productsWithAvailability = await Promise.all(
-    products.map(async (prod) => {
-      const activities = await db
-        .select()
-        .from(productActivity)
-        .where(
-          and(
-            eq(productActivity.productId, prod.id),
-            gte(productActivity.date, start),
-            lte(productActivity.date, end),
-          ),
-        );
+  // Única query para todas as atividades do período, em vez de 1 por produto
+  const allActivities = await db
+    .select()
+    .from(productActivity)
+    .where(
+      and(
+        gte(productActivity.date, start),
+        lte(productActivity.date, end),
+      ),
+    );
 
-      const totalActivities = activities.length;
-      const completedActivities = activities.filter((a) => a.status === "completed").length;
-      const activeActivities = activities.filter((a) => a.status === "in_progress").length;
-      const failedActivities = activities.filter((a) => INCIDENT_STATUS.has(a.status)).length;
-      const interventionsCount = activities.filter((a) => typeof a.intervention === "string" && a.intervention.trim()).length;
+  // Agrupa atividades por productId em memória
+  const activitiesByProduct = new Map<string, typeof allActivities>();
+  for (const activity of allActivities) {
+    const list = activitiesByProduct.get(activity.productId);
+    if (list) {
+      list.push(activity);
+    } else {
+      activitiesByProduct.set(activity.productId, [activity]);
+    }
+  }
 
-      const availabilityPercentage = totalActivities > 0 ? Math.round((completedActivities / totalActivities) * 1000) / 10 : 0;
+  const productsWithAvailability = products.map((prod) => {
+    const activities = activitiesByProduct.get(prod.id) ?? [];
 
-      let productStatus = "active";
-      if (availabilityPercentage < 50) productStatus = "critical";
-      else if (availabilityPercentage < 70) productStatus = "warning";
-      else if (availabilityPercentage < 90) productStatus = "stable";
+    const totalActivities = activities.length;
+    const completedActivities = activities.filter((a) => a.status === "completed").length;
+    const activeActivities = activities.filter((a) => a.status === "in_progress").length;
+    const failedActivities = activities.filter((a) => INCIDENT_STATUS.has(a.status)).length;
+    const interventionsCount = activities.filter((a) => typeof a.intervention === "string" && a.intervention.trim()).length;
 
-      const activitiesWithIntervention = activities.filter((a) => typeof a.intervention === "string" && a.intervention.trim());
-      let latestInterventionAt: string | null = null;
-      let latestInterventionText: string | null = null;
-      if (activitiesWithIntervention.length > 0) {
-        const latest = [...activitiesWithIntervention].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
-        latestInterventionAt = formatDate(latest.date);
-        latestInterventionText = latest.intervention || null;
-      }
+    const availabilityPercentage = totalActivities > 0 ? Math.round((completedActivities / totalActivities) * 1000) / 10 : 0;
 
-      const lastActivityDate = activities.length > 0 ? [...activities].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date : null;
+    let productStatus = "active";
+    if (availabilityPercentage < 50) productStatus = "critical";
+    else if (availabilityPercentage < 70) productStatus = "warning";
+    else if (availabilityPercentage < 90) productStatus = "stable";
 
-      return {
-        id: prod.id,
-        name: prod.name,
-        slug: prod.slug,
-        description: prod.description,
-        status: productStatus,
-        totalActivities,
-        completedActivities,
-        activeActivities,
-        failedActivities,
-        interventionsCount,
-        latestInterventionAt,
-        latestInterventionText,
-        availabilityPercentage,
-        lastActivityDate,
-      };
-    }),
-  );
+    const activitiesWithIntervention = activities.filter((a) => typeof a.intervention === "string" && a.intervention.trim());
+    let latestInterventionAt: string | null = null;
+    let latestInterventionText: string | null = null;
+    if (activitiesWithIntervention.length > 0) {
+      const latest = [...activitiesWithIntervention].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0];
+      latestInterventionAt = formatDate(latest.date);
+      latestInterventionText = latest.intervention || null;
+    }
+
+    const lastActivityDate = activities.length > 0
+      ? [...activities].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
+      : null;
+
+    return {
+      id: prod.id,
+      name: prod.name,
+      slug: prod.slug,
+      description: prod.description,
+      status: productStatus,
+      totalActivities,
+      completedActivities,
+      activeActivities,
+      failedActivities,
+      interventionsCount,
+      latestInterventionAt,
+      latestInterventionText,
+      availabilityPercentage,
+      lastActivityDate,
+    };
+  });
 
   const totalProducts = productsWithAvailability.length;
   const avgAvailability = totalProducts > 0 ? Math.round((productsWithAvailability.reduce((s, p) => s + p.availabilityPercentage, 0) / totalProducts) * 10) / 10 : 0;

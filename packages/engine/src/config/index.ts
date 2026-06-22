@@ -115,9 +115,11 @@ export const config = {
 
     return {
       url,
-      model: rawModel.length > 0 ? rawModel : "qwen2.5:3b-instruct-q4_K_M",
+      model: rawModel.length > 0 ? rawModel : "qwen2.5:1.5b-instruct-q4_K_M",
+      embeddingModel:
+        (process.env.OLLAMA_EMBEDDING_MODEL || "nomic-embed-text:v1.5").trim(),
       timeoutMs:
-        Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 30000,
+        Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 60000,
       maxConcurrentRequests:
         Number.isFinite(maxConcurrentRequestsRaw) && maxConcurrentRequestsRaw > 0
           ? maxConcurrentRequestsRaw

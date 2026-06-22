@@ -296,6 +296,11 @@ export default function MessageBubble({
               </div>
             ) : null}
 
+            {/* Visualização (gráfico/imagem) — renderiza ANTES do raciocínio */}
+            {assistantVisualization ? (
+              <AssistantVisualizationBlock visualization={assistantVisualization} />
+            ) : null}
+
             {/* Raciocínio do modelo em accordion — só quando a resposta já chegou */}
             {hasThinking && !isStreaming && (
               <div className="mt-2 border-t border-zinc-200/60 dark:border-zinc-700/60 pt-2">
@@ -324,10 +329,6 @@ export default function MessageBubble({
               </div>
             )}
 
-            {assistantVisualization ? (
-              <AssistantVisualizationBlock visualization={assistantVisualization} />
-            ) : null}
-
             {/* Indicador de exclusão */}
             {message.deletedAt && (
               <div className="text-xs opacity-75 italic">
@@ -341,7 +342,7 @@ export default function MessageBubble({
               className={`flex items-center justify-between mt-2 text-[10px] ${isOwnMessageFinal ? "text-blue-200" : "text-zinc-400 dark:text-zinc-500"}`}
             >
               {/* Lado esquerdo: timestamp + status */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center">
                 <span>{timeDisplay}</span>
 
                 {/* Footer do assistente na mesma linha */}

@@ -26,6 +26,10 @@ import {
   answerAssistantMessage as generateAssistantMessage,
   getAssistantExamples,
 } from "./ai-assistant-service.js";
+import {
+  findCachedAssistantResponse,
+  saveAssistantResponseEmbedding,
+} from "./ai-assistant-cache-service.js";
 import type { OllamaChatMessage } from "../infra/llm/ollama-client.js";
 
 const ASSISTANT_SENDER_NAME = "Assistente de IA";
@@ -416,6 +420,102 @@ export async function sendAssistantMessage(
     throw new AssistantThreadNotFoundError();
   }
 
+  // Cache semântico: verifica se já existe resposta para pergunta similar.
+  // Se hit, retorna imediatamente sem chamar Ollama nem coletar dados.
+  if (!existingThread || existingThread.messageCount <= 4) {
+    // Só usa cache em threads novas ou com poucas mensagens
+    // (conversas longas têm contexto que o cache não captura)
+    const cached = await findCachedAssistantResponse(request.content);
+    if (cached) {
+      const now = new Date();
+      const threadTitle = buildThreadTitle(request.content);
+
+      const thread = await db.transaction(async (tx) => {
+        if (!existingThread) {
+          const [insertedThread] = await tx
+            .insert(aiAssistantThread)
+            .values({
+              id: requestedThreadId,
+              userId: user.id,
+              title: threadTitle,
+              lastMessagePreview: buildMessagePreview(cached.content),
+              messageCount: 2,
+              lastMessageAt: now,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          return insertedThread;
+        }
+
+        const [updatedThread] = await tx
+          .update(aiAssistantThread)
+          .set({
+            title: existingThread.title === DEFAULT_THREAD_TITLE ? threadTitle : existingThread.title,
+            lastMessagePreview: buildMessagePreview(cached.content),
+            messageCount: sql`${aiAssistantThread.messageCount} + 2`,
+            lastMessageAt: now,
+            updatedAt: now,
+          })
+          .where(and(eq(aiAssistantThread.id, existingThread.id), eq(aiAssistantThread.userId, user.id)))
+          .returning();
+
+        return updatedThread;
+      });
+
+      // Salva a mensagem do usuário e a resposta cacheada como mensagem do assistente
+      await db.insert(aiAssistantMessage).values([
+        {
+          threadId: thread.id,
+          senderType: "user",
+          senderUserId: user.id,
+          senderName: user.name,
+          content: request.content.trim(),
+          createdAt: now,
+          metadata: {},
+        },
+        {
+          threadId: thread.id,
+          senderType: "assistant",
+          senderUserId: null,
+          senderName: ASSISTANT_SENDER_NAME,
+          createdAt: new Date(now.getTime() + 1),
+          provider: "cache",
+          model: "semantic-cache",
+          generationStatus: "success",
+          latencyMs: 0,
+          content: cached.content,
+          metadata: {
+            ...cached.metadata,
+            cached: true,
+            cacheSimilarity: cached.similarity,
+          },
+        },
+      ]);
+
+      return {
+        threadId: thread.id,
+        thread: toThreadSummary(thread),
+        scope: (cached.metadata.scope as AiAssistantScope) ?? "general",
+        isInScope: (cached.metadata.isInScope as boolean) ?? true,
+        refusalReason: (cached.metadata.refusalReason as string) ?? null,
+        answer: cached.content,
+        thinking: cached.thinking ?? undefined,
+        messageContent: cached.content,
+        suggestedQuestions: (cached.metadata.suggestedQuestions as string[]) ?? [],
+        citations: (cached.metadata.citations as AiAssistantMessageResponseDto["citations"]) ?? [],
+        contextSummary: (cached.metadata.contextSummary as string) ?? "",
+        generation: {
+          provider: "cache",
+          model: "semantic-cache",
+          status: "success",
+          latencyMs: 0,
+          errorMessage: null,
+        } satisfies AiAssistantGenerationDto,
+      };
+    }
+  }
+
   const conversationContext = existingThread
     ? await loadConversationContext(existingThread.id)
     : {
@@ -444,6 +544,8 @@ export async function sendAssistantMessage(
       : existingThread.title
     : buildThreadTitle(request.content);
 
+  let assistantMessageId: string | null = null;
+
   const thread = await db.transaction(async (tx) => {
     const userMessageCreatedAt = now;
     const assistantMessageCreatedAt = new Date(now.getTime() + 1);
@@ -463,8 +565,13 @@ export async function sendAssistantMessage(
         })
         .returning();
 
+      // Gera IDs explícitos para capturar o ID da mensagem do assistente
+      const generatedId = randomUUID();
+      assistantMessageId = generatedId;
+
       await tx.insert(aiAssistantMessage).values([
         {
+          id: randomUUID(),
           threadId: insertedThread.id,
           senderType: "user",
           senderUserId: user.id,
@@ -474,6 +581,7 @@ export async function sendAssistantMessage(
           metadata: {},
         },
         {
+          id: generatedId,
           threadId: insertedThread.id,
           senderType: "assistant",
           senderUserId: null,
@@ -492,8 +600,13 @@ export async function sendAssistantMessage(
       return insertedThread;
     }
 
+    // Gera IDs explícitos para capturar o ID da mensagem do assistente
+    const generatedId = randomUUID();
+    assistantMessageId = generatedId;
+
     await tx.insert(aiAssistantMessage).values([
       {
+        id: randomUUID(),
         threadId: existingThread.id,
         senderType: "user",
         senderUserId: user.id,
@@ -503,6 +616,7 @@ export async function sendAssistantMessage(
         metadata: {},
       },
       {
+        id: generatedId,
         threadId: existingThread.id,
         senderType: "assistant",
         senderUserId: null,
@@ -533,6 +647,14 @@ export async function sendAssistantMessage(
     return updatedThread;
   });
 
+  // Salva o embedding da resposta para cache semântico futuro.
+  // Fire-and-forget: não bloqueia a resposta para o cliente.
+  if (assistantMessageId && generatedResponse.answer) {
+    saveAssistantResponseEmbedding(assistantMessageId, generatedResponse.answer).catch((err) => {
+      console.warn("⚠️ [CACHE] Falha ao persistir embedding:", err instanceof Error ? err.message : String(err));
+    });
+  }
+
   return {
     ...generatedResponse,
     threadId: thread.id,
@@ -559,6 +681,92 @@ export async function sendAssistantMessageStream(
     throw new AssistantThreadNotFoundError();
   }
 
+  // Cache semântico: verifica se já existe resposta para pergunta similar.
+  if (!existingThread || existingThread.messageCount <= 4) {
+    const cached = await findCachedAssistantResponse(request.content);
+    if (cached) {
+      sendEvent("connected", {});
+      sendEvent("scope", { scope: cached.metadata.scope ?? "general" });
+      sendEvent("data", {
+        answer: cached.content,
+        thinking: cached.thinking,
+        scope: cached.metadata.scope ?? "general",
+        isInScope: cached.metadata.isInScope ?? true,
+        suggestedQuestions: cached.metadata.suggestedQuestions ?? [],
+        citations: cached.metadata.citations ?? [],
+      });
+      sendEvent("complete", {});
+
+      // Persiste a mensagem cacheada
+      const now = new Date();
+      const threadTitle = buildThreadTitle(request.content);
+
+      const thread = await db.transaction(async (tx) => {
+        if (!existingThread) {
+          const [insertedThread] = await tx
+            .insert(aiAssistantThread)
+            .values({
+              id: requestedThreadId,
+              userId: user.id,
+              title: threadTitle,
+              lastMessagePreview: buildMessagePreview(cached.content),
+              messageCount: 2,
+              lastMessageAt: now,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .returning();
+          return insertedThread;
+        }
+
+        const [updatedThread] = await tx
+          .update(aiAssistantThread)
+          .set({
+            title: existingThread.title === DEFAULT_THREAD_TITLE ? threadTitle : existingThread.title,
+            lastMessagePreview: buildMessagePreview(cached.content),
+            messageCount: sql`${aiAssistantThread.messageCount} + 2`,
+            lastMessageAt: now,
+            updatedAt: now,
+          })
+          .where(and(eq(aiAssistantThread.id, existingThread.id), eq(aiAssistantThread.userId, user.id)))
+          .returning();
+
+        return updatedThread;
+      });
+
+      await db.insert(aiAssistantMessage).values([
+        {
+          threadId: thread.id,
+          senderType: "user",
+          senderUserId: user.id,
+          senderName: user.name,
+          content: request.content.trim(),
+          createdAt: now,
+          metadata: {},
+        },
+        {
+          threadId: thread.id,
+          senderType: "assistant",
+          senderUserId: null,
+          senderName: ASSISTANT_SENDER_NAME,
+          createdAt: new Date(now.getTime() + 1),
+          provider: "cache",
+          model: "semantic-cache",
+          generationStatus: "success",
+          latencyMs: 0,
+          content: cached.content,
+          metadata: {
+            ...cached.metadata,
+            cached: true,
+            cacheSimilarity: cached.similarity,
+          },
+        },
+      ]);
+
+      return;
+    }
+  }
+
   const conversationContext = existingThread
     ? await loadConversationContext(existingThread.id)
     : {
@@ -567,6 +775,8 @@ export async function sendAssistantMessageStream(
         lastKnownScope: null,
       };
 
+  sendEvent("connected", {});
+
   // Etapa 1: Classificação de escopo + coleta de dados (não-streaming)
   const generatedResponse = await generateAssistantMessage({
     threadId: requestedThreadId,
@@ -574,6 +784,11 @@ export async function sendAssistantMessageStream(
     historyMessages: conversationContext.historyMessages,
     conversationMemory: conversationContext.conversationMemory,
     lastKnownScope: conversationContext.lastKnownScope,
+  });
+
+  sendEvent("scope", {
+    scope: generatedResponse.scope,
+    isInScope: generatedResponse.isInScope,
   });
 
   // Etapa 2: Refinamento via Ollama (streaming)
@@ -669,6 +884,8 @@ export async function sendAssistantMessageStream(
       : existingThread.title
     : buildThreadTitle(request.content);
 
+  let streamedAssistantMessageId: string | null = null;
+
   await db.transaction(async (tx) => {
     const userMessageCreatedAt = now;
     const assistantMessageCreatedAt = new Date(now.getTime() + 1);
@@ -688,8 +905,13 @@ export async function sendAssistantMessageStream(
         })
         .returning();
 
+      // Gera IDs explícitos para capturar o ID da mensagem do assistente
+      const generatedId = randomUUID();
+      streamedAssistantMessageId = generatedId;
+
       await tx.insert(aiAssistantMessage).values([
         {
+          id: randomUUID(),
           threadId: insertedThread.id,
           senderType: "user",
           senderUserId: user.id,
@@ -699,6 +921,7 @@ export async function sendAssistantMessageStream(
           metadata: {},
         },
         {
+          id: generatedId,
           threadId: insertedThread.id,
           senderType: "assistant",
           senderUserId: null,
@@ -716,8 +939,13 @@ export async function sendAssistantMessageStream(
       return;
     }
 
+    // Gera IDs explícitos para capturar o ID da mensagem do assistente
+    const generatedId2 = randomUUID();
+    streamedAssistantMessageId = generatedId2;
+
     await tx.insert(aiAssistantMessage).values([
       {
+        id: randomUUID(),
         threadId: existingThread.id,
         senderType: "user",
         senderUserId: user.id,
@@ -727,6 +955,7 @@ export async function sendAssistantMessageStream(
         metadata: {},
       },
       {
+        id: generatedId2,
         threadId: existingThread.id,
         senderType: "assistant",
         senderUserId: null,
@@ -753,6 +982,14 @@ export async function sendAssistantMessageStream(
       })
       .where(and(eq(aiAssistantThread.id, existingThread.id), eq(aiAssistantThread.userId, user.id)));
   });
+
+  // Salva o embedding da resposta para cache semântico futuro.
+  // Fire-and-forget: não bloqueia o streaming.
+  if (streamedAssistantMessageId && streamingAnswer) {
+    saveAssistantResponseEmbedding(streamedAssistantMessageId, streamingAnswer).catch((err) => {
+      console.warn("⚠️ [CACHE] Falha ao persistir embedding (stream):", err instanceof Error ? err.message : String(err));
+    });
+  }
 }
 
 // ─── Delete / Exclusão de mensagens e threads ───────────────────
