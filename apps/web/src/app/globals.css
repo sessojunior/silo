@@ -9,11 +9,12 @@
 /* Tailwind */
 @import "tailwindcss";
 
-/* Include UI package components for Tailwind class detection */
-@source "../../../../packages/ui/src";
+/* Include engine package for Tailwind class detection (markdown styles, etc.) */
+@source "../../../../packages/engine/src";
 
 /* Plugins do Tailwind */
 @plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
 
 /* Plugin: Iconify: https://iconify.design/docs/usage/css/tailwind/tailwind4/ */
 @plugin "@iconify/tailwind4" {

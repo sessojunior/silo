@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth/server";
+import { config } from "@/lib/config";
 import { ChatProvider } from "@/context/chat-context";
 import {
   UserProvider,
@@ -52,8 +53,7 @@ export default async function AdminLayout({
         .map((c) => `${c.name}=${c.value}`)
         .join("; ");
 
-      const apiOrigin = process.env.API_URL || "http://api:4000";
-      const res = await fetch(`${apiOrigin}/api/users/profile`, {
+      const res = await fetch(config.getApiUrl("/api/users/profile"), {
         headers: { cookie: cookieHeader },
         cache: "no-store",
       });

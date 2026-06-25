@@ -5,7 +5,7 @@ import { toast } from "@silo/engine/format/toast";
 import { config } from "@/lib/config";
 import Button from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
-import { getMarkdownClasses } from "@silo/engine/format/markdown";
+import type { Components } from "react-markdown";
 import Offcanvas from "@/components/ui/offcanvas";
 import Label from "@/components/ui/label";
 import LoadingSpinner from "@/components/ui/loading-spinner";
@@ -17,6 +17,51 @@ interface HelpDoc {
   createdAt: string;
   updatedAt: string;
 }
+
+const normalizeMarkdown = (value: string) =>
+  value
+    .replace(/\r\n?/g, "\n")
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\n");
+
+const helpMarkdownClasses = [
+  "max-w-none text-base text-zinc-700 dark:text-zinc-300",
+  "[&_h1]:mb-4 [&_h1]:mt-8 [&_h1]:border-b [&_h1]:border-zinc-200 [&_h1]:pb-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:leading-tight [&_h1]:text-zinc-950 dark:[&_h1]:border-zinc-700 dark:[&_h1]:text-zinc-50",
+  "[&>h1:first-child]:mt-0",
+  "[&_h2]:mb-3 [&_h2]:mt-7 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:leading-snug [&_h2]:text-zinc-900 dark:[&_h2]:text-zinc-100",
+  "[&_h3]:mb-2 [&_h3]:mt-5 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:leading-snug [&_h3]:text-zinc-800 dark:[&_h3]:text-zinc-100",
+  "[&_p]:my-4 [&_p]:leading-7",
+  "[&_ul]:my-4 [&_ul]:ml-6 [&_ul]:list-disc [&_ul]:space-y-2",
+  "[&_ol]:my-4 [&_ol]:ml-6 [&_ol]:list-decimal [&_ol]:space-y-2",
+  "[&_li]:pl-1 [&_li]:leading-7",
+  "[&_strong]:font-semibold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100",
+  "[&_a]:font-medium [&_a]:text-blue-700 [&_a]:underline [&_a]:decoration-blue-300 [&_a]:underline-offset-4 [&_a:hover]:text-blue-800 dark:[&_a]:text-blue-400 dark:[&_a]:decoration-blue-700 dark:[&_a:hover]:text-blue-300",
+  "[&_blockquote]:my-5 [&_blockquote]:border-l-4 [&_blockquote]:border-blue-300 [&_blockquote]:bg-blue-50/70 [&_blockquote]:px-4 [&_blockquote]:py-2 dark:[&_blockquote]:border-blue-700 dark:[&_blockquote]:bg-blue-950/30",
+  "[&_pre]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-zinc-950 [&_pre]:p-4 [&_pre]:text-sm [&_pre]:text-zinc-50",
+  "[&_code]:rounded [&_code]:bg-zinc-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-sm [&_code]:text-zinc-900 dark:[&_code]:bg-zinc-800 dark:[&_code]:text-zinc-100",
+  "[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-zinc-50",
+  "[&_table]:my-6 [&_table]:min-w-full [&_table]:divide-y [&_table]:divide-zinc-200 [&_table]:text-sm dark:[&_table]:divide-zinc-700",
+  "[&_th]:bg-zinc-50 [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:font-semibold [&_th]:text-zinc-900 dark:[&_th]:bg-zinc-800 dark:[&_th]:text-zinc-100",
+  "[&_td]:border-t [&_td]:border-zinc-200 [&_td]:px-4 [&_td]:py-3 dark:[&_td]:border-zinc-700",
+].join(" ");
+
+const markdownComponents: Components = {
+  a: ({ children, href }) => (
+    <a
+      href={href}
+      target={href?.startsWith("http") ? "_blank" : undefined}
+      rel={href?.startsWith("http") ? "noreferrer" : undefined}
+    >
+      {children}
+    </a>
+  ),
+  table: ({ children }) => (
+    <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+      <table>{children}</table>
+    </div>
+  ),
+};
 
 export default function HelpPage() {
   const smokeMode = config.isSmokeMode;
@@ -46,8 +91,9 @@ export default function HelpPage() {
       const data = await response.json();
 
       if (data.success) {
-        setHelpDoc(data.data);
-        setFormContent(data.data.description || "");
+        const description = normalizeMarkdown(data.data.description || "");
+        setHelpDoc({ ...data.data, description });
+        setFormContent(description);
       } else {
         toast({
           type: "error",
@@ -95,7 +141,7 @@ export default function HelpPage() {
     const titles: Array<{ id: string; title: string; level: number }> = [];
 
     lines.forEach((line, index) => {
-      const match = line.match(/^(#{1,3})\s+(.+)$/);
+      const match = line.match(/^\s{0,3}(#{1,3})\s+(.+)$/);
       if (match) {
         titles.push({
           id: `title-${index}`,
@@ -108,8 +154,12 @@ export default function HelpPage() {
     return titles;
   };
 
-  const titles = helpDoc?.description?.trim()
-    ? extractTitles(helpDoc.description)
+  const markdownContent = helpDoc?.description
+    ? normalizeMarkdown(helpDoc.description)
+    : "";
+
+  const titles = markdownContent.trim()
+    ? extractTitles(markdownContent)
     : [];
 
   // Scroll para título
@@ -234,17 +284,16 @@ export default function HelpPage() {
       {/* Conteúdo principal */}
       <div className="flex-1 flex flex-col min-w-0">
         <div className="scrollbar flex-1 overflow-y-auto bg-white dark:bg-zinc-800">
-          {helpDoc?.description?.trim() ? (
+          {markdownContent.trim() ? (
             <div className="p-8">
               {/* Conteúdo renderizado apenas como visualização */}
               <div
                 id="help-content"
-                className={getMarkdownClasses(
-                  "base",
-                  "text-zinc-800 dark:text-zinc-200",
-                )}
+                className={helpMarkdownClasses}
               >
-                <ReactMarkdown>{helpDoc.description}</ReactMarkdown>
+                <ReactMarkdown components={markdownComponents}>
+                  {markdownContent}
+                </ReactMarkdown>
               </div>
             </div>
           ) : (

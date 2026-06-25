@@ -105,12 +105,16 @@ export const config = {
    */
   get serverApiOrigin(): string {
     const raw = (process.env.API_URL || "").trim();
-    if (!raw) return this.apiOrigin;
+    if (!raw) {
+      if (this.apiOrigin) return this.apiOrigin;
+      return process.env.NODE_ENV === "production" ? "" : "http://localhost:4000";
+    }
 
     try {
       return new URL(raw).origin;
     } catch {
-      return this.apiOrigin;
+      if (this.apiOrigin) return this.apiOrigin;
+      return process.env.NODE_ENV === "production" ? "" : "http://localhost:4000";
     }
   },
 
