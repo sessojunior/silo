@@ -31,7 +31,7 @@ export const config = {
    * Versão exibida na interface do web.
    * Mantida como literal no código para evitar dependência de env ou CI.
    */
-  appVersion: "26.5.17.4",
+  appVersion: "0.266",
 
   get isSmokeMode(): boolean {
     if (typeof window !== "undefined" && window.__SILO_SMOKE_MODE__ === true) {
