@@ -223,8 +223,8 @@ export default function GroupsPage() {
         {/* Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-            <div className="flex items-center gap-2">
-              <span className="icon-[lucide--users] size-5 text-blue-600" />
+            <div className="flex items-center gap-3">
+              <span className="icon-[lucide--users] size-10 text-blue-600" />
               <div>
                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                   Total de Grupos
@@ -236,8 +236,8 @@ export default function GroupsPage() {
             </div>
           </div>
           <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-            <div className="flex items-center gap-2">
-              <span className="icon-[lucide--shield-check] size-5 text-green-600" />
+            <div className="flex items-center gap-3">
+              <span className="icon-[lucide--shield-check] size-10 text-green-600" />
               <div>
                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                   Grupos Ativos
@@ -249,8 +249,8 @@ export default function GroupsPage() {
             </div>
           </div>
           <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-            <div className="flex items-center gap-2">
-              <span className="icon-[lucide--user-check] size-5 text-purple-600" />
+            <div className="flex items-center gap-3">
+              <span className="icon-[lucide--user-check] size-10 text-purple-600" />
               <div>
                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                   Total Usuários
@@ -262,8 +262,8 @@ export default function GroupsPage() {
             </div>
           </div>
           <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-            <div className="flex items-center gap-2">
-              <span className="icon-[lucide--star] size-5 text-amber-600" />
+            <div className="flex items-center gap-3">
+              <span className="icon-[lucide--star] size-10 text-amber-600" />
               <div>
                 <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                   Grupo Padrão

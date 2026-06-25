@@ -63,13 +63,19 @@ export function ExportPdfButton({
 
       const { url, filename } = json.data;
 
+      // Normaliza a URL do PDF: o backend pode retornar /uploads/serve/... (legado)
+      // mas a rota correta de serve é /api/upload/serve/...
+      const normalizedUrl = url.startsWith("/uploads/serve/")
+        ? url.replace("/uploads/serve/", "/api/upload/serve/")
+        : url;
+
       if (onExported) {
-        onExported(url, filename);
+        onExported(normalizedUrl, filename);
       }
 
       if (openAfterExport) {
         // Abre o PDF em nova aba usando a URL pública
-        const publicUrl = config.getPublicPath(url);
+        const publicUrl = config.getPublicPath(normalizedUrl);
         window.open(publicUrl, "_blank", "noopener,noreferrer");
       }
     } catch (err) {
@@ -88,6 +94,7 @@ export function ExportPdfButton({
   return (
     <div className="relative">
       <Button
+        className="shrink-0 whitespace-nowrap"
         style="bordered"
         icon={
           loading

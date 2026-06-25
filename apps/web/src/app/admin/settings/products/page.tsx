@@ -328,8 +328,8 @@ export default function SettingsProductsPage() {
           {/* Estatísticas */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-              <div className="flex items-center gap-2">
-                <span className="icon-[lucide--package] size-5 text-blue-600" />
+              <div className="flex items-center gap-3">
+                <span className="icon-[lucide--package] size-10 text-blue-600" />
                 <div>
                   <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                     Total de Produtos
@@ -341,8 +341,8 @@ export default function SettingsProductsPage() {
               </div>
             </div>
             <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-              <div className="flex items-center gap-2">
-                <span className="icon-[lucide--check-circle] size-5 text-green-600" />
+              <div className="flex items-center gap-3">
+                <span className="icon-[lucide--check-circle] size-10 text-green-600" />
                 <div>
                   <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                     Produtos Disponíveis
@@ -354,8 +354,8 @@ export default function SettingsProductsPage() {
               </div>
             </div>
             <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-              <div className="flex items-center gap-2">
-                <span className="icon-[lucide--x-circle] size-5 text-red-600" />
+              <div className="flex items-center gap-3">
+                <span className="icon-[lucide--x-circle] size-10 text-red-600" />
                 <div>
                   <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                     Produtos Indisponíveis

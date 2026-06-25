@@ -53,8 +53,8 @@ export default function ProjectStatsCards({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Card 1: Total de Projetos */}
       <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-        <div className="flex items-center gap-2">
-          <span className="icon-[lucide--folder] size-5 text-blue-600" />
+        <div className="flex items-center gap-3">
+          <span className="icon-[lucide--folder] size-10 text-blue-600" />
           <div>
             <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
               Total de Projetos
@@ -68,8 +68,8 @@ export default function ProjectStatsCards({
 
       {/* Card 2: Projetos Ativos */}
       <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-        <div className="flex items-center gap-2">
-          <span className="icon-[lucide--play-circle] size-5 text-green-600" />
+        <div className="flex items-center gap-3">
+          <span className="icon-[lucide--play-circle] size-10 text-green-600" />
           <div>
             <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
               Projetos Ativos
@@ -83,8 +83,8 @@ export default function ProjectStatsCards({
 
       {/* Card 3: Projetos Finalizados */}
       <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-        <div className="flex items-center gap-2">
-          <span className="icon-[lucide--check-circle] size-5 text-purple-600" />
+        <div className="flex items-center gap-3">
+          <span className="icon-[lucide--check-circle] size-10 text-purple-600" />
           <div>
             <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
               Finalizados
@@ -98,8 +98,8 @@ export default function ProjectStatsCards({
 
       {/* Card 4: Progresso Médio */}
       <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
-        <div className="flex items-center gap-2">
-          <span className="icon-[lucide--trending-up] size-5 text-orange-600" />
+        <div className="flex items-center gap-3">
+          <span className="icon-[lucide--trending-up] size-10 text-orange-600" />
           <div>
             <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
               Progresso Médio

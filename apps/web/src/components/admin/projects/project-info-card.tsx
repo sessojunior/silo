@@ -66,7 +66,7 @@ export default function ProjectInfoCard({ project }: ProjectInfoCardProps) {
       {/* Data de Início */}
       <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 px-4 py-3">
         <div className="flex items-center gap-3">
-          <span className="icon-[lucide--calendar-days] size-4 text-zinc-400" />
+          <span className="icon-[lucide--calendar-days] size-5 text-zinc-400" />
           <div>
             <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
               Início
@@ -83,7 +83,7 @@ export default function ProjectInfoCard({ project }: ProjectInfoCardProps) {
       {/* Data de Fim */}
       <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 px-4 py-3">
         <div className="flex items-center gap-3">
-          <span className="icon-[lucide--calendar-check] size-4 text-zinc-400" />
+          <span className="icon-[lucide--calendar-check] size-5 text-zinc-400" />
           <div>
             <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
               Fim

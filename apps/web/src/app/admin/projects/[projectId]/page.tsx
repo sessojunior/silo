@@ -762,7 +762,7 @@ export default function ProjectDetailsPage() {
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handleGoToKanban(activity.id)}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 shrink-0 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                             title="Abrir Kanban"
                           >
                             <span className="icon-[lucide--kanban-square] size-4 text-blue-600 dark:text-blue-400" />

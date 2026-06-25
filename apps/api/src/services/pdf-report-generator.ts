@@ -449,7 +449,7 @@ export async function generatePdf(
 
   return {
     filePath,
-    url: `/uploads/serve/reports/${filename}`,
+    url: `/api/upload/serve/reports/${filename}`,
     filename,
   };
 }
