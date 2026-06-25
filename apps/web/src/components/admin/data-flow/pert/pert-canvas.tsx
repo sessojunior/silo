@@ -1008,7 +1008,7 @@ export function PertCanvas({ graph, ecflowRoot, selectedTaskId, onSelectTask }: 
               { value: "suspended", label: "Suspenso" },
             ]}
             onChange={(value) => setStatusFilter(value as ProductStatus | "all")}
-            buttonClassName="h-10 pl-3 pr-10"
+            buttonClassName="h-10 py-0 pl-3 pr-10"
             noTruncate
           />
         </div>

@@ -194,7 +194,7 @@ export default function ProductTabs({
 
                 router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
               }}
-              buttonClassName="h-10 pl-3 pr-10"
+              buttonClassName="h-10 py-0 pl-3 pr-10"
               noTruncate
             />
           </div>
