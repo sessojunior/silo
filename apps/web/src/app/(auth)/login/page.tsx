@@ -311,11 +311,11 @@ export default function LoginPage() {
           body: JSON.stringify({ email: normalizedEmail, password }),
         });
 
-        const data = (await res.json()) as ApiResponse<unknown>;
-        const message = data.message || data.error || "Erro ao entrar.";
+        const data = (await res.json().catch(() => null)) as ApiResponse<unknown> | null;
+        const message = data?.message || data?.error || `Erro do servidor (${res.status})`;
 
         const retryAfterSeconds = (() => {
-          if (typeof data.data !== "object" || data.data === null) return null;
+          if (!data?.data || typeof data.data !== "object") return null;
           if (!("retryAfterSeconds" in data.data)) return null;
           const raw = (data.data as { retryAfterSeconds?: unknown })
             .retryAfterSeconds;
@@ -432,7 +432,7 @@ export default function LoginPage() {
             return;
           }
 
-          setFieldError(data.field || null, message);
+          setFieldError(data?.field || null, message);
           toast({
             type: "error",
             title: message,

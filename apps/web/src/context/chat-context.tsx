@@ -435,7 +435,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const handleUnauthorized = useCallback(
     (status: number): boolean => {
-      if (status !== 401 && status !== 403) return false;
+      if (status !== 401) return false;
 
       if (config.isSmokeMode) {
         disconnectRealtime();
@@ -444,11 +444,9 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
       disconnectRealtime();
 
-      if (status === 401) {
-        if (hasUnauthorizedRedirected.current) return true;
-        hasUnauthorizedRedirected.current = true;
-        window.location.href = config.getPublicPath("/login");
-      }
+      if (hasUnauthorizedRedirected.current) return true;
+      hasUnauthorizedRedirected.current = true;
+      window.location.href = config.getPublicPath("/login");
 
       return true;
     },
@@ -530,6 +528,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             setUsers(nextUsers);
             setTotalUnread(nextTotalUnread);
             setLastSync(new Date().toISOString());
+            break;
+          }
+
+          // 403 = sem permissão de chat — sidebar vazia, sem erro
+          if (response.status === 403) {
+            setGroups([]);
+            setUsers([]);
+            setTotalUnread(0);
             break;
           }
 

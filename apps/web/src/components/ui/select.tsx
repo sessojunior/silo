@@ -276,7 +276,7 @@ export default function Select({
                   >
                     <span
                       className={twMerge(
-                        clsx("transition-colors", {
+                        clsx("transition-colors text-zinc-700 dark:text-zinc-300", {
                           "group-hover:text-zinc-800 dark:group-hover:text-zinc-100":
                             !opt.disabled,
                           "text-zinc-900 dark:text-zinc-100": idx === highlight,

@@ -122,6 +122,7 @@ export default function TaskKanbanPage() {
     try {
       const response = await fetch(
         config.getApiUrl(`/api/admin/projects?projectId=${projectId}`),
+        { cache: "no-store" },
       );
       if (!response.ok) {
         throw new Error("Projeto não encontrado");
@@ -153,6 +154,7 @@ export default function TaskKanbanPage() {
     try {
       const response = await fetch(
         config.getApiUrl(`/api/admin/projects/${projectId}/activities`),
+        { cache: "no-store" },
       );
       if (!response.ok) {
         throw new Error("Erro ao carregar atividades");
@@ -192,6 +194,7 @@ export default function TaskKanbanPage() {
         config.getApiUrl(
           `/api/admin/projects/${projectId}/activities/${activityId}/tasks`,
         ),
+        { cache: "no-store" },
       );
       if (!response.ok) {
         throw new Error(`Erro HTTP ${response.status}`);
@@ -392,7 +395,17 @@ export default function TaskKanbanPage() {
           }
         }
 
-        // Recarregar as tarefas
+        // Atualizar estado local com a resposta da API e recarregar tarefas
+        if (result.data?.task) {
+          setKanbanTasks((prev) =>
+            prev.map((t) =>
+              t.id === result.data!.task.id
+                ? convertToKanbanTask(result.data!.task)
+                : t,
+            ),
+          );
+        }
+
         await fetchTasks();
       } catch (error) {
         console.error("❌ [PAGE_PROJECT_ACTIVITY] Erro ao salvar tarefa:", {

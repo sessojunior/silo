@@ -30,8 +30,9 @@ export const config = {
   /**
    * Versão exibida na interface do web.
    * Mantida como literal no código para evitar dependência de env ou CI.
+   * Formato: MAJOR.MINOR.PATCH (ex.: 1.2606.30)
    */
-  appVersion: "26.6.24",
+  appVersion: "1.2606.30",
 
   get isSmokeMode(): boolean {
     if (typeof window !== "undefined" && window.__SILO_SMOKE_MODE__ === true) {

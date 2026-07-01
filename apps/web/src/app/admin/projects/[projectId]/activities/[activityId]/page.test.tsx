@@ -705,5 +705,16 @@ describe("TaskKanbanPage", () => {
       priority: "high",
       status: "todo",
     });
+
+    const taskGetCalls = fetchMock.mock.calls.filter(
+      ([url, init]) =>
+        new URL(String(url), "http://localhost").pathname.endsWith("/tasks") &&
+        (init?.method ?? "GET") === "GET",
+    );
+
+    expect(taskGetCalls.length).toBeGreaterThan(0);
+    expect(taskGetCalls.every(([, init]) => init?.cache === "no-store")).toBe(
+      true,
+    );
   });
 });

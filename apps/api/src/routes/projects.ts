@@ -96,6 +96,7 @@ const TaskBaseSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   status: z.enum(PROJECT_TASK_STATUSES),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
 });
 
 const CreateTaskSchema = TaskBaseSchema;

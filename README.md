@@ -425,4 +425,4 @@ Exemplos práticos (mesmo build, só mudando env):
 
 **Desenvolvido para _CPTEC/INPE_**
 
-Version: 1.0 | Última atualização: 2025
+Version: 1.0 | Última atualização: 2026

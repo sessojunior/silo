@@ -1,6 +1,6 @@
 import { db } from "@silo/database";
-import { projectActivity, projectTask, projectTaskHistory } from "@silo/database/schema";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { projectActivity, projectTask, projectTaskHistory, projectTaskUser, authUser } from "@silo/database/schema";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 export const PROJECT_TASK_STATUSES = ["todo", "in_progress", "blocked", "review", "done"] as const;
 
@@ -13,7 +13,17 @@ export type ProjectTaskPosition = {
 };
 
 type ProjectTaskRow = typeof projectTask.$inferSelect;
-type ProjectTaskView = Omit<ProjectTaskRow, "status"> & { status: ProjectTaskStatus };
+type ProjectTaskView = Omit<ProjectTaskRow, "status"> & {
+  status: ProjectTaskStatus;
+  assignedUsers?: string[];
+  assignedUsersDetails?: Array<{
+    id: string;
+    name: string;
+    role: string;
+    email: string;
+    image: string | null;
+  }>;
+};
 type ProjectTaskDatabase = {
   select: typeof db.select;
   update: typeof db.update;
@@ -314,8 +324,45 @@ export async function listProjectActivityTasks(projectId: string, activityId: st
   const tasks = await selectProjectActivityTasks(db, projectId, activityId);
   const groupedTasks = createTaskGroups();
 
+  // Coletar IDs das tasks para buscar usuários associados em lote
+  const taskIds = tasks.map((t) => t.id);
+  const taskUsersMap = new Map<string, Array<{ id: string; name: string; role: string; email: string; image: string | null }>>();
+
+  if (taskIds.length > 0) {
+    const userRows = await db
+      .select({
+        taskId: projectTaskUser.taskId,
+        userId: authUser.id,
+        name: authUser.name,
+        email: authUser.email,
+        image: authUser.image,
+        role: projectTaskUser.role,
+      })
+      .from(projectTaskUser)
+      .leftJoin(authUser, eq(projectTaskUser.userId, authUser.id))
+      .where(inArray(projectTaskUser.taskId, taskIds));
+
+    for (const row of userRows) {
+      if (!taskUsersMap.has(row.taskId)) {
+        taskUsersMap.set(row.taskId, []);
+      }
+      taskUsersMap.get(row.taskId)!.push({
+        id: row.userId ?? "",
+        name: row.name ?? "Desconhecido",
+        role: row.role ?? "assignee",
+        email: row.email ?? "",
+        image: row.image,
+      });
+    }
+  }
+
   for (const task of tasks) {
-    const normalizedTask = normalizeTaskRow(task);
+    const users = taskUsersMap.get(task.id) ?? [];
+    const normalizedTask = {
+      ...normalizeTaskRow(task),
+      assignedUsers: users.map((u) => u.id),
+      assignedUsersDetails: users,
+    };
     groupedTasks[normalizedTask.status].push(normalizedTask);
   }
 
