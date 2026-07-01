@@ -441,6 +441,26 @@ export const productManual = pgTable("product_manual", {
 });
 export type ProductManual = typeof productManual.$inferSelect;
 
+// Chunks do manual para busca semântica (RAG).
+// Cada parágrafo/seção do manual vira um chunk com embedding independente.
+// Gerenciado via SQL puro para operações de embedding.
+export const productManualChunk = pgTable("product_manual_chunk", {
+  id: text("id").primaryKey(),
+  productManualId: text("product_manual_id")
+    .notNull()
+    .references(() => productManual.id, { onDelete: "cascade" }),
+  productId: text("product_id")
+    .notNull()
+    .references(() => product.id, { onDelete: "cascade" }),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  tokenCount: integer("token_count").notNull().default(0),
+  embedding: vector768("embedding"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+export type ProductManualChunk = typeof productManualChunk.$inferSelect;
+
 // === SISTEMA DE CHAT ULTRA SIMPLIFICADO ===
 
 // Mensagens do Chat (groupMessage + userMessage unificado)
@@ -564,6 +584,8 @@ export type AiAssistantMessage = typeof aiAssistantMessage.$inferSelect;
 export const help = pgTable("help", {
   id: text("id").primaryKey(),
   description: text("description").default(""),
+  // Embedding para busca semântica (RAG). Gerenciado via SQL puro.
+  embedding: vector768("embedding"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

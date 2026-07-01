@@ -1,6 +1,7 @@
 import { db } from "@silo/database";
 import { help } from "@silo/database/schema";
 import { eq } from "drizzle-orm";
+import { upsertHelpEmbedding } from "./embedding-write-service.js";
 
 const HELP_ID = "system-help";
 
@@ -30,5 +31,11 @@ export async function updateHelp(description: string) {
   } else {
     await db.update(help).set({ description: description || "", updatedAt: new Date() }).where(eq(help.id, HELP_ID));
   }
+
+  // Atualiza embedding da ajuda em background
+  upsertHelpEmbedding(description).catch(
+    (err) => console.warn("⚠️ [HELP] Embedding failed:", err instanceof Error ? err.message : String(err)),
+  );
+
   return success(null);
 }

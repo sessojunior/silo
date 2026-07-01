@@ -2,6 +2,7 @@ import { db } from "@silo/database";
 import { product, productManual } from "@silo/database/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { upsertManualChunks } from "./embedding-write-service.js";
 
 type ProductManualServiceSuccess<T> = {
   ok: true;
@@ -85,6 +86,11 @@ export async function upsertProductManual(data: {
       .where(eq(productManual.productId, data.productId))
       .returning();
 
+    // Atualiza chunks do manual em background
+    upsertManualChunks(manual.id, data.productId, data.description).catch(
+      (err) => console.warn("⚠️ [MANUAL] Chunk embedding failed:", err instanceof Error ? err.message : String(err)),
+    );
+
     return success({ manual });
   }
 
@@ -98,6 +104,11 @@ export async function upsertProductManual(data: {
       updatedAt: new Date(),
     })
     .returning();
+
+  // Cria chunks do manual em background
+  upsertManualChunks(manual.id, data.productId, data.description).catch(
+    (err) => console.warn("⚠️ [MANUAL] Chunk embedding failed:", err instanceof Error ? err.message : String(err)),
+  );
 
   return success({ manual });
 }

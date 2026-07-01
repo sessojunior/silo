@@ -11,6 +11,7 @@ import {
 } from "@silo/database/schema";
 import { desc, eq, ilike, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { upsertProblemEmbedding } from "./embedding-write-service.js";
 
 type ProductServiceSuccess<T> = {
   ok: true;
@@ -110,8 +111,10 @@ export async function createProductProblem(data: {
     return failure("Categoria não encontrada.", 400);
   }
 
+  const problemId = randomUUID();
+
   await db.insert(productProblem).values({
-    id: randomUUID(),
+    id: problemId,
     productId: data.productId,
     userId: data.userId,
     title: data.title.trim(),
@@ -120,6 +123,11 @@ export async function createProductProblem(data: {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+
+  // Dispara geração de embedding em background (fire-and-forget)
+  upsertProblemEmbedding(problemId, data.title, data.description).catch(
+    (err) => console.warn("⚠️ [PROBLEM] Embedding background failed:", err instanceof Error ? err.message : String(err)),
+  );
 
   return success(null);
 }
@@ -144,6 +152,11 @@ export async function updateProductProblem(data: {
   if (!updated) {
     return failure("Problema não encontrado.", 404);
   }
+
+  // Atualiza embedding em background
+  upsertProblemEmbedding(data.id, data.title, data.description).catch(
+    (err) => console.warn("⚠️ [PROBLEM] Embedding background update failed:", err instanceof Error ? err.message : String(err)),
+  );
 
   return success(null);
 }

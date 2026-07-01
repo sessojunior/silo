@@ -2,6 +2,7 @@ import { db } from "@silo/database";
 import { authUser, product, productProblem, productSolution, productSolutionChecked, productSolutionImage } from "@silo/database/schema";
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { upsertSolutionEmbedding } from "./embedding-write-service.js";
 
 type ProductSolutionServiceSuccess<T> = {
   ok: true;
@@ -115,6 +116,11 @@ export async function createProductSolution(data: {
     });
   }
 
+  // Dispara geração de embedding em background
+  upsertSolutionEmbedding(solutionId, data.description).catch(
+    (err) => console.warn("⚠️ [SOLUTION] Embedding background failed:", err instanceof Error ? err.message : String(err)),
+  );
+
   return success(null);
 }
 
@@ -144,6 +150,11 @@ export async function updateProductSolution(data: {
   } else if (data.removeImage) {
     await db.delete(productSolutionImage).where(eq(productSolutionImage.productSolutionId, data.id));
   }
+
+  // Atualiza embedding em background
+  upsertSolutionEmbedding(data.id, data.description).catch(
+    (err) => console.warn("⚠️ [SOLUTION] Embedding background update failed:", err instanceof Error ? err.message : String(err)),
+  );
 
   return success(null);
 }
