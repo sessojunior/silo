@@ -1,0 +1,8 @@
+﻿
+> typecheck:api
+> npm --workspace @silo/api run typecheck
+
+
+> @silo/api@0.0.1 typecheck
+> tsc --noEmit
+

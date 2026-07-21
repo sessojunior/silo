@@ -7,6 +7,10 @@ import type { EChartsOption } from "echarts";
 import type { AiAssistantVisualizationDto } from "@silo/engine/contracts/dto/ai-assistant";
 import { useDarkMode } from "@/hooks/use-dark-mode";
 import AssistantMermaidBlock from "@/components/admin/chat/assistant-mermaid";
+import {
+  getSafeAssistantImageSource,
+  getSafeAssistantPdfFrameSource,
+} from "@/lib/assistant-media-safety";
 
 const ReactECharts = dynamic(
   async () => (await import("echarts-for-react")).default,
@@ -23,10 +27,6 @@ const SERIES_COLORS = [
   "#8b5cf6",
   "#06b6d4",
 ];
-
-function isSafeImageSource(source: string): boolean {
-  return source.startsWith("data:image/") || source.startsWith("/");
-}
 
 function buildChartOptions(
   visualization: Extract<AiAssistantVisualizationDto, { kind: "chart" }>,
@@ -213,9 +213,10 @@ export default function AssistantVisualizationBlock({
 
   if (visualization.kind === "image") {
     const src = visualization.src;
-    const isPdf = src.toLowerCase().endsWith(".pdf");
-    const isImage = src.startsWith("data:image/") || /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(src);
-    const safeSrc = isSafeImageSource(src) ? src : null;
+    const safePdfSrc = getSafeAssistantPdfFrameSource(src);
+    const safeImageSrc = getSafeAssistantImageSource(src);
+    const isPdf = Boolean(safePdfSrc);
+    const safeSrc = safePdfSrc ?? safeImageSrc;
 
     return (
       <div className="mt-3 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white/90 p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/70">

@@ -1,0 +1,17 @@
+﻿
+> test:worker
+> npm --workspace @silo/worker run test
+
+
+> @silo/worker@0.0.1 test
+> vitest run
+
+
+ RUN  v4.1.7 D:/Projects/silo/silo-sessojunior/apps/worker
+
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  10:43:41
+   Duration  325ms (transform 118ms, setup 0ms, import 176ms, tests 51ms, environment 0ms)
+

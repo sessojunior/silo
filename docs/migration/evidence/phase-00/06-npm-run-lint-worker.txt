@@ -1,0 +1,14 @@
+﻿
+> lint:worker
+> npm --workspace @silo/worker run lint
+
+
+> @silo/worker@0.0.1 lint
+> eslint src
+
+
+D:\Projects\silo\silo-sessojunior\apps\worker\src\lib\ollama-init.ts
+  42:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (0 errors, 1 warning)
+

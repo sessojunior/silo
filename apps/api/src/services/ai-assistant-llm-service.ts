@@ -12,13 +12,11 @@ import { chatWithOllama, chatWithOllamaStream, type OllamaChatMessage } from "..
 const AssistantRewriteSchema = z.object({
   answer: z.string().default(""),
   contextSummary: z.string().default(""),
-  thinking: z.string().optional(),
 });
 
 type AssistantRewriteContent = {
   answer: string;
   contextSummary: string;
-  thinking?: string;
 };
 
 type ComposeAssistantAnswerInput = {
@@ -137,10 +135,10 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
         "- NÃO repita o exemplo de formato como resposta real.",
         "",
         "Formato de saída (JSON estrito, sem markdown):",
-        '{"thinking":"raciocínio detalhado: analise os dados, compare períodos, identifique tendências e anomalias","answer":"resposta final objetiva","contextSummary":"resumo do contexto"}',
+        '{"answer":"resposta final objetiva","contextSummary":"resumo do contexto"}',
         "",
-        "O campo thinking deve conter seu raciocínio COMPLETO: interprete os dados, compare valores, aponte o que mudou.",
-        "O campo answer deve conter apenas a conclusão final, sem repetir o raciocínio.",
+        "O campo answer deve conter a resposta final objetiva e fundamentada nos dados.",
+        "O campo contextSummary deve resumir apenas o contexto operacional necessário para continuidade da thread.",
         "NÃO use o exemplo como resposta real — analise os dados fornecidos.",
       ].join("\n"),
     },
@@ -162,6 +160,64 @@ const buildPrompt = (input: ComposeAssistantAnswerInput): OllamaChatMessage[] =>
           : []),
         "",
         "Citações:",
+        citationLines.length > 0 ? citationLines : "- Nenhuma",
+      ].join("\n"),
+    },
+  ];
+};
+
+const buildReasoningSafePrompt = (
+  input: ComposeAssistantAnswerInput,
+): OllamaChatMessage[] => {
+  const citationLines = input.citations
+    .map((citation) => `- ${citation.label}${citation.detail ? `: ${citation.detail}` : ""}`)
+    .join("\n");
+
+  const memoryMessage = input.conversationMemory
+    ? {
+        role: "system" as const,
+        content: [
+          "MemÃ³ria persistida da conversa:",
+          input.conversationMemory,
+          "Use esta memÃ³ria apenas para continuidade, referÃªncias implÃ­citas e manutenÃ§Ã£o do contexto da thread.",
+        ].join("\n"),
+      }
+    : null;
+
+  return [
+    {
+      role: "system",
+      content: [
+        "VocÃª Ã© o analista operacional do SILO, sistema de gestÃ£o de produtos industriais.",
+        "",
+        "Analise somente os dados fornecidos e responda Ã  pergunta do usuÃ¡rio.",
+        "NÃ£o invente nÃºmeros; se os dados forem insuficientes, diga o que falta.",
+        "Compare perÃ­odo atual com anterior quando isso estiver disponÃ­vel.",
+        "Responda em portuguÃªs brasileiro, linguagem direta de fÃ¡brica.",
+        "NÃ£o exponha raciocÃ­nio privado, cadeia de pensamento, passos internos ou anÃ¡lise oculta.",
+        "",
+        "Formato de saÃ­da obrigatÃ³rio: JSON estrito, sem markdown.",
+        '{"answer":"resposta final objetiva","contextSummary":"resumo operacional para continuidade da thread"}',
+      ].join("\n"),
+    },
+    ...(memoryMessage ? [memoryMessage] : []),
+    ...input.conversationHistory,
+    {
+      role: "user",
+      content: [
+        `Escopo: ${input.scope}`,
+        `Pergunta: ${input.question}`,
+        "",
+        "Dados operacionais:",
+        input.contextSummary,
+        "",
+        "AnÃ¡lise base:",
+        input.fallbackAnswer,
+        ...(input.ragContext
+          ? ["", "Contexto adicional (RAG):", input.ragContext]
+          : []),
+        "",
+        "CitaÃ§Ãµes:",
         citationLines.length > 0 ? citationLines : "- Nenhuma",
       ].join("\n"),
     },
@@ -202,13 +258,10 @@ function coerceAssistantRewriteContent(content: unknown): AssistantRewriteConten
     return null;
   }
 
-  const thinking = getStringProperty(record, ["thinking", "reasoning", "thought", "thought_process"]);
-
   return {
     answer,
     contextSummary:
       getStringProperty(record, ["contextSummary", "summary", "context"]) ?? "",
-    thinking: thinking ?? undefined,
   };
 }
 
@@ -247,7 +300,6 @@ export function parseAssistantRewriteContent(content: string): AssistantRewriteC
           return {
             answer: validated.data.answer.trim(),
             contextSummary: validated.data.contextSummary.trim(),
-            thinking: validated.data.thinking?.trim() || undefined,
           };
         }
       }
@@ -315,7 +367,6 @@ export async function composeAssistantAnswerWithOllama(
 ): Promise<{
   answer: string;
   contextSummary: string;
-  thinking?: string;
   generation: AiAssistantGenerationDto;
 }> {
   const startedAt = Date.now();
@@ -324,7 +375,7 @@ export async function composeAssistantAnswerWithOllama(
     const { content, latencyMs, generatedTokens, thinkingTimeMs } = await chatWithOllama({
       model: config.ollama.model,
       timeoutMs: config.ollama.timeoutMs,
-      messages: buildPrompt(input),
+      messages: buildReasoningSafePrompt(input),
     });
 
     const parsedContent = parseAssistantRewriteContent(content);
@@ -340,7 +391,6 @@ export async function composeAssistantAnswerWithOllama(
         parsedContent.contextSummary.trim().length > 0
           ? parsedContent.contextSummary.trim()
           : input.contextSummary,
-      thinking: parsedContent.thinking?.trim() || undefined,
       generation: buildGeneration({
         provider: "ollama",
         model: config.ollama.model,
@@ -362,14 +412,14 @@ export async function composeAssistantAnswerWithOllama(
 }
 
 export type AssistantStreamEvent =
-  | { type: "thinking"; content: string }
-  | { type: "answer"; content: string; contextSummary: string; generation: AiAssistantGenerationDto; thinking?: string }
+  | { type: "answer"; content: string; contextSummary: string; generation: AiAssistantGenerationDto }
   | { type: "error"; content: string };
 
 /**
  * Versão streaming do composeAssistantAnswerWithOllama.
- * Faz yield de eventos SSE: primeiro os tokens de pensamento (type: "thinking"),
- * depois o resultado final (type: "answer").
+ * Faz yield apenas do resultado final do modelo. Progresso SSE Ã© emitido pelo
+ * servidor com frases constantes; tokens de raciocÃ­nio do modelo nÃ£o sÃ£o
+ * transmitidos.
  */
 export async function* composeAssistantAnswerWithOllamaStream(
   input: ComposeAssistantAnswerInput,
@@ -382,16 +432,10 @@ export async function* composeAssistantAnswerWithOllamaStream(
     for await (const chunk of chatWithOllamaStream({
       model: config.ollama.model,
       timeoutMs: config.ollama.timeoutMs,
-      messages: buildPrompt(input),
+      messages: buildReasoningSafePrompt(input),
     })) {
       if (chunk.done) break;
       fullContent += chunk.token;
-
-      // Tenta extrair o campo "thinking" do JSON parcial
-      const thinking = extractPartialThinking(fullContent);
-      if (thinking) {
-        yield { type: "thinking", content: thinking };
-      }
     }
 
     const latencyMs = Date.now() - startedAt;
@@ -402,7 +446,6 @@ export async function* composeAssistantAnswerWithOllamaStream(
     }
 
     const finalAnswer = parsedContent.answer.trim();
-    const finalThinking = parsedContent.thinking?.trim() || undefined;
     yield {
       type: "answer",
       content: finalAnswer.length > 0 ? finalAnswer : input.fallbackAnswer,
@@ -410,7 +453,6 @@ export async function* composeAssistantAnswerWithOllamaStream(
         parsedContent.contextSummary.trim().length > 0
           ? parsedContent.contextSummary.trim()
           : input.contextSummary,
-      thinking: finalThinking,
       generation: buildGeneration({
         provider: "ollama",
         model: config.ollama.model,
@@ -431,22 +473,6 @@ export async function* composeAssistantAnswerWithOllamaStream(
       type: "error",
       content: `Falha ao gerar resposta com IA: ${errorMessage}`,
     };
-  }
-}
-
-/**
- * Extrai o campo "thinking" de um JSON parcial (ainda em construção).
- * Retorna o valor atual de thinking conforme vai sendo gerado.
- */
-function extractPartialThinking(partialJson: string): string | null {
-  try {
-    // Tenta parse como JSON completo primeiro
-    const parsed = JSON.parse(partialJson) as Record<string, unknown>;
-    return typeof parsed.thinking === "string" ? parsed.thinking : null;
-  } catch {
-    // JSON ainda incompleto — tenta extrair com regex
-    const match = partialJson.match(/"thinking"\s*:\s*"((?:[^"\\]|\\.)*)/);
-    return match ? match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n') : null;
   }
 }
 

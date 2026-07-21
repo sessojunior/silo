@@ -1,0 +1,8 @@
+﻿
+> typecheck:web
+> npm --workspace @silo/web run typecheck
+
+
+> typecheck
+> tsc --noEmit
+

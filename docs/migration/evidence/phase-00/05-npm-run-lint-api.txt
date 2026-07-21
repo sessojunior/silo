@@ -1,0 +1,25 @@
+﻿
+> lint:api
+> npm --workspace @silo/api run lint
+
+
+> @silo/api@0.0.1 lint
+> eslint src
+
+
+D:\Projects\silo\silo-sessojunior\apps\api\src\services\ai-assistant-cache-service.ts
+  12:15  warning  'eq' is defined but never used    @typescript-eslint/no-unused-vars
+  12:19  warning  'and' is defined but never used   @typescript-eslint/no-unused-vars
+  12:24  warning  'gte' is defined but never used   @typescript-eslint/no-unused-vars
+  12:29  warning  'desc' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\Projects\silo\silo-sessojunior\apps\api\src\services\ai-assistant-llm-service.ts
+  109:9   warning  'suggestedQuestions' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  354:11  warning  'latencyMs' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  424:11  warning  'latencyMs' is assigned a value but never used           @typescript-eslint/no-unused-vars
+
+D:\Projects\silo\silo-sessojunior\apps\api\src\services\group-service.ts
+  3:58  warning  'or' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 8 problems (0 errors, 8 warnings)
+

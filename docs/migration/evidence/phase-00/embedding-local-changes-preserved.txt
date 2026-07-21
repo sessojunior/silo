@@ -1,0 +1,8 @@
+﻿decision=keep-user-diff-intact
+diff_sha256=5444b340219ac2f248171aa6b1f0d9840f6669ab95d43d20b0bd671f57e16a16
+files=
+apps/api/src/scripts/backfill-embeddings.ts
+apps/api/src/services/embedding-write-service.ts
+status=
+ M apps/api/src/scripts/backfill-embeddings.ts
+ M apps/api/src/services/embedding-write-service.ts

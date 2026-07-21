@@ -510,7 +510,6 @@ async function finalizeAssistantResponse(
       ...response,
       answer: refinedResponse.answer,
       contextSummary: refinedResponse.contextSummary,
-      thinking: refinedResponse.thinking,
       generation: refinedResponse.generation,
     };
   } catch (error) {
@@ -1821,7 +1820,7 @@ export async function answerAssistantMessage(
             conversationContext,
             ragContext,
           )),
-          visualization,
+          ...(visualization ? { visualization } : {}),
           threadId,
         };
       }
@@ -2005,14 +2004,14 @@ export async function answerAssistantMessage(
           console.error("❌ [AI_ASSISTANT] Erro ao gerar PDF:", err);
         }
 
-        const visualization: AiAssistantVisualizationDto = pdfUrl
+        const visualization: AiAssistantVisualizationDto | undefined = pdfUrl
           ? {
               kind: "image",
               src: pdfUrl,
               alt: `Relatório em PDF — ${pdfType}`,
               caption: `📄 Relatório de ${pdfType === "availability" ? "Disponibilidade" : pdfType === "problems" ? "Problemas" : pdfType === "projects" ? "Projetos" : "Executivo"} gerado. Clique no link para baixar.`,
             }
-          : { kind: "image", src: "", alt: "Erro ao gerar PDF", caption: "Não foi possível gerar o PDF." };
+          : undefined;
 
         return {
           ...(await finalizeAssistantResponse(

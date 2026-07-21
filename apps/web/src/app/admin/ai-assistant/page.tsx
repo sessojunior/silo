@@ -24,6 +24,10 @@ import AssistantEmptyState from "@/components/admin/ai-assistant/assistant-empty
 import Dialog from "@/components/ui/dialog";
 import { toast } from "@silo/engine/format/toast";
 import { readApiResponse, type ApiResponse } from "@silo/engine/contracts/api-response";
+import {
+  buildLegacyAssistantSseResult,
+  parseAssistantSseEvent,
+} from "@/lib/ai-assistant-sse";
 
 const ASSISTANT_SENDER_ID = "ai-assistant";
 const ASSISTANT_SENDER_NAME = "Assistente de IA";
@@ -551,6 +555,7 @@ export default function AiAssistantPage() {
         let currentEvent = "";
         let currentThinking = "";
         let hasReceivedResult = false;
+        let legacyData: Partial<AiAssistantMessageResponseDto> | null = null;
 
         const updatePlaceholder = (
           thinking: string | null,
@@ -570,6 +575,30 @@ export default function AiAssistantPage() {
             }
             return { ...current, [threadId]: msgs };
           });
+        };
+
+        const finalizeAssistantResult = (data: AiAssistantMessageResponseDto) => {
+          hasReceivedResult = true;
+          legacyData = null;
+          const assistantMessage = buildAssistantMessage(
+            buildAssistantMessageContent(data),
+            data.generation,
+            data.visualization,
+            data.thinking ?? currentThinking,
+          );
+
+          setMessagesByThread((current) => {
+            const msgs = [...(current[threadId] ?? [])];
+            if (msgs.length >= 2) {
+              msgs[msgs.length - 1] = assistantMessage;
+            }
+            return { ...current, [threadId]: msgs };
+          });
+
+          const responseThread = data.thread ??
+            buildFallbackThreadSummary(data.threadId, trimmedMessage, (messagesByThread[threadId] ?? []).length);
+          setThreads((current) => upsertThread(current, responseThread));
+          setSelectedThreadId(responseThread.id);
         };
 
         while (true) {
@@ -602,6 +631,43 @@ export default function AiAssistantPage() {
 
             try {
               const parsed = JSON.parse(eventData) as Record<string, unknown>;
+              const action = parseAssistantSseEvent(currentEvent, parsed);
+
+              if (action.type === "ignore") {
+                continue;
+              }
+
+              if (action.type === "thinking") {
+                currentThinking = action.content;
+                updatePlaceholder(action.content);
+                continue;
+              }
+
+              if (action.type === "result") {
+                finalizeAssistantResult(action.data);
+                continue;
+              }
+
+              if (action.type === "legacy-data") {
+                legacyData = action.data;
+                continue;
+              }
+
+              if (action.type === "legacy-complete") {
+                const legacyResult = buildLegacyAssistantSseResult(
+                  legacyData,
+                  threadId,
+                  currentThinking,
+                );
+                if (legacyResult) {
+                  finalizeAssistantResult(legacyResult);
+                }
+                continue;
+              }
+
+              if (action.type === "error") {
+                throw new Error(action.message);
+              }
 
               if (currentEvent === "connected" || !currentEvent) {
                 // Conexão estabelecida — placeholder já está visível

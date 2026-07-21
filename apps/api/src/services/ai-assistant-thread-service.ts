@@ -95,6 +95,22 @@ const readNumberValue = (value: unknown): number | null => {
   return value;
 };
 
+const readBooleanValue = (value: unknown): boolean | null => {
+  if (typeof value !== "boolean") {
+    return null;
+  }
+
+  return value;
+};
+
+const readStringArrayValue = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === "string");
+};
+
 const readStoredGenerationMetadata = (
   metadata: unknown,
 ): Record<string, unknown> | null => {
@@ -160,6 +176,86 @@ const normalizeThreadMessageVisualization = (
   return parsedVisualization.success ? parsedVisualization.data : undefined;
 };
 
+const normalizeMetadataVisualization = (
+  metadata: Record<string, unknown>,
+): AiAssistantVisualizationDto | undefined => {
+  const parsedVisualization = AiAssistantVisualizationSchema.safeParse(
+    metadata.visualization,
+  );
+
+  return parsedVisualization.success ? parsedVisualization.data : undefined;
+};
+
+const normalizeMetadataCitations = (
+  value: unknown,
+): AiAssistantMessageResponseDto["citations"] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry) => {
+    if (!isRecord(entry) || typeof entry.label !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        label: entry.label,
+        detail:
+          typeof entry.detail === "string" || entry.detail === null
+            ? entry.detail
+            : undefined,
+      },
+    ];
+  });
+};
+
+const buildCachedAssistantResponse = (
+  cached: Awaited<ReturnType<typeof findCachedAssistantResponse>>,
+  thread: typeof aiAssistantThread.$inferSelect,
+): AiAssistantMessageResponseDto => {
+  if (!cached) {
+    throw new Error("Resposta cacheada ausente.");
+  }
+
+  const metadata = cached.metadata;
+  const visualization = normalizeMetadataVisualization(metadata);
+
+  return {
+    threadId: thread.id,
+    thread: toThreadSummary(thread),
+    scope: readAssistantScopeValue(metadata.scope) ?? "general",
+    isInScope: readBooleanValue(metadata.isInScope) ?? true,
+    refusalReason: readStringValue(metadata.refusalReason),
+    answer: cached.content,
+    messageContent: cached.content,
+    suggestedQuestions: readStringArrayValue(metadata.suggestedQuestions),
+    citations: normalizeMetadataCitations(metadata.citations),
+    ...(visualization ? { visualization } : {}),
+    contextSummary: readStringValue(metadata.contextSummary) ?? "",
+    generation: {
+      provider: "cache",
+      model: "semantic-cache",
+      status: "success",
+      latencyMs: 0,
+      errorMessage: null,
+    } satisfies AiAssistantGenerationDto,
+  };
+};
+
+const buildCachedAssistantMessageMetadata = (
+  cached: NonNullable<Awaited<ReturnType<typeof findCachedAssistantResponse>>>,
+): Record<string, unknown> => {
+  const metadata = { ...cached.metadata };
+  delete metadata.thinking;
+
+  return {
+    ...metadata,
+    cached: true,
+    cacheSimilarity: cached.similarity,
+  };
+};
+
 const buildAssistantMessageMetadata = (
   response: AiAssistantMessageResponseDto,
   generationMetadata: ReturnType<typeof normalizeGenerationMetadata>,
@@ -174,15 +270,19 @@ const buildAssistantMessageMetadata = (
     contextSummary: response.contextSummary,
   };
 
-  if (response.thinking) {
-    metadata.thinking = response.thinking;
-  }
-
   if (response.visualization) {
     metadata.visualization = response.visualization;
   }
 
   return metadata;
+};
+
+const omitAssistantThinking = (
+  response: AiAssistantMessageResponseDto,
+): AiAssistantMessageResponseDto => {
+  const sanitized = { ...response };
+  delete sanitized.thinking;
+  return sanitized;
 };
 
 const normalizeThreadMessageGeneration = (
@@ -319,7 +419,6 @@ const toThreadMessage = (
   senderUserId: message.senderUserId,
   senderName: message.senderName,
   content: message.content,
-  thinking: isRecord(message.metadata) ? (readStringValue(message.metadata.thinking) ?? undefined) : undefined,
   generation: normalizeThreadMessageGeneration(message),
   visualization: normalizeThreadMessageVisualization(message),
   createdAt: message.createdAt.toISOString(),
@@ -425,7 +524,7 @@ export async function sendAssistantMessage(
   if (!existingThread || existingThread.messageCount <= 4) {
     // Só usa cache em threads novas ou com poucas mensagens
     // (conversas longas têm contexto que o cache não captura)
-    const cached = await findCachedAssistantResponse(request.content);
+    const cached = await findCachedAssistantResponse(user.id, request.content);
     if (cached) {
       const now = new Date();
       const threadTitle = buildThreadTitle(request.content);
@@ -485,34 +584,11 @@ export async function sendAssistantMessage(
           generationStatus: "success",
           latencyMs: 0,
           content: cached.content,
-          metadata: {
-            ...cached.metadata,
-            cached: true,
-            cacheSimilarity: cached.similarity,
-          },
+          metadata: buildCachedAssistantMessageMetadata(cached),
         },
       ]);
 
-      return {
-        threadId: thread.id,
-        thread: toThreadSummary(thread),
-        scope: (cached.metadata.scope as AiAssistantScope) ?? "general",
-        isInScope: (cached.metadata.isInScope as boolean) ?? true,
-        refusalReason: (cached.metadata.refusalReason as string) ?? null,
-        answer: cached.content,
-        thinking: cached.thinking ?? undefined,
-        messageContent: cached.content,
-        suggestedQuestions: (cached.metadata.suggestedQuestions as string[]) ?? [],
-        citations: (cached.metadata.citations as AiAssistantMessageResponseDto["citations"]) ?? [],
-        contextSummary: (cached.metadata.contextSummary as string) ?? "",
-        generation: {
-          provider: "cache",
-          model: "semantic-cache",
-          status: "success",
-          latencyMs: 0,
-          errorMessage: null,
-        } satisfies AiAssistantGenerationDto,
-      };
+      return buildCachedAssistantResponse(cached, thread);
     }
   }
 
@@ -644,7 +720,7 @@ export async function sendAssistantMessage(
       .where(and(eq(aiAssistantThread.id, existingThread.id), eq(aiAssistantThread.userId, user.id)))
       .returning();
 
-    return updatedThread;
+    return updatedThread ?? existingThread;
   });
 
   // Salva o embedding da resposta para cache semântico futuro.
@@ -655,12 +731,12 @@ export async function sendAssistantMessage(
     });
   }
 
-  return {
+  return omitAssistantThinking({
     ...generatedResponse,
     threadId: thread.id,
     thread: toThreadSummary(thread),
     messageContent,
-  };
+  });
 }
 
 /**
@@ -683,19 +759,9 @@ export async function sendAssistantMessageStream(
 
   // Cache semântico: verifica se já existe resposta para pergunta similar.
   if (!existingThread || existingThread.messageCount <= 4) {
-    const cached = await findCachedAssistantResponse(request.content);
+    const cached = await findCachedAssistantResponse(user.id, request.content);
     if (cached) {
-      sendEvent("connected", {});
       sendEvent("scope", { scope: cached.metadata.scope ?? "general" });
-      sendEvent("data", {
-        answer: cached.content,
-        thinking: cached.thinking,
-        scope: cached.metadata.scope ?? "general",
-        isInScope: cached.metadata.isInScope ?? true,
-        suggestedQuestions: cached.metadata.suggestedQuestions ?? [],
-        citations: cached.metadata.citations ?? [],
-      });
-      sendEvent("complete", {});
 
       // Persiste a mensagem cacheada
       const now = new Date();
@@ -755,14 +821,11 @@ export async function sendAssistantMessageStream(
           generationStatus: "success",
           latencyMs: 0,
           content: cached.content,
-          metadata: {
-            ...cached.metadata,
-            cached: true,
-            cacheSimilarity: cached.similarity,
-          },
+          metadata: buildCachedAssistantMessageMetadata(cached),
         },
       ]);
 
+      sendEvent("result", buildCachedAssistantResponse(cached, thread));
       return;
     }
   }
@@ -775,7 +838,7 @@ export async function sendAssistantMessageStream(
         lastKnownScope: null,
       };
 
-  sendEvent("connected", {});
+  sendEvent("thinking", { content: "Consultando dados autorizados do Silo." });
 
   // Etapa 1: Classificação de escopo + coleta de dados (não-streaming)
   const generatedResponse = await generateAssistantMessage({
@@ -790,6 +853,8 @@ export async function sendAssistantMessageStream(
     scope: generatedResponse.scope,
     isInScope: generatedResponse.isInScope,
   });
+
+  sendEvent("thinking", { content: "Consolidando resposta final." });
 
   // Etapa 2: Refinamento via Ollama (streaming)
   const { composeAssistantAnswerWithOllamaStream } = await import("./ai-assistant-llm-service.js");
@@ -808,26 +873,14 @@ export async function sendAssistantMessageStream(
   let streamingAnswer = generatedResponse.answer;
   let streamingContextSummary = generatedResponse.contextSummary;
   let streamingGeneration = generatedResponse.generation;
-  let finalThinking: string | undefined;
   let streamingHadError = false;
 
   try {
     for await (const event of composeAssistantAnswerWithOllamaStream(streamInput)) {
-      if (event.type === "thinking") {
-        finalThinking = event.content;
-        sendEvent("thinking", { content: event.content });
-      } else if (event.type === "answer") {
+      if (event.type === "answer") {
         streamingAnswer = event.content;
         streamingContextSummary = event.contextSummary;
         streamingGeneration = event.generation;
-        /* 
-         * O evento answer carrega o thinking final do JSON completo,
-         * que pode ser mais preciso que o thinking extraído durante o streaming.
-         * Prefere o thinking final do parsing completo.
-         */
-        if (event.thinking) {
-          finalThinking = event.thinking;
-        }
       } else if (event.type === "error") {
         console.warn("⚠️ [AI_ASSISTANT_STREAM] Ollama refinement failed, using data-collected answer:", event.content);
         streamingHadError = true;
@@ -844,33 +897,16 @@ export async function sendAssistantMessageStream(
     streamingAnswer = generatedResponse.answer;
     streamingContextSummary = generatedResponse.contextSummary;
     streamingGeneration = generatedResponse.generation;
-    /* Se o stream falhou antes de produzir thinking, usa o thinking da coleta inicial */
-    if (!finalThinking && generatedResponse.thinking) {
-      finalThinking = generatedResponse.thinking;
-    }
   }
-
-  /* Fallback: se o stream não produziu thinking, usa o da coleta inicial */
-  const persistedThinking = finalThinking ?? generatedResponse.thinking;
-
-  // Envia o resultado final
-  sendEvent("result", {
-    threadId: requestedThreadId,
-    answer: streamingAnswer,
-    contextSummary: streamingContextSummary,
-    generation: streamingGeneration,
-    thinking: persistedThinking ?? null,
-    scope: generatedResponse.scope,
-    isInScope: generatedResponse.isInScope,
-    suggestedQuestions: generatedResponse.suggestedQuestions,
-    citations: generatedResponse.citations,
-    visualization: generatedResponse.visualization ?? null,
-  });
 
   // Salva no banco
   const generationMetadata = normalizeGenerationMetadata(streamingGeneration);
   const assistantMetadata = buildAssistantMessageMetadata(
-    { ...generatedResponse, answer: streamingAnswer, thinking: persistedThinking },
+    {
+      ...generatedResponse,
+      answer: streamingAnswer,
+      contextSummary: streamingContextSummary,
+    },
     generationMetadata,
   );
   const messageContent = formatAssistantReply({
@@ -886,7 +922,7 @@ export async function sendAssistantMessageStream(
 
   let streamedAssistantMessageId: string | null = null;
 
-  await db.transaction(async (tx) => {
+  const thread = await db.transaction(async (tx) => {
     const userMessageCreatedAt = now;
     const assistantMessageCreatedAt = new Date(now.getTime() + 1);
 
@@ -936,7 +972,7 @@ export async function sendAssistantMessageStream(
           metadata: assistantMetadata,
         },
       ]);
-      return;
+      return insertedThread;
     }
 
     // Gera IDs explícitos para capturar o ID da mensagem do assistente
@@ -971,7 +1007,7 @@ export async function sendAssistantMessageStream(
       },
     ]);
 
-    await tx
+    const [updatedThread] = await tx
       .update(aiAssistantThread)
       .set({
         title: nextThreadTitle,
@@ -980,11 +1016,29 @@ export async function sendAssistantMessageStream(
         lastMessageAt: now,
         updatedAt: now,
       })
-      .where(and(eq(aiAssistantThread.id, existingThread.id), eq(aiAssistantThread.userId, user.id)));
+      .where(and(eq(aiAssistantThread.id, existingThread.id), eq(aiAssistantThread.userId, user.id)))
+      .returning();
+
+    return updatedThread ?? existingThread;
   });
 
   // Salva o embedding da resposta para cache semântico futuro.
   // Fire-and-forget: não bloqueia o streaming.
+  const resultPayload = omitAssistantThinking({
+    ...generatedResponse,
+    threadId: thread.id,
+    thread: toThreadSummary(thread),
+    answer: streamingAnswer,
+    messageContent,
+    contextSummary: streamingContextSummary,
+    generation: streamingGeneration,
+    ...(generatedResponse.visualization
+      ? { visualization: generatedResponse.visualization }
+      : {}),
+  });
+
+  sendEvent("result", resultPayload);
+
   if (streamedAssistantMessageId && streamingAnswer) {
     saveAssistantResponseEmbedding(streamedAssistantMessageId, streamingAnswer).catch((err) => {
       console.warn("⚠️ [CACHE] Falha ao persistir embedding (stream):", err instanceof Error ? err.message : String(err));

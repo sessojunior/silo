@@ -456,6 +456,7 @@ describe("project activity tasks route", () => {
         estimatedDays: baseTask.estimatedDays,
         startDate: baseTask.startDate,
         endDate: baseTask.endDate,
+        priority: baseTask.priority,
         status: baseTask.status,
       },
     );
@@ -512,6 +513,7 @@ describe("project activity tasks route", () => {
         estimatedDays: updatedTask.estimatedDays,
         startDate: updatedTask.startDate,
         endDate: updatedTask.endDate,
+        priority: updatedTask.priority,
         status: updatedTask.status,
       },
     );

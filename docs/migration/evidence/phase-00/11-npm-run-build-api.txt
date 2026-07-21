@@ -1,0 +1,8 @@
+﻿
+> build:api
+> npm --workspace @silo/api run build
+
+
+> @silo/api@0.0.1 build
+> tsc
+

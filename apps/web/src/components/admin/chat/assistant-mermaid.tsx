@@ -7,6 +7,25 @@ interface AssistantMermaidProps {
   visualization: AiAssistantVisualizationMermaidDto;
 }
 
+const UNSAFE_MERMAID_PATTERNS: RegExp[] = [
+  /%%\{/,
+  /(^|\n)\s*click\s+/i,
+  /\bjavascript\s*:/i,
+  /\b(?:href|src)\s*=/i,
+  /\bon[a-z]+\s*=/i,
+  /<\s*\/?\s*[a-z][^>]*>/i,
+];
+
+export function isSafeMermaidDiagram(diagram: string): boolean {
+  const normalized = diagram.replace(/\r\n?/g, "\n").trim();
+
+  if (normalized.length === 0 || normalized.length > 12_000) {
+    return false;
+  }
+
+  return !UNSAFE_MERMAID_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 /**
  * Renderiza um diagrama Mermaid a partir da string de definição.
  *
@@ -31,6 +50,10 @@ export default function AssistantMermaidBlock({ visualization }: AssistantMermai
         setIsRendering(true);
         setRenderError(null);
 
+        if (!isSafeMermaidDiagram(visualization.diagram)) {
+          throw new Error("Diagrama Mermaid bloqueado pela validação de segurança.");
+        }
+
         // Import dinâmico para evitar SSR
         const mermaid = await import("mermaid");
 
@@ -38,7 +61,7 @@ export default function AssistantMermaidBlock({ visualization }: AssistantMermai
         mermaid.default.initialize({
           startOnLoad: false,
           theme: "default",
-          securityLevel: "loose",
+          securityLevel: "strict",
           fontFamily: "Inter, system-ui, sans-serif",
           themeVariables: {
             primaryColor: "#3b82f6",
@@ -54,11 +77,15 @@ export default function AssistantMermaidBlock({ visualization }: AssistantMermai
         const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
         // Define o conteúdo do diagrama no container
-        container.innerHTML = `<div class="mermaid" id="${diagramId}">\n${visualization.diagram}\n</div>`;
+        const diagramNode = document.createElement("div");
+        diagramNode.className = "mermaid";
+        diagramNode.id = diagramId;
+        diagramNode.textContent = visualization.diagram;
+        container.replaceChildren(diagramNode);
 
         // Renderiza
         await mermaid.default.run({
-          nodes: [container.querySelector(`#${diagramId}`)!],
+          nodes: [diagramNode],
         });
 
         if (!cancelled) {

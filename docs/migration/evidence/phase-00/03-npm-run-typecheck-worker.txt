@@ -1,0 +1,8 @@
+﻿
+> typecheck:worker
+> npm --workspace @silo/worker run typecheck
+
+
+> @silo/worker@0.0.1 typecheck
+> tsc --noEmit
+

@@ -54,6 +54,7 @@ async function handleInvalidRecord(
     await sendToDlq(record.topic, raw);
   } catch (error) {
     console.error("[KAFKA-REST] failed to send to DLQ", error);
+    return;
   }
   try {
     await commitNextOffset(instance, record);
@@ -151,6 +152,7 @@ export async function processRecord(
       await sendToDlq(record.topic, raw, messageId);
     } catch (error) {
       console.error("[KAFKA-REST] failed to send to DLQ", error);
+      return;
     }
   }
 

@@ -1,5 +1,7 @@
 import "dotenv/config";
 
+import { pathToFileURL } from "node:url";
+
 import { config } from "@silo/engine/config";
 import {
   createRestConsumer,
@@ -11,9 +13,46 @@ import {
 import { processRecord, sleep } from "./processor";
 import { initOllama } from "./lib/ollama-init";
 
-console.log("[worker] Starting Silo Worker...");
+export type ShutdownState = {
+  stopRequested: boolean;
+};
 
-function getTopicsToSubscribe(): string[] {
+type SignalTarget = {
+  once(event: "SIGINT" | "SIGTERM", listener: () => void): unknown;
+  off(event: "SIGINT" | "SIGTERM", listener: () => void): unknown;
+};
+
+export function createShutdownState(): ShutdownState {
+  return { stopRequested: false };
+}
+
+export function requestShutdown(state: ShutdownState): void {
+  state.stopRequested = true;
+}
+
+export function installShutdownHandlers(
+  state: ShutdownState,
+  target: SignalTarget = process,
+): () => void {
+  const onSigint = () => {
+    console.log("SIGINT received, shutting down kafka REST consumer...");
+    requestShutdown(state);
+  };
+  const onSigterm = () => {
+    console.log("SIGTERM received, shutting down kafka REST consumer...");
+    requestShutdown(state);
+  };
+
+  target.once("SIGINT", onSigint);
+  target.once("SIGTERM", onSigterm);
+
+  return () => {
+    target.off("SIGINT", onSigint);
+    target.off("SIGTERM", onSigterm);
+  };
+}
+
+export function getTopicsToSubscribe(): string[] {
   const envTopic = config.kafka.topic;
   const cliTopic = (process.argv[2] || "").trim();
   const singleTopic =
@@ -26,7 +65,9 @@ function getTopicsToSubscribe(): string[] {
   return config.kafka.topics;
 }
 
-async function runConsumer() {
+export async function runConsumer(
+  shutdownState: ShutdownState = createShutdownState(),
+) {
   if (!config.kafka.restProxyUrl) {
     console.error(
       "KAFKA_REST_PROXY_URL must be configured. Kafka access is REST Proxy only.",
@@ -53,7 +94,7 @@ async function runConsumer() {
       `Kafka REST consumer started for group ${groupId} topics=${topicsToSubscribe.join(",")}`,
     );
 
-    while (true) {
+    while (!shutdownState.stopRequested) {
       let records: RestRecord[] = [];
       try {
         records = await fetchRecordsRest(instance, 10000);
@@ -76,29 +117,33 @@ async function runConsumer() {
   }
 }
 
-process.on("SIGINT", () => {
-  console.log("SIGINT received, shutting down kafka REST consumer...");
-  process.exit(0);
-});
+export async function main() {
+  console.log("[worker] Starting Silo Worker...");
+  const shutdownState = createShutdownState();
+  const removeShutdownHandlers = installShutdownHandlers(shutdownState);
 
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down kafka REST consumer...");
-  process.exit(0);
-});
-
-async function main() {
   try {
-    await initOllama();
-  } catch (error) {
-    console.error("[WORKER] Falha na inicialização do Ollama:", error);
-    console.warn("[WORKER] Continuando sem Ollama — o assistente AI operará em fallback.");
-  }
+    try {
+      await initOllama();
+    } catch (error) {
+      console.error("[WORKER] Falha na inicialização do Ollama:", error);
+      console.warn("[WORKER] Continuando sem Ollama — o assistente AI operará em fallback.");
+    }
 
-  await runConsumer();
+    await runConsumer(shutdownState);
+  } finally {
+    removeShutdownHandlers();
+  }
 }
 
-main().catch((error) => {
-  console.error("Kafka REST consumer failed:", error);
-  process.exit(1);
-});
+const entrypoint = process.argv[1];
+const isMainModule =
+  typeof entrypoint === "string" &&
+  import.meta.url === pathToFileURL(entrypoint).href;
 
+if (isMainModule) {
+  main().catch((error) => {
+    console.error("Kafka REST consumer failed:", error);
+    process.exit(1);
+  });
+}

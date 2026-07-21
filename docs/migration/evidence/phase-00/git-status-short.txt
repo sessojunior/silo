@@ -1,0 +1,4 @@
+﻿ M apps/api/src/scripts/backfill-embeddings.ts
+ M apps/api/src/services/embedding-write-service.ts
+?? PLAN.md
+?? docs/migration/

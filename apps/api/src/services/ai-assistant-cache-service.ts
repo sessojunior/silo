@@ -9,8 +9,8 @@
  * Só retorna mensagens do tipo "assistant".
  */
 import { db } from "@silo/database";
-import { sql, eq, and, gte, desc } from "drizzle-orm";
-import { generateEmbedding, toVectorLiteral } from "../infra/llm/embedding-client.js";
+import { sql } from "drizzle-orm";
+import { generateEmbedding } from "../infra/llm/embedding-client.js";
 
 /** Similaridade mínima (0 a 1) para considerar cache hit. */
 const CACHE_SIMILARITY_THRESHOLD = 0.90;
@@ -25,11 +25,23 @@ type CachedResponse = {
   similarity: number;
 };
 
+function toVectorParameter(embedding: number[]): string {
+  if (
+    embedding.length === 0 ||
+    !embedding.every((value) => Number.isFinite(value))
+  ) {
+    throw new Error("Embedding inválido para cache semântico.");
+  }
+
+  return `[${embedding.join(",")}]`;
+}
+
 /**
  * Busca no banco uma resposta cacheada para a pergunta.
  * Retorna null se não encontrar nada com similaridade suficiente.
  */
 export async function findCachedAssistantResponse(
+  userId: string,
   question: string,
 ): Promise<CachedResponse | null> {
   const startedAt = Date.now();
@@ -42,11 +54,11 @@ export async function findCachedAssistantResponse(
     return null;
   }
 
-  const vectorLiteral = toVectorLiteral(embedding);
-  const minDate = new Date(Date.now() - CACHE_MAX_AGE_MS).toISOString();
+  const vectorValue = toVectorParameter(embedding);
+  const minDate = new Date(Date.now() - CACHE_MAX_AGE_MS);
 
   // Busca a mensagem de assistente com embedding mais próximo
-  // Filtra por: embedding NOT NULL, senderType = 'assistant', criada nas últimas 6h
+  // Filtra por usuário via thread para impedir cache cross-user.
   const rows = await db.execute<{
     content: string;
     metadata: Record<string, unknown>;
@@ -56,13 +68,15 @@ export async function findCachedAssistantResponse(
       SELECT
         m.content,
         m.metadata,
-        1 - (m.embedding <=> ${sql.raw(vectorLiteral)}) AS similarity
+        1 - (m.embedding <=> ${vectorValue}::vector) AS similarity
       FROM ai_assistant_message m
+      INNER JOIN ai_assistant_thread t ON t.id = m.thread_id
       WHERE
         m.embedding IS NOT NULL
         AND m.sender_type = 'assistant'
-        AND m.created_at >= ${sql.raw(`'${minDate}'::timestamp`)}
-      ORDER BY m.embedding <=> ${sql.raw(vectorLiteral)}
+        AND t.user_id = ${userId}
+        AND m.created_at >= ${minDate}
+      ORDER BY m.embedding <=> ${vectorValue}::vector
       LIMIT 1
     `,
   );
@@ -109,13 +123,13 @@ export async function saveAssistantResponseEmbedding(
     return;
   }
 
-  const vectorLiteral = toVectorLiteral(embedding);
+  const vectorValue = toVectorParameter(embedding);
 
   await db.execute(
     sql`
       UPDATE ai_assistant_message
-      SET embedding = ${sql.raw(vectorLiteral)}
-      WHERE id = ${sql.raw(`'${messageId}'`)}
+      SET embedding = ${vectorValue}::vector
+      WHERE id = ${messageId}
     `,
   );
 }
