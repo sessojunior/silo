@@ -1,0 +1,30 @@
+{
+  "caseId": "phase6_1.system.warmup_ollama_unavailable",
+  "operationId": "post.api_warmup",
+  "capturedAt": "2026-07-22T23:35:41.279Z",
+  "request": {
+    "method": "POST",
+    "baseUrl": "http://127.0.0.1:4003",
+    "url": "http://127.0.0.1:4003/api/warmup",
+    "auth": "none",
+    "headers": {},
+    "body": null
+  },
+  "response": {
+    "status": 500,
+    "headers": {
+      "content-length": "<content-length>",
+      "content-type": "application/json",
+      "x-request-id": "793162b2-8ebc-4764-99de-03cbb998fa2a",
+      "x-response-time-ms": "2122.32"
+    },
+    "body": {
+      "success": false,
+      "error": "Falha ao carregar modelo de IA."
+    }
+  },
+  "sideEffects": {
+    "dbBefore": [],
+    "dbAfter": []
+  }
+}

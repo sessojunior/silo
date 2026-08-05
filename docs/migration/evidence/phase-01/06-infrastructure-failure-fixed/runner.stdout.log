@@ -1,0 +1,2 @@
+[legacy-contract] captured phase1_6.infrastructure.auth.login_password_db_unavailable -> tests\fixtures\legacy-golden\phase1_6.infrastructure.auth.login_password_db_unavailable.json
+[legacy-contract] captured phase1_6.infrastructure.system.warmup_ollama_unavailable -> tests\fixtures\legacy-golden\phase1_6.infrastructure.system.warmup_ollama_unavailable.json

@@ -18,6 +18,12 @@ export type ChatRealtimeMessageDto = {
 
 export type ChatRealtimeEvent =
   | {
+      type: "chat.ping";
+      data: {
+        timestamp: string;
+      };
+    }
+  | {
       type: "chat.message.created";
       data: {
         message: ChatRealtimeMessageDto;
@@ -59,6 +65,13 @@ export type ChatRealtimeEvent =
         updatedAt: string;
       };
     };
+
+export type ChatRealtimeClientMessage = {
+  type: "chat.pong";
+  data: {
+    timestamp: string;
+  };
+};
 
 export type ChatRealtimeServerMessage =
   | ChatRealtimeEvent

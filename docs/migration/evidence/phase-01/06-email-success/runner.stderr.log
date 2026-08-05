@@ -1,0 +1,6 @@
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+Error: phase1_6.email_success.users.email_change_request expected status 200 but got 500
+    at runCase (file:///D:/Projects/silo/silo-sessojunior/tests/contracts/legacy/runner.mjs:415:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async main (file:///D:/Projects/silo/silo-sessojunior/tests/contracts/legacy/runner.mjs:487:5)
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 76

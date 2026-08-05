@@ -58,6 +58,7 @@ export const AiAssistantThreadMessageSchema = z.object({
   thinking: z.string().optional(),
   generation: z.lazy(() => AiAssistantGenerationSchema).optional(),
   visualization: z.lazy(() => AiAssistantVisualizationSchema).optional(),
+  artifacts: z.array(z.lazy(() => AiAssistantArtifactSchema)).optional().nullable(),
   createdAt: z.string(),
 });
 
@@ -189,6 +190,19 @@ export type AiAssistantVisualizationDto = z.infer<
   typeof AiAssistantVisualizationSchema
 >;
 
+export const AiAssistantArtifactSchema = z.object({
+  kind: z.literal("pdf"),
+  url: z.string().min(1),
+  filename: z.string().min(1),
+  title: z.string().optional().nullable(),
+  mimeType: z.literal("application/pdf").default("application/pdf"),
+  reportType: z.string().optional().nullable(),
+  checksum: z.string().optional().nullable(),
+  byteSize: z.number().int().nonnegative().optional().nullable(),
+});
+
+export type AiAssistantArtifactDto = z.infer<typeof AiAssistantArtifactSchema>;
+
 export const AiAssistantMessageResponseSchema = z.object({
   threadId: z.string(),
   thread: AiAssistantThreadSummarySchema.optional(),
@@ -201,6 +215,7 @@ export const AiAssistantMessageResponseSchema = z.object({
   suggestedQuestions: z.array(z.string()),
   citations: z.array(AiAssistantCitationSchema),
   visualization: AiAssistantVisualizationSchema.optional(),
+  artifacts: z.array(AiAssistantArtifactSchema).optional().nullable(),
   generation: AiAssistantGenerationSchema.optional(),
   contextSummary: z.string(),
 });

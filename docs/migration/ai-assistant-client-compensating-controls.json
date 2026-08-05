@@ -1,0 +1,113 @@
+{
+  "$schema": "https://silo.local/schemas/migration-ai-assistant-client-compensating-controls.v1.json",
+  "version": "2026-07-22.phase-1.30",
+  "status": "approved_compensating_control_no_7d_client_telemetry_available",
+  "decision": {
+    "reason": "Staging/production logs or telemetry covering seven days for assistant POST clients are not available to the executor.",
+    "authorizedBy": "user",
+    "authorizedAt": "2026-07-22",
+    "riskAccepted": "Residual risk of an unknown external assistant client is accepted only as a documented migration risk. The migration must still stop if future logs show any unlisted assistant message client before cutover.",
+    "rule": "Only clients in knownRuntimeClients are treated as approved known clients for this migration checkpoint. This does not prove external clients are absent."
+  },
+  "scopeEndpoints": [
+    {
+      "method": "POST",
+      "publicPath": "/api/admin/ai-assistant/messages",
+      "apiPath": "/api/ai-assistant/messages",
+      "operationId": "post.api_ai_assistant_messages",
+      "runtimeClientStatus": "no_versioned_web_runtime_client_found"
+    },
+    {
+      "method": "POST",
+      "publicPath": "/api/admin/ai-assistant/messages/stream",
+      "apiPath": "/api/ai-assistant/messages/stream",
+      "operationId": "post.api_ai_assistant_messages_stream",
+      "runtimeClientStatus": "known_versioned_web_runtime_client"
+    }
+  ],
+  "knownRuntimeClients": [
+    {
+      "id": "web-admin-ai-assistant-sse",
+      "owner": "migration-executor",
+      "ownerType": "repository-controlled-web-client",
+      "clientType": "browser-web",
+      "method": "POST",
+      "publicPath": "/api/admin/ai-assistant/messages/stream",
+      "apiPath": "/api/ai-assistant/messages/stream",
+      "sourceFiles": [
+        "apps/frontend/src/app/admin/ai-assistant/page.tsx",
+        "apps/frontend/src/lib/config.ts"
+      ],
+      "originClassification": "same-origin-or-configured-api-origin-through-web-config",
+      "sanitizedUserAgentClassification": "browser-user-agent-not-enumerated-without-production-telemetry",
+      "currentIdempotencyKeyHeader": "present",
+      "canBeUpdatedForIdempotency": true,
+      "approvedIdempotencyPlan": {
+        "phase": "13.20",
+        "requiredChange": "Generate a UUID X-Idempotency-Key per intentional assistant send, keep the same key for retry/reconnect of the same message, create a new key for a new intentional send, and send it on sync/SSE POSTs.",
+        "nodeCompatibility": "Node must ignore the header during coexistence.",
+        "pythonCompatibility": "Python may require the header only when the validated plan contains PDF/artifact generation, exactly as Phase 13.20 states.",
+        "requiredBefore": "routing assistant PDF/artifact traffic to Python"
+      }
+    }
+  ],
+  "knownNonRuntimeCallers": [
+    {
+      "id": "legacy-contract-capture-direct-sync",
+      "callerType": "test-contract-runner",
+      "method": "POST",
+      "apiPath": "/api/ai-assistant/messages",
+      "sourceFiles": [
+        "tests/contracts/legacy/capture-ai-rag-cache-contract.mjs",
+        "tests/contracts/legacy/cases.phase-1.6-ai-assistant-infrastructure.json",
+        "tests/contracts/legacy/cases.phase-1.6-ai-assistant-embedding.json"
+      ],
+      "runtimeClient": false
+    },
+    {
+      "id": "legacy-contract-capture-direct-sse",
+      "callerType": "test-contract-runner",
+      "method": "POST",
+      "apiPath": "/api/ai-assistant/messages/stream",
+      "sourceFiles": [
+        "tests/contracts/legacy/capture-ai-sse-contract.mjs",
+        "tests/contracts/legacy/cases.phase-1.6-ai-assistant-infrastructure.json",
+        "tests/contracts/legacy/cases.phase-1.6-ai-assistant-embedding.json"
+      ],
+      "runtimeClient": false
+    }
+  ],
+  "unknownClientPolicy": {
+    "absenceOfLogsIsNotProofOfAbsence": true,
+    "blockOnFutureUnknownClient": true,
+    "requiredFutureLogFields": [
+      "timestamp",
+      "method",
+      "normalizedPath",
+      "status",
+      "originOrHost",
+      "sanitizedUserAgent",
+      "requestId"
+    ],
+    "decisionForFutureUnknownClient": "If any future staging/production log before cutover shows an assistant message POST client not represented in knownRuntimeClients, stop the migration, identify owner, update compatibility plan, add/adjust contract tests, and only then continue."
+  },
+  "staticScanRules": {
+    "productionWebRoots": [
+      "apps/frontend/src"
+    ],
+    "assistantMessagePathPattern": "/api/(admin/)?ai-assistant/messages(/stream)?",
+    "ignoredRuntimeClientFiles": [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.contract.test.tsx"
+    ],
+    "rule": "Any production web reference to assistant message POST paths must be represented by knownRuntimeClients."
+  },
+  "futureRequiredControls": [
+    "Phase 2.9 must introduce structured request logging that can support future client inventory without cookies, prompts or request bodies.",
+    "Before staging/cutover, logs for assistant message endpoints must include method, normalizedPath, status, timestamp, origin/host, sanitized user-agent and request id.",
+    "Phase 13.20 must update the known web client to send X-Idempotency-Key and test retry/reconnect/new-send semantics.",
+    "Python must not make X-Idempotency-Key optional for PDF/artifact generation because of absent historical logs.",
+    "If any future log shows an unlisted assistant message client, the migration must stop until owner and idempotency compatibility are documented."
+  ]
+}

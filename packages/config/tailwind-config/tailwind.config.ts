@@ -1,9 +1,6 @@
 /** @type {import("tailwindcss").Config} */
 const sharedTailwindConfig = {
-  content: [
-    "src/**/*.{ts,tsx}",
-    "../../packages/ui/src/**/*.{ts,tsx}",
-  ],
+  content: ["src/**/*.{ts,tsx}"],
   plugins: [],
 };
 

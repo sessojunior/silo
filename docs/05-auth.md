@@ -33,7 +33,7 @@ O sistema SILO implementa múltiplos métodos de autenticação com foco em segu
 
 ## 🔑 **MÉTODOS DE AUTENTICAÇÃO**
 
-A autenticação é gerenciada pelo Better Auth e exposta em `/api/auth/*` pelo handler `apps/web/src/app/api/auth/[...all]/route.ts`. O frontend usa `authClient` para iniciar login, registro e OTP.
+A autenticação é gerenciada pelo Better Auth e exposta em `/api/auth/*` pelo handler `apps/frontend/src/app/api/auth/[...all]/route.ts`. O frontend usa `authClient` para iniciar login, registro e OTP.
 
 ### **1. Login com Email e Senha**
 
@@ -222,7 +222,7 @@ GOOGLE_CLIENT_SECRET='seu-client-secret'
 
 ### **Arquivo de Configuração**
 
-Arquivo: `apps/web/src/lib/auth/server.ts`
+Arquivo: `apps/frontend/src/lib/auth/server.ts`
 
 ```typescript
 export const auth = betterAuth({
@@ -278,16 +278,16 @@ export const auth = betterAuth({
 
 **Componentes afetados:**
 
-- `apps/web/src/components/admin/sidebar/SidebarFooter.tsx`
-- `apps/web/src/components/admin/topbar/TopbarDropdown.tsx`
-- `apps/web/src/context/logout-context.tsx`
+- `apps/frontend/src/components/admin/sidebar/SidebarFooter.tsx`
+- `apps/frontend/src/components/admin/topbar/TopbarDropdown.tsx`
+- `apps/frontend/src/context/logout-context.tsx`
 - Componentes genéricos (`Button`, `NavButton`, etc.) devem automaticamente desabilitar prefetch para URLs que começam com `/api/`
 
 **Regra geral:** Se `href.startsWith('/api/')`, SEMPRE usar `prefetch={false}`.
 
 ### **Validação de Domínio**
 
-Função centralizada em `apps/web/src/lib/auth/validate.ts`:
+Função centralizada em `apps/frontend/src/lib/auth/validate.ts`:
 
 ```typescript
 export function isValidDomain(email: string): boolean {
@@ -308,7 +308,7 @@ export function isValidDomain(email: string): boolean {
 
 Os rate limits dos fluxos sensíveis são aplicados por combinação de email + IP + rota, com janelas curtas para reduzir abuso.
 
-A API geral também usa um limitador global em [apps/api/src/middleware/rate-limit.ts](../apps/api/src/middleware/rate-limit.ts) que identifica a sessão do usuário pelo cookie `better-auth.session_token` quando ele existe e cai para IP apenas quando não há sessão autenticada. Isso evita que vários usuários atrás do mesmo IP compartilhem a mesma cota.
+A API geral também usa um limitador global em [apps/backend/src/silo/api/middleware.py](../apps/backend/src/silo/api/middleware.py) e [apps/backend/src/silo/api/rate_limit.py](../apps/backend/src/silo/api/rate_limit.py) que identifica a sessão do usuário pelo cookie `better-auth.session_token` quando ele existe e cai para IP apenas quando não há sessão autenticada. Isso evita que vários usuários atrás do mesmo IP compartilhem a mesma cota.
 
 **Regras atuais:**
 
@@ -318,7 +318,7 @@ A API geral também usa um limitador global em [apps/api/src/middleware/rate-lim
 - **Lockout de OTP:** 10s
 - **Cooldown de reenvio de OTP:** 90s
 
-Arquivo: [apps/api/src/infra/rate-limit-db.ts](../apps/api/src/infra/rate-limit-db.ts)
+Arquivo: [apps/backend/src/silo/api/rate_limit.py](../apps/backend/src/silo/api/rate_limit.py)
 
 ```typescript
 export async function isRateLimited(params: {
@@ -336,10 +336,10 @@ export async function recordRateLimit(params: {
 }): Promise<void>;
 ```
 
-Arquivo: [apps/api/src/middleware/rate-limit.ts](../apps/api/src/middleware/rate-limit.ts)
+Arquivo: [apps/backend/src/silo/api/middleware.py](../apps/backend/src/silo/api/middleware.py)
 
 - Limite global da API por sessão autenticada ou IP de fallback.
-- `apps/api/src/routes/auth.ts` e os fluxos do `auth-custom-service` continuam usando as regras específicas acima.
+- `apps/backend/src/silo/api/routers/auth.py` e os fluxos do serviço de auth continuam usando as regras específicas acima.
 
 **Endpoints Protegidos:**
 
@@ -349,7 +349,7 @@ Arquivo: [apps/api/src/middleware/rate-limit.ts](../apps/api/src/middleware/rate
 
 **Hashing:** bcrypt com salt rounds 10
 
-Arquivo: `apps/web/src/lib/auth/hash.ts`
+Arquivo: `apps/frontend/src/lib/auth/hash.ts`
 
 ```typescript
 export async function hashPassword(password: string): Promise<string> {
@@ -409,7 +409,7 @@ SMTP_PASSWORD='senha'
 
 ### **Obter Usuário Autenticado**
 
-Arquivo: `apps/web/src/lib/auth/server.ts`
+Arquivo: `apps/frontend/src/lib/auth/server.ts`
 
 ```typescript
 export async function getAuthUser() {
@@ -487,7 +487,7 @@ if (userId === session.userId) {
 
 ### **UserContext**
 
-Arquivo: `apps/web/src/context/UserContext.tsx`
+Arquivo: `apps/frontend/src/context/UserContext.tsx`
 
 ```typescript
 export const UserContext = createContext<{
@@ -524,7 +524,7 @@ await refreshUser();
 
 ### **Hook de Usuário Atual**
 
-Arquivo: `apps/web/src/hooks/useCurrentUser.ts`
+Arquivo: `apps/frontend/src/hooks/useCurrentUser.ts`
 
 ```typescript
 export function useCurrentUser() {
@@ -557,4 +557,4 @@ Todos os grupos possuem permissões obrigatórias que não podem ser removidas:
 
 ---
 
-**🎯 Para detalhes técnicos de implementação, consulte o código em `apps/web/src/lib/auth/` e `apps/web/src/app/api/auth/`**
+**🎯 Para detalhes técnicos de implementação, consulte o código em `apps/frontend/src/lib/auth/` e `apps/frontend/src/app/api/auth/`**

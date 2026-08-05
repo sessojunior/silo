@@ -1,0 +1,21 @@
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[kafka-rest-dataflow] Falling back to simulated data [TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND kafka-rest-proxy
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'kafka-rest-proxy'
+  }
+}
+[kafka-rest-dataflow] Falling back to simulated data [TypeError: fetch failed] {
+  [cause]: Error: getaddrinfo ENOTFOUND kafka-rest-proxy
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'kafka-rest-proxy'
+  }
+}

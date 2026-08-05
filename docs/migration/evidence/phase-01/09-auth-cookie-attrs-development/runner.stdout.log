@@ -1,0 +1,3 @@
+[legacy-contract] captured phase1_9.auth_cookie_attrs.development.login_password_custom.set_cookie -> tests\fixtures\legacy-golden\phase1_9.auth_cookie_attrs.development.login_password_custom.set_cookie.json
+[legacy-contract] captured phase1_9.auth_cookie_attrs.development.sign_in_email_better_auth.set_cookie -> tests\fixtures\legacy-golden\phase1_9.auth_cookie_attrs.development.sign_in_email_better_auth.set_cookie.json
+[legacy-contract] captured phase1_9.auth_cookie_attrs.development.sign_out_admin.clear_cookie -> tests\fixtures\legacy-golden\phase1_9.auth_cookie_attrs.development.sign_out_admin.clear_cookie.json

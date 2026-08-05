@@ -4,7 +4,6 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
-    "./config": "./src/config/index.ts",
     "./constants": "./src/config/constants.ts",
     "./date": "./src/date/index.ts",
     "./format/markdown": "./src/format/markdown.ts",
@@ -20,9 +19,6 @@
     "./validation/groups": "./src/validation/groups.ts",
     "./validation/contacts": "./src/validation/contacts.ts",
     "./validation/shared": "./src/validation/shared.ts",
-    "./auth/hash": "./src/auth/hash.ts",
-    "./email/send-email-template": "./src/email/send-email-template.ts",
-    "./kafka/rest-client": "./src/kafka/rest-client.ts",
     "./dataflow/ecflow-kafka": "./src/dataflow/ecflow-kafka.ts",
     "./dataflow/types": "./src/dataflow/types.ts",
     "./dataflow/helpers": "./src/dataflow/helpers.ts",
@@ -33,7 +29,6 @@
     "./dataflow/pert-build": "./src/dataflow/pert-build.ts",
     "./contracts": "./src/contracts/index.ts",
     "./contracts/api-response": "./src/contracts/api-response.ts",
-    "./contracts/kafka-events": "./src/contracts/kafka-events.ts",
     "./contracts/dto/contacts": "./src/contracts/dto/contacts.ts",
     "./contracts/dto/groups": "./src/contracts/dto/groups.ts",
     "./contracts/dto/products": "./src/contracts/dto/products.ts",
@@ -66,7 +61,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@silo/config": "*",
+    "@silo/config": "file:../config",
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^6.4.17",
     "@types/node": "^22.15.3",

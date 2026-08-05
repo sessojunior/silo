@@ -90,19 +90,20 @@ Assim, o operador pode identificar rapidamente um problema no monitoramento e ab
 
 ## 6. Resumo técnico
 
-| Componente | Origem principal | Fallback atual | Atualização |
-| --- | --- | --- | --- |
-| Produtos | Kafka REST Proxy | Snapshots fake convertidos para Kafka/ecFlow | Conforme mensagens do tópico |
-| Fluxo de Dados | Kafka REST Proxy | `pipeline-data.json` simulado | Por produto/data/turno |
-| Páginas e Figuras | Banco de dados | Seeds de desenvolvimento | Conforme cadastro/verificação |
-| Radares | Banco de dados/integrações | Seeds de desenvolvimento | Conforme cadastro/integração |
+| Componente        | Origem principal           | Fallback atual                               | Atualização                   |
+| ----------------- | -------------------------- | -------------------------------------------- | ----------------------------- |
+| Produtos          | Kafka REST Proxy           | Snapshots fake convertidos para Kafka/ecFlow | Conforme mensagens do tópico  |
+| Fluxo de Dados    | Kafka REST Proxy           | `pipeline-data.json` simulado                | Por produto/data/turno        |
+| Páginas e Figuras | Banco de dados             | Seeds de desenvolvimento                     | Conforme cadastro/verificação |
+| Radares           | Banco de dados/integrações | Seeds de desenvolvimento                     | Conforme cadastro/integração  |
 
 Arquivos principais:
 
-- `apps/web/src/app/admin/monitoring/page.tsx`
-- `apps/web/src/lib/dataflow/kafka-data-flow-source.ts`
-- `apps/web/src/components/admin/monitoring/monitoring-page-client.tsx`
-- `apps/web/src/components/admin/monitoring/product-monitoring-cards.tsx`
+- `apps/backend/src/silo/services/dataflow_portal.py`
+- `apps/backend/src/silo/integrations/kafka_rest.py`
+- `apps/frontend/src/app/admin/monitoring/page.tsx`
+- `apps/frontend/src/components/admin/monitoring/monitoring-page-client.tsx`
+- `apps/frontend/src/components/admin/monitoring/product-monitoring-cards.tsx`
 
 ---
 

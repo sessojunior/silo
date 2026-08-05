@@ -20,28 +20,73 @@ default:
   interruptible: true
 
 .node_template:
-  image: node:22-alpine
+  image: node:22-alpine@sha256:76789712cd1ae89a1225eac9077010d68987a423588042dac30446f502f1858c
   cache:
     key:
       files:
-        - package-lock.json
+        - apps/frontend/package-lock.json
     paths:
       - .npm/
   before_script:
     - npm config set cache "$CI_PROJECT_DIR/.npm" --global
-    - npm ci --prefer-offline --no-audit
+    - cd apps/frontend && npm ci --prefer-offline --no-audit && cd "$CI_PROJECT_DIR"
 
-validate:
+validate:node:
   stage: validate
   extends: .node_template
   script:
-    - npm run lint
-    - npm run typecheck
+    - cd apps/frontend && npm run lint && cd "$CI_PROJECT_DIR"
+    - cd apps/frontend && npm run typecheck && cd "$CI_PROJECT_DIR"
+    - cd apps/frontend && npm test && cd "$CI_PROJECT_DIR"
+    - node scripts/security/check-node-audit.mjs
+
+validate:python:
+  stage: validate
+  image: ghcr.io/astral-sh/uv:0.11.28@sha256:5c3ab83183a73c5d319a77009eb425b60d5bb937f339fb7876788ebf567baf48
+  cache:
+    key:
+      files:
+        - apps/backend/uv.lock
+    paths:
+      - .uv-cache/
+      - apps/backend/.venv/
+  before_script:
+    - uv --version
+  script:
+    - uv --directory apps/backend sync --locked --all-groups
+    - uv --directory apps/backend run --locked ruff format --check .
+    - uv --directory apps/backend run --locked ruff check .
+    - uv --directory apps/backend run --locked mypy src
+    - uv --directory apps/backend run --locked pytest -q --cov=silo --cov-report=term-missing --cov-report=json:coverage.json
+    - uv --directory apps/backend run --locked python scripts/check_coverage_thresholds.py coverage.json
+    - uv --directory apps/backend run --locked silo-openapi-export --check
+    - uv --directory apps/backend audit --locked --no-dev
+
+security:scan:
+  stage: validate
+  image: ghcr.io/astral-sh/uv:0.11.28@sha256:5c3ab83183a73c5d319a77009eb425b60d5bb937f339fb7876788ebf567baf48
+  cache:
+    key:
+      files:
+        - apps/frontend/package-lock.json
+        - apps/backend/uv.lock
+    paths:
+      - .npm/
+      - .uv-cache/
+  before_script:
+    - apk add --no-cache nodejs npm
+    - npm config set cache "$CI_PROJECT_DIR/.npm" --global
+    - cd apps/frontend && npm ci --prefer-offline --no-audit && cd "$CI_PROJECT_DIR"
+    - uv --version
+  script:
+    - node scripts/security/check-node-audit.mjs
+    - node scripts/security/generate-sbom.mjs
+    - uv --directory apps/backend audit --locked --no-dev
 
 build:image:
   stage: build
   image:
-    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug@sha256:fb6d29da5792b6b9886bb132d1bb600bec79a47a31e4c152df3e52de9c561a44
     entrypoint: [""]
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
@@ -64,7 +109,8 @@ build:image:
       if [ "${CI_PIPELINE_SOURCE}" = "merge_request_event" ]; then
         /kaniko/executor \
           --context "${CI_PROJECT_DIR}" \
-          --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
+          --dockerfile "${CI_PROJECT_DIR}/apps/backend/Dockerfile" \
+          --target api \
           --cache=false \
           --no-push
       else
@@ -78,7 +124,8 @@ build:image:
 
         /kaniko/executor \
           --context "${CI_PROJECT_DIR}" \
-          --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
+          --dockerfile "${CI_PROJECT_DIR}/apps/backend/Dockerfile" \
+          --target api \
           --cache=true \
           --cache-repo "${CI_REGISTRY_IMAGE}/cache" \
           "$@"
@@ -86,7 +133,7 @@ build:image:
 
 .deploy_template:
   stage: deploy
-  image: alpine:3.20
+  image: alpine:3.20@sha256:c64c687cbea9300178b30c95835354e34c4e4febc4badfe27102879de0483b5e
   before_script:
     - apk add --no-cache openssh-client
   script:

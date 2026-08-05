@@ -1,6 +1,6 @@
 ---
-description: "Use when working with Next.js routes, layouts, components, Server Actions, Route Handlers, Metadata API, or any file inside apps/web/. Covers Next.js 16 App Router conventions for this project."
-applyTo: "apps/web/**/*.{ts,tsx}"
+description: "Use when working with Next.js routes, layouts, components, Server Actions, Route Handlers, Metadata API, or any file inside apps/frontend/. Covers Next.js 16 App Router conventions for this project."
+applyTo: "apps/frontend/**/*.{ts,tsx}"
 ---
 
 # Next.js 16 — App Router (SILO)
@@ -53,10 +53,10 @@ export function Counter() {
 
 ## Route Handlers (API Routes)
 
-Localização: `apps/web/app/api/**/*.ts` — arquivo `route.ts`.
+Localização: `apps/frontend/app/api/**/*.ts` — arquivo `route.ts`.
 
 ```typescript
-// apps/web/app/api/admin/products/route.ts
+// apps/frontend/app/api/admin/products/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -120,7 +120,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 ## Versão da Aplicação
 
-- A versão exibida na interface do `apps/web` fica centralizada em `apps/web/src/lib/config.ts` como `config.appVersion`.
+- A versão exibida na interface do `apps/frontend` fica centralizada em `apps/frontend/src/lib/config.ts` como `config.appVersion`.
 - Não usar `process.env`, build args, variáveis de CI, `package.json` ou metadata de Git para esse valor.
 - Quando a UI mudar e a versão precisar acompanhar, atualizar o mesmo arquivo no mesmo change.
 - O sidebar deve consumir `config.appVersion` diretamente, sem helper extra, contexto ou hook.

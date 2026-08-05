@@ -1,45 +1,46 @@
 ---
-description: "Use when creating or modifying Express route handlers, middleware, services, request validation, or API errors in apps/api."
-applyTo: "apps/api/**/*.ts"
+description: "Use when creating or modifying FastAPI route handlers, middleware, services, request validation, or API errors in apps/backend."
+applyTo: "apps/backend/**/*.py"
 ---
 
-# Express API — apps/api
+# FastAPI API - apps/backend
 
-Referências:
+Referencias:
 - [docs/02-architecture.md](../../docs/02-architecture.md)
 - [docs/06-api.md](../../docs/06-api.md)
 
 ## Estrutura
 
-- `src/index.ts` monta middlewares globais, rotas e health checks.
-- `src/routes/*.ts` deve ficar fino: autenticação, validação, chamada de service e resposta.
-- `src/services/*.ts` concentra regra de negócio e integração com o banco.
-- `src/middleware/*.ts` concentra auth, permissões, rate limit e regras transversais.
+- `src/silo/api/main.py` monta app, routers e health checks.
+- `src/silo/api/routers/*.py` deve ficar fino: autenticação, validação, chamada de service e resposta.
+- `src/silo/api/middleware.py` concentra CORS, request id, trusted proxy, logs e limites.
+- `src/silo/api/errors.py` centraliza exceções e mapeamento HTTP.
+- `src/silo/api/dependencies.py` concentra sessão, permissões e guards reutilizáveis.
 
 ## Contrato HTTP
 
-- Sucesso: `success: true` com `data` e, quando fizer sentido, `message`.
-- Erro: `success: false` com `error` e, opcionalmente, `field`.
-- Use status corretos: `200`, `201`, `400`, `401`, `403`, `404`, `429` e `500`.
+- Preserve método, path, status, headers observáveis e envelopes já caracterizados.
+- Preserve camelCase nos DTOs públicos.
+- Preserve diferença entre campo ausente e `null`.
+- Mantenha `GET /health`, `GET /health/live` e `GET /health/ready` compatíveis com os testes.
 
 ## Validação e autenticação
 
-- Valide `req.body`, `req.query` e `req.params` com Zod antes de chamar serviços.
-- Use `authMiddleware` e `requirePermission` em vez de checks inline.
-- Não repita regra de admin ou grupo em rota; centralize em middleware ou service.
+- Valide payloads na borda com Pydantic.
+- Use dependências compartilhadas para auth/permissões em vez de checks inline.
+- Não duplique regra de autorização em múltiplos routers quando um guard central resolver.
 
 ## Dados e config
 
-- Use `@silo/database` para persistência e `@silo/engine/*` para contratos, config e validação compartilhada.
-- Nunca importe de `apps/web` nem use paths relativos entre pacotes.
-- Nunca espalhe `process.env`; use `@silo/engine/config` e o bootstrap local do app.
+- Use os serviços e repositórios do backend Python; não espalhe acesso direto ao DB pelos routers.
+- Não leia `os.environ` fora do bootstrap e do módulo de settings.
+- Qualquer integração externa deve passar por adapter explícito.
 
 ## Erros e logs
 
-- Sempre envolva handlers em `try/catch`.
-- Logue com contexto suficiente para diagnóstico.
-- Não exponha stack trace, query ou detalhe interno para o cliente.
+- Nunca exponha stack trace, query, prompt, tool args ou segredo para o cliente.
+- Logs devem ser sanitizados e conter contexto mínimo suficiente para depuração.
 
 ## Regra prática
 
-- Route handler bom é fino, previsível e sem regra de negócio pesada.
+- Router bom é fino, previsível e sem regra de negócio pesada.

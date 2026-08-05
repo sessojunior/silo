@@ -1,0 +1,18 @@
+{
+  "caseId": "system.health.ok",
+  "comparison": "Node golden x Python FastAPI via legacy runner",
+  "validatedFields": {
+    "response.status": 200,
+    "response.body.status": "ok",
+    "response.body.app": "silo-api",
+    "response.body.timestamp": "<timestamp>"
+  },
+  "ignoredInfrastructureHeaders": [
+    "etag",
+    "vary",
+    "x-powered-by",
+    "x-request-id",
+    "x-response-time-ms"
+  ],
+  "result": "match"
+}

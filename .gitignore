@@ -18,11 +18,22 @@
 /playwright-report/
 /test-results/
 
+# python
+apps/backend/.venv/
+apps/backend/.mypy_cache/
+apps/backend/.pytest_cache/
+apps/backend/.ruff_cache/
+apps/backend/.coverage
+apps/backend/htmlcov/
+apps/backend/**/__pycache__/
+apps/backend/**/*.py[cod]
+apps/backend/.hypothesis/
+
 # next.js
 /.next/
 /out/
-apps/web/.next/
-apps/web/out/
+apps/frontend/.next/
+apps/frontend/out/
 
 # production
 /build
@@ -31,6 +42,11 @@ apps/web/out/
 # misc
 .DS_Store
 *.pem
+.cookiejar
+cookies.txt
+profile.json
+artifacts/
+/.ruff_cache/
 
 # debug
 npm-debug.log*

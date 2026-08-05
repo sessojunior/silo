@@ -1,0 +1,218 @@
+services:
+  ollama:
+    image: ${SILO_OLLAMA_IMAGE:-ollama/ollama:0.30.0-rc7@sha256:64ed5cc8e315622c4c1571b52b67b6d9cb8196f2c803e5b01673bc1d9937ffcb}
+    container_name: silo-ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: 24h
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
+    command: ["serve"]
+    volumes:
+      - silo-ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  migrate:
+    image: ${SILO_IMAGE:-silo-api-python:latest}
+    container_name: silo-api-python-migrate
+    command: ["python", "-m", "silo.db.migrate"]
+    environment:
+      SILO_ENV: ${SILO_ENV:-production}
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-}
+      APP_URL_PROD: ${APP_URL_PROD:-}
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      PRODUCT_FLOW_API_KEY: ${PRODUCT_FLOW_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
+      LANGSMITH_TRACING_APPROVED: ${LANGSMITH_TRACING_APPROVED:-false}
+      KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL:-}
+      KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH:-}
+      KAFKA_REST_PROXY_USE_MOCK_DATA: ${KAFKA_REST_PROXY_USE_MOCK_DATA:-false}
+      KAFKA_DATAFLOW_TOPIC_PREFIX: ${KAFKA_DATAFLOW_TOPIC_PREFIX:-silo.dataflow.}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-consumer-group}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-}
+      KAFKA_TOPICS: ${KAFKA_TOPICS:-}
+      KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
+      KAFKA_PROCESS_RETRY_COUNT: ${KAFKA_PROCESS_RETRY_COUNT:-3}
+      KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
+      OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
+      OLLAMA_MAX_CONCURRENT_REQUESTS: ${OLLAMA_MAX_CONCURRENT_REQUESTS:-1}
+      UPLOADS_DIR: /app/uploads
+      TZ: America/Sao_Paulo
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+  ollama-init:
+    image: ${SILO_IMAGE:-silo-api-python:latest}
+    container_name: silo-ollama-init
+    command: ["python", "-m", "silo.ai.ollama_init"]
+    environment:
+      SILO_ENV: ${SILO_ENV:-production}
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-}
+      APP_URL_PROD: ${APP_URL_PROD:-}
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      PRODUCT_FLOW_API_KEY: ${PRODUCT_FLOW_API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
+      LANGSMITH_TRACING_APPROVED: ${LANGSMITH_TRACING_APPROVED:-false}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
+      OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
+      AI_AGENT_MODE: ${AI_AGENT_MODE:-deterministic}
+      UPLOADS_DIR: /app/uploads
+      TZ: America/Sao_Paulo
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: ${SILO_IMAGE:-silo-api-python:latest}
+    container_name: silo-api-python
+    ports:
+      - "${API_PORT:-4000}:4000"
+    command: ["uvicorn", "silo.api.main:app", "--host", "0.0.0.0", "--port", "4000"]
+    environment:
+      SILO_ENV: ${SILO_ENV:-production}
+      NODE_ENV: ${NODE_ENV:-production}
+      AI_AGENT_MODE: ${AI_AGENT_MODE:-deterministic}
+      PORT: "4000"
+      DATABASE_URL: ${DATABASE_URL:-}
+      APP_URL_PROD: ${APP_URL_PROD:-}
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      ALLOWED_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
+      LANGSMITH_TRACING_APPROVED: ${LANGSMITH_TRACING_APPROVED:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      PRODUCT_FLOW_API_KEY: ${PRODUCT_FLOW_API_KEY:-}
+      UPLOADS_DIR: /app/uploads
+      KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL:-}
+      KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH:-}
+      KAFKA_REST_PROXY_USE_MOCK_DATA: ${KAFKA_REST_PROXY_USE_MOCK_DATA:-false}
+      KAFKA_DATAFLOW_TOPIC_PREFIX: ${KAFKA_DATAFLOW_TOPIC_PREFIX:-silo.dataflow.}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-consumer-group}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-}
+      KAFKA_TOPICS: ${KAFKA_TOPICS:-}
+      KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
+      KAFKA_PROCESS_RETRY_COUNT: ${KAFKA_PROCESS_RETRY_COUNT:-3}
+      KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
+      OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
+      OLLAMA_MAX_CONCURRENT_REQUESTS: ${OLLAMA_MAX_CONCURRENT_REQUESTS:-1}
+      TZ: America/Sao_Paulo
+    volumes:
+      - silo-storage-data:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      ollama-init:
+        condition: service_completed_successfully
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/live', timeout=2).read()",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    stop_grace_period: 90s
+    mem_limit: 2g
+    cpus: "2.0"
+    restart: unless-stopped
+
+  worker:
+    image: ${SILO_IMAGE:-silo-api-python:latest}
+    container_name: silo-worker-python
+    command: ["python", "-m", "silo.worker.main"]
+    environment:
+      SILO_ENV: ${SILO_ENV:-production}
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-}
+      KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL:-}
+      KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH:-}
+      KAFKA_REST_PROXY_USE_MOCK_DATA: ${KAFKA_REST_PROXY_USE_MOCK_DATA:-false}
+      KAFKA_DATAFLOW_TOPIC_PREFIX: ${KAFKA_DATAFLOW_TOPIC_PREFIX:-silo.dataflow.}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-silo-consumer-group}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-}
+      KAFKA_TOPICS: ${KAFKA_TOPICS:-}
+      KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
+      KAFKA_PROCESS_RETRY_COUNT: ${KAFKA_PROCESS_RETRY_COUNT:-3}
+      KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
+      TZ: America/Sao_Paulo
+      WORKER_HEALTH_STATE_PATH: /tmp/silo-worker-health.json
+      WORKER_HEALTH_STALE_SECONDS: "30"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-m", "silo.worker.healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    stop_grace_period: 90s
+    mem_limit: 1g
+    cpus: "1.0"
+    restart: unless-stopped
+
+volumes:
+  silo-storage-data:
+    name: silo-storage-data
+  silo-ollama-data:
+    name: silo-ollama-data

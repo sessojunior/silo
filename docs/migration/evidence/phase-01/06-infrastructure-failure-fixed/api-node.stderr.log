@@ -1,0 +1,23 @@
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+⚠️ [SCOPE_EMBEDDING] Falha ao gerar embedding para escopo "models": fetch failed
+⚠️ [SCOPE_EMBEDDING] Falha ao gerar embedding para escopo "pending": fetch failed
+⚠️ [SCOPE_EMBEDDING] Falha ao gerar embedding para escopo "reports": fetch failed
+⚠️ [SCOPE_EMBEDDING] Falha ao gerar embedding para escopo "problems": fetch failed
+⚠️ [SCOPE_EMBEDDING] Falha ao gerar embedding para escopo "solutions": fetch failed
+⚠️ [SCOPE_EMBEDDING] Falha ao gerar embedding para escopo "projects": fetch failed
+⚠️ [SCOPE_EMBEDDING] Falha ao gerar embedding para escopo "general": fetch failed
+⚠️ [SCOPE_EMBEDDING] Falha ao gerar embedding para escopo "generate_pdf": fetch failed
+⛔ [RATE_LIMIT] DB unavailable, failing closed: Failed query: select "id", "route", "email", "ip", "count", "last_request" from "rate_limit" "rateLimit" where ("rateLimit"."email" = $1 and "rateLimit"."ip" = $2 and "rateLimit"."route" = $3) limit $4
+params: contract.admin@inpe.br,::ffff:127.0.0.1,login-password,1
+❌ [API_WARMUP] Falha ao aquecer modelo: [TypeError: fetch failed] {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:59998
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1645:16) {
+    errno: -4078,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 59998
+  }
+}

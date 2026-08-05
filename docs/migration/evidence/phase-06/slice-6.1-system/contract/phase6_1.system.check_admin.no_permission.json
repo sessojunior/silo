@@ -1,0 +1,34 @@
+{
+  "caseId": "phase6_1.system.check_admin.no_permission",
+  "operationId": "get.api_check_admin",
+  "capturedAt": "2026-07-22T23:35:39.152Z",
+  "request": {
+    "method": "GET",
+    "baseUrl": "http://127.0.0.1:4003",
+    "url": "http://127.0.0.1:4003/api/check-admin",
+    "auth": "no-permission",
+    "headers": {
+      "cookie": "better-auth.session_token=<cookie-token>"
+    },
+    "body": null
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-length": "<content-length>",
+      "content-type": "application/json",
+      "x-request-id": "7058cf89-04f8-4df1-b71e-eaa7b644412a",
+      "x-response-time-ms": "20.75"
+    },
+    "body": {
+      "success": true,
+      "data": {
+        "isAdmin": false
+      }
+    }
+  },
+  "sideEffects": {
+    "dbBefore": [],
+    "dbAfter": []
+  }
+}

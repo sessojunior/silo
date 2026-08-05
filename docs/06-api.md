@@ -67,6 +67,8 @@ type FormResponse = {
 
 ---
 
+> Nota: a implementacao canonica atual vive em `apps/backend` (FastAPI/Python). Referencias a Better Auth abaixo descrevem compatibilidade durante coexistencia e nao um retorno ao stack antigo.
+
 ## 🔐 **AUTENTICAÇÃO**
 
 ### **Registro de Usuário**
@@ -209,7 +211,7 @@ Response: Redirect para /admin/welcome
 POST /api/auth/sign-out
 ```
 
-Resposta: encerra a sessão do Better Auth e limpa os cookies de autenticação.
+Resposta: encerra a sessao e limpa os cookies de autenticacao. A compatibilidade com Better Auth e mantida apenas durante a coexistencia.
 
 **Uso no front:**
 
@@ -1217,7 +1219,7 @@ POST /api/admin/chat/sync
 
 ## 🧠 **ASSISTENTE DE IA**
 
-O assistente é consumido pelo frontend em `apps/web` via as rotas administrativas e a geração fica na API do SILO. O browser nunca chama o Ollama diretamente.
+O assistente é consumido pelo frontend em `apps/frontend` via as rotas administrativas e a geração fica na API do SILO. O browser nunca chama o Ollama diretamente.
 
 ### **Arquitetura**
 
@@ -1587,4 +1589,4 @@ Todas as APIs seguem este padrão:
 
 ---
 
-**🎯 Para detalhes técnicos de implementação, consulte o código fonte em `apps/web/src/app/api/`**
+**🎯 Para detalhes técnicos de implementação, consulte o código fonte em `apps/frontend/src/app/api/`**

@@ -14,7 +14,7 @@ Este congelamento se aplica a:
 - schema, migrations, seeds e queries em `packages/db`
 - contratos HTTP, WebSocket, SSE, Kafka, uploads, PDFs, auth e assistente de IA
 
-`apps/web` continua podendo receber ajustes compativeis necessarios para rollback,
+`apps/frontend` continua podendo receber ajustes compativeis necessarios para rollback,
 testes ou seguranca, desde que nao exija novo contrato backend sem registro.
 
 ## Regra de entrada para qualquer nova feature
@@ -23,7 +23,7 @@ Nenhuma feature nova de API ou worker pode entrar enquanto nao tiver:
 
 1. contrato Node atual descrito em `docs/migration/contract-matrix.yaml` quando a matriz existir;
 2. golden ou teste de caracterizacao Node equivalente;
-3. tarefa explicita na fase/slice correspondente do `PLAN.md` ou em adendo aprovado;
+3. tarefa explicita na fase/slice correspondente da documentacao de migracao ou em adendo aprovado;
 4. plano de paridade Python;
 5. decisao de rollback durante a janela de coexistencia.
 
@@ -34,7 +34,7 @@ correcao emergencial aprovada.
 
 Excecoes aceitas nesta Fase 0:
 
-- correcoes determinadas pelo `PLAN.md` para cache cross-user, SSE terminal,
+- correcoes ja aprovadas para cache cross-user, SSE terminal,
   reasoning, PDF invalido, Mermaid, validacao de midia, shutdown e DLQ;
 - correcoes necessarias para fazer os comandos de gate rodarem de forma
   reproduzivel, como dependencia de teste ausente;

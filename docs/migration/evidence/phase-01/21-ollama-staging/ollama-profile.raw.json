@@ -1,0 +1,417 @@
+{
+  "capturedAt": "2026-07-22T11:58:22.280Z",
+  "baseUrl": "http://127.0.0.1:11434",
+  "models": {
+    "chatModel": "qwen2.5:1.5b-instruct-q4_K_M",
+    "embeddingModel": "nomic-embed-text:v1.5"
+  },
+  "server": {
+    "version": {
+      "version": "0.30.0-rc7"
+    },
+    "image": "ollama/ollama:0.30.0-rc7",
+    "dockerImageInspect": "sha256:cee82c012a508ca3730f3887d44cbb9cd07c90fb1dffa5cb5417e7ace0ddab55 [\"ollama/ollama@sha256:cee82c012a508ca3730f3887d44cbb9cd07c90fb1dffa5cb5417e7ace0ddab55\"]",
+    "dockerContainerInspect": "sha256:cee82c012a508ca3730f3887d44cbb9cd07c90fb1dffa5cb5417e7ace0ddab55 /silo-ollama"
+  },
+  "hardware": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "arch": "x64",
+    "hostnameHash": "56018fe135c84cb3",
+    "totalMemoryBytes": 14701584384,
+    "freeMemoryBytesAtCapture": 793235456,
+    "cpus": [
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      },
+      {
+        "model": "AMD Ryzen 7 7735HS with Radeon Graphics        ",
+        "speedMHz": 3194
+      }
+    ],
+    "gpu": {
+      "Name": "AMD Radeon(TM) Graphics",
+      "AdapterRAM": 2147483648,
+      "DriverVersion": "32.0.21030.5005"
+    },
+    "nvidiaSmi": "ERROR: spawnSync nvidia-smi ENOENT"
+  },
+  "tags": {
+    "models": [
+      {
+        "name": "qwen2.5:1.5b-instruct-q4_K_M",
+        "model": "qwen2.5:1.5b-instruct-q4_K_M",
+        "modifiedAt": "2026-07-09T21:16:38.559009501Z",
+        "size": 986061892,
+        "digest": "65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen2",
+          "families": [
+            "qwen2"
+          ],
+          "parameter_size": "1.5B",
+          "quantization_level": "Q4_K_M"
+        }
+      },
+      {
+        "name": "qwen2.5:3b-instruct-q4_K_M",
+        "model": "qwen2.5:3b-instruct-q4_K_M",
+        "modifiedAt": "2026-07-06T12:46:57.574509227Z",
+        "size": 1929912432,
+        "digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen2",
+          "families": [
+            "qwen2"
+          ],
+          "parameter_size": "3.1B",
+          "quantization_level": "Q4_K_M"
+        }
+      },
+      {
+        "name": "nomic-embed-text:v1.5",
+        "model": "nomic-embed-text:v1.5",
+        "modifiedAt": "2026-06-22T13:01:16.464058922Z",
+        "size": 274302450,
+        "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "nomic-bert",
+          "families": [
+            "nomic-bert"
+          ],
+          "parameter_size": "137M",
+          "quantization_level": "F16"
+        }
+      }
+    ]
+  },
+  "show": {
+    "chat": {
+      "licenseLength": 11343,
+      "modelfileLength": 13173,
+      "parameters": null,
+      "templateLength": 1482,
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen2",
+        "families": [
+          "qwen2"
+        ],
+        "parameter_size": "1.5B",
+        "quantization_level": "Q4_K_M"
+      },
+      "modelInfo": {
+        "general.architecture": "qwen2",
+        "general.base_model.0.name": "Qwen2.5 1.5B",
+        "general.base_model.0.organization": "Qwen",
+        "general.base_model.0.repo_url": "https://huggingface.co/Qwen/Qwen2.5-1.5B",
+        "general.base_model.count": 1,
+        "general.basename": "Qwen2.5",
+        "general.file_type": 15,
+        "general.finetune": "Instruct",
+        "general.languages": null,
+        "general.license": "apache-2.0",
+        "general.license.link": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/blob/main/LICENSE",
+        "general.parameter_count": 1543714304,
+        "general.quantization_version": 2,
+        "general.size_label": "1.5B",
+        "general.tags": null,
+        "general.type": "model",
+        "qwen2.attention.head_count": 12,
+        "qwen2.attention.head_count_kv": 2,
+        "qwen2.attention.layer_norm_rms_epsilon": 0.000001,
+        "qwen2.block_count": 28,
+        "qwen2.context_length": 32768,
+        "qwen2.embedding_length": 1536,
+        "qwen2.feed_forward_length": 8960,
+        "qwen2.rope.freq_base": 1000000,
+        "tokenizer.ggml.add_bos_token": false,
+        "tokenizer.ggml.bos_token_id": 151643,
+        "tokenizer.ggml.eos_token_id": 151645,
+        "tokenizer.ggml.merges": null,
+        "tokenizer.ggml.model": "gpt2",
+        "tokenizer.ggml.padding_token_id": 151643,
+        "tokenizer.ggml.pre": "qwen2",
+        "tokenizer.ggml.token_type": null,
+        "tokenizer.ggml.tokens": null
+      },
+      "capabilities": [
+        "completion",
+        "tools"
+      ]
+    },
+    "embedding": {
+      "licenseLength": 11357,
+      "modelfileLength": 11652,
+      "parameters": "num_ctx                        8192",
+      "templateLength": 13,
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "nomic-bert",
+        "families": [
+          "nomic-bert"
+        ],
+        "parameter_size": "137M",
+        "quantization_level": "F16"
+      },
+      "modelInfo": {
+        "general.architecture": "nomic-bert",
+        "general.file_type": 1,
+        "general.parameter_count": 136727040,
+        "nomic-bert.attention.causal": false,
+        "nomic-bert.attention.head_count": 12,
+        "nomic-bert.attention.layer_norm_epsilon": 1e-12,
+        "nomic-bert.block_count": 12,
+        "nomic-bert.context_length": 2048,
+        "nomic-bert.embedding_length": 768,
+        "nomic-bert.feed_forward_length": 3072,
+        "nomic-bert.pooling_type": 1,
+        "nomic-bert.rope.freq_base": 1000,
+        "tokenizer.ggml.bos_token_id": 101,
+        "tokenizer.ggml.cls_token_id": 101,
+        "tokenizer.ggml.eos_token_id": 102,
+        "tokenizer.ggml.mask_token_id": 103,
+        "tokenizer.ggml.model": "bert",
+        "tokenizer.ggml.padding_token_id": 0,
+        "tokenizer.ggml.scores": null,
+        "tokenizer.ggml.seperator_token_id": 102,
+        "tokenizer.ggml.token_type": null,
+        "tokenizer.ggml.token_type_count": 2,
+        "tokenizer.ggml.tokens": null,
+        "tokenizer.ggml.unknown_token_id": 100
+      },
+      "capabilities": [
+        "embedding"
+      ]
+    }
+  },
+  "measurements": {
+    "unload": {
+      "ok": true,
+      "status": 200,
+      "elapsedMs": 52,
+      "json": {
+        "model": "qwen2.5:1.5b-instruct-q4_K_M",
+        "created_at": "2026-07-22T11:58:14.302997397Z",
+        "response": "",
+        "done": true,
+        "done_reason": "unload"
+      }
+    },
+    "chatCold": {
+      "label": "chat_cold_after_unload",
+      "ok": true,
+      "status": 200,
+      "elapsedMs": 6209,
+      "model": "qwen2.5:1.5b-instruct-q4_K_M",
+      "createdAt": "2026-07-22T11:58:20.513276413Z",
+      "done": true,
+      "totalDurationNs": 6206486705,
+      "loadDurationNs": 5773744329,
+      "promptEvalCount": 36,
+      "promptEvalDurationNs": 387459000,
+      "evalCount": 2,
+      "evalDurationNs": 36110000,
+      "contentLength": 2,
+      "contentSha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+      "contentPreview": "OK"
+    },
+    "chatWarm": {
+      "label": "chat_warm_immediate",
+      "ok": true,
+      "status": 200,
+      "elapsedMs": 270,
+      "model": "qwen2.5:1.5b-instruct-q4_K_M",
+      "createdAt": "2026-07-22T11:58:20.784046783Z",
+      "done": true,
+      "totalDurationNs": 264592334,
+      "loadDurationNs": 186144571,
+      "promptEvalCount": 1,
+      "promptEvalDurationNs": 29279000,
+      "evalCount": 2,
+      "evalDurationNs": 30369000,
+      "contentLength": 2,
+      "contentSha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+      "contentPreview": "OK"
+    },
+    "embeddingFirst": {
+      "label": "embedding_first",
+      "ok": true,
+      "status": 200,
+      "elapsedMs": 1075,
+      "model": "nomic-embed-text:v1.5",
+      "embeddingLength": 768,
+      "embeddingSample": [
+        0.04898551478981972,
+        0.009217479266226292,
+        -0.1743815392255783,
+        0.03841923922300339,
+        0.021742360666394234
+      ]
+    },
+    "embeddingWarm": {
+      "label": "embedding_warm_immediate",
+      "ok": true,
+      "status": 200,
+      "elapsedMs": 48,
+      "model": "nomic-embed-text:v1.5",
+      "embeddingLength": 768,
+      "embeddingSample": [
+        0.04898551478981972,
+        0.009217479266226292,
+        -0.1743815392255783,
+        0.03841923922300339,
+        0.021742360666394234
+      ]
+    },
+    "concurrency": {
+      "requestedParallel": 2,
+      "elapsedMs": 365,
+      "results": [
+        {
+          "label": "concurrency_1_of_2",
+          "ok": true,
+          "status": 200,
+          "elapsedMs": 293,
+          "model": "qwen2.5:1.5b-instruct-q4_K_M",
+          "createdAt": "2026-07-22T11:58:22.20323849Z",
+          "done": true,
+          "totalDurationNs": 288039811,
+          "loadDurationNs": 224325797,
+          "promptEvalCount": 1,
+          "promptEvalDurationNs": 30122000,
+          "evalCount": 2,
+          "evalDurationNs": 30331000,
+          "contentLength": 2,
+          "contentSha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+          "contentPreview": "OK"
+        },
+        {
+          "label": "concurrency_2_of_2",
+          "ok": true,
+          "status": 200,
+          "elapsedMs": 364,
+          "model": "qwen2.5:1.5b-instruct-q4_K_M",
+          "createdAt": "2026-07-22T11:58:22.275299346Z",
+          "done": true,
+          "totalDurationNs": 358464302,
+          "loadDurationNs": 223616712,
+          "promptEvalCount": 1,
+          "promptEvalDurationNs": 35259000,
+          "evalCount": 2,
+          "evalDurationNs": 34102000,
+          "contentLength": 2,
+          "contentSha256": "565339bc4d33d72817b583024112eb7f5cdf3e5eef0252d6ec1b9c9a94e12bb3",
+          "contentPreview": "OK"
+        }
+      ]
+    },
+    "loadedModelsAfterMeasurements": {
+      "models": [
+        {
+          "name": "nomic-embed-text:v1.5",
+          "model": "nomic-embed-text:v1.5",
+          "size": 393226485,
+          "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+          "details": {
+            "parent_model": "",
+            "format": "gguf",
+            "family": "nomic-bert",
+            "families": [
+              "nomic-bert"
+            ],
+            "parameter_size": "137M",
+            "quantization_level": "F16"
+          },
+          "expires_at": "2026-07-23T11:58:21.909667422Z",
+          "size_vram": 0,
+          "context_length": 2048
+        },
+        {
+          "name": "qwen2.5:1.5b-instruct-q4_K_M",
+          "model": "qwen2.5:1.5b-instruct-q4_K_M",
+          "size": 2393427148,
+          "digest": "65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b",
+          "details": {
+            "parent_model": "",
+            "format": "gguf",
+            "family": "qwen2",
+            "families": [
+              "qwen2"
+            ],
+            "parameter_size": "1.5B",
+            "quantization_level": "Q4_K_M"
+          },
+          "expires_at": "2026-07-22T12:03:22.275599595Z",
+          "size_vram": 0,
+          "context_length": 16384
+        }
+      ]
+    }
+  }
+}

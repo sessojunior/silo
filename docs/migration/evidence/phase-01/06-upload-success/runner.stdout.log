@@ -1,0 +1,15 @@
+[legacy-contract] captured phase1_6.upload.invalid_kind -> tests\fixtures\legacy-golden\phase1_6.upload.invalid_kind.json
+[legacy-contract] captured phase1_6.upload.general.non_multipart -> tests\fixtures\legacy-golden\phase1_6.upload.general.non_multipart.json
+[legacy-contract] captured phase1_6.upload.general.fake_file -> tests\fixtures\legacy-golden\phase1_6.upload.general.fake_file.json
+[legacy-contract] captured phase1_6.upload.general.success_png_to_webp -> tests\fixtures\legacy-golden\phase1_6.upload.general.success_png_to_webp.json
+[legacy-contract] captured phase1_6.upload.profile_image.unauthenticated -> tests\fixtures\legacy-golden\phase1_6.upload.profile_image.unauthenticated.json
+[legacy-contract] captured phase1_6.upload.profile_image.missing_file -> tests\fixtures\legacy-golden\phase1_6.upload.profile_image.missing_file.json
+[legacy-contract] captured phase1_6.upload.profile_image.fake_file_legacy_success -> tests\fixtures\legacy-golden\phase1_6.upload.profile_image.fake_file_legacy_success.json
+[legacy-contract] captured phase1_6.upload.profile_image.success_png_to_webp -> tests\fixtures\legacy-golden\phase1_6.upload.profile_image.success_png_to_webp.json
+[legacy-contract] captured phase1_6.upload.serve.get.unauthenticated -> tests\fixtures\legacy-golden\phase1_6.upload.serve.get.unauthenticated.json
+[legacy-contract] captured phase1_6.upload.serve.get.notfound -> tests\fixtures\legacy-golden\phase1_6.upload.serve.get.notfound.json
+[legacy-contract] captured phase1_6.upload.serve.get.success_pdf -> tests\fixtures\legacy-golden\phase1_6.upload.serve.get.success_pdf.json
+[legacy-contract] captured phase1_6.upload.serve.delete.unauthenticated -> tests\fixtures\legacy-golden\phase1_6.upload.serve.delete.unauthenticated.json
+[legacy-contract] captured phase1_6.upload.serve.delete.no_permission -> tests\fixtures\legacy-golden\phase1_6.upload.serve.delete.no_permission.json
+[legacy-contract] captured phase1_6.upload.serve.delete.notfound -> tests\fixtures\legacy-golden\phase1_6.upload.serve.delete.notfound.json
+[legacy-contract] captured phase1_6.upload.serve.delete.success -> tests\fixtures\legacy-golden\phase1_6.upload.serve.delete.success.json

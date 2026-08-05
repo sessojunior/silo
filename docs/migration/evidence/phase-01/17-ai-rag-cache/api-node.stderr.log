@@ -1,0 +1,5 @@
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+❌ [OLLAMA_COMPOSE] Falha ao compor resposta: Falha no Ollama (503): {"error":"CONTRACT_CHAT_FAILURE","marker":"Phase 1.17 chat-fail-marker"}
+⚠️ [AI_ASSISTANT_SERVICE] Ollama refinement failed, using data-collected answer: Falha ao gerar resposta com IA: Falha no Ollama (503): {"error":"CONTRACT_CHAT_FAILURE","marker":"Phase 1.17 chat-fail-marker"}

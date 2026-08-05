@@ -1,0 +1,7 @@
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+❌ [API_AI_ASSISTANT/THREADS/:ID/MESSAGES/:ID] DELETE: Error: Mensagem não encontrada.
+    at deleteAssistantMessage (D:\Projects\silo\silo-sessojunior\apps\api\src\services\ai-assistant-thread-service.ts:1112:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async <anonymous> (D:\Projects\silo\silo-sessojunior\apps\api\src\routes\ai-assistant.ts:218:7)

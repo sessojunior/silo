@@ -21,7 +21,7 @@ Evidencia automatizada:
 - `apps/api/src/services/ai-assistant-ollama-calls.test.ts`
 - caso `live SSE path currently performs two refinements: one non-streaming and one streaming`
 
-Tratamento determinado pelo `PLAN.md`:
+Tratamento determinado pelo plano de migração:
 
 - nao preservar esse comportamento como contrato;
 - a implementacao Python/LangGraph deve fazer uma unica sintese no caminho live;
@@ -44,7 +44,7 @@ Evidencia automatizada:
 - `apps/api/src/services/ai-assistant-ollama-calls.test.ts`
 - caso `PDF generation failure omits visualization and still calls the four current report services`
 
-Tratamento determinado pelo `PLAN.md`:
+Tratamento determinado pelo plano de migração:
 
 - não preservar essa coleta excessiva como contrato;
 - a implementação Python/LangGraph deve resolver primeiro o tipo de relatório e

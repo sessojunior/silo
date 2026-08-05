@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "golden": "tests\\fixtures\\legacy-golden\\phase1_18.worker_kafka.dataflow.json",
+  "evidence": "docs\\migration\\evidence\\phase-01\\18-worker-kafka",
+  "pipelineOrder": [
+    "smna|2026-05-15|18",
+    "smna|2026-05-15|12",
+    "smna|2026-05-15|06",
+    "smna|2026-05-15|00"
+  ],
+  "dataProductFlowCount": 1,
+  "processedMessages": [
+    "model.phase1_18:phase1-18-model-append:modelHandler",
+    "monitoring.phase1_18:phase1-18-monitoring-update:monitoringHandler",
+    "unknown.phase1_18:phase1-18-unknown-noop:unknown.phase1_18"
+  ],
+  "offsetCommits": [
+    [
+      {
+        "topic": "model.phase1_18",
+        "partition": 0,
+        "offset": "11"
+      }
+    ],
+    [
+      {
+        "topic": "model.phase1_18",
+        "partition": 0,
+        "offset": "12"
+      }
+    ],
+    [
+      {
+        "topic": "monitoring.phase1_18",
+        "partition": 0,
+        "offset": "21"
+      }
+    ],
+    [
+      {
+        "topic": "unknown.phase1_18",
+        "partition": 0,
+        "offset": "31"
+      }
+    ],
+    [
+      {
+        "topic": "model.phase1_18",
+        "partition": 0,
+        "offset": "41"
+      }
+    ],
+    [
+      {
+        "topic": "model.phase1_18",
+        "partition": 0,
+        "offset": "51"
+      }
+    ]
+  ],
+  "dlqTopics": [
+    "dlq.model.phase1_18",
+    "dlq.model.phase1_18",
+    "dlq.model.phase1_18"
+  ]
+}

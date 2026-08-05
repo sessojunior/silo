@@ -7,8 +7,99 @@ on:
     branches: [main, develop]
 
 jobs:
-  ci:
-    name: Typecheck, Lint & Build
+  node:
+    name: Node / Web (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/frontend
+        run: npm ci --legacy-peer-deps
+
+      - name: Typecheck
+        working-directory: apps/frontend
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: apps/frontend
+        run: npm run lint
+
+      - name: Build
+        working-directory: apps/frontend
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          DRIZZLE_TELEMETRY_DISABLED: 1
+
+      - name: Run tests
+        working-directory: apps/frontend
+        run: npm test
+
+      - name: Audit Node dependencies
+        run: node scripts/security/check-node-audit.mjs
+
+  python:
+    name: Python (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+          enable-cache: true
+
+      - name: Sync Python environment
+        run: uv --directory apps/backend sync --locked --all-groups
+
+      - name: Format check
+        run: uv --directory apps/backend run --locked ruff format --check .
+
+      - name: Lint
+        run: uv --directory apps/backend run --locked ruff check .
+
+      - name: Typecheck
+        run: uv --directory apps/backend run --locked mypy src
+
+      - name: Test
+        run: uv --directory apps/backend run --locked pytest -q --cov=silo --cov-report=term-missing --cov-report=json:coverage.json
+
+      - name: Check coverage thresholds
+        run: uv --directory apps/backend run --locked python scripts/check_coverage_thresholds.py coverage.json
+
+      - name: Audit Python dependencies
+        run: uv --directory apps/backend audit --locked --no-dev
+
+      - name: Check OpenAPI generated contract
+        run: npm run py:openapi:check
+
+      - name: Build Python Docker targets
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run py:build
+
+  security:
+    name: Security / SBOM
     runs-on: ubuntu-latest
 
     steps:
@@ -21,23 +112,14 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+          enable-cache: true
+
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Typecheck
-        run: npx turbo run typecheck --ui=stream
-
-      - name: Lint
-        run: npx turbo run lint --ui=stream
-
-      - name: Build
-        run: npx turbo run build --ui=stream
-        env:
-          NEXT_TELEMETRY_DISABLED: 1
-          DRIZZLE_TELEMETRY_DISABLED: 1
-
-      - name: Check legacy permissions
-        run: node scripts/check-no-legacy-permissions.mjs
-
-      - name: Run tests
-        run: npm test --if-present
+      - name: Run security scan and SBOM generation
+        run: npm run security:scan

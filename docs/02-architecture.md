@@ -1,165 +1,109 @@
 # Arquitetura do Monorepo
 
-Visão técnica da estrutura de pacotes, fronteiras de responsabilidade e fluxo de dependências.
+Visao tecnica da estrutura de pacotes, fronteiras de responsabilidade e fluxo de dependencias.
 
 ---
 
-## Visão geral
+## Visao geral
 
-O projeto usa **npm workspaces** para gerenciamento de dependências e scripts do monorepo.
+O repositório usa npm workspaces e esta em migracao para um backend Python canônico.
 
-```
-apps/web          ──┐
-apps/api          ──┤──► packages/db      (@silo/database)
-apps/worker       ──┘──► packages/engine  (@silo/engine)
+Fluxo principal atual:
 
-Fluxo de dados principal:
-web -> api -> db
-     ↓
-   engine
-     ↓
-   worker
+```text
+Browser -> apps/frontend (Next.js)
+        -> apps/backend (FastAPI/Python)
+        -> PostgreSQL
 ```
 
-**Regra de ouro:** pacotes nunca importam de apps. O grafo de dependência é sempre unidirecional: apps → packages.
+Componentes legados continuam presentes apenas como oraculos de migracao:
+
+```text
+apps/api    -> Express Node legado
+apps/worker -> Worker Node legado
+packages/db -> Drizzle legado
+```
 
 ---
 
-## Pacotes (`packages/`)
+## Aplicacoes
 
-### `@silo/database`
-- **Caminho:** `packages/db/`
-- **Responsabilidade:** Fonte única de verdade do banco. Schema Drizzle, conexão PostgreSQL, migrations, seed.
-- **Exports:**
-  - `@silo/database` → `src/index.ts` (instância `db` e helpers)
-  - `@silo/database/schema` → `src/schema/index.ts` (todas as tabelas)
-- **Scripts:** `db:generate`, `db:push`, `db:migrate`, `db:seed`, `db:studio`
-- **Variáveis:** `DATABASE_URL_DEV` / `DATABASE_URL_PROD`
+### `apps/frontend`
+
+- Frontend Next.js.
+- Route handlers e Server Actions.
+- Usa o backend Python como origem canonica de persistencia.
+
+### `apps/backend`
+
+- API FastAPI.
+- Auth, uploads, reports, dashboard, chat, assistant, monitoring e worker Python.
+- Fonte nova e canônica do sistema.
+
+### `apps/api` e `apps/worker`
+
+- Permanecem apenas para caracterizacao, comparacao e rollback durante a migracao.
+- Nao devem receber features novas fora do plano.
+
+---
+
+## Pacotes compartilhados
 
 ### `@silo/engine`
-- **Caminho:** `packages/engine/`
-- **Responsabilidade:** Núcleo único do sistema. Contém toda a lógica compartilhada que não é banco.
-- **Exports (subpaths):**
-  - `@silo/engine/config` → configuração global (env vars via Zod)
-  - `@silo/engine/constants` → constantes de domínio
-  - `@silo/engine/date` → manipulação de datas (`date-fns`, `date-fns-tz`)
-  - `@silo/engine/validation` → schemas Zod reutilizáveis
-  - `@silo/engine/auth/hash` → hash e verificação de senha
-  - `@silo/engine/email/send-email-template` → envio de e-mails
-  - `@silo/engine/kafka/rest-client` → cliente Kafka REST Proxy
-  - `@silo/engine/dataflow/types` → tipos do módulo DataFlow
-  - `@silo/engine/dataflow/helpers` → helpers de normalização DataFlow
-  - `@silo/engine/domain/product-status` → lógica de status de produtos
-  - `@silo/engine/domain/scheduling` → tipos, disponibilidade e detecção de conflitos por turno
-  - `@silo/engine/contracts/api-response` → helper de resposta de API
-  - `@silo/engine/contracts/kafka-events` → eventos Kafka
-  - `@silo/engine/contracts/dto/*` → DTOs de request/response por recurso
 
-  O barrel raiz de contracts deve permanecer fino. Use `@silo/engine/contracts` apenas para exports realmente centrais e prefira subpaths explícitos quando o conjunto de contratos crescer.
+- Contratos, tipos e utilitarios compartilhados entre frontend e legado TypeScript.
 
-  ### Quando usar cada contrato
+### `@silo/database`
 
-  - `@silo/database/schema` é para persistência e consultas Drizzle; não é contrato HTTP.
-  - `@silo/engine/validation` é para validar a borda com Zod antes de chamar services ou banco.
-  - `@silo/engine/contracts/dto/*` é para payloads que cruzam fronteiras entre app, service e API.
-  - `@silo/engine/contracts/api-response` é para o envelope compartilhado das respostas HTTP.
-  - Regra prática: schema descreve banco, DTO descreve transporte e contrato descreve interoperabilidade.
+- Drizzle legado durante a migracao.
+- Permanece como referencia de contrato antigo e oraculo de comparacao.
 
-O nome técnico atual do submódulo continua sendo `scheduling`, mas a linguagem pública do domínio deve falar em turnos de execução, disponibilidade, bloqueios, exceções e conflitos.
+### `packages/config`
 
-### `@silo/typescript-config`
-- **Caminho:** `packages/config/typescript-config/`
-- **Arquivos:** `base.json`, `nextjs.json`, `react-library.json`
-
-### `@silo/eslint-config`
-- **Caminho:** `packages/config/eslint-config/`
-- **Arquivos:** `library.mjs`, `next.mjs`
-
-### `@silo/tailwind-config`
-- **Caminho:** `packages/config/tailwind-config/`
+- Configs compartilhadas de lint, TypeScript e Tailwind.
 
 ---
 
-## Aplicações (`apps/`)
+## Regras de dependencia
 
-### `apps/web` — Next.js App Router
-- **Responsabilidade:** Frontend, API Routes, Server Actions, autenticação.
-- **Dependências internas:** `@silo/engine`
-- **Regra:** não acessa banco diretamente; usa API (`apps/api`) para persistência.
-- **Libs específicas (não extraídas para packages):**
-  - `src/lib/auth/` — configuração Better Auth (acoplada ao Next.js)
-  - `src/lib/config.ts` — variáveis de ambiente do web
-  - `src/lib/kafka-rest.ts` — cliente REST Proxy para publicação de eventos
-  - `src/lib/local-uploads.ts` — gerenciamento de uploads no servidor
-  - `src/lib/rate-limit.ts` — rate limiting nas API Routes
-  - `src/lib/dataflow/` — lógica do módulo de fluxo de dados
-  - `src/lib/navigation/` — helpers de navegação Next.js
-  - `src/lib/permissions/` — autorização vinculada à sessão
-- **Scripts:** `dev`, `build`, `start`, `lint`
-- **Config principal:** `apps/web/next.config.ts`
-
-### `apps/api` — Express REST API
-- **Responsabilidade:** Endpoints REST de autenticação e recursos
-- **Dependências internas:** `@silo/database`, `@silo/engine`
-- **Entry point:** `src/index.ts`
-- **Não tem React. Não tem Next.js.**
-
-### `apps/worker` — Consumer Kafka
-- **Responsabilidade:** Consumo de tópicos Kafka via REST Proxy, persistência no banco.
-- **Dependências internas:** `@silo/database`, `@silo/engine`
-- **Entry point:** `src/index.ts`
-- **Scripts:** `dev` (tsx watch), `build` (tsc), `start` (node dist/index.js)
-- **Não tem React. Não tem Next.js.**
+- `apps/frontend` nao acessa banco diretamente.
+- `apps/backend` nao depende de `apps/frontend`.
+- `apps/api` e `apps/worker` nao recebem dependencia nova do backend.
+- `packages/*` nunca importam de `apps/*`.
 
 ---
 
-## Configuração Next.js para monorepo
+## Backend Python
 
-O Next.js não transpila pacotes externos por padrão. Em `apps/web/next.config.ts`:
+Estrutura principal:
 
-```typescript
-const nextConfig = {
-  transpilePackages: ["@silo/engine"],
-};
-
+```text
+apps/backend/src/silo/
+  api/
+  auth/
+  db/
+  domain/
+  integrations/
+  realtime/
+  worker/
 ```
 
----
+Pontos importantes:
 
-## Variáveis de ambiente
-
-Um único `.env` na raiz do monorepo. Cada app lê as variáveis que precisa. A validação via Zod ocorre no boot de cada app, nunca dentro de packages.
-
-Ver `env.example` na raiz para todas as variáveis disponíveis.
-
----
-
-## Scripts do monorepo
-
-Os scripts raiz em [../package.json](../package.json) substituem o antigo orquestrador externo:
-
-```bash
-npm run dev:web
-npm run dev:api
-npm run dev:worker
-npm run build
-npm run lint
-npm run typecheck
-```
-
-Esses comandos chamam diretamente cada workspace e mantêm o fluxo de desenvolvimento explícito.
+- `api/` concentra routers, middleware, schemas e handlers.
+- `db/` concentra models, engine e base SQLAlchemy.
+- `integrations/` concentra SMTP, Ollama, Kafka REST e uploads.
+- `worker/` contem o consumer Python e seus handlers.
 
 ---
 
-## Instalar dependências em um workspace específico
+## Legado oracular
 
-```bash
-# Instalar pacote npm na web
-npm install <pacote> -w web
+O legacy Node continua presente para:
 
-# Instalar pacote npm no worker
-npm install <pacote> -w worker
+- goldens e contrato comparativo;
+- rollback durante a janela de migracao;
+- verificacao de diferencas entre Node e Python.
 
-# Instalar pacote npm no @silo/engine
-npm install <pacote> -w @silo/engine
-```
+Nao criar novo comportamento no legado se o mesmo fluxo ja existe no backend Python.
+

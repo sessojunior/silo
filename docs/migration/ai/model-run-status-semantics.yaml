@@ -1,0 +1,211 @@
+schemaVersion: 1
+document: model-run-status-semantics
+phase: "1.25"
+approvedAt: "2026-07-22"
+approval:
+  owner: "migration-executor"
+  ownerType: "plan-controlled"
+  approvedBy: "codex"
+  rationale: >-
+    Matriz canônica aprovada para a migração a partir do schema Drizzle,
+    constants do engine, dashboard-service, report-service, fixture 1.24 e
+    amostra local anonimizada por agregados. Não há owner externo disponível no
+    repositório; a decisão fica versionada para revisão humana posterior sem
+    deixar pending/off implícitos.
+
+fieldSemantics:
+  didExecute: "true quando a rodada iniciou execução do modelo; false quando não iniciou."
+  isIncident: "true quando o status representa incidente operacional para alertas/tools."
+  isTerminal: "true quando o status encerra a rodada do turno."
+  isAvailable: "true somente para rodada terminal disponível; false para falha, não execução, estados em aberto ou fora da grade."
+  countsForAvailabilityDenominator: "true somente para status terminais que devem entrar no denominador de disponibilidade."
+  denomination: "nome público em português brasileiro."
+
+sources:
+  schema:
+    file: "packages/db/src/schema.ts"
+    observation: "product_activity.status é text e o comentário lista completed, pending, in_progress, not_run, with_problems, run_again, under_support, suspended e off."
+  engine:
+    file: "packages/engine/src/domain/product-status.ts"
+    observation: "ProductStatus lista 8 status; INCIDENT_STATUS inclui under_support, suspended, not_run, with_problems e run_again; pending não é incidente no engine."
+  reportService:
+    file: "apps/api/src/services/report-service.ts"
+    observation: "getAvailabilityReport conta pending como failedActivity junto de not_run, with_problems, run_again, under_support e suspended."
+  dashboardService:
+    file: "apps/api/src/services/dashboard-service.ts"
+    observation: "dashboard trata pending como alert; filtros de resumo excluem categoria no_incidents."
+  noIncidentsConstant:
+    file: "packages/engine/src/config/constants.ts"
+    id: "no_incidents"
+    name: "Não houve incidentes"
+  crossFixture:
+    seed: "tests/fixtures/legacy-db/seed-contract-status-semantics.sql"
+    expected: "tests/fixtures/legacy-golden/phase1_24.status_semantics_cross_fixture.json"
+  anonymizedLocalSample:
+    database: "local docker compose database silo"
+    capturedAt: "2026-07-22"
+    privacy: "Somente agregados; nenhum id, usuário, descrição, pergunta, payload ou texto operacional foi exportado."
+    activityStatusCounts:
+      not_run: 1
+      suspended: 2
+      with_problems: 1
+    activityNoIncidentsCount: 0
+    activityNullCategoryCount: 0
+    registeredProblemNoIncidentsCount: 1
+    registeredProblemNullCategoryCount: 0
+
+globalRules:
+  noIncidentsCategoryId: "no_incidents"
+  noIncidentsCategoryIsIncident: false
+  productActivitySourceKind: "problematic_run"
+  productProblemSourceKind: "registered_problem"
+  pendingCanonicalDecision: "pending não é incidente, não é terminal e não entra em disponibilidade até virar status terminal."
+  offCanonicalDecision: "off é status legado lido do banco se existir, não é incidente, não é execução, não entra em disponibilidade e não deve ser escrito por novas APIs sem decisão posterior."
+  availabilityNumeratorRule: "count(status where isAvailable=true and countsForAvailabilityDenominator=true)"
+  availabilityDenominatorRule: "count(status where countsForAvailabilityDenominator=true)"
+  toolAnswerRule: "Ferramentas devem citar didExecute/isIncident/isTerminal/isAvailable desta matriz, nunca inferir por label ou cor."
+
+statuses:
+  completed:
+    denomination: "Concluído"
+    didExecute: true
+    isIncident: false
+    isTerminal: true
+    isAvailable: true
+    countsForAvailabilityDenominator: true
+    color: "green"
+    canonicalMeaning: "Rodada executada e encerrada com sucesso."
+    owner: "migration-executor"
+    approvalEvidence: "docs/migration/evidence/phase-01/25-model-run-status-semantics.md"
+  with_problems:
+    denomination: "Com problemas"
+    didExecute: true
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+    color: "red"
+    canonicalMeaning: "Rodada executada, mas encerrada com problema operacional."
+    owner: "migration-executor"
+    approvalEvidence: "docs/migration/evidence/phase-01/25-model-run-status-semantics.md"
+  run_again:
+    denomination: "Rodar novamente"
+    didExecute: true
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+    color: "orange"
+    canonicalMeaning: "Rodada executada ou parcialmente executada, mas resultado não é aceitável e exige reprocessamento."
+    owner: "migration-executor"
+    approvalEvidence: "docs/migration/evidence/phase-01/25-model-run-status-semantics.md"
+  not_run:
+    denomination: "Não rodou"
+    didExecute: false
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+    color: "yellow"
+    canonicalMeaning: "Rodada esperada para o turno não iniciou execução."
+    owner: "migration-executor"
+    approvalEvidence: "docs/migration/evidence/phase-01/25-model-run-status-semantics.md"
+  under_support:
+    denomination: "Sob intervenção"
+    didExecute: false
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+    color: "violet"
+    canonicalMeaning: "Rodada bloqueada por suporte/intervenção operacional."
+    owner: "migration-executor"
+    approvalEvidence: "docs/migration/evidence/phase-01/25-model-run-status-semantics.md"
+  suspended:
+    denomination: "Suspenso"
+    didExecute: false
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+    color: "blue"
+    canonicalMeaning: "Rodada suspensa temporariamente e encerrada sem disponibilidade."
+    owner: "migration-executor"
+    approvalEvidence: "docs/migration/evidence/phase-01/25-model-run-status-semantics.md"
+  in_progress:
+    denomination: "Em execução"
+    didExecute: true
+    isIncident: false
+    isTerminal: false
+    isAvailable: false
+    countsForAvailabilityDenominator: false
+    color: "gray"
+    canonicalMeaning: "Rodada já iniciou, mas ainda não tem resultado terminal."
+    owner: "migration-executor"
+    approvalEvidence: "docs/migration/evidence/phase-01/25-model-run-status-semantics.md"
+  pending:
+    denomination: "Pendente"
+    didExecute: false
+    isIncident: false
+    isTerminal: false
+    isAvailable: false
+    countsForAvailabilityDenominator: false
+    color: "white"
+    canonicalMeaning: "Rodada ainda não chegou ao momento de execução ou aguarda disparo; não é incidente até virar status terminal de falha."
+    owner: "migration-executor"
+    approvalEvidence: "docs/migration/evidence/phase-01/25-model-run-status-semantics.md"
+    resolvedDivergence:
+      engine: "Mantém comportamento do engine: pending não pertence a INCIDENT_STATUS."
+      reportServiceLegacy: "report-service legado conta pending como failedActivity; Python deve corrigir para excluir pending do denominador até terminal."
+      dashboardServiceLegacy: "dashboard legado conta pending como alert; Python/tools devem usar isIncident=false para perguntas semânticas."
+  off:
+    denomination: "Fora da grade"
+    didExecute: false
+    isIncident: false
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: false
+    color: "transparent"
+    canonicalMeaning: "Status legado citado no schema para rodada fora da grade/desligada; não é erro operacional e não entra em disponibilidade."
+    owner: "migration-executor"
+    approvalEvidence: "docs/migration/evidence/phase-01/25-model-run-status-semantics.md"
+    inputPolicy:
+      readExistingRows: true
+      allowNewWritesBeforePostMigrationDecision: false
+      migrationNote: "Como ProductStatus não inclui off, APIs Python devem aceitar off só em leitura compatível de dados existentes."
+
+derivedSets:
+  incidentStatuses:
+    - "with_problems"
+    - "run_again"
+    - "not_run"
+    - "under_support"
+    - "suspended"
+  executedStatuses:
+    - "completed"
+    - "with_problems"
+    - "run_again"
+    - "in_progress"
+  terminalStatuses:
+    - "completed"
+    - "with_problems"
+    - "run_again"
+    - "not_run"
+    - "under_support"
+    - "suspended"
+    - "off"
+  availabilityDenominatorStatuses:
+    - "completed"
+    - "with_problems"
+    - "run_again"
+    - "not_run"
+    - "under_support"
+    - "suspended"
+  availabilityNumeratorStatuses:
+    - "completed"
+
+implementationRequirements:
+  apiAndReports: "Usar esta matriz como fonte única; não duplicar sets locais em dashboard/report/tools."
+  tools: "Toda tool de status deve devolver sourceKind e campos didExecute/isIncident/isTerminal/isAvailable para cada linha ou agregado."
+  tests: "Casos do corpus 1.20 e fixture 1.24 devem validar pending/off explicitamente."
+  rollback: "Node legado pode continuar divergente durante rollback; divergência deve ser rotulada known-legacy no comparador."

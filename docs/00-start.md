@@ -1,97 +1,74 @@
-# Documentação do SILO
+# Documentacao do SILO
 
 Guia de entrada para humanos e IAs. Leia nesta ordem ao explorar o projeto pela primeira vez.
 
 ---
 
-## Estrutura do repositório
+## Estrutura do repositorio
 
-O projeto usa **npm workspaces** (monorepo):
+O projeto usa npm workspaces e esta consolidado em um backend Python canonico.
 
 ```
 silo/
 ├── apps/
-│   ├── web/        # Next.js App Router (frontend + API Routes + Server Actions)
-│   ├── api/        # Express API (auth, casos de uso, persistência)
-│   └── worker/     # Consumer Kafka (Node.js puro, sem React)
+│   ├── frontend/   # Next.js web
+│   └── backend/    # FastAPI/Python canonico
 ├── packages/
-│   ├── db/         # Drizzle ORM — schema, migrations, conexão (@silo/database)
-│   ├── engine/     # Core de regras e contratos compartilhados (@silo/engine)
-│   └── config/
-│       ├── eslint-config/      # @silo/eslint-config
-│       ├── typescript-config/  # @silo/typescript-config
-│       └── tailwind-config/    # @silo/tailwind-config
-├── scripts/        # Scripts de deploy e GitLab CI
-└── docs/           # Esta documentação
+│   ├── engine/     # contratos, tipos e utilitarios compartilhados
+│   └── config/     # configs compartilhadas
+├── scripts/        # load, security, deploy e CI
+└── docs/           # esta documentacao
 ```
 
 ---
 
 ## Ordem de leitura recomendada
 
-| Arquivo | Conteúdo | Leia quando... |
+| Arquivo | Conteudo | Leia quando... |
 |---|---|---|
-| [01-project.md](01-project.md) | Objetivos estratégicos e contexto do SILO | Quiser entender o que o sistema faz e para quem |
-| [02-architecture.md](02-architecture.md) | Monorepo: pacotes, apps, fluxo de dependências | Antes de qualquer implementação nova |
-| [03-patterns.md](03-patterns.md) | Convenções de código, imports, error handling | Antes de escrever qualquer código |
-| [04-database.md](04-database.md) | Schema, relacionamentos, migrations, tipagem | Ao trabalhar com banco de dados |
-| [05-auth.md](05-auth.md) | Autenticação, OTP, OAuth, permissões | Ao trabalhar com login, sessão ou autorização |
-| [06-api.md](06-api.md) | Todos os endpoints REST do sistema | Ao criar ou consumir APIs |
-| [07-smtp.md](07-smtp.md) | Configuração de email SMTP | Ao configurar envio de e-mails |
-| [08-kafka.md](08-kafka.md) | Integração Kafka REST Proxy, consumer, DLQ | Ao trabalhar com o `apps/worker` |
-| [09-dataflow.md](09-dataflow.md) | Módulo de fluxo de dados (Gantt por produto/turno) | Ao trabalhar com `/admin/products/*/data-flow` |
-| [10-monitoring.md](10-monitoring.md) | Página de monitoramento (produtos, figuras, radares) | Ao trabalhar com `/admin/monitoring` |
-| [11-logs.md](11-logs.md) | Padrão de logs com emojis e contexto | Ao adicionar logs ou depurar |
-| [12-docker.md](12-docker.md) | Docker, containers, variáveis de ambiente | Ao configurar ou debugar ambiente Docker |
-| [13-deploy.md](13-deploy.md) | Tutorial passo-a-passo de deploy | Ao fazer deploy pela primeira vez |
-| [14-ci-cd.md](14-ci-cd.md) | Pipeline GitLab CI/CD, build de imagem, deploy por SSH | Ao alterar o pipeline ou resolver falhas de CI |
-| [15-radars-api.md](15-radars-api.md) | Guia de migração: radares de JSON estático para API | Ao implementar a API de radares |
-| [16-pictures-api.md](16-pictures-api.md) | Guia de migração: páginas/figuras de JSON estático para API | Ao implementar a API de figuras |
+| [01-project.md](01-project.md) | Objetivos e contexto do SILO | Quiser entender o problema do sistema |
+| [02-architecture.md](02-architecture.md) | Monorepo, backend Python e legado | Antes de implementar qualquer coisa nova |
+| [03-patterns.md](03-patterns.md) | Convencoes de codigo e imports | Antes de escrever codigo |
+| [04-database.md](04-database.md) | Banco, models, migrations e transacoes | Ao mexer em persistencia |
+| [05-auth.md](05-auth.md) | Autenticacao, OTP, OAuth e permissoes | Ao mexer em login ou sessao |
+| [06-api.md](06-api.md) | Endpoints REST e contratos | Ao criar ou consumir APIs |
+| [07-smtp.md](07-smtp.md) | Configuracao de e-mail | Ao mexer em envio de mensagens |
+| [08-kafka.md](08-kafka.md) | Kafka REST Proxy e worker | Ao mexer em eventos ou consumer |
+| [09-dataflow.md](09-dataflow.md) | Fluxo de dados por produto/turno | Ao mexer em data-flow |
+| [10-monitoring.md](10-monitoring.md) | Monitoramento e visoes de produto | Ao mexer em monitoring |
+| [11-logs.md](11-logs.md) | Padrao de logs e redacao | Ao adicionar logs ou diagnosticos |
+| [12-docker.md](12-docker.md) | Docker e stack local | Ao subir a stack |
+| [13-deploy.md](13-deploy.md) | Deploy por Docker Compose | Ao fazer deploy |
+| [14-ci-cd.md](14-ci-cd.md) | Pipeline CI/CD | Ao alterar CI, build ou deploy |
+| [15-radars-api.md](15-radars-api.md) | Migracao da API de radares | Ao trabalhar com radars |
+| [16-pictures-api.md](16-pictures-api.md) | Migracao da API de figuras | Ao trabalhar com figures |
 
 ---
 
 ## Regras fundamentais
 
-- **Apps dependem de pacotes. Pacotes nunca importam de apps.**
-- O frontend (`apps/web`) não acessa banco direto: fluxo é `web -> api -> db`.
-- Todo import de banco usa `@silo/database`. Nunca `../../packages/db`.
-- Todo import de contratos/regras compartilhadas usa `@silo/engine/*`.
-- Arquivos de código seguem **kebab-case**. Componentes React seguem **PascalCase**.
-- Variáveis de ambiente vivem em `.env` na raiz. Validação via Zod no boot de cada app.
+- Apps dependem de pacotes. Pacotes nunca importam de apps.
+- O frontend nao acessa banco direto. Persistencia passa pelo backend Python.
+- As referencias ao Node legado ficam apenas na documentacao historica e nos contratos antigos preservados.
+- O backend Python fica em `apps/backend/src/silo/`.
+- Todo import compartilhado usa `@silo/engine/*`.
+- Variaveis de ambiente vivem em `.env` na raiz.
+- Frontend valida com Zod; backend valida com Pydantic.
 
 ---
 
-## Comandos rápidos
+## Comandos rapidos
 
 ```bash
-# Instalar dependências (raiz)
-npm install
-
-# Rodar em desenvolvimento local (sem Docker)
 # Frontend
-npm run dev:web
+cd apps/frontend && npm install && npm run dev
 
-# API
-npm run dev:api
+# Backend
+uv --directory apps/backend sync --locked --all-groups
+uv --directory apps/backend run --locked pytest -q
+uv --directory apps/backend run --locked pytest -q --cov=silo --cov-report=term-missing --cov-report=json:coverage.json
+uv --directory apps/backend run --locked uvicorn silo.api.main:app --reload --host 0.0.0.0 --port 4000
 
-# Worker
-npm run dev:worker
-
-# Docker (stack completa)
-npm run docker:up
-
-# Ver status dos containers Docker
-npm run docker:ps
-
-# Ver logs dos containers Docker
-npm run docker:logs
-
-# Parar stack Docker
-npm run docker:down
-
-# Build de todos os pacotes/apps
-npm run build
-
-# Migrations do banco
-npm run db:migrate
+# Docker
+docker compose up -d --build
 ```

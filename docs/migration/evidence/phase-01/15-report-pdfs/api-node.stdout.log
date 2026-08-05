@@ -1,0 +1,8 @@
+[dotenv@17.2.3] injecting env (15) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[api] Running on http://localhost:4000
+🧠 [SCOPE_EMBEDDING] 8/8 escopos indexados
+✅ [REPORTS/AVAILABILITY/PDF] Gerado: availability-2026-07-21-1784646000000.pdf
+✅ [REPORTS/PROBLEMS/PDF] Gerado: problems-2026-07-21-1784646000000.pdf
+✅ [REPORTS/EXECUTIVE/PDF] Gerado: executive-2026-07-21-1784646000000.pdf
+✅ [REPORTS/PROJECTS/PDF] Gerado: projects-2026-07-21-1784646000000.pdf

@@ -52,7 +52,7 @@ Quando uma feature ou domínio começar a acumular vários routers, componha um 
 No monorepo, imports seguem duas regras simples:
 
 - **Pacotes compartilhados** (`@silo/*`): use o nome do pacote.
-- **Código interno ao app** (`apps/web`): use o alias `@/`.
+- **Código interno ao app** (`apps/frontend`): use o alias `@/`.
 
 ```typescript
 // ✅ Correto — pacotes do monorepo
@@ -61,7 +61,7 @@ import { authUser } from "@silo/database/schema";
 import { formatDate } from "@silo/engine/date";
 import type { CreateUserDto } from "@silo/engine/contracts/dto/users";
 
-// ✅ Correto — código específico do apps/web (usa @/)
+// ✅ Correto — código específico do apps/frontend (usa @/)
 import { config } from "@/lib/config";
 import { getAuthUser } from "@/lib/auth/token";
 import { MyPageComponent } from "@/components/admin/MyPageComponent";
@@ -401,7 +401,7 @@ function isValidDomain(email: string): boolean {
 ### **Estrutura de Rotas**
 
 ```text
-apps/web/src/app/api/
+apps/frontend/src/app/api/
 ├── (user)/              (route group: não aparece na URL)
 │   ├── user-profile/
 │   └── user-preferences/
@@ -418,7 +418,7 @@ apps/web/src/app/api/
 ```
 
 Observação: pastas entre parênteses (ex.: `(user)`) são apenas organização interna e não fazem parte do path público.
-Ex.: `apps/web/src/app/api/(user)/user-profile/route.ts` atende em `/api/user-profile`.
+Ex.: `apps/frontend/src/app/api/(user)/user-profile/route.ts` atende em `/api/user-profile`.
 
 ### **Handler Pattern**
 
@@ -455,7 +455,9 @@ export async function GET(request: NextRequest) {
 
 ## 🗄️ **BANCO DE DADOS**
 
-### **Queries Drizzle**
+> Nota: o backend canonico atual usa SQLAlchemy/Alembic em Python. Esta secao preserva exemplos do workspace legado enquanto ele continuar existindo como oracle de migracao.
+
+### **Queries SQL (legacy Drizzle oracle)**
 
 ```typescript
 import { db } from "@silo/database";

@@ -1,8 +1,8 @@
-# SILO — Instruções para GitHub Copilot
+# SILO - Instrucoes para GitHub Copilot
 
-Projeto **SILO** — sistema de gerenciamento de produtos industriais.
-Stack: **Next.js 16 (App Router)**, React 19, Drizzle ORM + PostgreSQL, Kafka REST Proxy, TypeScript.
-Estrutura: **npm workspaces** (monorepo).
+Projeto **SILO** - sistema de gerenciamento de produtos industriais.
+Stack atual: **Next.js 16 (App Router)**, React 19, FastAPI/Python, SQLAlchemy/Alembic, PostgreSQL, Kafka REST Proxy e TypeScript.
+O backend canônico fica em `apps/backend/`. `apps/api/` e `apps/worker/` continuam apenas como oráculos legados durante a migração.
 
 ---
 
@@ -10,107 +10,77 @@ Estrutura: **npm workspaces** (monorepo).
 
 ```
 apps/
-  web/        # Next.js — frontend + API Routes + Server Actions  (@silo/web)
-  api/        # Express REST API — autenticação e recursos         (@silo/api)
-  worker/     # Consumer Kafka (Node.js puro)                      (@silo/worker)
+  frontend/   # Next.js - frontend, route handlers e Server Actions  (@silo/web)
+  backend/    # FastAPI/Python - API, IA, worker e migrations        (canônico)
+  api/        # Express REST API legado usado como oracle
+  worker/     # Consumer Kafka Node legado usado como oracle
 packages/
-  db/         # Drizzle ORM — schema, migrations, conexão          (@silo/database)
-  engine/     # Núcleo do sistema — config, domínio, contratos,    (@silo/engine)
-              #   utilitários, kafka, dataflow, tipos, DTOs
-  config/     # Configs compartilhadas — ESLint, TypeScript, Tailwind
-scripts/      # Deploy e GitLab CI
+  db/         # Drizzle ORM legado, mantido até o fim da migração
+  engine/     # Contratos, tipos e utilitários compartilhados        (@silo/engine)
+  config/     # Configs compartilhadas - ESLint, TypeScript, Tailwind
+scripts/      # Deploy, load, segurança e CI
 docs/         # Documentação completa (leia docs/00-start.md primeiro)
 ```
 
 ---
 
-## Comportamento do assistente
-
-- Antes de alterar autenticação, uploads, sessões, permissões, rate limit, CORS, segredos ou integrações externas, revise a segurança do slice afetado. Use a skill `security-audit` para a checagem quando o trabalho tocar essas áreas.
-
-
 ## Regras fundamentais
 
-1. **Apps dependem de pacotes. Pacotes nunca importam de apps.**
-2. Todo import de banco usa `@silo/database`. Nunca paths relativos cross-package.
-3. Todo import de utilitário, domínio, contrato ou tipo usa `@silo/engine/*`. Nunca paths relativos cross-package.
-4. `@silo/engine` é o ponto de entrada único para: config, constants, date, validation, email, auth/hash, kafka, dataflow, domínio, contratos e tipos.
-5. `@silo/database` expõe apenas `db`, `schema` e helpers de banco — sem lógica de negócio.
-6. Arquivos de código seguem **kebab-case**. Componentes React seguem **PascalCase**.
-7. Variáveis de ambiente vivem em `.env` na raiz. Validação via Zod no boot de cada app. Nunca `process.env` direto — use `@/lib/config`.
-8. A versão exibida no web fica somente em `apps/web/src/lib/config.ts` como literal `appVersion`. Não usar env var, CI, `package.json` ou outra fonte para esse valor.
+1. Apps dependem de pacotes. Pacotes nunca importam de apps.
+2. O backend Python vive em `apps/backend` e é a implementação nova.
+3. `apps/api` e `apps/worker` são legados e não devem receber features novas fora da migração.
+4. Todo import compartilhado usa `@silo/engine/*`; nunca paths relativos cross-package.
+5. O frontend não acessa banco diretamente. Persistência passa pelo backend.
+6. Arquivos de codigo seguem kebab-case. Componentes React seguem PascalCase.
+7. Variaveis de ambiente vivem em `.env` na raiz. Frontend valida via `apps/frontend/src/lib/config.ts`; backend valida via Pydantic no boot.
+8. A versão exibida no web continua centralizada em `apps/frontend/src/lib/config.ts` como literal `appVersion`.
 
 ---
 
-## Convenções de idioma e nomenclatura
+## Convenções
 
-- **Comentários de código em português** — explique o *porquê*, nunca o *o quê*.
-- **Mensagens de commit em português** — siga o padrão Conventional Commits: `feat: adiciona validação de e-mail`, `fix: corrige timeout no worker`.
-- **Identificadores em inglês** — variáveis, funções, classes, tipos, constantes e nomes de arquivo usam inglês.
-- **Arquivos de código: kebab-case** — `product-status.ts`, `send-email-template.ts`.
-- **Componentes React: PascalCase** — `ProductCard.tsx`, `UserAvatar.tsx`.
-- **Rotas e diretórios Next.js: kebab-case** — `apps/web/app/admin/product-list/page.tsx`.
+- Comentários de código em português.
+- Mensagens de commit em português usando Conventional Commits.
+- Identificadores em inglês.
+- Rotas e diretórios do Next.js em kebab-case.
 
 ---
 
-## Qualidade de código
-
-- **Proibido `any`** — use tipos explícitos, `unknown` com narrowing, ou `z.infer<>` do Zod.
-- **Sem type assertions desnecessários** — evite `as SomeType` quando o tipo pode ser inferido.
-- **Código legível acima de tudo** — prefira clareza a esperteza. Nomes de variáveis e funções devem descrever a intenção, não a implementação.
-- **Funções pequenas e com propósito único** — se uma função faz mais de uma coisa, divida.
-- **Sem comentários óbvios** — comente apenas o *porquê*, nunca o *o quê*.
-- **Sem código morto** — não deixe variáveis, imports ou funções não utilizadas.
-- **Validação em funções e na borda do sistema** — valide dados externos com Zod; não valide internamente o que já foi tipado.
-- **Erros explícitos** — nunca engula erros silenciosamente (`catch {}`); sempre logue ou relance.
-- **Sem magic numbers** — extraia constantes nomeadas para valores literais com significado.
-
----
-
-## Imports — regra rápida
+## Imports rápidos
 
 ```typescript
-// Banco de dados → @silo/database
-import { db } from "@silo/database";
-import { authUser } from "@silo/database/schema";
-
-// Tudo mais do monorepo → @silo/engine/*
 import { config } from "@silo/engine/config";
 import { formatDate } from "@silo/engine/date";
-import { hashPassword } from "@silo/engine/auth/hash";
-import { sendEmailTemplate } from "@silo/engine/email/send-email-template";
 import { getProductStatus } from "@silo/engine/domain/product-status";
 import type { CreateUserDto } from "@silo/engine/contracts/dto/users";
-import { ApiResponse } from "@silo/engine/contracts/api-response";
-import { produceRecordRest } from "@silo/engine/kafka/rest-client";
 
-// Código interno ao apps/web → usa @/
-import { config } from "@/lib/config";
+import { config as webConfig } from "@/lib/config";
 import { getAuthUser } from "@/lib/auth/server";
 ```
 
 ---
 
-## Comandos
+## Comandos úteis
 
 ```bash
-npm install          # instala todas as dependências
-npm run dev          # roda todos os apps em dev
-npm run build        # build de todos os pacotes/apps
-npm run db:migrate   # aplica migrations do banco
-npm run dev -w @silo/worker  # roda apenas o worker
+# Frontend
+cd apps/frontend && npm install && npm run dev
+
+# Backend
+uv --directory apps/backend sync --locked --all-groups
+uv --directory apps/backend run --locked pytest -q
+uv --directory apps/backend run --locked silo-openapi-export
 ```
 
 ---
 
-## Documentação completa
+## Documentação
 
-Ver [docs/00-start.md](../docs/00-start.md) para a ordem de leitura recomendada e índice completo.
-
-Docs relevantes por área:
-- Padrões de código → [docs/03-patterns.md](../docs/03-patterns.md)
-- Banco de dados → [docs/04-database.md](../docs/04-database.md)
-- Autenticação → [docs/05-auth.md](../docs/05-auth.md)
-- APIs REST → [docs/06-api.md](../docs/06-api.md)
-- Kafka / worker → [docs/08-kafka.md](../docs/08-kafka.md)
-- Deploy / Docker → [docs/12-docker.md](../docs/12-docker.md), [docs/13-deploy.md](../docs/13-deploy.md)
+- [docs/02-architecture.md](../docs/02-architecture.md)
+- [docs/03-patterns.md](../docs/03-patterns.md)
+- [docs/04-database.md](../docs/04-database.md)
+- [docs/05-auth.md](../docs/05-auth.md)
+- [docs/06-api.md](../docs/06-api.md)
+- [docs/08-kafka.md](../docs/08-kafka.md)
+- [docs/12-docker.md](../docs/12-docker.md)
+- [docs/13-deploy.md](../docs/13-deploy.md)

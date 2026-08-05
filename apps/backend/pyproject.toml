@@ -1,0 +1,85 @@
+[project]
+name = "silo-backend"
+version = "0.0.0"
+description = "Python backend, worker and AI assistant migration for SILO."
+requires-python = "==3.13.*"
+dependencies = [
+    "aiosmtplib==5.1.2",
+    "alembic==1.18.5",
+    "authlib==1.7.2",
+    "bcrypt==5.0.0",
+    "fastapi==0.139.2",
+    "httpx==0.28.1",
+    "langchain-core==1.4.9",
+    "langchain-ollama==1.1.0",
+    "langgraph==1.2.9",
+    "pgvector==0.5.0",
+    "pillow==12.3.0",
+    "psycopg[binary,pool]==3.3.4",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.14.2",
+    "python-multipart==0.0.32",
+    "reportlab==5.0.0",
+    "sqlalchemy[asyncio]==2.0.51",
+    "uvicorn[standard]==0.51.0",
+]
+
+[project.scripts]
+silo-ai-observability-contract = "silo.ai.observability_contract:main"
+silo-backfill-embeddings = "silo.ai.backfill_embeddings:main"
+silo-phase11-evaluation = "silo.ai.phase11_evaluation:main"
+silo-ollama-init = "silo.ai.ollama_init:main"
+silo-sbom-contract = "silo.security.sbom_contract:main"
+silo-db-seed = "silo.db.seed:main"
+silo-openapi-export = "silo.api.openapi_export:main"
+silo-worker = "silo.worker.main:main"
+silo-worker-healthcheck = "silo.worker.healthcheck:main"
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/silo"]
+
+[tool.uv]
+exclude-newer = "2026-08-31T23:59:59Z"
+
+[dependency-groups]
+dev = [
+    "mypy==2.3.0",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "pytest-cov==7.1.0",
+    "respx==0.23.1",
+    "ruff==0.15.22",
+    "testcontainers==4.14.2",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+mypy_path = "src"
+files = ["src/silo"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = ["--strict-config", "--strict-markers"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+source = ["silo"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

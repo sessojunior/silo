@@ -1,524 +1,84 @@
-# 🐳 Docker e Deploy
+# Docker e Deploy
 
-Documentação completa sobre Docker, containerização e deploy em produção.
-
----
-
-## 📋 **ÍNDICE**
-
-1. [Visão Geral](#-visão-geral)
-2. [Arquitetura](#-arquitetura)
-3. [Configuração](#-configuração)
-4. [Execução](#-execução)
-5. [Deploy](#-deploy)
-6. [Produção](#-produção)
-7. [Troubleshooting](#-troubleshooting)
+Guia da stack local e da stack de deploy do SILO.
 
 ---
 
-## 🎯 **VISÃO GERAL**
+## Visao geral
 
-Docker é uma ferramenta que "empacota" aplicações em **containers** - ambientes isolados que funcionam da mesma forma em qualquer computador.
+A stack atual usa:
 
-**Vantagens:**
+1. `web` - Next.js em `apps/frontend`
+2. `api` - FastAPI/Python em `apps/backend`
+3. `worker` - worker Python em `apps/backend`
+4. `migrate` - migration one-shot
+5. `ollama-init` - inicializacao one-shot de modelos
+6. `db` - PostgreSQL
+7. `ollama` - runtime local de IA
 
-- ✅ Funciona igual em qualquer máquina (desenvolvimento, teste, produção)
-- ✅ Não precisa instalar Node.js, PostgreSQL, etc. manualmente
-- ✅ Fácil de iniciar e parar o sistema completo
-- ✅ Isola a aplicação do resto do sistema
+`apps/api` e `apps/worker` ficam apenas como legado de migracao e nao sao os containers canonicos da stack final.
 
----
+## Arquivos de compose
 
-## 🏗️ **ARQUITETURA**
-
-O **Silo** no monorepo usa **2 containers principais** (e opcionalmente um Postgres):
-
-1. **`web`** (porta 3000) — Aplicação Next.js (`apps/web`): frontend, API Routes, Server Actions, uploads locais.
-2. **`worker`** — Consumer Kafka (`apps/worker`): Node.js puro, sem React, sem Next.js.
-3. **`db`** (opcional) — PostgreSQL via Docker Compose, recomendado apenas quando você não usa Postgres gerenciado.
-4. **`ollama`** — Serviço local de LLM usado pela API para o assistente de IA.
-
-Consumers Kafka REST Proxy também podem ser executados em containers separados usando `docker-compose.kafka.yml`. Eles não acessam brokers diretamente; todo consumo e produção de DLQ passa pelo REST Proxy.
-
-O assistente de IA usa o caminho **Web -> API do SILO -> Ollama -> Qwen**. O browser nunca chama o Ollama diretamente.
-
-No boot da stack, um container `ollama-init` faz o `ollama pull` do modelo configurado e em seguida envia uma inferência de warm-up para forçar o carregamento do modelo na memória. Isso evita o cold-start de 30-60s na primeira requisição do assistente de IA.
-
-Além disso, o servidor Next.js (`apps/web`) contém um arquivo `instrumentation.ts` que faz warm-up do modelo a cada 23 horas via `POST /api/warmup`. Isso garante que o modelo nunca seja descarregado da memória, mesmo após fins de semana ou feriados prolongados sem acesso ao sistema.
-
-O `OLLAMA_KEEP_ALIVE: 24h` no serviço `ollama` mantém o modelo em RAM por 24h após o último uso. Como o warm-up do instrumentation.ts roda a cada 23h, o modelo permanece sempre carregado.
-
-Por padrão, o deploy usa `SILO_OLLAMA_IMAGE=ollama/ollama:0.30.0-rc7`, que foi a imagem que você já baixou e validou na máquina local.
-
-**Dockerfiles:**
-- `apps/web/Dockerfile` — instala as dependências da workspace com `npm ci` e compila `@silo/web`
-- `apps/worker/Dockerfile` — instala as dependências da workspace com `npm ci` e compila `@silo/worker`
-
-O serviço `ollama` deve manter o volume `silo-ollama-data` para persistir os modelos baixados entre reinicializações.
-
-O build de ambos usa o contexto da raiz do monorepo para que o npm workspaces resolva os pacotes internos (`@silo/database`, `@silo/engine`, etc.).
+- `docker-compose.yml` - stack local usada no desenvolvimento diario.
+- `docker-compose.deploy.yml` - stack de deploy baseada na imagem ja publicada.
 
 ---
 
-## ⚙️ **CONFIGURAÇÃO**
+## Compose local
 
-### **Pré-requisitos**
+O arquivo principal e `docker-compose.yml`.
 
-1. **Docker Desktop** (Windows/Mac) ou **Docker Engine** (Linux)
-   - Download: <https://www.docker.com/products/docker-desktop>
-   - Após instalar, verifique: `docker --version`
+- `api` expoe a porta `4000`
+- `worker` usa o mesmo backend Python e nao depende mais de Ollama
+- `web` aponta para `API_URL=http://api:4000`
+- uploads usam o volume compartilhado `silo-storage-data`
+- `ollama-init` roda antes da API; o worker nao espera mais essa inicializacao
+- `api`, `worker` e `web` usam `stop_grace_period` e limites basicos de CPU/memoria
 
-2. **Docker Compose** (geralmente já vem com o Docker Desktop)
-   - Verifique: `docker compose version`
+---
 
-3. **Rede Docker (Frontend)**
-   - O projeto utiliza uma rede externa chamada `frontend`.
-   - Crie-a manualmente antes de iniciar os containers:
-   ```bash
-   docker network create frontend
-   ```
+## Compose de deploy
 
-   - Isso é necessário para manter a coerência com os servidores de produção e permitir a integração com proxies reversos.
+O arquivo `docker-compose.deploy.yml` usa a imagem ja publicada e executa:
 
-### **Variáveis de Ambiente**
+- migrate one-shot
+- ollama-init one-shot
+- api Python
+- worker Python
+- web
 
-O projeto possui um arquivo de exemplo pronto:
+O deploy nao deve buildar codigo diferente no servidor.
 
-- `env.example` (formato compatível com `dotenv` e `.env` do Docker Compose)
+---
 
-Para evitar inconsistências, copie o arquivo para `.env` na raiz do projeto.
+## Variaveis relevantes
 
 ```bash
-# Ambiente
-NODE_ENV=production # development ou production
-
-# Banco de Dados
-DATABASE_URL_DEV=postgresql://usuario:senha@host:5432/silo_db
-DATABASE_URL_PROD=postgresql://usuario:senha@host:5432/silo_db
-
-# URLs da aplicação
 NEXT_PUBLIC_BASE_PATH=/silo
-APP_URL_DEV=http://localhost:3000
-APP_URL_PROD=https://fortuna.cptec.inpe.br
-
-BETTER_AUTH_SECRET=your_secret_key_here
-
-# Google OAuth (opcional)
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-
-# Email SMTP
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USERNAME=
-SMTP_PASSWORD=
-
-# Kafka REST Proxy
-KAFKA_REST_PROXY_URL=http://localhost:8082
-KAFKA_REST_PROXY_AUTH=
-KAFKA_REST_PROXY_USE_MOCK_DATA=true
-KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.
-KAFKA_GROUP_ID=silo-consumer-group
-KAFKA_TOPIC=
-KAFKA_TOPICS=
-KAFKA_DLQ_PREFIX=dlq.
-KAFKA_PROCESS_RETRY_COUNT=3
-KAFKA_RETRY_BACKOFF_MS=1000
-
-# Assistente de IA / Ollama
-OLLAMA_URL=http://ollama:11434
-OLLAMA_MODEL=qwen2.5:3b-instruct-q4_K_M
-OLLAMA_TIMEOUT_MS=30000
-OLLAMA_MAX_CONCURRENT_REQUESTS=1
+API_URL=http://api:4000
+NEXT_PUBLIC_API_ORIGIN=http://localhost:4000
+DATABASE_URL=postgresql://silo:silo@db:5432/silo
+SILO_POSTGRES_IMAGE=pgvector/pgvector:pg17
+SILO_OLLAMA_IMAGE=ollama/ollama:0.30.0-rc7
 ```
-
-Observações:
-
-- Para Docker Compose, evite aspas no `.env` para não incluir aspas no valor final.
-- O caminho base público do sistema é configurado em `NEXT_PUBLIC_BASE_PATH` (sem barra final). Exemplos: `/silo` ou `/` (raiz).
-- `APP_URL_DEV` e `APP_URL_PROD` devem ser apenas a origem (sem subdiretório). O subdiretório base é sempre definido em `NEXT_PUBLIC_BASE_PATH`.
-- O `docker-compose.yml` sobe PostgreSQL junto com a aplicação por padrão.
-- Para usar PostgreSQL externo, ajuste `DATABASE_URL_DEV`/`DATABASE_URL_PROD` e, se quiser, pare o serviço `db` explicitamente.
-- `KAFKA_REST_PROXY_USE_MOCK_DATA=true` mantém as telas de monitoramento e fluxo de dados funcionando com dados fake simulados. Use `false` apenas quando o REST Proxy real estiver disponível.
-
-### **Arquivo docker-compose.yml**
-
-Veja o arquivo real do projeto em `docker-compose.yml`.
 
 ---
 
-## 🚀 **EXECUÇÃO**
-
-### **Opção 1: Desenvolvimento Local (SEM Docker)**
-
-Recomendado para desenvolvimento ativo do código:
+## Comandos uteis
 
 ```bash
-# 1. Instalar dependências
-npm install
-
-# 2. Configurar variáveis de ambiente
-Copy-Item env.example .env
-# Edite o arquivo .env com suas configurações
-
-# 3. Executar servidor
-npm run dev
-
-# ✅ Pronto! Acesse:
-# Frontend: http://localhost:3000<BASE_PATH>
-```
-
-**Para parar**: Pressione `Ctrl+C` em cada terminal.
-
-### **Opção 2: Usando Docker**
-
-Para um guia passo a passo detalhado, consulte [**DEPLOY.md**](./DEPLOY.md).
-
-Recomendado para testar ou usar o sistema sem configurar o ambiente:
-
-```bash
-# 1. Copiar arquivo de exemplo
-cp env.example .env
-
-# 2. Editar .env com suas configurações
-# Use um editor de texto (VSCode, Notepad, etc.)
-
-# 3. Construir e executar containers (Aplicação + Banco)
-npm run docker:up
-
-# Ver status e logs da stack Docker
-npm run docker:ps
-npm run docker:logs
-
-# Alias mantido por compatibilidade:
-npm run deploy
-
-# Não execute o compose manualmente no fluxo normal; o `npm run docker:up` já faz isso por baixo.
-
-# Isso vai:
-# 1. Baixar as imagens necessárias
-# 2. Construir os containers do Silo e do Banco
-# 3. Rodar migrações e seed automaticamente (entrypoint.sh)
-# 4. Iniciar a aplicação
-
-# O compose manual fica só para debugging avançado.
-
-# ✅ Aguarde a mensagem: "ready - started server on..."
-# ✅ Acesse: http://localhost:3000<BASE_PATH>
-```
-
-**Executar em segundo plano:**
-
-```bash
-npm run docker:up
-
-# Ver logs depois:
-npm run docker:ps
-npm run docker:logs
-```
-
-### **Subir stack completa (padrão)**
-
-O comando padrão já sobe banco + API + Web + Worker + Ollama. Na prática, rode apenas:
-
-```bash
-npm run docker:up
-```
-
-Se você realmente precisar depurar o Compose, aí sim pode usar o comando manual abaixo:
-
-```bash
-docker compose up -d --build
-```
-
-Configuração típica no `.env`:
-
-```bash
-POSTGRES_DB=silo
-POSTGRES_USER=silo
-POSTGRES_PASSWORD=uma_senha_forte
-POSTGRES_PORT=5432
-
-DATABASE_URL_DEV=postgresql://silo:uma_senha_forte@db:5432/silo
-DATABASE_URL_PROD=postgresql://silo:uma_senha_forte@db:5432/silo
-```
-
-### **Consumers Kafka REST Proxy**
-
-Para rodar consumers Kafka via REST Proxy em containers separados, use o arquivo `docker-compose.kafka.yml` junto do compose principal:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.kafka.yml up -d --build
-```
-
-Cada serviço em `docker-compose.kafka.yml` deve definir um `KAFKA_TOPIC`. A recomendação operacional é manter um container por tópico para isolar checkpoints, retries e logs.
-
-Exemplo de variáveis no `.env`:
-
-```bash
-KAFKA_REST_PROXY_URL=http://rest-proxy:8082
-KAFKA_REST_PROXY_AUTH=
-KAFKA_GROUP_ID=silo-consumer-group
-KAFKA_DLQ_PREFIX=dlq.
-DATABASE_URL_DEV=postgresql://silo:uma_senha_forte@db:5432/silo
-DATABASE_URL_PROD=postgresql://silo:uma_senha_forte@db:5432/silo
-```
-
-Detalhes do contrato e dos comandos estão em [08-kafka.md](08-kafka.md).
-
----
-
-## 🛠️ **GERENCIAMENTO**
-
-### **Comandos Básicos**
-
-```bash
-# Ver status dos containers
+docker compose up -d --build && docker compose ps && docker compose logs -f api worker web
 docker compose ps
-
-# Ver logs em tempo real
 docker compose logs -f
-
-# Ver logs de um container específico
-docker compose logs -f silo
-
-# Parar todos os containers
 docker compose down
-
-# Parar e remover tudo (inclusive volumes)
-docker compose down -v
-
-# Reiniciar containers
-docker compose restart
-
-# Reconstruir apenas um container
-docker compose up --build silo
+docker compose -f docker-compose.deploy.yml config
 ```
-
-### **Acessar o Sistema**
-
-Após iniciar os containers:
-
-- **Frontend**: <http://localhost:3000/silo> (ou conforme `BASE_PATH`)
-- **Uploads**: `GET <BASE_PATH>/uploads/<type>/<filename>`
 
 ---
 
-## 🚀 **DEPLOY**
-
-### **Estratégia de Deploy**
-
-O projeto **Silo** é uma aplicação Next.js (frontend + APIs) com uploads locais servidos por route handlers (`/silo/uploads/...`).
-
----
-
-## 🤖 **AUTOMAÇÃO E ENTRYPOINT**
-
-O container do Silo utiliza um script de inicialização (`entrypoint.sh`) que automatiza tarefas essenciais antes de subir a aplicação.
-
-### **Fluxo de Inicialização**
-
-1. **Migrações (`npm run db:migrate`)**: Verifica e aplica alterações pendentes no esquema do banco de dados.
-2. **Seed (`npm run db:seed`)**: Popula o banco com dados iniciais (usuário admin) se estiver vazio.
-3. **Start (`npm run start`)**: Inicia o servidor Next.js em modo de produção.
-
-### **Dependências de Produção**
-
-Para que essa automação funcione dentro do container (onde `devDependencies` são removidas para otimização), as seguintes ferramentas devem ser mantidas em **`dependencies`** no `package.json`:
-
-- **`drizzle-kit`**: Responsável por aplicar as migrações.
-- **`tsx`**: Responsável por executar o script de seed (TypeScript).
-- **`dotenv`**: Responsável por carregar variáveis de ambiente.
-- **`typescript`**: Necessário para que o Next.js carregue o arquivo `next.config.ts` em tempo de execução sem reinstalar pacotes.
-
-> ⚠️ **Atenção:** Não mova esses pacotes para `devDependencies`, ou o container falhará ao iniciar com erros como `command not found` ou `module not found`.
-
----
-
-## 🏭 **PRODUÇÃO (POSTGRES)**
-
-### **Opção recomendada: Postgres gerenciado**
-
-Para produção, prefira um Postgres gerenciado (ou um servidor Postgres dedicado do próprio INPE). Nesse cenário:
-
-- O container `db` do Compose não é necessário.
-- Configure `DATABASE_URL_PROD` apontando para o host real do Postgres.
-- Use SSL se o provedor exigir (ex.: `?sslmode=require`).
-
-Exemplo:
-
-```bash
-DATABASE_URL_PROD=postgresql://usuario:senha@host-producao:5432/silo?sslmode=require
-```
-
-### **Aplicar migrações no Postgres de produção**
-
-Com `DATABASE_URL_PROD` configurada e `NODE_ENV=production`:
-
-```bash
-npm run db:migrate
-```
-
-Recomendação prática para deploy:
-
-- Execute migrações antes de subir a nova versão da aplicação.
-- Tenha backup/restore testado (dump diário, retenção e restauração validada).
-
-### **Deploy do Frontend (Vercel)**
-
-```bash
-# Recomenda-se configurar o deploy pelo painel do provedor (ex.: Vercel)
-# ou por um pipeline existente do ambiente institucional.
-```
-
-O Vercel fará deploy automaticamente apenas do frontend Next.js.
-
-### **Arquivos de Configuração**
-
-- `.gitignore` - Ignora arquivos desnecessários
-- `.vercelignore` - Otimiza deploy no Vercel
-- `.dockerignore` - Otimiza containers Docker
-- `next.config.ts` - Configuração Next.js otimizada
-
----
-
-## 🏭 **PRODUÇÃO**
-
-### **Container Next.js (`silo`)**
-
-- **Porta**: 3000 (mapeada para localhost:3000)
-- **Função**: Aplicação frontend e APIs
-- **Volume**: `silo-storage-data` (Volume Docker gerenciado)
-- **Restart**: Automático (`unless-stopped`)
-
-### **Persistência de Dados**
-
-- ✅ Arquivos de upload são salvos no volume `silo-storage-data` (persistência garantida e isolada)
-- ✅ Banco de dados é persistido no volume `silo-postgres-data`
-- ✅ **Inicialização Automática (`entrypoint.sh`)**:
-  - Toda vez que o container sobe, ele tenta rodar as migrações.
-  - Depois, roda o seed (que verifica se os dados já existem antes de criar).
-  - Isso garante que o banco sempre esteja atualizado e com os dados iniciais, sem duplicar ou apagar informações.
-
-### **Configurações de Produção**
-
-```bash
-# Caminho base da aplicação (sem barra final). Exemplos: '/silo' ou '/'
-NEXT_PUBLIC_BASE_PATH=/silo
-
-# Desenvolvimento
-APP_URL_DEV=http://localhost:3000
-
-# Produção
-APP_URL_PROD=https://fortuna.cptec.inpe.br
-BETTER_AUTH_SECRET=your_secret_key_here
-```
-
-**⚠️ Importante para Produção:**
-
-- URLs HTTPS obrigatórias
-- Domínios reais institucionais
-- Secrets complexos e únicos
-- Servidor PostgreSQL dedicado
-- SSL/TLS configurado
-- Firewall configurado
-
----
-
-## 🔧 **TROUBLESHOOTING**
-
-### **Erro: "port is already allocated"**
-
-```bash
-# Outro programa está usando a porta 3000
-# Opção 1: Parar o programa que está usando a porta
-# Opção 2: Mudar a porta no docker-compose.yml
-
-# Ver o que está usando a porta (Windows):
-netstat -ano | findstr :3000
-
-# Matar processo (Windows):
-taskkill /PID <PID> /F
-```
-
-### **Erro: "Cannot connect to the Docker daemon"**
-
-```bash
-# Docker Desktop não está rodando
-# Solução: Inicie o Docker Desktop e aguarde inicializar
-```
-
-### **Container não inicia**
-
-```bash
-# Ver logs detalhados
-docker compose logs silo
-
-# Verificar variáveis de ambiente
-docker compose config
-
-# Verificar permissões dos volumes
-docker compose exec silo ls -la uploads/
-```
-
-### **Limpar tudo e recomeçar**
-
-```bash
-# Parar e remover containers, volumes e redes
-docker compose down -v
-
-# Remover imagens antigas (libera espaço)
-docker system prune -a
-
-# Reconstruir do zero
-docker compose up --build
-```
-
-### **Comandos de Debug**
-
-```bash
-# Entrar dentro do container Next.js
-docker compose exec silo sh
-
-# Ver configuração completa gerada
-docker compose config
-
-# Ver recursos usados pelos containers
-docker stats
-
-# Verificar logs de erro específicos
-docker compose logs silo | findstr ERROR
-
-# Forçar warm-up do modelo de IA (útil se o instrumentation falhar)
-docker compose exec api wget -q -O - --post-data='{"model":"qwen2.5:3b-instruct-q4_K_M","messages":[{"role":"user","content":"oi"}],"stream":false,"options":{"num_predict":1}}' --header='Content-Type: application/json' http://ollama:11434/api/chat
-
-# Verificar se o modelo está carregado na memória
-docker compose exec ollama ollama ps
-```
-
-### **Assistente de IA lento na primeira requisição**
-
-Se o assistente demorar 30-60s para responder na primeira pergunta após um deploy ou reinicialização:
-
-1. Verifique se o warm-up rodou: `docker compose logs silo-web | findstr INSTRUMENTATION`
-2. A mensagem `Modelo aquecido em Xms` confirma que o warm-up funcionou
-3. Se não aparecer, force manualmente: `docker compose exec api wget ...` (comando acima)
-4. O `OLLAMA_KEEP_ALIVE: 24h` mantém o modelo em RAM; se ninguém usou por mais de 24h, o warm-up do instrumentation.ts recarrega automaticamente a cada 23h
-
----
-
-## 📊 **QUANDO USAR CADA OPÇÃO?**
-
-| Situação                 | Recomendação                        |
-| ------------------------ | ----------------------------------- |
-| **Desenvolvendo código** | Desenvolvimento Local (npm run dev) |
-| **Testando o sistema**   | Docker                              |
-| **Primeira vez usando**  | Docker                              |
-| **Deploy em servidor**   | Docker                              |
-| **Debugando problemas**  | Desenvolvimento Local               |
-| **Demonstração rápida**  | Docker                              |
-
----
-
-**🎯 Para detalhes técnicos, consulte o Dockerfile em `/Dockerfile`**
+## Observacoes de operacao
+
+- `ollama-init` continua obrigatorio para registrar modelos e digests da IA.
+- A API usa healthcheck proprio e o worker nao depende mais do runtime de IA.
+- O web continua responsavel pelo proxy same-origin e pelo volume de uploads.

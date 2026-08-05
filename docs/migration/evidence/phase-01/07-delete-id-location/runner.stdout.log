@@ -1,0 +1,6 @@
+[legacy-contract] captured phase1_7.delete_id_location.help_images.frontend_body_filename -> tests\fixtures\legacy-golden\phase1_7.delete_id_location.help_images.frontend_body_filename.json
+[legacy-contract] captured phase1_7.delete_id_location.help_images.api_query_filename_success -> tests\fixtures\legacy-golden\phase1_7.delete_id_location.help_images.api_query_filename_success.json
+[legacy-contract] captured phase1_7.delete_id_location.incidents_images.frontend_body_filename -> tests\fixtures\legacy-golden\phase1_7.delete_id_location.incidents_images.frontend_body_filename.json
+[legacy-contract] captured phase1_7.delete_id_location.incidents_images.api_query_filename_success -> tests\fixtures\legacy-golden\phase1_7.delete_id_location.incidents_images.api_query_filename_success.json
+[legacy-contract] captured phase1_7.delete_id_location.products_manual_images.frontend_body_filename_success -> tests\fixtures\legacy-golden\phase1_7.delete_id_location.products_manual_images.frontend_body_filename_success.json
+[legacy-contract] captured phase1_7.delete_id_location.projects_images.frontend_body_filename_no_node_route -> tests\fixtures\legacy-golden\phase1_7.delete_id_location.projects_images.frontend_body_filename_no_node_route.json

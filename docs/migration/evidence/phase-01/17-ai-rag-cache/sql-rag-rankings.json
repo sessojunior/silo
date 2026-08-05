@@ -1,0 +1,104 @@
+{
+  "problemRanking": [
+    {
+      "id": "phase1-17-rag-problem-a",
+      "title": "Phase 1.17 RAG falha recorrente disponibilidade manual ajuda solucao hibrido",
+      "description": "Phase 1.17 problema A descreve falha recorrente de disponibilidade com manual, ajuda e solucao hibrido no modelo fixture.",
+      "embeddingDims": 768,
+      "vectorSimilarity": 1,
+      "trigramSimilarity": 1,
+      "hybridScore": 1,
+      "keywordOverlap": 1,
+      "finalRerankSimilarity": 0.8,
+      "passesThreshold": true
+    },
+    {
+      "id": "phase1-17-rag-problem-b",
+      "title": "Phase 1.17 disponibilidade intermitente do modelo fixture",
+      "description": "Phase 1.17 problema B cita disponibilidade e falha, mas n??o cont??m todos os termos do prompt.",
+      "embeddingDims": 768,
+      "vectorSimilarity": 1,
+      "trigramSimilarity": 0.326531,
+      "hybridScore": 0.730612,
+      "keywordOverlap": 0.555556,
+      "finalRerankSimilarity": 0.666667,
+      "passesThreshold": true
+    },
+    {
+      "id": "phase1-17-rag-problem-c",
+      "title": "Phase 1.17 registro vetorial oposto abaixo do limiar",
+      "description": "Phase 1.17 problema C usa embedding oposto para comprovar filtro de limiar.",
+      "embeddingDims": 768,
+      "vectorSimilarity": -1,
+      "trigramSimilarity": 0.144144,
+      "hybridScore": -0.542342,
+      "keywordOverlap": 0.222222,
+      "finalRerankSimilarity": -0.433333,
+      "passesThreshold": false
+    }
+  ],
+  "solutionRanking": [
+    {
+      "id": "phase1-17-rag-solution-a",
+      "description": "Phase 1.17 solucao hibrido para falha recorrente de disponibilidade: revisar manual, ajuda e dependencias antes de liberar o modelo.",
+      "embeddingDims": 768,
+      "vectorSimilarity": 1,
+      "trigramSimilarity": 0.61017,
+      "hybridScore": 0.844068,
+      "keywordOverlap": 0.888889,
+      "finalRerankSimilarity": 0.766667,
+      "passesThreshold": true
+    },
+    {
+      "id": "phase1-17-rag-solution-b",
+      "description": "Phase 1.17 solucao parcial para disponibilidade intermitente do modelo fixture.",
+      "embeddingDims": 768,
+      "vectorSimilarity": 1,
+      "trigramSimilarity": 0.386792,
+      "hybridScore": 0.754717,
+      "keywordOverlap": 0.333333,
+      "finalRerankSimilarity": 0.6,
+      "passesThreshold": true
+    },
+    {
+      "id": "phase1-17-rag-solution-c",
+      "description": "Phase 1.17 solucao com embedding oposto abaixo do limiar.",
+      "embeddingDims": 768,
+      "vectorSimilarity": -1,
+      "trigramSimilarity": 0.190909,
+      "hybridScore": -0.523636,
+      "keywordOverlap": 0.222222,
+      "finalRerankSimilarity": -0.433333,
+      "passesThreshold": false
+    }
+  ],
+  "manual": [
+    {
+      "id": "phase1-17-rag-manual-chunk-a",
+      "product_id": "fixture-product",
+      "chunk_index": 0,
+      "content": "Phase 1.17 manual: em falha recorrente de disponibilidade, consultar ajuda, aplicar solucao hibrido e registrar evidencias.",
+      "embedding_dims": 768,
+      "similarity": 1,
+      "passes_threshold": true
+    },
+    {
+      "id": "phase1-17-rag-manual-chunk-b",
+      "product_id": "fixture-product",
+      "chunk_index": 1,
+      "content": "Phase 1.17 manual: chunk oposto usado para comprovar limiar de similaridade.",
+      "embedding_dims": 768,
+      "similarity": -1,
+      "passes_threshold": false
+    }
+  ],
+  "help": [
+    {
+      "id": "system-help",
+      "description": "Phase 1.17 ajuda relevante: orientar consultas sobre falha recorrente, disponibilidade, manual, solucao hibrido e evidencias do modelo.",
+      "embedding_dims": 768,
+      "similarity": 1,
+      "passes_threshold": true
+    }
+  ]
+}

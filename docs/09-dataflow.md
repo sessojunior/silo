@@ -1,6 +1,6 @@
 # Fluxo de Dados via Kafka REST Proxy
 
-Este guia descreve o fluxo de dados exibido em `/admin/products/:slug/data-flow`. A fonte oficial do módulo é o **Kafka REST Proxy**. Enquanto o REST Proxy real não estiver disponível, a aplicação usa os snapshots fake existentes e retorna o mesmo contrato normalizado que a UI consome.
+Este guia descreve o fluxo de dados exibido em `/admin/products/:slug/data-flow`. A fonte oficial do módulo é o **Kafka REST Proxy**. Enquanto o REST Proxy real não estiver disponível, a aplicação usa o feed compartilhado do SMNA em `https://unconglomerated-physiologically-grant.ngrok-free.dev/app9/json` e retorna o mesmo contrato normalizado que a UI consome. O fallback agora fica embutido no frontend e não depende de JSON local na raiz.
 
 ---
 
@@ -30,11 +30,11 @@ Fluxo atual:
 
 Arquivos principais:
 
-- `apps/api/src/routes/products-extended.ts`
-- `apps/api/src/dataflow/kafka-data-flow-source.ts`
-- `apps/web/src/lib/dataflow/kafka-data-flow-source.ts`
-- `apps/web/src/app/admin/products/[slug]/data-flow/page.tsx`
-- `apps/web/src/components/admin/nav/product-tabs.tsx`
+- `apps/backend/src/silo/api/routers/product_flow.py`
+- `apps/backend/src/silo/integrations/kafka_rest.py`
+- `apps/frontend/src/lib/dataflow/mock-ecflow.ts`
+- `apps/frontend/src/app/admin/products/[slug]/data-flow/page.tsx`
+- `apps/frontend/src/components/admin/nav/product-tabs.tsx`
 
 ---
 
@@ -78,7 +78,7 @@ Uso pela interface:
 
 ## Contrato Kafka/ecFlow
 
-O contrato bruto aceito pelo parser é a árvore ecFlow/suite do anexo [kafka-consumer-api-example.json](../kafka-consumer-api-example.json). O root da suite e os nós de família de primeiro nível carregam `date` e `turn` explicitamente.
+O parser continua aceitando a árvore ecFlow/suite compatível com o formato descrito abaixo, mas a fonte compartilhada atual do modo simulado é o feed SMNA em `https://unconglomerated-physiologically-grant.ngrok-free.dev/app9/json`. Não há mais arquivo local de exemplo na raiz; o fallback embutido no frontend mantém o modo simulado executável quando o feed remoto falha.
 
 ```json
 {
@@ -123,16 +123,16 @@ O Gantt usa `plannedStartAt` e `plannedEndAt` como `start` e `end`. Isso permite
 
 Estados Kafka/ecFlow são convertidos para os status aceitos pela UI em `productStatus.ts`.
 
-| Estado recebido | Status na UI |
-| --- | --- |
-| `queued`, `queue`, `pending`, `submitted` | `pending` |
-| `complete`, `completed` | `completed` |
-| `active`, `running`, `in_progress` | `in_progress` |
+| Estado recebido                               | Status na UI    |
+| --------------------------------------------- | --------------- |
+| `queued`, `queue`, `pending`, `submitted`     | `pending`       |
+| `complete`, `completed`                       | `completed`     |
+| `active`, `running`, `in_progress`            | `in_progress`   |
 | `failed`, `aborted`, `error`, `with_problems` | `with_problems` |
-| `run_again` | `run_again` |
-| `not_run` | `not_run` |
-| `under_support` | `under_support` |
-| `suspended` | `suspended` |
+| `run_again`                                   | `run_again`     |
+| `not_run`                                     | `not_run`       |
+| `under_support`                               | `under_support` |
+| `suspended`                                   | `suspended`     |
 
 Quando `run.status` não vem preenchido, o status agregado do pipeline é derivado das tasks.
 
@@ -190,7 +190,7 @@ KAFKA_REST_PROXY_USE_MOCK_DATA=true
 
 Com esse valor, o sistema:
 
-- usa `apps/web/src/app/admin/products/[slug]/data-flow/pipeline-data.json` como base;
+- consulta `apps/frontend/src/lib/dataflow/mock-ecflow.ts`, que tenta primeiro o feed SMNA compartilhado e cai no JSON local apenas se ele falhar;
 - adapta snapshots existentes para o `slug` solicitado quando não houver match exato;
 - devolve o mesmo modelo normalizado da UI;
 - não depende do REST Proxy.
@@ -219,10 +219,34 @@ Resultado esperado resumido:
 {
   "count": 4,
   "pipelines": [
-    { "model": "smna", "date": "2026-05-13", "turn": "18", "status": "pending", "groups": 1 },
-    { "model": "smna", "date": "2026-05-13", "turn": "12", "status": "completed", "groups": 1 },
-    { "model": "smna", "date": "2026-05-13", "turn": "06", "status": "completed", "groups": 1 },
-    { "model": "smna", "date": "2026-05-13", "turn": "00", "status": "completed", "groups": 2 }
+    {
+      "model": "smna",
+      "date": "2026-05-13",
+      "turn": "18",
+      "status": "pending",
+      "groups": 1
+    },
+    {
+      "model": "smna",
+      "date": "2026-05-13",
+      "turn": "12",
+      "status": "completed",
+      "groups": 1
+    },
+    {
+      "model": "smna",
+      "date": "2026-05-13",
+      "turn": "06",
+      "status": "completed",
+      "groups": 1
+    },
+    {
+      "model": "smna",
+      "date": "2026-05-13",
+      "turn": "00",
+      "status": "completed",
+      "groups": 2
+    }
   ]
 }
 ```

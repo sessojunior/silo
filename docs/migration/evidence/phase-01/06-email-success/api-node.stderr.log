@@ -1,0 +1,27 @@
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
+❌ [LIB_SEND_EMAIL_TEMPLATE] Erro de conexão SMTP: {
+  error: Error: connect ECONNREFUSED 127.0.0.1:2525
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1645:16) {
+    errno: -4078,
+    code: 'ESOCKET',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 2525,
+    command: 'CONN'
+  }
+}
+❌ [SEND_EMAIL] Erro de conexão SMTP: {
+  error: Error: connect ECONNREFUSED 127.0.0.1:2525
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1645:16) {
+    errno: -4078,
+    code: 'ESOCKET',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 2525,
+    command: 'CONN'
+  }
+}

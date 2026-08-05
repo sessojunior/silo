@@ -29,7 +29,7 @@ O sistema usa **SMTP** para envio de emails institucionais:
 
 ### **Variáveis de Ambiente**
 
-O projeto centraliza a leitura em `apps/web/src/lib/config.ts` e usa estas variáveis:
+O projeto centraliza a leitura em `apps/frontend/src/lib/config.ts` e usa estas variáveis:
 
 ```bash
 # .env
@@ -73,7 +73,7 @@ SMTP_PASSWORD=senha-do-app
 
 ### **Arquivo de Configuração**
 
-Arquivo: `apps/web/src/lib/config.ts`
+Arquivo: `apps/frontend/src/lib/config.ts`
 
 ```typescript
 import { config } from "@/lib/config";

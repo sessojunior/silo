@@ -88,9 +88,9 @@ console.log("ℹ️ [API] Mensagem enviada"); // contexto genérico demais
 
 Recomendação prática (padrão usado no projeto):
 
-- `apps/web/src/app/api/...` → `API_...` (ex.: `API_PRODUCTS_ACTIVITIES`, `API_USER_PROFILE`)
-- `apps/web/src/lib/...` → `LIB_...` (ex.: `LIB_SEND_EMAIL`, `LIB_PROFILE_IMAGE`) ou um nome curto (ex.: `INIT`)
-- `apps/web/src/components/...` → `COMPONENT_...` (ex.: `COMPONENT_PRODUCT_ACTIVITY`)
+- `apps/frontend/src/app/api/...` → `API_...` (ex.: `API_PRODUCTS_ACTIVITIES`, `API_USER_PROFILE`)
+- `apps/frontend/src/lib/...` → `LIB_...` (ex.: `LIB_SEND_EMAIL`, `LIB_PROFILE_IMAGE`) ou um nome curto (ex.: `INIT`)
+- `apps/frontend/src/components/...` → `COMPONENT_...` (ex.: `COMPONENT_PRODUCT_ACTIVITY`)
 
 ### **Detalhes**
 

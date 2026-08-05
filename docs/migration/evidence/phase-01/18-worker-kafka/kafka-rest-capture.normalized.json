@@ -1,0 +1,182 @@
+[
+  {
+    "sequence": 1,
+    "at": "<date-time>",
+    "method": "POST",
+    "path": "/consumers/phase1-18-worker/instances/phase1-18-instance/offsets",
+    "request": {
+      "kind": "kafka-offset-commit",
+      "offsets": [
+        {
+          "topic": "model.phase1_18",
+          "partition": 0,
+          "offset": "11"
+        }
+      ]
+    },
+    "response": {
+      "status": 204
+    }
+  },
+  {
+    "sequence": 2,
+    "at": "<date-time>",
+    "method": "POST",
+    "path": "/topics/dlq.model.phase1_18",
+    "request": {
+      "kind": "kafka-produce",
+      "topic": "dlq.model.phase1_18",
+      "recordCount": 1,
+      "records": [
+        {
+          "index": 0,
+          "key": "phase1-18-model-append",
+          "valueSha256": "7d1e09882ca1ce470022a7bcdf8521c30836b33e17b02fa264ed9d66e55ac9cb",
+          "valuePreview": "\"{\\\"message_id\\\":\\\"phase1-18-model-append\\\",\\\"slug\\\":\\\"fixture-product\\\",\\\"data\\\":{\\\"kind\\\":\\\"ecflow-summary-duplicate-should-not-append\\\"}}\""
+        }
+      ]
+    },
+    "response": {
+      "status": 200
+    }
+  },
+  {
+    "sequence": 3,
+    "at": "<date-time>",
+    "method": "POST",
+    "path": "/consumers/phase1-18-worker/instances/phase1-18-instance/offsets",
+    "request": {
+      "kind": "kafka-offset-commit",
+      "offsets": [
+        {
+          "topic": "model.phase1_18",
+          "partition": 0,
+          "offset": "12"
+        }
+      ]
+    },
+    "response": {
+      "status": 204
+    }
+  },
+  {
+    "sequence": 4,
+    "at": "<date-time>",
+    "method": "POST",
+    "path": "/consumers/phase1-18-worker/instances/phase1-18-instance/offsets",
+    "request": {
+      "kind": "kafka-offset-commit",
+      "offsets": [
+        {
+          "topic": "monitoring.phase1_18",
+          "partition": 0,
+          "offset": "21"
+        }
+      ]
+    },
+    "response": {
+      "status": 204
+    }
+  },
+  {
+    "sequence": 5,
+    "at": "<date-time>",
+    "method": "POST",
+    "path": "/consumers/phase1-18-worker/instances/phase1-18-instance/offsets",
+    "request": {
+      "kind": "kafka-offset-commit",
+      "offsets": [
+        {
+          "topic": "unknown.phase1_18",
+          "partition": 0,
+          "offset": "31"
+        }
+      ]
+    },
+    "response": {
+      "status": 204
+    }
+  },
+  {
+    "sequence": 6,
+    "at": "<date-time>",
+    "method": "POST",
+    "path": "/topics/dlq.model.phase1_18",
+    "request": {
+      "kind": "kafka-produce",
+      "topic": "dlq.model.phase1_18",
+      "recordCount": 1,
+      "records": [
+        {
+          "index": 0,
+          "key": null,
+          "valueSha256": "52e064302ff1e0de45969326de6a5d93eacedceab543a245926ae7e2b1a2c882",
+          "valuePreview": "\"{invalid-json\""
+        }
+      ]
+    },
+    "response": {
+      "status": 200
+    }
+  },
+  {
+    "sequence": 7,
+    "at": "<date-time>",
+    "method": "POST",
+    "path": "/consumers/phase1-18-worker/instances/phase1-18-instance/offsets",
+    "request": {
+      "kind": "kafka-offset-commit",
+      "offsets": [
+        {
+          "topic": "model.phase1_18",
+          "partition": 0,
+          "offset": "41"
+        }
+      ]
+    },
+    "response": {
+      "status": 204
+    }
+  },
+  {
+    "sequence": 8,
+    "at": "<date-time>",
+    "method": "POST",
+    "path": "/topics/dlq.model.phase1_18",
+    "request": {
+      "kind": "kafka-produce",
+      "topic": "dlq.model.phase1_18",
+      "recordCount": 1,
+      "records": [
+        {
+          "index": 0,
+          "key": null,
+          "valueSha256": "72d8e114387fee52c3f84d4e663caf4e75b634e64992c47a845565e4ab6d87e0",
+          "valuePreview": "\"{\\\"slug\\\":\\\"fixture-product\\\",\\\"payload\\\":{\\\"missing\\\":\\\"message_id\\\"}}\""
+        }
+      ]
+    },
+    "response": {
+      "status": 200
+    }
+  },
+  {
+    "sequence": 9,
+    "at": "<date-time>",
+    "method": "POST",
+    "path": "/consumers/phase1-18-worker/instances/phase1-18-instance/offsets",
+    "request": {
+      "kind": "kafka-offset-commit",
+      "offsets": [
+        {
+          "topic": "model.phase1_18",
+          "partition": 0,
+          "offset": "51"
+        }
+      ]
+    },
+    "response": {
+      "status": 204
+    }
+  }
+]
