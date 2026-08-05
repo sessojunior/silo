@@ -43,10 +43,13 @@ export function normalizeUploadsSrc(input: string): string {
     kind === "general" ||
     kind === "avatars" ||
     kind === "contacts" ||
+    kind === "incidents" ||
     kind === "problems" ||
     kind === "solutions" ||
+    kind === "manual" ||
     kind === "help" ||
-    kind === "projects";
+    kind === "projects" ||
+    kind === "reports";
 
   const normalizePathname = (value: string): string => {
     if (!value.startsWith("/")) return value;

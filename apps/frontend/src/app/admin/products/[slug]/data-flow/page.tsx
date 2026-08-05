@@ -7,6 +7,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import type { PertRunMeta } from "@silo/engine/dataflow/pert-types";
 import {
   selectDataFlowSnapshotFromPipelines,
+  useActiveEcflowRoot,
   useDataFlowPipelines,
 } from "@/lib/dataflow/mock-ecflow";
 
@@ -23,7 +24,8 @@ export default function ProductDataFlowPage() {
   const selectedTurn = searchParams.get("turn");
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const { pipelines, loading, ecflowRoot } = useDataFlowPipelines(modelSlug);
+  const { pipelines, loading, ecflowRoot, ecflowFromPipeline } =
+    useDataFlowPipelines(modelSlug);
 
   const activeSnapshot = useMemo(
     () =>
@@ -33,6 +35,15 @@ export default function ProductDataFlowPage() {
         selectedTurn,
       ),
     [pipelines, selectedDate, selectedTurn],
+  );
+
+  // Reconstroi a arvore ecFlow a partir do snapshot ativo quando a arvore
+  // principal foi construida a partir de pipelines (fallback), garantindo
+  // que a tabela reflita a data/turno selecionada.
+  const effectiveEcflowRoot = useActiveEcflowRoot(
+    ecflowRoot,
+    ecflowFromPipeline,
+    activeSnapshot,
   );
 
   const groups = useMemo(() => activeSnapshot?.groups ?? [], [activeSnapshot]);
@@ -125,7 +136,7 @@ export default function ProductDataFlowPage() {
     <div className="flex h-[calc(100dvh-140px)] min-h-0 w-full flex-col overflow-hidden">
       <PertGraph
         groups={groups}
-        ecflowRoot={ecflowRoot}
+        ecflowRoot={effectiveEcflowRoot}
         runMeta={runMeta}
         selectedTaskId={selectedTaskId}
         onSelectTask={setSelectedTaskId}
