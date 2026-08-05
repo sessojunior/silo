@@ -43,7 +43,8 @@ export async function proxy(req: NextRequest) {
   const requiresSessionCookie =
     routePath === "/" ||
     routePath.startsWith("/admin") ||
-    routePath.startsWith("/api/admin/");
+    routePath.startsWith("/api/admin/") ||
+    routePath.startsWith("/api/upload/");
 
   const sessionCookie = requiresSessionCookie ? req.cookies.get(SESSION_COOKIE_NAME)?.value?.trim() ?? null : null;
 
@@ -74,6 +75,17 @@ export async function proxy(req: NextRequest) {
 
     const apiPath = `/api/${routePath.slice("/api/admin/".length)}`;
     return rewriteToApi(apiPath, req.nextUrl.search);
+  }
+
+  // APIs de upload: validar sessao mas deixar o Route Handler
+  // (api/upload/[kind]/route.ts) encaminhar o multipart/form-data
+  // corretamente, ja que NextResponse.rewrite nao preserva o corpo
+  // multipart ao reescrever para origem externa.
+  if (routePath.startsWith("/api/upload/")) {
+    if (!sessionCookie) {
+      return errorResponse("Usuário não autenticado.", 401);
+    }
+    return NextResponse.next();
   }
 
   // Demais APIs do web devem ir direto para o backend Python
