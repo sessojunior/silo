@@ -6,7 +6,7 @@ from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import CurrentUser, get_db, require_permission
 from silo.api.responses import build_success_payload, json_error_response
-from silo.services.common import is_service_error, service_error_response
+from silo.services.common import is_service_error, service_error_response, service_failure
 from silo.services.project_portal import (
     PROJECT_TASK_STATUSES,
     create_project,
@@ -23,6 +23,7 @@ from silo.services.project_portal import (
     update_project_activity,
     update_project_activity_task,
 )
+from silo.storage.uploads import delete_upload_file, is_safe_filename, list_upload_files
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -93,6 +94,29 @@ async def delete_project_route(
         assert response is not None
         return response
     return build_success_payload(message="Projeto excluído com sucesso")
+
+
+@router.get("/images")
+async def list_project_images(
+    _current_user: object = Depends(require_permission("projects", "view")),
+):
+    items = list_upload_files("projects")
+    return build_success_payload({"items": items})
+
+
+@router.delete("/images")
+async def delete_project_image(
+    filename: str | None = Query(default=None),
+    _current_user: object = Depends(require_permission("projects", "manage")),
+):
+    if not filename or not is_safe_filename(filename):
+        return service_error_response(
+            service_failure("Nome de arquivo inválido", 400),
+            "Erro ao excluir imagem",
+        )
+
+    delete_upload_file("projects", filename)
+    return build_success_payload(message="Imagem excluída com sucesso")
 
 
 @router.get("/{projectId}/activities")

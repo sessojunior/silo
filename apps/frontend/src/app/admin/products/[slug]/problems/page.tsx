@@ -624,24 +624,18 @@ export default function ProblemsPage() {
     }
     setSolutionLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("description", solutionDescription);
-      formData.append("problemId", problem?.id || "");
+      const body: Record<string, string> = {
+        description: solutionDescription,
+        problemId: problem?.id || "",
+      };
       if (solutionMode === "reply" && replyTo) {
-        formData.append("replyId", replyTo.id);
+        body.replyId = replyTo.id;
       }
       if (solutionMode === "edit" && editingSolution) {
-        formData.append("id", editingSolution.id);
+        body.id = editingSolution.id;
       }
-
-      // Enviar a URL da imagem do servidor local
       if (solutionImagePreview) {
-        formData.append("imageUrl", solutionImagePreview);
-      }
-
-      // Enviar o arquivo (para compatibilidade com código legado)
-      if (solutionImage) {
-        formData.append("file", solutionImage);
+        body.imageUrl = solutionImagePreview;
       }
 
       const method = solutionMode === "edit" ? "PUT" : "POST";
@@ -649,7 +643,8 @@ export default function ProblemsPage() {
         config.getApiUrl("/api/admin/products/solutions"),
         {
           method,
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
         },
       );
       const data = await res.json();

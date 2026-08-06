@@ -73,6 +73,12 @@ export async function proxy(req: NextRequest) {
       return errorResponse("Usuário não autenticado.", 401);
     }
 
+    // Upload de avatar: deixar o Route Handler encaminhar o multipart
+    // (api/admin/users/profile-image/route.ts)
+    if (routePath === "/api/admin/users/profile-image") {
+      return NextResponse.next();
+    }
+
     const apiPath = `/api/${routePath.slice("/api/admin/".length)}`;
     return rewriteToApi(apiPath, req.nextUrl.search);
   }

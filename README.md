@@ -76,24 +76,24 @@ uv run --locked silo-db-seed             # Popular
 ### Segurança
 
 ```bash
-node scripts/security/check-node-audit.mjs    # Auditar deps Node
-node scripts/security/generate-sbom.mjs       # Gerar SBOM
+node scripts/security/check-node-audit.mjs    # Audita vulnerabilidades npm e bloqueia CI se novas high/critical aparecerem
+node scripts/security/generate-sbom.mjs       # Gera inventário CycloneDX de todas as dependências (SBOM)
 ```
 
 ### Carga
 
 ```bash
-node scripts/load/run-http-benchmark.mjs      # Benchmark HTTP
-node scripts/load/run-soak-benchmark.mjs      # Teste de longa duração
+node scripts/load/run-http-benchmark.mjs      # Dispara tráfego real nos endpoints da API por 5 min e mede latência/erros
+node scripts/load/run-soak-benchmark.mjs      # O mesmo por 24 h — detecta vazamento de memória e degradação lenta
 ```
 
 ### Deploy
 
 ```bash
-node scripts/deploy/cutover-runbook.mjs preflight
-node scripts/deploy/cutover-runbook.mjs rehearsal
-node scripts/deploy/cutover-runbook.mjs cutover
-node scripts/deploy/cutover-runbook.mjs rollback
+node scripts/deploy/cutover-runbook.mjs preflight   # Verifica pré-condições do deploy
+node scripts/deploy/cutover-runbook.mjs rehearsal   # Ensaios em staging
+node scripts/deploy/cutover-runbook.mjs cutover     # Executa o corte real Node → Python (16 passos)
+node scripts/deploy/cutover-runbook.mjs rollback    # Reverte para o backend Node anterior
 ```
 
 ### Docker
