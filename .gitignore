@@ -24,10 +24,12 @@ apps/backend/.mypy_cache/
 apps/backend/.pytest_cache/
 apps/backend/.ruff_cache/
 apps/backend/.coverage
+apps/backend/coverage.json
 apps/backend/htmlcov/
 apps/backend/**/__pycache__/
 apps/backend/**/*.py[cod]
 apps/backend/.hypothesis/
+/.mypy_cache/
 
 # next.js
 /.next/

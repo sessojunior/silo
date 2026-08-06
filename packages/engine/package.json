@@ -54,16 +54,12 @@
     "./types/frappe-gantt": "./src/types/frappe-gantt.d.ts"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
-    "nodemailer": "^6.10.1",
     "tailwind-merge": "^3.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@silo/config": "file:../config",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/nodemailer": "^6.4.17",
     "@types/node": "^22.15.3",
     "typescript": "^5.9.3"
   },
