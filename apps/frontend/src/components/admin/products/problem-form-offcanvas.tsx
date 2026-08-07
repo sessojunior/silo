@@ -345,7 +345,6 @@ export default function ProblemFormOffcanvas({
               />
             </div>
           )}
-          {formError && <div className="text-red-600 text-sm">{formError}</div>}
         </form>
 
         {/* Dialog de confirmação de exclusão */}

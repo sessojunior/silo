@@ -317,15 +317,15 @@ export default function ProblemsPage() {
     e.preventDefault();
     setFormError(null);
     if (formTitle.trim().length < 5) {
-      setFormError("O título deve ter pelo menos 5 caracteres.");
+      toast({ type: "error", title: "O título deve ter pelo menos 5 caracteres." });
       return;
     }
     if (formDescription.trim().length < 20) {
-      setFormError("A descrição deve ter pelo menos 20 caracteres.");
+      toast({ type: "error", title: "A descrição deve ter pelo menos 20 caracteres." });
       return;
     }
     if (!formCategoryId) {
-      setFormError("Selecione a categoria.");
+      toast({ type: "error", title: "Selecione a categoria." });
       return;
     }
     setFormLoading(true);
