@@ -499,6 +499,73 @@ def test_monitoring_data_pages_radars_and_products(monitoring_connection) -> Non
     assert monitoring_products["products"][0]["turns"][1]["status"] == "pending"
 
 
+def test_build_seed_monitoring_products_exact_slug_match():
+    result = monitoring_data._build_seed_monitoring_products(
+        {"bam": {"slug": "bam", "name": "BAM"}}
+    )
+    assert len(result) >= 1
+    product = next(p for p in result if p["productId"] == "bam")
+    assert product["model"] == "BAM"
+    assert len(product["turns"]) >= 1
+
+
+def test_build_seed_monitoring_products_name_match():
+    result = monitoring_data._build_seed_monitoring_products(
+        {"my-bam": {"slug": "my-bam", "name": "BAM"}}
+    )
+    assert len(result) >= 1
+    product = next(p for p in result if p["productId"] == "my-bam")
+    assert product["model"] == "BAM"
+
+
+def test_build_seed_monitoring_products_no_match_returns_fallback():
+    result = monitoring_data._build_seed_monitoring_products(
+        {"custom": {"slug": "custom", "name": "Custom Model"}}
+    )
+    assert len(result) >= 1
+    assert result[0]["productId"] == "custom"
+    assert result[0]["turns"][0]["status"] == "not_run"
+
+
+def test_build_seed_monitoring_products_empty_input():
+    result = monitoring_data._build_seed_monitoring_products({})
+    assert result == []
+
+
+def test_get_monitoring_products_empty_db_uses_seed(tmp_path, monkeypatch):
+    engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'empty.sqlite3'}", future=True)
+    tables = _build_tables()
+    for t in tables.values():
+        t.metadata.create_all(engine)
+    monkeypatch.setattr(monitoring_data, "legacy_tables", tables)
+    monkeypatch.setattr(monitoring_data, "datetime", _FixedDateTime)
+    conn = engine.connect()
+    try:
+        result = monitoring_data.get_monitoring_products(
+            conn,
+            [{"slug": "bam", "name": "BAM"}],
+        )
+        assert "products" in result
+        assert len(result["products"]) >= 1
+    finally:
+        conn.close()
+
+
+def test_get_monitoring_products_all_available(tmp_path, monkeypatch):
+    engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'all.sqlite3'}", future=True)
+    tables = _build_tables()
+    for t in tables.values():
+        t.metadata.create_all(engine)
+    monkeypatch.setattr(monitoring_data, "legacy_tables", tables)
+    monkeypatch.setattr(monitoring_data, "datetime", _FixedDateTime)
+    conn = engine.connect()
+    try:
+        result = monitoring_data.get_monitoring_products(conn, [])
+        assert "products" in result
+    finally:
+        conn.close()
+
+
 def test_monitoring_data_rejects_invalid_inputs_and_missing_links(monitoring_connection) -> None:
     connection, ids, _tables = monitoring_connection
 
