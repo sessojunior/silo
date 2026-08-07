@@ -495,3 +495,66 @@ def test_dashboard_portal_queries_cover_aggregates(monkeypatch, dashboard_connec
     assert projects[0]["progress"] == 67
     assert projects[0]["daysElapsed"] == 8
     assert projects[0]["time"] == "8 dias"
+
+
+def test_get_dashboard_data_no_available_products(tmp_path, monkeypatch):
+    """Cobre o return [] quando nao ha produtos com available=True."""
+    engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'empty.sqlite3'}", future=True)
+    tables = _build_tables()
+    tables["product"].metadata.create_all(engine)
+    monkeypatch.setattr(dashboard_portal, "legacy_tables", tables)
+    with engine.begin() as conn:
+        pass
+    conn = engine.connect()
+    try:
+        result = dashboard_portal.get_dashboard_data(conn)
+        assert result == []
+    finally:
+        conn.close()
+
+
+def test_get_dashboard_problems_causes_empty(monkeypatch, dashboard_connection):
+    """Cobre o return de labels/vazios quando nao ha categorias nos incidentes."""
+    connection, ids = dashboard_connection
+
+    class _EmptyCategories:
+        product_1: str = ids.product_1
+        product_2: str = ids.product_2
+        category_a: str = "nonexistent-a"
+        category_b: str = "nonexistent-b"
+        project_1: str = ids.project_1
+        project_2: str = ids.project_2
+
+    tables = _build_tables()
+    tables["product"].metadata.create_all(connection.engine)
+    monkeypatch.setattr(dashboard_portal, "legacy_tables", tables)
+
+    # Sem atividades com categorias validas, o retorno deve ser vazio
+    monkeypatch.setattr(dashboard_portal, "datetime", _FixedDateTime)
+    # O dashboard_connection tem dados; testamos com uma conexao fresh sem dados
+    engine2 = create_engine("sqlite://", future=True)
+    tables2 = _build_tables()
+    tables2["product"].metadata.create_all(engine2)
+    monkeypatch.setattr(dashboard_portal, "legacy_tables", tables2)
+    conn2 = engine2.connect()
+    try:
+        result = dashboard_portal.get_dashboard_problems_causes(conn2)
+        assert result["labels"] == []
+        assert result["values"] == []
+        assert result["colors"] == []
+    finally:
+        conn2.close()
+
+
+def test_get_dashboard_projects_empty(monkeypatch, tmp_path):
+    """Cobre o return [] quando nao ha projetos ativos."""
+    engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'noproj.sqlite3'}", future=True)
+    tables = _build_tables()
+    tables["project"].metadata.create_all(engine)
+    monkeypatch.setattr(dashboard_portal, "legacy_tables", tables)
+    conn = engine.connect()
+    try:
+        result = dashboard_portal.get_dashboard_projects(conn)
+        assert result == []
+    finally:
+        conn.close()
