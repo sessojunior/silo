@@ -194,6 +194,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const realtimeReconnectAttempt = useRef(0);
   const shouldReconnectRealtime = useRef(true);
   const loadSidebarDataRef = useRef<(() => Promise<void>) | null>(null);
+  const websocketDisabledLogged = useRef(false);
 
   const getConversationTargetId = useCallback(
     (message: ChatMessage): string | null => {
@@ -326,9 +327,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       try {
         const apiOriginUrl = new URL(config.apiOrigin);
         if (apiOriginUrl.origin !== window.location.origin) {
-          console.info(
-            "[chat] WebSocket desabilitado: frontend e backend em origens diferentes. Use Docker Compose para o chat completo.",
-          );
+          if (!websocketDisabledLogged.current) {
+            websocketDisabledLogged.current = true;
+            console.info(
+              "[chat] WebSocket desabilitado: frontend e backend em origens diferentes. Use Docker Compose para o chat completo.",
+            );
+          }
           setRealtimeStatus("disconnected");
           setIsLoading(false);
           return;
