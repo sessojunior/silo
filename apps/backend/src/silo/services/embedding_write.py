@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 
 from sqlalchemy import create_engine, delete, insert, update
@@ -9,6 +10,8 @@ from silo.ai.embeddings import generate_embedding
 from silo.config import load_settings
 from silo.db.models import legacy_tables
 from silo.db.url import sqlalchemy_database_url
+
+logger = logging.getLogger(__name__)
 
 
 async def upsert_problem_embedding(problem_id: str, title: str, description: str) -> None:
@@ -21,7 +24,7 @@ async def upsert_problem_embedding(problem_id: str, title: str, description: str
             .values(embedding=list(embedding))
         )
     except Exception as exc:  # pragma: no cover - fire-and-forget logging path
-        print(f"⚠️ [EMBEDDING] Falha ao gerar embedding do problema {problem_id}: {exc}")
+        logger.warning("Falha ao gerar embedding do problema %s: %s", problem_id, exc)
 
 
 async def upsert_solution_embedding(solution_id: str, description: str) -> None:
@@ -33,7 +36,7 @@ async def upsert_solution_embedding(solution_id: str, description: str) -> None:
             .values(embedding=list(embedding))
         )
     except Exception as exc:  # pragma: no cover - fire-and-forget logging path
-        print(f"⚠️ [EMBEDDING] Falha ao gerar embedding da solução {solution_id}: {exc}")
+        logger.warning("Falha ao gerar embedding da solução %s: %s", solution_id, exc)
 
 
 async def upsert_help_embedding(description: str) -> None:
@@ -47,7 +50,7 @@ async def upsert_help_embedding(description: str) -> None:
             .values(embedding=list(embedding))
         )
     except Exception as exc:  # pragma: no cover - fire-and-forget logging path
-        print(f"⚠️ [EMBEDDING] Falha ao gerar embedding da ajuda: {exc}")
+        logger.warning("Falha ao gerar embedding da ajuda: %s", exc)
 
 
 async def upsert_manual_chunks(manual_id: str, product_id: str, markdown: str) -> None:
@@ -75,10 +78,10 @@ async def upsert_manual_chunks(manual_id: str, product_id: str, markdown: str) -
                     )
                 )
             except Exception as chunk_exc:  # pragma: no cover - fire-and-forget logging path
-                print(f"⚠️ [EMBEDDING] Falha no chunk {index} do manual {manual_id}: {chunk_exc}")
+                logger.warning("Falha no chunk %s do manual %s: %s", index, manual_id, chunk_exc)
         _execute_statements(statements)
     except Exception as exc:  # pragma: no cover - fire-and-forget logging path
-        print(f"⚠️ [EMBEDDING] Falha ao processar manual {manual_id}: {exc}")
+        logger.warning("Falha ao processar manual %s: %s", manual_id, exc)
 
 
 def _execute_statement(statement) -> None:

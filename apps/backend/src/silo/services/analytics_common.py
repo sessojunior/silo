@@ -37,7 +37,10 @@ def run_repeatable_read_snapshot(
     try:
         connection.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"))
         timeout_ms = max(1, int(statement_timeout_ms))
-        connection.execute(text(f"SET LOCAL statement_timeout = '{timeout_ms}ms'"))
+        connection.execute(
+            text("SET LOCAL statement_timeout = :timeout"),
+            {"timeout": f"{timeout_ms}ms"},
+        )
         result = callback()
         transaction.rollback()
         return result

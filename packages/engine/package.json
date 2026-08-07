@@ -50,8 +50,7 @@
     "./domain/product-activity-pending-email": "./src/domain/product-activity-pending-email.ts",
     "./types": "./src/types/index.ts",
     "./types/products": "./src/types/products.ts",
-    "./types/projects": "./src/types/projects.ts",
-    "./types/frappe-gantt": "./src/types/frappe-gantt.d.ts"
+    "./types/projects": "./src/types/projects.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

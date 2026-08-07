@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.engine import Connection
 
@@ -18,6 +20,8 @@ from silo.services.dashboard_portal import (
     get_dashboard_summary_meta,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(
     prefix="/api/dashboard",
     tags=["dashboard"],
@@ -32,6 +36,7 @@ async def dashboard_root(db: Connection = Depends(get_snapshot_db)):
         data = get_dashboard_data(db)
         return build_success_payload(data, meta=get_dashboard_root_meta())
     except Exception:
+        logger.exception("Erro ao obter dados do dashboard")
         return json_error_response(500, "Erro ao obter dados dos produtos")
 
 
@@ -41,6 +46,7 @@ async def dashboard_summary(db: Connection = Depends(get_snapshot_db)):
         data = get_dashboard_summary(db)
         return build_success_payload(data, meta=get_dashboard_summary_meta())
     except Exception:
+        logger.exception("Erro ao obter summary do dashboard")
         return json_error_response(500, "Erro interno")
 
 
@@ -50,6 +56,7 @@ async def dashboard_problems_causes(db: Connection = Depends(get_snapshot_db)):
         data = get_dashboard_problems_causes(db)
         return build_success_payload(data, meta=get_dashboard_problems_causes_meta())
     except Exception:
+        logger.exception("Erro ao obter problems-causes do dashboard")
         return json_error_response(500, "Erro interno")
 
 
@@ -59,6 +66,7 @@ async def dashboard_problems_solutions(db: Connection = Depends(get_snapshot_db)
         data = get_dashboard_problems_solutions(db)
         return build_success_payload(data, meta=get_dashboard_problems_solutions_meta())
     except Exception:
+        logger.exception("Erro ao obter problems-solutions do dashboard")
         return json_error_response(500, "Erro interno")
 
 
@@ -68,4 +76,5 @@ async def dashboard_projects(db: Connection = Depends(get_snapshot_db)):
         data = get_dashboard_projects(db)
         return build_success_payload(data, meta=get_dashboard_projects_meta())
     except Exception:
+        logger.exception("Erro ao obter projects do dashboard")
         return json_error_response(500, "Erro interno")
