@@ -174,11 +174,13 @@ def get_permissions(connection: Connection, groups: tuple[UserGroupInfo, ...]) -
 def get_chat_access_state(connection: Connection, user_id: str) -> ChatAccessState:
     groups = get_user_groups(connection, user_id)
     chat_enabled = get_chat_enabled(connection, user_id)
-    if not chat_enabled or not groups:
-        return ChatAccessState(groups=groups, chat_enabled=chat_enabled, can_view_chat=False)
 
+    # Admins sempre tem acesso ao chat, independente da preference chat_enabled
     if is_admin(groups):
         return ChatAccessState(groups=groups, chat_enabled=chat_enabled, can_view_chat=True)
+
+    if not chat_enabled or not groups:
+        return ChatAccessState(groups=groups, chat_enabled=chat_enabled, can_view_chat=False)
 
     permissions = get_permissions(connection, groups)
     return ChatAccessState(

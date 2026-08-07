@@ -317,6 +317,27 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser) return;
     if (typeof window === "undefined") return;
 
+    // WebSocket direto no backend so funciona com cookies quando
+    // frontend e backend estao na mesma origem (mesmo host:porta).
+    // Em dev (portas 3000 e 4000 diferentes), cookies nao sao enviados
+    // cross-origin e o WebSocket retorna 403. Usar Docker Compose
+    // para ter o chat completo em desenvolvimento.
+    if (config.apiOrigin) {
+      try {
+        const apiOriginUrl = new URL(config.apiOrigin);
+        if (apiOriginUrl.origin !== window.location.origin) {
+          console.info(
+            "[chat] WebSocket desabilitado: frontend e backend em origens diferentes. Use Docker Compose para o chat completo.",
+          );
+          setRealtimeStatus("disconnected");
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        // Se a URL for invalida, tenta conectar mesmo assim
+      }
+    }
+
     const existingSocket = realtimeSocket.current;
     if (
       existingSocket &&
