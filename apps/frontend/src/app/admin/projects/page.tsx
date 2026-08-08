@@ -574,7 +574,7 @@ export default function ProjectsPage() {
                                 </span>
                               )}
                               {project.startDate && project.endDate && (
-                                <span className="text-zinc-400">?</span>
+                                <span className="text-zinc-400">a</span>
                               )}
                               {project.endDate && (
                                 <span className="text-zinc-700 dark:text-zinc-300 font-medium">
