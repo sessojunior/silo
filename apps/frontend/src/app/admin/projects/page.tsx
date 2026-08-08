@@ -347,35 +347,23 @@ export default function ProjectsPage() {
 
   // Funções para ícones dos detalhes
   const getStatusIcon = (status: Project["status"]) => {
-    const statusIcons = {
-      active: "??",
-      completed: "??",
-      paused: "??",
-      cancelled: "??",
-    };
     const statusLabels = {
       active: "Ativo",
       completed: "Finalizado",
       paused: "Pausado",
       cancelled: "Cancelado",
     };
-    return `${statusIcons[status as keyof typeof statusIcons]} ${statusLabels[status as keyof typeof statusLabels]}`;
+    return statusLabels[status as keyof typeof statusLabels] ?? status;
   };
 
   const getPriorityIcon = (priority: Project["priority"]) => {
-    const priorityIcons = {
-      low: "??",
-      medium: "??",
-      high: "??",
-      urgent: "??",
-    };
     const priorityLabels = {
       low: "Baixa",
       medium: "Média",
       high: "Alta",
       urgent: "Urgente",
     };
-    return `${priorityIcons[priority as keyof typeof priorityIcons]} ${priorityLabels[priority as keyof typeof priorityLabels]}`;
+    return priorityLabels[priority as keyof typeof priorityLabels] ?? priority;
   };
 
   return (
