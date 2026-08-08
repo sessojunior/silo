@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
@@ -47,6 +48,8 @@ def serialize_legacy_value(value: object) -> object:
         return serialize_legacy_timestamp(value)
     if isinstance(value, date):
         return serialize_legacy_date(value)
+    if isinstance(value, uuid.UUID):
+        return str(value)
     if isinstance(value, Mapping):
         return {
             snake_to_camel(str(key)): serialize_legacy_value(item)
