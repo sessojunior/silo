@@ -65,11 +65,11 @@ async def update_contact(
 @router.delete("")
 @router.delete("/")
 async def delete_contact(
-    payload: dict[str, object],
+    id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("contacts", "manage")),
     db: Connection = Depends(get_db),
 ):
-    contact_id = _optional_str(payload.get("id"))
+    contact_id = id
     if not contact_id:
         return service_error_response(service_failure("ID é obrigatório.", 400, field="id"), "Erro ao excluir contato.")
 

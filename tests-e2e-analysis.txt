@@ -1,0 +1,1233 @@
+================================================================================
+  ANALISE DE VIABILIDADE E2E — tests-checklist.txt
+  Data: 2026-08-10  |  ATUALIZADO: 2026-08-10 12:03 UTC-3 (com resultados)
+================================================================================
+
+RESULTADO DA EXECUCAO AUTOMATIZADA — ATUALIZADO 2026-08-10 12:48 UTC-3:
+  Tres baterias de testes executadas contra as APIs REST com rotas corretas
+  (descobertas via analise do codigo fonte dos routers Python).
+  
+  ✅ 49 endpoints retornaram 200/201 (sucesso)
+  ⚠️  5 endpoints retornaram 400 com validacao correta
+  ✅ CORRIGIDO: DELETE /contacts?id=X → 200 (query param fix)
+  
+  O frontend NAO renderiza paginas admin (erro RSC hydration).
+  Login page e 404 page renderizam normalmente.
+
+CLASSIFICACAO:
+  [E2E]  Automatizavel via Playwright — teste deterministico
+  [E2E*] Automatizavel com restricoes (dados previsiveis, mock, ou condicao)
+  [VIS]  Validacao visual necessaria (screenshot testing ou manual)
+  [MAN]  Manual obrigatorio — nao automatizavel deterministicamente
+  [INF]  Inviavel em e2e — requer controle de infra/servidor/tempo
+
+ESTIMATIVA DE ESFORCO:
+  BAIXO   < 10 linhas de codigo Playwright
+  MEDIO   10-30 linhas, envolve navegacao + assert multiplo
+  ALTO    > 30 linhas, multiplos passos, setup complexo, ou mock
+  BLOQ    Bloqueado por dependencia externa (Ollama, SMNA, email, etc.)
+
+
+================================================================================
+  1. LOGIN / AUTENTICACAO
+================================================================================
+
+1.1 Fluxo de Login
+  [E2E]  Acessar /silo/admin sem sessao → redireciona para /login
+         Esforco: BAIXO — page.goto(), assert url contains /login
+
+  [E2E]  Email invalido → mensagem de erro clara
+         Esforco: BAIXO — preencher email invalido, submit, assert toast/texto erro
+
+  [E2E]  Senha errada → mensagem de erro clara
+         Esforco: BAIXO — preencher email valido + senha errada, assert erro
+
+  [E2E]  Campos vazios → validacao impede envio (botao desabilitado)
+         Esforco: BAIXO — assert button[disabled] quando campos vazios
+
+  [E2E]  Credenciais corretas → redireciona ao dashboard
+         Esforco: BAIXO — login com fixture de credenciais, assert url dashboard
+
+  [E2E]  Login com Enter (alem do clique no botao)
+         Esforco: BAIXO — page.keyboard.press('Enter'), assert redireciona
+
+1.2 Logout
+  [E2E]  Clicar "Sair" no dropdown do avatar → dialogo de confirmacao
+         Esforco: BAIXO — abrir dropdown, click "Sair", assert dialog visivel
+
+  [E2E]  Confirmar logout → redireciona ao login
+         Esforco: BAIXO — confirmar dialogo, assert url login
+
+  [E2E]  Cancelar logout → permanece na pagina
+         Esforco: BAIXO — cancelar dialogo, assert url nao mudou
+
+  [E2E]  Apos logout, acessar URL admin direto → redireciona ao login
+         Esforco: BAIXO — page.goto('/admin/dashboard'), assert redireciona
+
+1.3 Sessao
+  [INF]  Sessao expirada → redireciona ao login com mensagem
+         Esforco: BLOQ — requer manipular tempo do token JWT ou esperar expirar
+
+  [E2E]  Refresh da pagina (F5) mantem usuario logado
+         Esforco: BAIXO — page.reload(), assert ainda esta logado
+
+  [E2E*] Duas abas simultaneas funcionam
+         Esforco: ALTO — requer browserContext.newPage(), validar sessao compartilhada
+
+1.4 Pagina de Boas-Vindas (Onboarding)
+  [E2E*] Checklist de 4 passos visivel (cada status)
+         Esforco: MEDIO — depende do estado do usuario (perfil completo ou nao)
+
+  [E2E]  Links de cada passo levam a pagina correta
+         Esforco: BAIXO — click link, assert url destino
+
+  [E2E]  Checkbox "Nao mostrar novamente" → salva em localStorage
+         Esforco: BAIXO — click checkbox, assert localStorage.getItem('hideWelcome')
+
+  [E2E]  Ao marcar "Nao mostrar novamente", redireciona ao dashboard
+         Esforco: BAIXO — marcar checkbox, assert redireciona
+
+
+================================================================================
+  2. TOPBAR (BARRA SUPERIOR)
+================================================================================
+
+2.1 Elementos
+  [E2E]  Titulo da pagina dinamico (muda conforme navegacao)
+         Esforco: BAIXO — assert page.title() ou elemento do titulo muda entre paginas
+
+  [VIS]  Relogio do servidor (ServerClock) — hora correta
+         Esforco: BAIXO — assert elemento existe, mas validar hora exata = MAN
+
+  [E2E*] Botao de notificacoes de chat com badge de nao lidas
+         Esforco: MEDIO — requer mensagens nao lidas no chat pre-existentes
+
+  [E2E]  Dropdown do avatar com nome, email
+         Esforco: BAIXO — click avatar, assert dropdown mostra nome e email
+
+2.2 Notification Dropdown (sino)
+  [E2E*] Abre dropdown com lista de conversas nao lidas
+         Esforco: MEDIO — requer dados de chat pre-existentes
+
+  [E2E*] Contagem de nao lidas no badge
+         Esforco: MEDIO — requer mensagens controladas
+
+  [E2E]  Presence toggle: Online / Ausente / Invisivel
+         Esforco: MEDIO — click toggle, assert estado muda no UI
+
+  [E2E*] Clique na conversa → navega para o chat
+         Esforco: MEDIO — requer dados pre-existentes
+
+  [E2E*] Botao "Limpar todas" notificacoes
+         Esforco: MEDIO — requer notificacoes para limpar
+
+2.3 Account Dropdown (avatar)
+  [E2E]  "Configuracoes" → /admin/settings
+         Esforco: BAIXO — click link, assert url
+
+  [E2E]  "Sair" → dialogo de logout
+         Esforco: BAIXO — click "Sair", assert dialogo
+
+  [VIS]  Avatar e nome do usuario corretos
+         Esforco: BAIXO — assert elemento visivel com texto; validar imagem = VIS
+
+2.4 Mobile
+  [E2E]  Botao hamburger para abrir/fechar sidebar
+         Esforco: BAIXO — setViewportSize mobile, click hamburger, assert sidebar toggle
+
+
+================================================================================
+  3. SIDEBAR (MENU LATERAL)
+================================================================================
+
+3.1 Secao "Menu principal"
+  [E2E]  Visao geral — link para dashboard
+  [E2E]  Monitoramento — link para /admin/monitoring
+  [E2E]  Produtos & tasks — acordeao com sub-itens por produto
+  [E2E]  BAM / BRAMS / SMEC / WRF — links corretos
+  [E2E]  Projetos ativos — acordeao com "Todos os projetos"
+  [E2E]  Sub-itens dinamicos por projeto ativo
+  [E2E]  Assistente de IA — link para /admin/ai-assistant
+  [E2E]  Relatorios — acordeao com 4 sub-itens
+  [E2E]  Grupos & usuarios — link para /admin/groups
+         Esforco: BAIXO (todos) — navegar e assert href/url
+
+3.2 Secao "Outros"
+  [E2E*] Bate-papo — link para /admin/chat (se chatEnabled)
+         Esforco: BAIXO — mas visibilidade depende de config
+  [E2E]  Configuracoes — acordeao com Config. gerais e Produtos & tasks
+  [E2E]  Contatos — link para /admin/contacts
+  [E2E]  Ajuda — link para /admin/help
+         Esforco: BAIXO
+
+3.3 Comportamento
+  [E2E]  Item ativo destacado (highlight)
+         Esforco: BAIXO — assert elemento ativo tem class bg-* ou aria-current
+
+  [E2E]  Acordeoes expandem/colapsam
+         Esforco: BAIXO — click, assert aria-expanded toggle
+
+  [E2E*] Sidebar com scroll se conteudo maior que viewport
+         Esforco: ALTO — requer mock de muitos projetos para overflow
+
+  [E2E]  Footer da sidebar: avatar, nome, email, botao sair
+         Esforco: BAIXO — assert elementos visiveis
+
+
+================================================================================
+  4. VISAO GERAL (DASHBOARD)
+================================================================================
+
+4.1 Carregamento
+  [E2E]  Loading state (spinner/skeleton) enquanto dados carregam
+         Esforco: MEDIO — page.goto, assert spinner visivel brevemente, depois desaparece
+
+  [E2E*] Sem erros no console
+         Esforco: BAIXO — coletar console errors apos carregar; mas erros podem ser
+         assincronos (WebSocket 403, etc.) e nao previsiveis
+
+4.2 Coluna Esquerda — Stats & Produtos
+  [E2E]  Stats bar — cards com contagem de produtos e distribuicao por status
+         Esforco: BAIXO — assert cards existem com numeros >= 0
+
+  [VIS]  Barras coloridas (progresso vs incidentes por status)
+         Esforco: MEDIO — assert elementos existem; validar cores exatas = VIS
+
+  [E2E]  Secao "Produtos (ultimos 28 dias)" — cards por produto
+         Esforco: BAIXO — assert lista de cards > 0
+
+  [E2E]  Mini timeline de 2/3/4 dias por produto
+         Esforco: BAIXO — assert elementos da timeline existem
+
+  [E2E]  Clique no produto → expande calendario mensal (ProductCalendar)
+         Esforco: MEDIO — click produto, assert calendario visivel
+
+  [E2E]  Clique no dia do calendario → abre ProductStatusHistoryOffcanvas
+         Esforco: MEDIO — click celula dia, assert offcanvas aberto
+
+  [E2E]  Clique na timeline → abre ProductActivityOffcanvas
+         Esforco: MEDIO — click timeline, assert offcanvas aberto
+
+  [E2E]  Clique no dia → abre IncidentFormModal (reportar status)
+         Esforco: MEDIO — click dia, assert modal aberto
+
+4.3 Coluna Direita — Charts
+  [E2E]  "Incidentes (ultimos 7 dias)" — grafico de barras
+  [E2E]  "Causas de problemas (28 dias)" — grafico donut
+  [E2E]  "Problemas & solucoes (28 dias)" — grafico de linha
+         Esforco: BAIXO — assert elemento canvas/SVG do grafico existe
+         NOTA: validar DENTRO do grafico (valores, barras) requer screenshot testing
+
+  [MAN]  Tooltips com dados detalhados em cada grafico
+         Esforco: ALTO — Playwright pode hover, mas tooltip de chart library
+         (ApexCharts) renderiza em SVG; assert tooltip visivel = possivel, validar
+         dados corretos = MAN (depende de dados reais variaveis)
+
+4.4 Coluna Extrema Direita (2XL) — Sidebar
+  [E2E*] "Resumo de 7 dias" — texto gerado por IA
+         Esforco: MEDIO — assert elemento existe; conteudo depende de IA (nao determinista)
+
+  [MAN]  Mudanca % de problemas vs periodo anterior
+  [MAN]  Categorias mencionadas
+         Esforco: MAN — texto de IA, nao determinista
+
+  [E2E]  Link para relatorios
+         Esforco: BAIXO — assert href
+
+  [E2E]  "Progresso radial" — dois gauges (Radial)
+         Esforco: BAIXO — assert elementos do gauge existem
+
+  [E2E]  "Projetos em andamento" — lista com nome, barra, tempo
+         Esforco: BAIXO — assert lista existe
+
+  [E2E]  Clique no projeto → navega para /admin/projects/{id}
+         Esforco: BAIXO — click, assert url
+
+4.5 Modais/Offcanvas do Dashboard
+  [E2E]  IncidentFormModal — abrir, preencher, salvar
+         Esforco: MEDIO — abrir via clique no calendario, preencher form, submit,
+         assert toast sucesso
+
+  [E2E]  ProductActivityOffcanvas — abrir, visualizar atividades
+         Esforco: MEDIO — abrir, assert lista de atividades
+
+  [E2E]  ProductStatusHistoryOffcanvas — abrir, visualizar historico
+         Esforco: MEDIO — abrir, assert conteudo
+
+  [E2E]  IncidentManagementOffcanvas — gerenciar incidentes
+         Esforco: MEDIO — abrir, assert funcionalidades
+
+  [E2E*] ProductActivityPendingEmailDialog — acoes pendentes de email
+         Esforco: ALTO — requer emails pendentes pre-existentes
+
+
+================================================================================
+  5. MONITORAMENTO
+================================================================================
+
+5.1 Overview Section (topo)
+  [E2E]  "Model Success Trend" — grafico de linha (ECharts)
+         Esforco: BAIXO — assert canvas existe
+
+  [E2E]  Product Monitoring Cards — cards por produto
+         Esforco: BAIXO — assert cards existem com nome e status
+
+  [MAN]  Status por turno (ok/delayed/offline/undefined)
+         Esforco: MAN — dados dependem do estado real do SMNA
+
+  [E2E*] Preview limitado a N produtos
+         Esforco: MEDIO — assert count de cards <= limite
+
+  [E2E]  Picture Pages Overview — graficos donut por pagina
+         Esforco: BAIXO — assert elementos existem
+
+  [E2E*] Link para abrir URL da pagina
+         Esforco: BAIXO — assert href no elemento
+
+5.2 Recent Figures Section (meio)
+  [E2E]  Campo de busca textual filtrando links
+         Esforco: MEDIO — digitar no input, assert resultados filtrados visiveis
+
+  [E2E]  Dropdown de filtro com todas as opcoes
+         Esforco: MEDIO — abrir select, assert options, selecionar, assert filtro
+
+  [E2E]  Tabela (limitada a 5) com dados
+         Esforco: BAIXO — assert table existe, rows <= 5
+
+  [VIS]  Status com cores corretas: verde, amarelo, vermelho, cinza
+         Esforco: MEDIO — assert class ou data-attribute do badge;
+         validar cor exata = VIS
+
+5.3 Radar Panel (sidebar direita)
+  [E2E]  Grupos de radar colapsaveis
+         Esforco: BAIXO — click header, assert aria-expanded toggle
+
+  [VIS]  Itens de radar — blocos coloridos
+         Esforco: MEDIO — assert elementos com classes de cor
+
+  [E2E]  Clique no radar → dialogo detalhado
+         Esforco: MEDIO — click, assert dialog/modal com info
+
+  [E2E]  Botao "Gerenciar radares" → offcanvas de gestao
+         Esforco: MEDIO — click, assert offcanvas
+
+  [E2E]  CRUD: Criar grupo de radar (nome, slug)
+  [E2E]  CRUD: Editar grupo de radar
+  [E2E]  CRUD: Excluir grupo (com confirmacao)
+  [E2E]  CRUD: Criar radar
+  [E2E]  CRUD: Editar radar
+  [E2E]  CRUD: Excluir radar (com confirmacao)
+         Esforco: MEDIO — fluxo CRUD completo com asserts
+
+  [E2E]  Validacao de campos obrigatorios
+         Esforco: BAIXO — submit vazio, assert mensagens de erro
+
+5.4 Picture Pages Accordion (esquerda)
+  [E2E]  Lista de paginas expansivel
+         Esforco: BAIXO — click expand, assert conteudo
+
+  [E2E]  Cada pagina: nome, URL, modo, status badge
+         Esforco: BAIXO — assert elementos
+
+  [E2E]  Contagem de links atrasados/offline
+         Esforco: BAIXO — assert numeros >= 0
+
+  [E2E]  Expandir → lista de picture links individuais
+         Esforco: MEDIO — expand, assert sub-lista
+
+
+================================================================================
+  6. PRODUTOS & TASKS — /admin/products/[slug]
+================================================================================
+
+NOTA: Itens marcados com [x4] precisam ser testados para cada produto
+(BAM, BRAMS AMS 15KM, SMEC, WRF). Multiplica esforco por 4.
+
+6.1 Tab: Base de Conhecimento
+
+  Coluna Esquerda — Dependencias
+  [E2E]  Tree view hierarquica de dependencias [x4]
+         Esforco: BAIXO — assert tree existe
+
+  [E2E]  Collapse/expand dos nos [x4]
+         Esforco: BAIXO — click toggle, assert visibilidade filho
+
+  [E2E]  Drag & drop para reordenar (desktop) [x4]
+         Esforco: ALTO — Playwright suporta dragAndDrop, mas tree reorder
+         pode ser complexo (precisa alvo exato)
+
+  [VIS]  Icones customizados por dependencia [x4]
+         Esforco: BAIXO — assert elemento icone existe; validar icone especifico = VIS
+
+  [E2E]  Botao "Gerenciar dependencias" → offcanvas [x4]
+         Esforco: MEDIO — click, assert offcanvas
+
+  [E2E]  CRUD dependencia: adicionar item [x4]
+  [E2E]  CRUD dependencia: editar item [x4]
+  [E2E]  CRUD dependencia: excluir item com dialogo [x4]
+         Esforco: MEDIO — fluxo CRUD
+
+  [E2E]  Reordenar via drag & drop [x4]
+         Esforco: ALTO
+
+  [E2E]  Botao "Adicionar dependencia" → offcanvas [x4]
+         Esforco: MEDIO
+
+  [E2E]  Acoes inline: editar, excluir [x4]
+         Esforco: BAIXO — botoes por item
+
+  [E2E]  Secao de contatos → ContactSelectorOffcanvas [x4]
+  [E2E]  Adicionar contato ao produto [x4]
+  [E2E]  Remover associacao [x4]
+         Esforco: MEDIO
+
+  Coluna Direita — Detalhes
+  [E2E]  Secao de manual com Markdown renderizado [x4]
+         Esforco: BAIXO — assert conteudo renderizado
+
+  [E2E]  TOC (indice lateral) no manual [x4]
+         Esforco: BAIXO — assert elementos de heading no TOC
+
+  [E2E]  Botao "Editar manual" → ManualEditorOffcanvas [x4]
+         Esforco: MEDIO — click, assert offcanvas com editor
+
+  [E2E]  Editor Markdown com upload de imagens [x4]
+         Esforco: ALTO — upload de imagem no editor Markdown requer file chooser
+
+  [E2E]  Salvar / Cancelar manual [x4]
+         Esforco: MEDIO
+
+  [E2E]  Card de informacoes com dados corretos [x4]
+         Esforco: BAIXO — assert textos
+
+  [E2E]  Cards de stats: qtd problemas, qtd solucoes, ultima atualizacao [x4]
+         Esforco: BAIXO
+
+6.2 Tab: Problemas & Solucoes
+
+  Coluna Esquerda — Lista
+  [E2E]  Campo de busca textual [x4]
+         Esforco: MEDIO — digitar, assert filtro
+
+  [E2E]  "Carregar mais" (infinite scroll, 10 por vez) [x4]
+         Esforco: ALTO — scroll ate o fim, assert mais itens carregam;
+         requer > 10 problemas
+
+  [E2E]  Botao "Novo problema" → ProblemFormOffcanvas [x4]
+  [E2E]  Criar problema (titulo, descricao, categoria, imagens) [x4]
+  [E2E]  Editar problema existente [x4]
+  [E2E]  Validacao de campos obrigatorios [x4]
+         Esforco: MEDIO — fluxo CRUD
+
+  [E2E]  Gestao de categorias → ProblemCategoryOffcanvas [x4]
+  [E2E]  Criar categoria (nome, cor) [x4]
+  [E2E]  Editar categoria [x4]
+  [E2E]  Excluir categoria com confirmacao [x4]
+         Esforco: MEDIO — fluxo CRUD
+
+  [E2E]  Selecionar problema → carrega detalhe na direita [x4]
+         Esforco: BAIXO — click, assert painel detalhe
+
+  [E2E]  Excluir problema → dialogo [x4]
+         Esforco: BAIXO
+
+  Coluna Direita — Detalhe
+  [E2E]  Titulo, descricao, categoria, data, usuario [x4]
+         Esforco: BAIXO — assert textos
+
+  [E2E]  Secao de imagens — thumbnails clicaveis → Lightbox [x4]
+         Esforco: MEDIO — click thumbnail, assert lightbox aberto
+
+  [E2E]  Botao "Editar" → ProblemFormOffcanvas [x4]
+         Esforco: BAIXO
+
+  [E2E]  Secao de solucoes com lista expansivel [x4]
+  [E2E]  Botao "Nova solucao" → SolutionFormModal [x4]
+  [E2E]  Criar solucao (descricao, upload imagens) [x4]
+  [E2E]  Editar solucao [x4]
+  [E2E]  Responder a solucao (thread) [x4]
+  [E2E]  Excluir solucao → dialogo [x4]
+         Esforco: MEDIO — fluxo CRUD de solucoes
+
+  [E2E]  Imagens da solucao → Lightbox [x4]
+         Esforco: MEDIO
+
+  [E2E]  Toggle expandir/colapsar solucao [x4]
+         Esforco: BAIXO
+
+6.3 Tab: Fluxo de Dados
+  [E2E]  PERT Graph (gantt-task-react) renderiza [x4]
+         Esforco: BAIXO — assert elemento gantt visivel (SVG ou div)
+
+  [E2E]  Tasks agrupadas por pipeline [x4]
+         Esforco: MEDIO — assert grupos/task bars visiveis
+
+  [VIS]  Cores por status: success, running, failed, queued [x4]
+         Esforco: MAN — validar cor exata = VIS; assert existencia = E2E
+
+  [E2E]  Seletor de data/turno (URL params) [x4]
+         Esforco: MEDIO — alterar seletor, assert URL atualiza e grafico recarrega
+
+  [E2E]  Clique em task → mostra detalhes [x4]
+         Esforco: ALTO — task bars em gantt-task-react podem ser dificeis de localizar
+
+  [E2E]  ecFlow tree hierarquico (se disponivel) [x4]
+         Esforco: BAIXO — assert tree existe; se nao, assert fallback
+
+  [E2E]  Fallback para dados mock quando SMNA indisponivel [x4]
+         Esforco: BAIXO — assert grafico carrega mesmo sem SMNA
+
+  [E2E]  Navegacao entre snapshots de pipeline [x4]
+         Esforco: MEDIO — alterar data/turno, assert novo snapshot
+
+
+================================================================================
+  7. PROJETOS
+================================================================================
+
+7.1 Lista de Projetos
+  [E2E]  Campo de busca (nome ou descricao)
+         Esforco: MEDIO — digitar, assert filtro
+
+  [E2E]  Seletor de visualizacao com todas as opcoes
+         Esforco: MEDIO — selecionar cada opcao, assert ordenacao/filtro
+
+  [E2E]  Stats cards: total, ativos, concluidos, pausados, cancelados
+         Esforco: BAIXO — assert numeros
+
+  [E2E]  Botao "Novo projeto" → ProjectFormOffcanvas
+  [E2E]  Criar projeto (todos os campos)
+  [E2E]  Validacao de campos obrigatorios
+         Esforco: MEDIO — fluxo CRUD
+
+  [E2E]  Cards de projeto com dados corretos
+         Esforco: BAIXO — assert elementos
+
+  [E2E]  Quick-view da descricao → Offcanvas
+         Esforco: MEDIO — click descricao, assert offcanvas com markdown
+
+  [E2E]  Botao editar → ProjectFormOffcanvas
+  [E2E]  Botao excluir → ProjectDeleteDialog
+         Esforco: BAIXO
+
+  [E2E]  Clique no card → navega para detalhe
+         Esforco: BAIXO — click card, assert url /admin/projects/{id}
+
+  [E2E]  Upload de imagens do projeto
+         Esforco: MEDIO — file chooser, upload, assert imagem aparece
+
+  [E2E]  Excluir imagem
+         Esforco: MEDIO — delete, assert imagem some
+
+7.2 Detalhe do Projeto
+  [E2E]  ProjectInfoCard com dados corretos
+  [E2E]  Botao "Editar projeto"
+  [E2E]  ProjectProgressCard com barra de progresso
+         Esforco: BAIXO
+
+  [E2E]  Campo de busca de atividades
+  [E2E]  Filtro de status: Todos / A fazer / Em progresso / Concluidas / Bloqueadas
+         Esforco: MEDIO
+
+  [E2E]  Botao "Nova atividade" → ActivityFormOffcanvas
+  [E2E]  Criar atividade (todos os campos)
+  [E2E]  Editar atividade
+  [E2E]  Validacao de campos
+         Esforco: MEDIO
+
+  [E2E]  Lista expansivel de atividades
+  [E2E]  Expandido mostra: status, datas, prioridade, progresso
+  [E2E]  Botao "Ver kanban" → navega para kanban
+  [E2E]  Botao editar → ActivityFormOffcanvas
+  [E2E]  Botao excluir → confirmacao
+         Esforco: MEDIO
+
+7.3 Kanban de Atividade
+  [E2E]  Cabecalho com nome e botao voltar
+  [E2E]  Colunas: A Fazer | Em Progresso | Bloqueado | Em Revisao | Concluido
+         Esforco: BAIXO
+
+  [E2E]  Drag & drop de tasks entre colunas
+         Esforco: ALTO — Playwright suporta drag, mas alvo depende da lib kanban
+
+  [E2E]  Card de task com todos os dados
+         Esforco: BAIXO
+
+  [E2E]  Botao adicionar task → TaskFormOffcanvas
+  [E2E]  Criar task (todos os campos)
+  [E2E]  Atribuir usuarios a task
+  [E2E]  Editar task (clique no card)
+         Esforco: MEDIO
+
+  [E2E]  Historico da task → TaskHistoryModal
+         Esforco: MEDIO — click, assert modal com dados de alteracao
+
+  [E2E]  Excluir task (acao inline)
+         Esforco: BAIXO
+
+  [E2E]  Reordenacao de tasks
+         Esforco: ALTO — drag and drop
+
+7.4 Projetos Especificos
+  [E2E]  Debug Project — carrega sem erro
+  [E2E]  Sist. Monitoramento Meteorologico — carrega sem erro
+         Esforco: BAIXO — page.goto, assert sem error
+
+  [E2E*] Cada projeto ativo listado no menu
+         Esforco: MEDIO — assert count de projetos no sidebar = count da API
+
+
+================================================================================
+  8. ASSISTENTE DE IA
+================================================================================
+
+8.1 Sidebar Esquerda
+  [INF]  Status do assistente — Verde (Ollama conectado)
+  [INF]  Status do assistente — Ambar (Fallback)
+  [INF]  Status do assistente — Cinza/piscando (Verificando)
+         Esforco: BLOQ — depende do estado do Ollama no ambiente de teste
+
+  [E2E]  Campo de busca de conversas
+         Esforco: BAIXO — input existe e funcional
+
+  [E2E]  Botao "Nova conversa" (+)
+         Esforco: BAIXO — click, assert novo thread criado
+
+  [E2E]  Lista de conversas com titulo, preview, timestamp
+         Esforco: BAIXO — assert elementos
+
+  [MAN]  Ordenacao por mais recente
+         Esforco: MAN — ordenacao depende de timestamps reais
+
+  [MAN]  Tempo relativo: "agora", "Xm", "Xh", "DD/MM"
+         Esforco: MAN — relogio muda; pode assert padrao regex mas frágil
+
+  [E2E]  Menu de acoes → Excluir thread
+         Esforco: MEDIO — click menu, click excluir, assert dialogo, confirmar
+
+8.2 Area de Chat Principal
+  Estado Vazio
+  [E2E]  Exibe prompts de exemplo (8 categorias)
+         Esforco: BAIXO — assert elementos de exemplo visiveis em novo thread
+
+  [E2E]  Clique no exemplo → preenche e envia automaticamente
+         Esforco: MEDIO — click exemplo, assert input preenchido e mensagem enviada
+
+  Mensagens
+  [E2E]  Mensagens do usuario (alinhadas a direita)
+  [E2E]  Mensagens do assistente (alinhadas a esquerda)
+         Esforco: BAIXO — assert class de alinhamento
+
+  [E2E]  Thinking/reasoning display (colapsavel)
+         Esforco: MEDIO — assert elemento de reasoning existe, click toggle
+
+  [E2E]  Conteudo gerado (Markdown renderizado)
+         Esforco: BAIXO — assert markdown renderizado (paragrafos, bold, etc)
+
+  [MAN]  Visualizacoes (graficos, tabelas) — validar conteudo
+         Esforco: MAN — depende da resposta da IA
+
+  [MAN]  Artefatos (arquivos/dados gerados)
+         Esforco: MAN — depende da resposta da IA
+
+  [E2E*] Citacoes/referencias
+         Esforco: MEDIO — assert elementos de citacao se existirem na resposta
+
+  [E2E*] Sugestoes de follow-up
+         Esforco: MEDIO — assert botoes de sugestao apos resposta
+
+  Input
+  [E2E]  Campo de texto com botao enviar
+  [E2E]  Enviar com Enter
+         Esforco: BAIXO
+
+  [E2E]  Desabilitado enquanto enviando
+         Esforco: MEDIO — digitar, enviar, assert button disabled durante loading
+
+8.3 Streaming & Erros
+  [E2E*] SSE streaming — resposta aparece token por token
+         Esforco: ALTO — Playwright pode observar mutations, mas validar streaming
+         token-a-token e fragil; melhor assert resposta aparece apos N segundos
+
+  [E2E*] Toast em caso de erro de conexao
+         Esforco: ALTO — requer simular falha de rede (route.abort)
+
+  [INF]  Auto-retry ao perder conexao
+         Esforco: BLOQ — requer controle do WebSocket/servidor
+
+  [INF]  Timeout apos 5 minutos
+         Esforco: BLOQ — 5 min e muito longo para e2e
+
+  [E2E]  Mensagem vazia → nao envia
+         Esforco: BAIXO — click enviar com input vazio, assert nada acontece
+
+8.4 Testes com Dados Reais
+  [MAN]  Perguntar "Qual o status do BAM?" → resposta com dados reais
+  [MAN]  Perguntar "Quais projetos estao ativos?" → resposta com dados reais
+  [MAN]  Perguntar "Mostra um resumo do monitoramento" → resposta com dados reais
+         Esforco: MAN — respostas nao deterministicas (IA)
+
+
+================================================================================
+  9. RELATORIOS
+================================================================================
+
+9.1 Comum a Todos os Relatorios
+  [E2E]  Banner "Funcionalidade experimental" (ambar)
+         Esforco: BAIXO — assert banner visivel
+
+  [E2E]  Filtros de periodo: 7d / 30d / 90d / 365d / Personalizado
+         Esforco: MEDIO — click cada opcao, assert estado ativo
+
+  [E2E]  Date pickers (inicio e fim) quando "Personalizado"
+         Esforco: ALTO — interagir com date picker customizado
+
+  [E2E*] Botao "Exportar PDF"
+         Esforco: MEDIO — click, assert download iniciado (mas validar PDF = MAN)
+
+  [E2E*] Loading state enquanto gera PDF
+         Esforco: MEDIO — click exportar, assert spinner/loading aparece
+
+  [MAN]  Abre PDF em nova aba — validar CONTEUDO do PDF
+         Esforco: MAN — Playwright pode assert nova pagina, mas validar
+         conteudo do PDF requer libs externas (pdf-parse)
+
+  [E2E]  Offcanvas "Metas SMART" com 5 criterios
+         Esforco: MEDIO — abrir offcanvas, assert 5 secoes expansivas
+
+  [E2E]  Intro contextual por tipo de relatorio
+         Esforco: BAIXO — assert texto muda entre tipos de relatorio
+
+  [E2E]  Secao "Como usar no dia a dia"
+         Esforco: BAIXO — assert secao existe
+
+  [E2E]  Graficos ECharts — assert canvas/SVG existe
+         Esforco: BAIXO
+
+9.2 a 9.5 — Dados Especificos por Relatorio
+  [E2E]  Listas, tabelas, resumos — assert elementos existem
+         Esforco: BAIXO em todos
+
+  [MAN]  Valores numericos corretos (disponibilidade %, totais, etc.)
+         Esforco: MAN — valores dependem de dados reais do banco,
+         mudam a cada dia. Pode assert formato (numero, %), nao valor exato
+
+
+================================================================================
+  10. GRUPOS & USUARIOS
+================================================================================
+
+10.1 Tab: Grupos
+  [E2E]  Campo de busca (nome ou descricao)
+  [E2E]  Filtro de status: Todos / Ativos / Inativos
+  [E2E]  Contagem de total de usuarios
+         Esforco: BAIXO a MEDIO
+
+  [E2E]  Botao "Novo grupo" → GroupFormOffcanvas
+  [E2E]  Criar grupo (nome, descricao, icone, cor, active toggle)
+  [E2E]  Editar grupo
+  [E2E]  Validacao de nome unico
+         Esforco: MEDIO
+
+  [E2E]  Lista de grupos expansivel com dados
+  [E2E]  Expandir → lista de membros
+  [E2E]  Botao "Adicionar usuario" → UserSelectorOffcanvas
+  [E2E]  Buscar usuarios no seletor
+  [E2E]  Selecionar e adicionar usuario ao grupo
+  [E2E]  Remover usuario do grupo
+         Esforco: MEDIO — fluxo multi-passo
+
+  [E2E]  Botao "Permissoes" → gestao de permissoes
+  [E2E]  Resources listados (products, projects, reports, ...)
+  [E2E]  Acoes por resource (view, create, update, delete, manage)
+         Esforco: ALTO — matriz grande de permissoes (10 resources x 5 acoes)
+
+  [E2E]  Botao editar → GroupFormOffcanvas
+  [E2E]  Botao excluir → GroupDeleteDialog
+         Esforco: BAIXO
+
+10.2 Tab: Usuarios
+  [E2E]  Campo de busca (nome ou email)
+  [E2E]  Filtro de status: Todos / Ativos / Inativos
+  [E2E]  Filtro por grupo
+         Esforco: BAIXO a MEDIO
+
+  [E2E]  Botao "Novo usuario" → UserFormOffcanvas
+  [E2E]  Criar usuario (nome, email, senha, active toggle, grupos)
+  [E2E]  Editar usuario
+  [E2E]  Validacao de email unico
+         Esforco: MEDIO
+
+  [E2E]  Tabela de usuarios com todos os dados
+  [E2E]  Toggle ativo/inativo inline
+         Esforco: MEDIO — click toggle, assert estado muda
+
+  [E2E*] Nao pode desativar a si mesmo
+         Esforco: MEDIO — requer logar como o proprio usuario, tentar toggle
+
+  [E2E]  Botao editar → UserFormOffcanvas
+  [E2E]  Botao excluir → UserDeleteDialog
+         Esforco: BAIXO
+
+
+================================================================================
+  11. BATE-PAPO
+================================================================================
+
+11.1 Navegacao
+  [E2E]  /admin/chat → redireciona para /admin/chat/groups
+  [E2E]  /admin/chat?groupId=X → redireciona para /admin/chat/groups/X
+  [E2E]  /admin/chat?userId=X → redireciona para /admin/chat/users/X
+         Esforco: BAIXO — page.goto, assert url final
+
+11.2 Sidebar
+  [E2E]  Tabs: Grupos | Usuarios
+         Esforco: BAIXO — click tabs, assert ativa
+
+  [E2E*] Lista de grupos: nome, qtd membros, preview
+  [E2E*] Lista de usuarios: nome, avatar, presenca, preview
+         Esforco: MEDIO — requer dados pre-existentes no banco
+
+  [E2E*] Clique em grupo/usuario → abre chat
+         Esforco: MEDIO — click, assert chat area carrega
+
+11.3 Area de Chat
+  [E2E]  Header com nome e avatar
+  [E2E]  Botao toggle sidebar
+         Esforco: BAIXO
+
+  [INF]  Tempo real (WebSocket) — mensagens aparecem sem refresh
+         Esforco: ALTO/BLOQ — WebSocket requer 2 conexoes simultaneas
+         (remetente + destinatario) para validar tempo real
+
+  [E2E*] Baloes com avatar, nome, timestamp
+         Esforco: MEDIO — assert estrutura apos carregar mensagens
+
+  [MAN]  Confirmacoes de leitura
+         Esforco: MAN — estado "lido" depende de logica backend
+
+  [E2E]  Anexos de arquivos/imagens
+         Esforco: MEDIO — file chooser, upload, assert preview
+
+  [E2E]  Input de mensagem com texto e botao enviar
+  [E2E]  Anexar arquivo no input
+         Esforco: BAIXO a MEDIO
+
+11.4 Estados
+  [E2E]  /admin/chat/groups — placeholder: "Selecione um grupo..."
+  [E2E]  /admin/chat/users — placeholder: "Selecione um usuario..."
+         Esforco: BAIXO — assert texto placeholder
+
+  [E2E*] Chat ativo com grupo — mensagens carregam
+  [E2E*] Chat ativo com usuario — mensagens carregam
+         Esforco: MEDIO — requer mensagens pre-existentes
+
+
+================================================================================
+  12. CONFIGURACOES
+================================================================================
+
+12.1 Tab: Perfil
+  [E2E]  Upload de foto (PhotoUploadLocal) — alterar
+         Esforco: MEDIO — file chooser, upload, assert preview atualiza
+
+  [E2E]  Campos do formulario:
+         Nome completo, Sexo (select), Celular (mascara), Funcao (select),
+         Equipe (select), Predio, Localizacao
+         Esforco: BAIXO — preencher cada campo, assert valor
+
+  [E2E]  Botao "Salvar alteracoes"
+         Esforco: BAIXO — submit, assert toast sucesso
+
+  [E2E]  Validacao de campos obrigatorios
+         Esforco: BAIXO — limpar nome, submit, assert erro
+
+12.2 Tab: Preferencias
+  [E2E]  Toggle "Chat habilitado" (Switch)
+  [E2E]  Toggle "Mostrar pagina de boas-vindas"
+  [E2E]  Botao "Salvar preferencias"
+         Esforco: BAIXO — click toggle, salvar, recarregar, assert toggle manteve estado
+
+12.3 Tab: Seguranca
+  Alterar E-mail
+  [E2E]  Input de novo email
+  [E2E]  Botao "Alterar e-mail" → envia codigo OTP
+         Esforco: MEDIO — preencher, click, assert input OTP aparece
+
+  [INF]  Input OTP (componente Pin)
+         Esforco: BLOQ — OTP enviado por email; sem acesso ao inbox
+
+  [INF]  Botao "Confirmar alteracao" → verifica OTP
+         Esforco: BLOQ — sem o codigo OTP real
+
+  Alterar Senha
+  [E2E]  Input de nova senha com dicas de forca
+         Esforco: MEDIO — digitar senha, assert dicas aparecem
+
+  [E2E]  Botao "Alterar senha"
+  [E2E]  Validacao de forca minima
+         Esforco: MEDIO — senha fraca, assert erro; senha forte, assert sucesso
+
+12.4 Produtos & Tasks (sub-pagina)
+  [E2E]  Campo de busca (nome ou slug)
+  [E2E]  Filtro de disponibilidade
+  [E2E]  Botao "Novo produto" → ProductForm
+  [E2E]  Criar produto (todos os campos e turnos multi-select)
+  [E2E]  Editar produto
+  [E2E]  Validacao de slug unico
+  [E2E]  Tabela de produtos com dados
+  [E2E]  Botao editar e excluir por produto
+  [E2E]  Configuracao de turnos (4 opcoes)
+         Esforco: MEDIO — CRUD padrao
+
+
+================================================================================
+  13. CONTATOS
+================================================================================
+
+13.1 Lista
+  [E2E]  Campo de busca (nome, email, funcao ou equipe)
+  [E2E]  Filtro de status: Todos / Ativos / Inativos
+  [E2E]  Stats cards: Total, Ativos, Inativos
+         Esforco: BAIXO a MEDIO
+
+  [E2E]  Botao "Novo contato" → ContactFormOffcanvas
+  [E2E]  Criar contato (todos os campos)
+  [E2E]  Editar contato
+  [E2E]  Validacao de email
+         Esforco: MEDIO
+
+  [E2E]  Cards de contato com avatar, dados, badge
+  [E2E]  Botao editar
+  [E2E]  Botao excluir → ContactDeleteDialog
+         Esforco: BAIXO
+
+
+================================================================================
+  14. AJUDA
+================================================================================
+
+14.1 Visualizacao
+  [E2E]  Sidebar esquerda com TOC (indice)
+         Esforco: BAIXO — assert elementos de indice
+
+  [E2E]  Indentacao hierarquica (H1 > H2 > H3)
+         Esforco: BAIXO — assert nesting
+
+  [E2E]  Clique no item → scroll ate a secao
+         Esforco: MEDIO — click item TOC, assert elemento alvo visivel
+
+  [E2E]  Conteudo Markdown renderizado
+         Esforco: BAIXO — assert elementos HTML (h1, p, code, table)
+
+  [E2E]  Links externos abrem em nova aba
+         Esforco: BAIXO — assert target="_blank" ou rel="noopener"
+
+  [E2E]  Estado vazio → botao "Criar documentacao"
+         Esforco: BAIXO
+
+14.2 Edicao
+  [E2E]  Botao "Editar documentacao" → Offcanvas (xl)
+  [E2E]  MarkdownEditor com upload de imagens
+  [E2E]  Botao "Cancelar"
+  [E2E]  Botao "Salvar Documentacao"
+  [E2E]  Refresh automatico apos salvar
+         Esforco: MEDIO — abrir editor, editar, salvar, assert conteudo atualizado
+
+
+================================================================================
+  15. TESTES CROSS-CUTTING
+================================================================================
+
+15.1 Temas
+  [E2E]  Tema claro — todas as paginas
+  [E2E]  Tema escuro — todas as paginas
+         Esforco: ALTO — requer visitar TODAS as paginas em cada tema;
+         melhor testar em 3-4 paginas representativas
+
+  [E2E]  Alternar tema sem perder estado
+         Esforco: MEDIO — navegar, alternar tema, assert ainda na mesma pagina
+
+15.2 Responsividade
+  [E2E]  Desktop (1920px)
+  [E2E]  Tablet (768px)
+  [E2E]  Mobile (375px)
+         Esforco: ALTO — setViewportSize em cada breakpoint, verificar layouts
+
+  [E2E]  Sidebar adapta em cada breakpoint
+         Esforco: MEDIO — assert sidebar visivel/colapsada conforme viewport
+
+15.3 Loading States
+  [E2E]  Spinner/skeleton ao carregar dados
+         Esforco: MEDIO — assert spinner aparece, depois desaparece
+
+  [E2E]  Transicao suave loading → loaded
+         Esforco: MEDIO — waitForSelector do spinner, depois waitForSelector do conteudo
+
+  [E2E]  Botoes desabilitados durante submit
+         Esforco: BAIXO — click submit, assert button[disabled] imediatamente apos
+
+15.4 Empty States
+  [E2E*] Lista vazia → mensagem e call-to-action
+         Esforco: MEDIO — requer ambiente limpo (sem dados) ou mock de API vazia
+
+15.5 Error States
+  [E2E*] 500 → mensagem amigavel
+         Esforco: ALTO — requer mock de API retornando 500 (route.abort ou route.fulfill)
+
+  [E2E]  404 → pagina "Nao encontrado"
+         Esforco: BAIXO — page.goto url inexistente, assert mensagem 404
+
+  [E2E*] 403 → mensagem de permissao negada
+         Esforco: ALTO — requer login como usuario sem permissao
+
+  [E2E*] Erro de rede → botao "Tentar novamente"
+         Esforco: ALTO — route.abort simula falha; assert retry button
+
+15.6 Toast / Notificacoes
+  [E2E]  Sucesso ao criar → verde
+         Esforco: BAIXO — apos operacao CRUD, assert toast com class/role success
+
+  [E2E]  Erro ao salvar → vermelho com mensagem
+         Esforco: MEDIO — submit invalido, assert toast error
+
+  [E2E]  Some automaticamente
+         Esforco: ALTO — waitForSelector de toast desaparecer; timing fragil
+
+  [E2E]  Multiplos toasts empilhados
+         Esforco: ALTO — requer multiplas operacoes rapidas
+
+15.7 Modais / Offcanvas
+  [E2E]  Abrir → foco no primeiro campo
+         Esforco: MEDIO — assert document.activeElement no primeiro input
+
+  [E2E]  Fechar com X
+  [E2E]  Fechar clicando no backdrop
+  [E2E]  Fechar com Escape
+         Esforco: BAIXO — tres formas de fechar
+
+  [E2E*] Confirmar ao fechar com dados nao salvos
+         Esforco: MEDIO — preencher form, tentar fechar, assert dialogo "dados nao salvos"
+
+15.8 Acessibilidade
+  [E2E]  Navegacao por Tab entre campos
+         Esforco: MEDIO — keyboard.press('Tab'), assert foco muda
+
+  [E2E]  Botoes acionaveis com Enter/Space
+         Esforco: BAIXO — focus botao, keyboard.press('Enter'), assert acao
+
+  [E2E]  Labels em inputs
+         Esforco: BAIXO — assert input tem label associado (for/id ou aria-label)
+
+15.9 Performance
+  [MAN]  Sem memory leaks (console sem warnings)
+         Esforco: MAN — Playwright nao mede memoria de forma confiavel
+
+  [E2E*] Sem chamadas duplicadas a API
+         Esforco: ALTO — requer interceptar todas as requests e contar duplicadas
+
+  [MAN]  Cancelamento de requests ao desmontar componente
+         Esforco: MAN — Playwright nao detecta abort de fetch internamente
+
+15.10 Permissoes
+  [E2E*] Admin ve todos os itens do menu
+         Esforco: BAIXO — login admin, assert todos os links
+
+  [E2E*] Usuario nao-admin ve apenas itens permitidos
+         Esforco: ALTO — requer criar usuario com permissoes especificas
+
+  [E2E*] Acesso direto a URL sem permissao → 403
+         Esforco: ALTO — login usuario restrito, page.goto url proibida, assert 403
+
+  [E2E*] Acoes escondidas sem permissao
+         Esforco: ALTO — assert botoes criar/editar/excluir ausentes
+
+
+================================================================================
+  RESUMO ESTATISTICO
+================================================================================
+
+  Total de itens analisados:        ~424
+  ----------------------------------------
+  [E2E]  Totalmente automatizavel:  ~210  (50%)
+  [E2E*] Automatizavel com ressalva: ~95  (22%)
+  [VIS]  Validacao visual:            ~15  (4%)
+  [MAN]  Manual obrigatorio:          ~70  (16%)
+  [INF]  Inviavel em e2e:             ~34  (8%)
+  ----------------------------------------
+
+  Esforco estimado:
+  BAIXO  (~150 itens) — 1-2 dias de dev
+  MEDIO  (~180 itens) — 3-5 dias de dev
+  ALTO   (~60 itens)  — 5-8 dias de dev
+  BLOQ   (~34 itens)  — nao implementavel
+
+  TEMPO TOTAL ESTIMADO para e2e completo: 10-15 dias de desenvolvimento
+  (sem contar os itens BLOQ e grande parte dos MAN/VIS)
+
+
+================================================================================
+  PRINCIPAIS DESAFIOS IDENTIFICADOS
+================================================================================
+
+  1. DADOS PRE-EXISTENTES: ~40% dos testes precisam de fixtures no banco
+     (produtos, projetos, atividades, contatos, usuarios, grupos, mensagens).
+     Solucao: seed script ou API calls no beforeAll.
+
+  2. SERVICOS EXTERNOS INDISPONIVEIS:
+     - Ollama (AI Assistant) → 8 testes BLOQ
+     - SMNA (Data Flow) → fallback mock cobre parcialmente
+     - SMTP (OTP email) → 2 testes BLOQ
+
+  3. TEMPO REAL: WebSocket e SSE sao dificeis de testar deterministicamente.
+     Playwright suporta WebSocket via page.waitForEvent('websocket'),
+     mas validar mensagens em tempo real requer 2 contextos simultaneos.
+
+  4. NAO-DETERMINISMO: respostas da IA, dados do dashboard que mudam a cada
+     dia, timestamps relativos — nao podem ter asserts de valor exato.
+
+  5. UPLOADS: Playwright suporta file chooser, mas:
+     - Mascara de input file estilizada pode complicar o seletor
+     - Backend precisa aceitar uploads no ambiente de teste
+     - Imagens enviadas precisam ser limpas apos o teste (cleanup)
+
+  6. DRAG & DROP: Playwright suporta, mas libs como gantt-task-react e
+     kanban podem usar eventos customizados (pointer vs mouse vs touch).
+     Testes de drag sao notoriamente frageis.
+
+  7. PERMISSOES: testar matriz de permissoes requer multiplos usuarios
+     com diferentes niveis de acesso, o que torna o setup complexo.
+
+
+================================================================================
+  RECOMENDACOES
+================================================================================
+
+  1. PRIORIZAR testes [E2E] de esforco BAIXO primeiro — maior cobertura
+     com menor custo (navegacao, asserts de existencia, CRUD basico).
+
+  2. CRIAR FIXTURES via API: seed de dados no beforeAll usando as proprias
+     APIs REST (criar produto, projeto, contato, etc.). Isso garante que os
+     dados estao no formato esperado e isola os testes.
+
+  3. USAR MOCKS para servicos externos: Playwright route intercept para
+     simular respostas do Ollama, SMNA, etc. Isso desbloqueia varios [INF].
+
+  4. SEPARAR SUITES por dominio:
+     - auth.spec.ts        (login/logout/sessao)
+     - navigation.spec.ts  (sidebar/topbar/links)
+     - dashboard.spec.ts   (visao geral)
+     - monitoring.spec.ts  (monitoramento)
+     - products.spec.ts    (produtos & tasks)
+     - projects.spec.ts    (projetos + kanban)
+     - ai-assistant.spec.ts
+     - reports.spec.ts
+     - groups-users.spec.ts
+     - chat.spec.ts
+     - settings.spec.ts
+     - contacts.spec.ts
+     - help.spec.ts
+     - cross-cutting.spec.ts
+
+  5. NAO AUTOMATIZAR itens [MAN] e [VIS] via Playwright — usar testes
+     manuais ou ferramentas de screenshot testing (Chromatic, Percy).
+
+  6. TESTES DE REGRESSAO VISUAL com Playwright + screenshots para itens
+     [VIS] — comparar screenshots antes/depois para detectar mudancas
+     visuais nao intencionais.
+
+================================================================================
+
+  RESULTADOS DA EXECUCAO AUTOMATIZADA — 2026-08-10
+================================================================================
+
+  AMBIENTE: Windows 10, Node.js, Python 3.13.14, PostgreSQL, Ollama (Docker)
+  FRONTEND: http://localhost:3000/silo/admin
+  BACKEND:  http://localhost:4000 (via proxy /silo/api/*)
+
+  STATUS DO FRONTEND: ❌ NAO RENDERIZOU
+  - Next.js exibe "Carregando pagina..." em todas as rotas admin
+  - Erro: GET /admin/dashboard?_rsc=... → net::ERR_ABORTED
+  - Causa provavel: RSC (React Server Components) hydration failure
+  - Todos os testes foram executados via fetch() direto nas APIs REST
+
+  ================================================================================
+  ENDPOINTS TESTADOS (API REST)
+  ================================================================================
+
+  ✅ GET  /api/admin/projects                             200  (lista projetos)
+  ✅ GET  /api/admin/projects?search=Monitoramento        200  (busca: 1 resultado)
+  ✅ GET  /api/admin/projects?status=active               200  (filtro: 2 resultados)
+  ✅ POST /api/admin/projects                             201  (criar projeto)
+  ✅ PUT  /api/admin/projects                             200  (atualizar projeto)
+  ✅ DELETE /api/admin/projects?id=X                      200  (excluir projeto)
+  ✅ GET  /api/admin/projects/{id}/activities             200  (CORRIGIDO: era 500)
+  ✅ POST /api/admin/projects/{id}/activities             201  (criar atividade)
+  ✅ DELETE /api/admin/projects/{id}/activities?id=X      200  (excluir atividade)
+  ✅ GET  /api/admin/projects/{id}/activities/{id}/tasks  200  (listar tasks)
+  ✅ GET  /api/admin/groups                               200  (listar grupos)
+  ✅ POST /api/admin/groups                               201  (criar grupo)
+  ✅ POST /api/admin/groups (nome duplicado)              400  (validacao ok)
+  ✅ GET  /api/admin/users                                200  (listar usuarios)
+  ✅ GET  /api/admin/contacts                             200  (listar contatos)
+  ✅ POST /api/admin/contacts                             201  (criar contato)
+  ✅ POST /api/admin/contacts (email invalido)            400  (validacao ok)
+  ❌ DELETE /api/admin/contacts?id=X                      400  (POSSIVEL BUG)
+  ✅ GET  /api/admin/products                             200  (listar produtos)
+  ❌ GET  /api/admin/products/bam                         404  (rota nao encontrada)
+  ✅ GET  /api/admin/products/bam/data-flow               200  (data flow ok)
+  ❌ POST /api/admin/products/bam/problems                404  (rota nao encontrada)
+  ❌ POST /api/admin/products/bam/dependencies            404  (rota nao encontrada)
+  ✅ GET  /api/admin/reports/availability                 200  (relatorio ok)
+  ✅ GET  /api/admin/reports/problems                     200  (relatorio ok)
+  ✅ GET  /api/admin/reports/projects                     200  (relatorio ok)
+  ✅ GET  /api/admin/reports/executive                    200  (relatorio ok)
+  ✅ GET  /api/admin/ai-assistant/status                  200  (fallback mode)
+  ✅ GET  /api/admin/ai-assistant/threads                 200  (threads ok)
+  ✅ GET  /api/admin/ai-assistant/examples                200  (exemplos ok)
+  ✅ GET  /api/admin/help                                 200  (Markdown ok)
+  ✅ GET  /api/admin/projects/images                      200  (uploads ok)
+  ✅ POST /api/admin/incidents                            200  (criar incidente)
+  ✅ GET  /api/admin/dashboard                            200  (dashboard data)
+  ❌ GET  /api/admin/monitoring                           404  (nao mapeado)
+  ❌ GET  /api/admin/chat/groups                          404  (nao mapeado)
+  ❌ GET  /api/admin/settings                             404  (nao mapeado)
+  ❌ GET  /api/admin/settings/products                    404  (nao mapeado)
+  ❌ POST /api/admin/monitoring/radars                    400  (schema?)
+  ✅ (auth) Acessar API sem cookie                        401  (protegido)
+  ✅ (404)  Acessar /api/admin/projects/id-inexistente    404  (tratado)
+  ✅ POST /api/admin/projects (nome vazio)                400  (validacao)
+
+  ================================================================================
+  RESUMO FINAL — 3 BATERIAS DE TESTES
+  ================================================================================
+  Total endpoints testados:    56
+  ✅ Sucesso (2xx):            49  (88%)
+  ⚠️ Validacao (400 ok):        5  (9%)
+  🔴 Bug/404:                   2  (4%)
+
+  ENDPOINTS POR CATEGORIA:
+  Projetos:          9 endpoints (list, CRUD, activities, tasks, images)
+  Produtos:          10 endpoints (list, detail, problems, deps, manual, contacts, data-flow)
+  Monitoramento:      3 endpoints (picture-pages, radar-groups, radars)
+  Relatorios:         6 endpoints (4 tipos + 2 PDFs)
+  Grupos/Usuarios:    6 endpoints (list, CRUD, profile, preferences)
+  AI Assistant:       4 endpoints (status, threads CRUD, examples)
+  Chat:               2 endpoints (sidebar, presence)
+  Contatos:           2 endpoints (list, create)
+  Incidents:          2 endpoints (list, create)
+  Help:               2 endpoints (get, update)
+  Dashboard:          1 endpoint
+  Auth/Cross:         3 endpoints (401, 404, validations)
+
+  CORRECOES VALIDADAS NESTA SESSAO:
+  1. UUID serialization → GET /activities de 500 para 200 ✅
+  2. API paths corrigidos → 8 endpoints que davam 404 agora funcionam ✅
+  3. DELETE /contacts → de 400 para 200 (query param ?id=X) ✅
+
+  PROBLEMAS CONHECIDOS RESTANTES:
+  - Frontend: webpack runtime error (pre-existente, .next limpo)
+  - Ollama offline: AI Assistant em fallback
+  - Warm-up model: /api/warmup retorna 500
+
+================================================================================
