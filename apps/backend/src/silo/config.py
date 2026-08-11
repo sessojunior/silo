@@ -160,7 +160,7 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
     silo_env_raw = _first_non_empty(environ, ("SILO_ENV", "NODE_ENV"), "development").lower()
     _validate_production_requirements(environ, silo_env_raw)
 
-    database_url = _select_database_url(environ, silo_env_raw)
+    database_url = _select_database_url(environ)
     smtp_username = _first_non_empty(environ, ("SMTP_USERNAME",))
     app_url_dev = _parse_http_url(
         "APP_URL_DEV",
@@ -308,20 +308,13 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
     }
 
 
-def _select_database_url(environ: Mapping[str, str], silo_env: str) -> str:
-    candidates = ["DATABASE_URL"]
-    if silo_env == SiloEnvironment.PRODUCTION:
-        candidates.extend(("DATABASE_URL_PROD", "DATABASE_URL_DEV"))
-    else:
-        candidates.extend(("DATABASE_URL_DEV", "DATABASE_URL_PROD"))
-
-    database_url = _first_non_empty(environ, tuple(candidates))
+def _select_database_url(environ: Mapping[str, str]) -> str:
+    database_url = _first_non_empty(environ, ("DATABASE_URL",))
     if database_url:
         return _validate_database_url(database_url)
 
     raise SettingsLoadError(
-        "DATABASE_URL ausente. Configure DATABASE_URL ou a variavel DATABASE_URL_DEV/"
-        "DATABASE_URL_PROD correspondente ao ambiente."
+        "DATABASE_URL ausente. Configure a variavel DATABASE_URL com a URL do PostgreSQL."
     )
 
 
@@ -427,8 +420,8 @@ def _validate_production_requirements(environ: Mapping[str, str], silo_env: str)
         return
 
     missing: list[str] = []
-    if not _has_any_non_empty(environ, ("DATABASE_URL", "DATABASE_URL_PROD")):
-        missing.append("DATABASE_URL ou DATABASE_URL_PROD")
+    if not _has_non_empty(environ, "DATABASE_URL"):
+        missing.append("DATABASE_URL")
     if not _has_non_empty(environ, "APP_URL_PROD"):
         missing.append("APP_URL_PROD")
     if not _has_any_non_empty(environ, ("SESSION_SECRET", "BETTER_AUTH_SECRET")):

@@ -52,8 +52,6 @@ services:
       SILO_ENV: ${SILO_ENV:-development}
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL: ${DATABASE_URL:-postgresql://silo:silo@db:5432/silo}
-      DATABASE_URL_DEV: ${DATABASE_URL_DEV:-postgresql://silo:silo@db:5432/silo}
-      DATABASE_URL_PROD: ${DATABASE_URL_PROD:-postgresql://silo:silo@db:5432/silo}
       APP_URL_DEV: ${APP_URL_DEV:-http://localhost}
       APP_URL_PROD: ${APP_URL_PROD:-http://localhost}
       NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
@@ -108,8 +106,6 @@ services:
       SILO_ENV: ${SILO_ENV:-development}
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL: ${DATABASE_URL:-postgresql://silo:silo@db:5432/silo}
-      DATABASE_URL_DEV: ${DATABASE_URL_DEV:-postgresql://silo:silo@db:5432/silo}
-      DATABASE_URL_PROD: ${DATABASE_URL_PROD:-postgresql://silo:silo@db:5432/silo}
       APP_URL_DEV: ${APP_URL_DEV:-http://localhost}
       APP_URL_PROD: ${APP_URL_PROD:-http://localhost}
       NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
@@ -140,8 +136,6 @@ services:
       AI_AGENT_MODE: ${AI_AGENT_MODE:-deterministic}
       PORT: "4000"
       DATABASE_URL: ${DATABASE_URL:-postgresql://silo:silo@db:5432/silo}
-      DATABASE_URL_DEV: ${DATABASE_URL_DEV:-postgresql://silo:silo@db:5432/silo}
-      DATABASE_URL_PROD: ${DATABASE_URL_PROD:-postgresql://silo:silo@db:5432/silo}
       APP_URL_DEV: ${APP_URL_DEV:-http://localhost}
       APP_URL_PROD: ${APP_URL_PROD:-http://localhost}
       NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
@@ -209,8 +203,6 @@ services:
       SILO_ENV: ${SILO_ENV:-development}
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL: ${DATABASE_URL:-postgresql://silo:silo@db:5432/silo}
-      DATABASE_URL_DEV: ${DATABASE_URL_DEV:-postgresql://silo:silo@db:5432/silo}
-      DATABASE_URL_PROD: ${DATABASE_URL_PROD:-postgresql://silo:silo@db:5432/silo}
       KAFKA_REST_PROXY_URL: ${KAFKA_REST_PROXY_URL:-http://localhost:8082}
       KAFKA_REST_PROXY_AUTH: ${KAFKA_REST_PROXY_AUTH:-}
       KAFKA_REST_PROXY_USE_MOCK_DATA: ${KAFKA_REST_PROXY_USE_MOCK_DATA:-true}

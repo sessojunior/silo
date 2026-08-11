@@ -63,7 +63,7 @@ def test_clear_auth_cookies_expires_python_and_better_auth_cookies() -> None:
     settings = load_settings(
         {
             "SILO_ENV": SiloEnvironment.PRODUCTION.value,
-            "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@db:5432/silo",
+            "DATABASE_URL": "postgresql://prod-user:prod-pass@db:5432/silo",
             "APP_URL_PROD": "https://fortuna.cptec.inpe.br",
             "SESSION_SECRET": "session-secret",
             "SMTP_HOST": "smtp.gmail.com",

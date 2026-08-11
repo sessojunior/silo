@@ -56,9 +56,7 @@ def test_database_url_from_environment_prefers_first_non_empty() -> None:
     assert (
         db_migrate.database_url_from_environment(
             {
-                "DATABASE_URL": "  ",
-                "DATABASE_URL_DEV": "postgresql://dev-user:dev-pass@localhost:5432/silo",
-                "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@localhost:5432/silo",
+                "DATABASE_URL": "postgresql://dev-user:dev-pass@localhost:5432/silo",
             }
         )
         == "postgresql://dev-user:dev-pass@localhost:5432/silo"

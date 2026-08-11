@@ -20,14 +20,12 @@ ischema_names["vector"] = Vector768
 
 
 def _database_url_from_environment() -> str:
-    for name in ("DATABASE_URL", "DATABASE_URL_DEV", "DATABASE_URL_PROD"):
-        value = os.environ.get(name)
-        if value and value.strip():
-            return sqlalchemy_database_url(value.strip())
+    value = os.environ.get("DATABASE_URL")
+    if value and value.strip():
+        return sqlalchemy_database_url(value.strip())
 
     raise RuntimeError(
-        "DATABASE_URL ausente para Alembic. Configure DATABASE_URL, DATABASE_URL_DEV "
-        "ou DATABASE_URL_PROD."
+        "DATABASE_URL ausente para Alembic. Configure a variavel DATABASE_URL."
     )
 
 

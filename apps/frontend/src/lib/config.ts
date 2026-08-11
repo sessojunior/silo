@@ -12,7 +12,7 @@
  * - APP_URL_DEV / APP_URL_PROD: URL base da aplicação (origem), SEM o basePath
  * - API_URL: URL base do backend Python usada pelo proxy do web
  * - NEXT_PUBLIC_API_ORIGIN: origem pública do backend Python para websocket no browser
- * - DATABASE_URL_DEV / DATABASE_URL_PROD: URLs do banco PostgreSQL
+ * - DATABASE_URL: URL do banco PostgreSQL
  *
  * Para chamadas HTTP internas, use sempre config.getApiUrl('/api/...').
  */

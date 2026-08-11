@@ -283,16 +283,11 @@ export const config = {
   },
 
   get databaseUrl(): string {
-    const isProd = process.env.NODE_ENV === "production";
-    const url = isProd
-      ? process.env.DATABASE_URL_PROD
-      : process.env.DATABASE_URL_DEV;
-
-    if (!url && isProd) {
-      throw new Error("DATABASE_URL_PROD deve ser configurada em produção");
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      throw new Error("DATABASE_URL deve ser configurada");
     }
-
-    return url || "";
+    return url;
   },
 };
 ```

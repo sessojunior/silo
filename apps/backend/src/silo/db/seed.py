@@ -895,10 +895,9 @@ def _hash_password(password: str) -> str:
 
 
 def _database_url_from_environment(environ: Mapping[str, str]) -> str:
-    for name in ("DATABASE_URL", "DATABASE_URL_DEV", "DATABASE_URL_PROD"):
-        value = environ.get(name)
-        if value and value.strip():
-            return value.strip()
+    value = environ.get("DATABASE_URL")
+    if value and value.strip():
+        return value.strip()
     raise RuntimeError("DATABASE_URL ausente para seed Python.")
 
 

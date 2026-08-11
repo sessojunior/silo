@@ -259,7 +259,7 @@ def test_schema_capture_metadata_roundtrip_covers_json_safety_and_fingerprints(
 
 def test_schema_capture_database_url_environment_lookup_prefers_values_in_order() -> None:
     assert schema_capture._database_url_from_environment(  # noqa: SLF001
-        {"DATABASE_URL": " ", "DATABASE_URL_DEV": "postgresql://dev", "DATABASE_URL_PROD": "postgresql://prod"}
+        {"DATABASE_URL": "postgresql://dev"}
     ) == "postgresql://dev"
     assert schema_capture._utc_now_iso().endswith("Z")  # noqa: SLF001
 

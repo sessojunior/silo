@@ -11,7 +11,7 @@ from silo.worker import config as worker_config
 def _base_env(tmp_path: Path) -> dict[str, str]:
     return {
         "SILO_ENV": "production",
-        "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@localhost:5432/silo",
+        "DATABASE_URL": "postgresql://prod-user:prod-pass@localhost:5432/silo",
         "KAFKA_REST_PROXY_URL": "http://kafka.local/",
         "KAFKA_REST_PROXY_AUTH": "Bearer secret",
         "KAFKA_TOPIC": "model.status",
@@ -83,7 +83,7 @@ def test_load_worker_settings_and_helper_branches(tmp_path: Path) -> None:
         (
             {
                 "SILO_ENV": "production",
-                "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@localhost:5432/silo",
+                "DATABASE_URL": "postgresql://prod-user:prod-pass@localhost:5432/silo",
                 "KAFKA_REST_PROXY_URL": "ftp://invalid",
             },
             "KAFKA_REST_PROXY_URL",
@@ -91,7 +91,7 @@ def test_load_worker_settings_and_helper_branches(tmp_path: Path) -> None:
         (
             {
                 "SILO_ENV": "production",
-                "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@localhost:5432/silo",
+                "DATABASE_URL": "postgresql://prod-user:prod-pass@localhost:5432/silo",
                 "KAFKA_REST_PROXY_URL": "http://kafka.local",
                 "KAFKA_REST_PROXY_USE_MOCK_DATA": "maybe",
             },
@@ -100,7 +100,7 @@ def test_load_worker_settings_and_helper_branches(tmp_path: Path) -> None:
         (
             {
                 "SILO_ENV": "production",
-                "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@localhost:5432/silo",
+                "DATABASE_URL": "postgresql://prod-user:prod-pass@localhost:5432/silo",
                 "KAFKA_REST_PROXY_URL": "http://kafka.local",
                 "KAFKA_PROCESS_RETRY_COUNT": "-1",
             },
@@ -109,7 +109,7 @@ def test_load_worker_settings_and_helper_branches(tmp_path: Path) -> None:
         (
             {
                 "SILO_ENV": "production",
-                "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@localhost:5432/silo",
+                "DATABASE_URL": "postgresql://prod-user:prod-pass@localhost:5432/silo",
                 "KAFKA_REST_PROXY_URL": "http://kafka.local",
                 "KAFKA_REST_TIMEOUT_SECONDS": "not-a-number",
             },

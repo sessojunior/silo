@@ -35,9 +35,7 @@ Ambiente:
 
 Banco:
 
-- prioridade 1: `DATABASE_URL`
-- produção: `DATABASE_URL_PROD`, depois `DATABASE_URL_DEV`
-- desenvolvimento/teste: `DATABASE_URL_DEV`, depois `DATABASE_URL_PROD`
+- `DATABASE_URL`
 
 API/coexistência:
 

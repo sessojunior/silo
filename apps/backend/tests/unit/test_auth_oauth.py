@@ -26,7 +26,7 @@ def test_google_oauth_redirect_url_stays_on_same_origin_with_base_path() -> None
     settings = load_settings(
         {
             "SILO_ENV": SiloEnvironment.PRODUCTION.value,
-            "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@db:5432/silo",
+            "DATABASE_URL": "postgresql://prod-user:prod-pass@db:5432/silo",
             "APP_URL_PROD": "https://fortuna.cptec.inpe.br",
             "SESSION_SECRET": "session-secret",
             "SMTP_HOST": "smtp.gmail.com",

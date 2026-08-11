@@ -10,8 +10,7 @@ def test_silo_env_precedes_node_env() -> None:
         {
             "SILO_ENV": "development",
             "NODE_ENV": "production",
-            "DATABASE_URL_DEV": "postgresql://dev-user:dev-pass@localhost:5432/silo",
-            "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@db:5432/silo",
+            "DATABASE_URL": "postgresql://dev-user:dev-pass@localhost:5432/silo",
         }
     )
 
@@ -28,7 +27,7 @@ def test_node_env_is_controlled_fallback_when_silo_env_is_absent() -> None:
         {
             "NODE_ENV": "production",
             "APP_URL_PROD": "https://fortuna.cptec.inpe.br",
-            "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@db:5432/silo",
+            "DATABASE_URL": "postgresql://prod-user:prod-pass@db:5432/silo",
             "SESSION_SECRET": "session-secret",
             "SMTP_HOST": "smtp.gmail.com",
             "SMTP_USERNAME": "sender@example.test",
@@ -46,12 +45,11 @@ def test_node_env_is_controlled_fallback_when_silo_env_is_absent() -> None:
     assert settings.ollama.url == "http://ollama:11434"
 
 
-def test_database_url_precedes_environment_specific_database_urls() -> None:
+def test_database_url_is_used_directly() -> None:
     settings = load_settings(
         {
             "SILO_ENV": "production",
             "DATABASE_URL": "postgresql://primary-user:primary-pass@db:5432/silo",
-            "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@db:5432/silo",
             "APP_URL_PROD": "https://fortuna.cptec.inpe.br",
             "SESSION_SECRET": "session-secret",
             "SMTP_HOST": "smtp.gmail.com",
@@ -151,7 +149,7 @@ def test_better_auth_secret_is_accepted_as_session_secret_during_coexistence() -
     settings = load_settings(
         {
             "SILO_ENV": "development",
-            "DATABASE_URL_DEV": "postgresql://dev-user:dev-pass@localhost:5432/silo",
+            "DATABASE_URL": "postgresql://dev-user:dev-pass@localhost:5432/silo",
             "BETTER_AUTH_SECRET": "legacy-auth-secret",
         }
     )
@@ -263,13 +261,12 @@ def test_production_requires_security_and_integration_variables_without_values()
         load_settings(
             {
                 "SILO_ENV": "production",
-                "DATABASE_URL_DEV": "postgresql://dev-user:dev-secret@localhost:5432/silo",
                 "SMTP_PASSWORD": "smtp-secret",
             }
         )
 
     message = str(exc_info.value)
-    assert "DATABASE_URL ou DATABASE_URL_PROD" in message
+    assert "DATABASE_URL" in message
     assert "APP_URL_PROD" in message
     assert "SESSION_SECRET" in message
     assert "SMTP_HOST" in message
@@ -284,7 +281,7 @@ def test_production_settings_validate_when_required_variables_exist() -> None:
     settings = load_settings(
         {
             "SILO_ENV": "production",
-            "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@db:5432/silo",
+            "DATABASE_URL": "postgresql://prod-user:prod-pass@db:5432/silo",
             "APP_URL_PROD": "https://fortuna.cptec.inpe.br",
             "SESSION_SECRET": "session-secret",
             "AI_AGENT_MODE": "deterministic",
@@ -311,7 +308,7 @@ def test_production_rejects_langsmith_tracing_without_approval() -> None:
         load_settings(
             {
                 "SILO_ENV": "production",
-                "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@db:5432/silo",
+                "DATABASE_URL": "postgresql://prod-user:prod-pass@db:5432/silo",
                 "APP_URL_PROD": "https://fortuna.cptec.inpe.br",
                 "SESSION_SECRET": "session-secret",
                 "SMTP_HOST": "smtp.gmail.com",
@@ -334,7 +331,7 @@ def test_production_allows_langsmith_tracing_only_with_approval_flag() -> None:
     settings = load_settings(
         {
             "SILO_ENV": "production",
-            "DATABASE_URL_PROD": "postgresql://prod-user:prod-pass@db:5432/silo",
+            "DATABASE_URL": "postgresql://prod-user:prod-pass@db:5432/silo",
             "APP_URL_PROD": "https://fortuna.cptec.inpe.br",
             "SESSION_SECRET": "session-secret",
             "AI_AGENT_MODE": "deterministic",

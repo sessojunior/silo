@@ -143,16 +143,10 @@ def build_validation_settings(
 
 
 def _select_database_url(environ: Mapping[str, str]) -> str:
-    silo_env = _first_non_empty(environ, ("SILO_ENV", "NODE_ENV"), "development").lower()
-    if silo_env == "production":
-        candidates = ("DATABASE_URL", "DATABASE_URL_PROD", "DATABASE_URL_DEV")
-    else:
-        candidates = ("DATABASE_URL", "DATABASE_URL_DEV", "DATABASE_URL_PROD")
-
-    database_url = _first_non_empty(environ, candidates)
+    database_url = _first_non_empty(environ, ("DATABASE_URL",))
     if not database_url:
         raise RuntimeError(
-            "DATABASE_URL ausente. Configure DATABASE_URL ou DATABASE_URL_DEV/DATABASE_URL_PROD."
+            "DATABASE_URL ausente. Configure a variavel DATABASE_URL."
         )
     return database_url
 

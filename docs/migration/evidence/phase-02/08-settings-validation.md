@@ -15,7 +15,7 @@ Validar URL, inteiros, booleanos, listas CSV e produção no carregamento centra
 
 URLs:
 
-- `DATABASE_URL`, `DATABASE_URL_DEV`, `DATABASE_URL_PROD`
+- `DATABASE_URL`
   - schemes permitidos: `postgresql`, `postgres`
   - exige host e database
 - `APP_URL_DEV`
@@ -64,7 +64,7 @@ Produção:
 
 Quando `SILO_ENV=production` ou fallback `NODE_ENV=production`, o carregamento exige:
 
-- `DATABASE_URL` ou `DATABASE_URL_PROD`
+- `DATABASE_URL`
 - `APP_URL_PROD`
 - `SESSION_SECRET` ou fallback temporário `BETTER_AUTH_SECRET`
 - `SMTP_HOST`
