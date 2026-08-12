@@ -56,14 +56,14 @@ async def test_embedding_helpers_cover_cache_similarity_and_sql(monkeypatch: pyt
         monkeypatch.setattr(
             embeddings,
             "load_settings",
-            lambda: type("Settings", (), {"ollama": object()})(),
+            lambda: type("Settings", (), {"ai_runtime_mode": "ollama", "ollama": object(), "vllm": object()})(),
         )
 
         class _FakeRuntime:
             def __init__(self, _settings) -> None:
                 self.settings = _settings
 
-        monkeypatch.setattr(embeddings, "OllamaEmbeddingRuntime", _FakeRuntime)
+        monkeypatch.setattr(embeddings, "create_embedding_runtime", _FakeRuntime)
         provider_instance = embeddings.get_embedding_provider()
         assert isinstance(provider_instance, _FakeRuntime)
     finally:

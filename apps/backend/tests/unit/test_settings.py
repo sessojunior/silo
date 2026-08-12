@@ -42,7 +42,7 @@ def test_node_env_is_controlled_fallback_when_silo_env_is_absent() -> None:
     assert (
         settings.database_url.get_secret_value() == "postgresql://prod-user:prod-pass@db:5432/silo"
     )
-    assert settings.ollama.url == "http://ollama:11434"
+    assert settings.vllm.url == "http://vllm:8000/v1"
 
 
 def test_database_url_is_used_directly() -> None:
@@ -105,11 +105,11 @@ def test_current_runtime_variable_families_are_loaded() -> None:
             "KAFKA_DLQ_PREFIX": "dlq.",
             "KAFKA_PROCESS_RETRY_COUNT": "5",
             "KAFKA_RETRY_BACKOFF_MS": "2500",
-            "OLLAMA_URL": "http://localhost:11434",
-            "OLLAMA_MODEL": "qwen2.5:1.5b-instruct-q4_K_M",
-            "OLLAMA_EMBEDDING_MODEL": "nomic-embed-text:v1.5",
-            "OLLAMA_TIMEOUT_MS": "60000",
-            "OLLAMA_MAX_CONCURRENT_REQUESTS": "2",
+            "VLLM_URL": "http://localhost:11434",
+            "VLLM_MODEL": "Qwen/Qwen2.5-0.5B-Instruct",
+            "VLLM_EMBEDDING_MODEL": "nomic-embed-text:v1.5",
+            "VLLM_TIMEOUT_MS": "60000",
+            "VLLM_MAX_CONCURRENT_REQUESTS": "2",
         }
     )
 
@@ -140,9 +140,9 @@ def test_current_runtime_variable_families_are_loaded() -> None:
     assert settings.kafka.topics == ("model.completed", "monitoring.status")
     assert settings.kafka.process_retry_count == 5
     assert settings.kafka.retry_backoff_ms == 2500
-    assert settings.ollama.url == "http://localhost:11434"
-    assert settings.ollama.timeout_ms == 60_000
-    assert settings.ollama.max_concurrent_requests == 2
+    assert settings.vllm.url == "http://localhost:11434"
+    assert settings.vllm.timeout_ms == 60_000
+    assert settings.vllm.max_concurrent_requests == 2
 
 
 def test_better_auth_secret_is_accepted_as_session_secret_during_coexistence() -> None:
@@ -202,12 +202,12 @@ def test_invalid_integer_fails_fast_without_raw_value() -> None:
             {
                 "SILO_ENV": "development",
                 "DATABASE_URL": "postgresql://test-user:test-pass@localhost:5432/silo",
-                "OLLAMA_TIMEOUT_MS": "not-an-integer-secret",
+                "VLLM_TIMEOUT_MS": "not-an-integer-secret",
             }
         )
 
     message = str(exc_info.value)
-    assert "OLLAMA_TIMEOUT_MS" in message
+    assert "VLLM_TIMEOUT_MS" in message
     assert "not-an-integer-secret" not in message
 
 

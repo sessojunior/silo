@@ -17,7 +17,7 @@ from silo.config import load_settings
 class _WarmupSuccessClient:
     async def warmup(self, *, base_url: str, model: str, timeout_seconds: float) -> None:
         assert base_url == "http://localhost:11434"
-        assert model == "qwen2.5:1.5b-instruct-q4_K_M"
+        assert model == "Qwen/Qwen2.5-0.5B-Instruct"
         assert timeout_seconds == 60.0
 
 
@@ -97,8 +97,8 @@ async def test_warmup_success_matches_legacy_contract() -> None:
         {
             "SILO_ENV": "test",
             "DATABASE_URL": "postgresql://test-user:test-pass@localhost:5432/silo",
-            "OLLAMA_URL": "http://localhost:11434",
-            "OLLAMA_MODEL": "qwen2.5:1.5b-instruct-q4_K_M",
+            "VLLM_URL": "http://localhost:11434",
+            "VLLM_MODEL": "Qwen/Qwen2.5-0.5B-Instruct",
         }
     )
     clock = FrozenClock(datetime(2026, 7, 21, 15, 0, 0, tzinfo=UTC))
@@ -115,7 +115,7 @@ async def test_warmup_success_matches_legacy_contract() -> None:
     assert isinstance(data, dict)
     assert isinstance(data["latencyMs"], int)
     assert data == {
-        "model": "qwen2.5:1.5b-instruct-q4_K_M",
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
         "latencyMs": data["latencyMs"],
         "warmedAt": "2026-07-21T15:00:00.000Z",
     }
@@ -126,7 +126,7 @@ async def test_warmup_failure_matches_legacy_contract() -> None:
         {
             "SILO_ENV": "test",
             "DATABASE_URL": "postgresql://test-user:test-pass@localhost:5432/silo",
-            "OLLAMA_URL": "http://localhost:11434",
+            "VLLM_URL": "http://localhost:11434",
         }
     )
 

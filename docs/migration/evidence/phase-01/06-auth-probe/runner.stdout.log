@@ -1,6 +1,0 @@
-[legacy-contract] captured phase1_6.check_admin.unauthenticated -> tests\fixtures\legacy-golden\phase1_6.check_admin.unauthenticated.json
-[legacy-contract] captured phase1_6.check_admin.admin -> tests\fixtures\legacy-golden\phase1_6.check_admin.admin.json
-[legacy-contract] captured phase1_6.check_admin.no_permission -> tests\fixtures\legacy-golden\phase1_6.check_admin.no_permission.json
-[legacy-contract] captured phase1_6.products.list.no_permission -> tests\fixtures\legacy-golden\phase1_6.products.list.no_permission.json
-[legacy-contract] captured phase1_6.products.list.unauthenticated -> tests\fixtures\legacy-golden\phase1_6.products.list.unauthenticated.json
-[legacy-contract] captured phase1_6.products.list.partial_success -> tests\fixtures\legacy-golden\phase1_6.products.list.partial_success.json

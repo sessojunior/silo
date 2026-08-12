@@ -30,7 +30,7 @@ class EmbeddingPort(Protocol):
 
 
 class RuntimeMode(StrEnum):
-    OLLAMA = "ollama"
+    VLLM = "vllm"
     FALLBACK = "fallback"
 
 

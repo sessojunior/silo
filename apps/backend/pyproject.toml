@@ -11,7 +11,7 @@ dependencies = [
     "fastapi==0.139.2",
     "httpx==0.28.1",
     "langchain-core==1.4.9",
-    "langchain-ollama==1.1.0",
+    "langchain-openai==1.1.0",
     "langgraph==1.2.9",
     "pgvector==0.5.0",
     "pillow==12.3.0",
@@ -28,7 +28,6 @@ dependencies = [
 silo-ai-observability-contract = "silo.ai.observability_contract:main"
 silo-backfill-embeddings = "silo.ai.backfill_embeddings:main"
 silo-phase11-evaluation = "silo.ai.phase11_evaluation:main"
-silo-ollama-init = "silo.ai.ollama_init:main"
 silo-sbom-contract = "silo.security.sbom_contract:main"
 silo-db-seed = "silo.db.seed:main"
 silo-openapi-export = "silo.api.openapi_export:main"

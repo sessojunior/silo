@@ -1,3 +1,0 @@
-[legacy-contract] captured phase1_6.email_success.auth.login_email_send_otp -> tests\fixtures\legacy-golden\phase1_6.email_success.auth.login_email_send_otp.json
-[legacy-contract] captured phase1_6.email_success.users.email_change_request -> tests\fixtures\legacy-golden\phase1_6.email_success.users.email_change_request.json
-[legacy-contract] captured phase1_6.email_success.products.activities.pending_email -> tests\fixtures\legacy-golden\phase1_6.email_success.products.activities.pending_email.json

@@ -1,4 +1,0 @@
-[legacy-contract] captured phase1_6.report_pdf_success.availability -> tests\fixtures\legacy-golden\phase1_6.report_pdf_success.availability.json
-[legacy-contract] captured phase1_6.report_pdf_success.problems -> tests\fixtures\legacy-golden\phase1_6.report_pdf_success.problems.json
-[legacy-contract] captured phase1_6.report_pdf_success.executive -> tests\fixtures\legacy-golden\phase1_6.report_pdf_success.executive.json
-[legacy-contract] captured phase1_6.report_pdf_success.projects -> tests\fixtures\legacy-golden\phase1_6.report_pdf_success.projects.json

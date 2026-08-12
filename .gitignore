@@ -19,6 +19,7 @@
 /test-results/
 
 # python
+/.venv/
 apps/backend/.venv/
 apps/backend/.mypy_cache/
 apps/backend/.pytest_cache/

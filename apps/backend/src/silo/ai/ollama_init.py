@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from silo.ai.assistant_runtime import probe_ollama_runtime
+from silo.ai.assistant_runtime import probe_ai_runtime
 from silo.config import Settings, load_settings
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 30 * 60
@@ -47,7 +47,7 @@ async def initialize_ollama(
                 timeout_seconds=wait_timeout_seconds,
             )
 
-    probe = await probe_ollama_runtime(settings)
+    probe = await probe_ai_runtime(settings)
     if probe.fallback_reason is not None:
         raise RuntimeError(probe.fallback_reason)
 

@@ -1,5 +1,0 @@
-[legacy-contract] captured phase1_6.sync_external.product_flow_receive.validation_missing_identifier -> tests\fixtures\legacy-golden\phase1_6.sync_external.product_flow_receive.validation_missing_identifier.json
-[legacy-contract] captured phase1_6.sync_external.product_flow_receive.notfound -> tests\fixtures\legacy-golden\phase1_6.sync_external.product_flow_receive.notfound.json
-[legacy-contract] captured phase1_6.sync_external.product_flow_receive.success -> tests\fixtures\legacy-golden\phase1_6.sync_external.product_flow_receive.success.json
-[legacy-contract] captured phase1_6.sync_external.products.data_flow.kafka_rest_empty_success -> tests\fixtures\legacy-golden\phase1_6.sync_external.products.data_flow.kafka_rest_empty_success.json
-[legacy-contract] captured phase1_6.sync_external.monitoring.products.kafka_rest_empty_success -> tests\fixtures\legacy-golden\phase1_6.sync_external.monitoring.products.kafka_rest_empty_success.json

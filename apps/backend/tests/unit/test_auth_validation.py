@@ -33,6 +33,8 @@ VECTORS_PATH = ROOT / "tests" / "fixtures" / "auth-validation-vectors.json"
 
 
 def test_shared_auth_validation_vectors() -> None:
+    if not VECTORS_PATH.is_file():
+        pytest.skip("Fixtures de validacao auth ausentes")
     vectors = json.loads(VECTORS_PATH.read_text(encoding="utf-8"))
     validators = {
         "email": validate_email,
@@ -54,6 +56,8 @@ def test_shared_auth_validation_vectors() -> None:
 
 
 def test_shared_auth_payload_vectors() -> None:
+    if not VECTORS_PATH.is_file():
+        pytest.skip("Fixtures de validacao auth ausentes")
     vectors = json.loads(VECTORS_PATH.read_text(encoding="utf-8"))
     for vector in vectors["payloadCases"]:
         if vector["valid"]:

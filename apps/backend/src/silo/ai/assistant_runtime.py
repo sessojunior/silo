@@ -11,10 +11,10 @@ from typing import Any
 
 import httpx
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama, OllamaEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from silo.ai.ports import AiRuntimeProbe, ChatMessage, ChatModelRuntime, ChatPort, ChatResponse, EmbeddingPort, RuntimeMode
-from silo.config import OllamaSettings, Settings
+from silo.config import VLLMSettings, Settings
 from silo.clock import SYSTEM_CLOCK, Clock
 
 DEFAULT_CHAT_TIMEOUT_SECONDS = 30.0
@@ -102,21 +102,19 @@ def _extract_prompt_eval_count(message: AIMessage) -> int | None:
 
 
 @dataclass(slots=True)
-class OllamaModelRuntime(ChatModelRuntime):
-    settings: OllamaSettings
+class VLLMModelRuntime(ChatModelRuntime):
+    settings: VLLMSettings
     semaphore: asyncio.Semaphore = field(init=False)
-    _model: ChatOllama = field(init=False, repr=False)
+    _model: ChatOpenAI = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.semaphore = asyncio.Semaphore(max(1, int(self.settings.max_concurrent_requests)))
-        self._model = ChatOllama(
+        self._model = ChatOpenAI(
             model=self.settings.model,
             base_url=self.settings.url,
+            api_key=self.settings.api_key,
             temperature=0,
-            num_ctx=16_384,
-            num_predict=768,
-            keep_alive="5m",
-            validate_model_on_init=False,
+            max_tokens=768,
         )
 
     async def complete(self, messages: Sequence[ChatMessage]) -> ChatResponse:
@@ -157,21 +155,19 @@ class OllamaModelRuntime(ChatModelRuntime):
 
 
 @dataclass(slots=True)
-class OllamaEmbeddingRuntime(EmbeddingPort):
-    settings: OllamaSettings
+class VLLMEmbeddingRuntime(EmbeddingPort):
+    settings: VLLMSettings
     semaphore: asyncio.Semaphore = field(init=False)
     _cache: OrderedDict[str, tuple[float, ...]] = field(init=False, repr=False)
-    _embeddings: OllamaEmbeddings = field(init=False, repr=False)
+    _embeddings: OpenAIEmbeddings = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.semaphore = asyncio.Semaphore(max(1, int(self.settings.max_concurrent_requests)))
         self._cache = OrderedDict()
-        self._embeddings = OllamaEmbeddings(
+        self._embeddings = OpenAIEmbeddings(
             model=self.settings.embedding_model,
             base_url=self.settings.url,
-            num_ctx=16_384,
-            keep_alive=5 * 60,
-            validate_model_on_init=False,
+            api_key=self.settings.api_key,
         )
 
     async def embed(self, text: str) -> tuple[float, ...]:
@@ -215,30 +211,45 @@ class ChatCompletionTelemetry:
     latency_ms: int | None = None
 
 
-async def probe_ollama_runtime(
+# ── Factory functions ────────────────────────────────────────────────────────
+
+
+def create_model_runtime(settings: Settings) -> ChatModelRuntime:
+    return VLLMModelRuntime(settings=settings.vllm)
+
+
+def create_embedding_runtime(settings: Settings) -> EmbeddingPort:
+    return VLLMEmbeddingRuntime(settings=settings.vllm)
+
+
+async def probe_ai_runtime(
     settings: Settings,
     *,
     clock: Clock = SYSTEM_CLOCK,
-    chat_runtime: OllamaModelRuntime | None = None,
-    embedding_runtime: OllamaEmbeddingRuntime | None = None,
+) -> AiRuntimeProbe:
+    return await probe_vllm_runtime(settings, clock=clock)
+
+
+async def probe_vllm_runtime(
+    settings: Settings,
+    *,
+    clock: Clock = SYSTEM_CLOCK,
+    chat_runtime: VLLMModelRuntime | None = None,
+    embedding_runtime: VLLMEmbeddingRuntime | None = None,
 ) -> AiRuntimeProbe:
     started_at = time.perf_counter()
     checked_at = clock.now().astimezone(UTC).isoformat().replace("+00:00", "Z")
     fallback_reason: str | None = None
-    chat_digest: str | None = None
-    embedding_digest: str | None = None
 
-    chat_runtime_value = chat_runtime or OllamaModelRuntime(settings.ollama)
-    embedding_runtime_value = embedding_runtime or OllamaEmbeddingRuntime(settings.ollama)
+    chat_runtime_value = chat_runtime or VLLMModelRuntime(settings.vllm)
+    embedding_runtime_value = embedding_runtime or VLLMEmbeddingRuntime(settings.vllm)
 
     try:
-        inventory = await _fetch_ollama_inventory(settings.ollama.url)
-        chat_digest = _extract_model_digest(inventory, settings.ollama.model)
-        embedding_digest = _extract_model_digest(inventory, settings.ollama.embedding_model)
-        if chat_digest is None:
-            fallback_reason = f"Modelo de chat ausente em {settings.ollama.model}."
-        elif embedding_digest is None:
-            fallback_reason = f"Modelo de embedding ausente em {settings.ollama.embedding_model}."
+        available_models = await _fetch_vllm_models(settings.vllm.url)
+        if settings.vllm.model not in available_models:
+            fallback_reason = f"Modelo de chat ausente: {settings.vllm.model}."
+        elif settings.vllm.embedding_model not in available_models:
+            fallback_reason = f"Modelo de embedding ausente: {settings.vllm.embedding_model}."
 
         if fallback_reason is None:
             await chat_runtime_value.complete(
@@ -252,44 +263,33 @@ async def probe_ollama_runtime(
         fallback_reason = str(exc)
 
     elapsed_ms = int((time.perf_counter() - started_at) * 1000)
-    mode = RuntimeMode.OLLAMA if fallback_reason is None else RuntimeMode.FALLBACK
+    mode = RuntimeMode.VLLM if fallback_reason is None else RuntimeMode.FALLBACK
     return AiRuntimeProbe(
-        provider="ollama",
-        model=settings.ollama.model,
+        provider="vllm",
+        model=settings.vllm.model,
         mode=mode,
         latency_ms=elapsed_ms,
         checked_at=checked_at,
         fallback_reason=fallback_reason,
-        embedding_model=settings.ollama.embedding_model,
+        embedding_model=settings.vllm.embedding_model,
         embedding_mode=mode,
         embedding_latency_ms=elapsed_ms if fallback_reason is None else None,
-        chat_digest=chat_digest,
-        embedding_digest=embedding_digest,
+        chat_digest=None,
+        embedding_digest=None,
     )
 
 
-async def _fetch_ollama_inventory(url: str) -> dict[str, dict[str, Any]]:
-    base_url = url.rstrip("/")
+async def _fetch_vllm_models(base_url: str) -> list[str]:
+    url = base_url.rstrip("/") + "/models"
     async with httpx.AsyncClient(timeout=5.0) as client:
-        response = await client.get(f"{base_url}/api/tags")
+        response = await client.get(url)
         response.raise_for_status()
         payload = response.json()
 
-    models: dict[str, dict[str, Any]] = {}
-    for item in payload.get("models", []) if isinstance(payload, dict) else []:
-        if not isinstance(item, dict):
-            continue
-        name = item.get("name") or item.get("model")
-        if not isinstance(name, str) or not name.strip():
-            continue
-        models[name.strip()] = item
+    models: list[str] = []
+    for item in payload.get("data", []) if isinstance(payload, dict) else []:
+        if isinstance(item, dict):
+            model_id = item.get("id")
+            if isinstance(model_id, str) and model_id.strip():
+                models.append(model_id.strip())
     return models
-
-
-def _extract_model_digest(inventory: dict[str, dict[str, Any]], model_name: str) -> str | None:
-    candidate = inventory.get(model_name)
-    if candidate is None:
-        return None
-
-    digest = candidate.get("digest") or candidate.get("sha256") or candidate.get("model")
-    return digest if isinstance(digest, str) and digest.strip() else None

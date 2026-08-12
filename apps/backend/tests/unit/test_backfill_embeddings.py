@@ -151,17 +151,17 @@ async def test_backfill_embeddings_is_dry_run_capable_and_idempotent(
 
     async def _fake_probe(_settings):
         return AiRuntimeProbe(
-            provider="ollama",
-            model="qwen2.5:1.5b-instruct-q4_K_M",
-            mode=RuntimeMode.OLLAMA,
+            provider="vllm",
+            model="Qwen/Qwen2.5-0.5B-Instruct",
+            mode=RuntimeMode.VLLM,
             latency_ms=5,
             checked_at="2026-07-23T15:00:00Z",
             fallback_reason=None,
-            embedding_model="nomic-embed-text:v1.5",
-            embedding_mode=RuntimeMode.OLLAMA,
+            embedding_model="BAAI/bge-small-en-v1.5",
+            embedding_mode=RuntimeMode.VLLM,
             embedding_latency_ms=5,
-            chat_digest="chat-digest",
-            embedding_digest="embedding-digest",
+            chat_digest=None,
+            embedding_digest=None,
         )
 
     def _fake_update_embedding_sql(table_name: str, column_name: str, row_id: str, embedding: tuple[float, ...]):
@@ -170,15 +170,15 @@ async def test_backfill_embeddings_is_dry_run_capable_and_idempotent(
 
     monkeypatch.setattr(backfill_embeddings, "legacy_tables", tables.as_mapping())
     monkeypatch.setattr(backfill_embeddings, "generate_embedding", _fake_generate_embedding)
-    monkeypatch.setattr(backfill_embeddings, "probe_ollama_runtime", _fake_probe)
+    monkeypatch.setattr(backfill_embeddings, "probe_ai_runtime", _fake_probe)
     monkeypatch.setattr(backfill_embeddings, "update_embedding_sql", _fake_update_embedding_sql)
 
     settings = load_settings(
         {
             "DATABASE_URL": "postgresql://test-user:test-pass@localhost:5432/silo",
-            "OLLAMA_URL": "http://ollama.local:11434",
-            "OLLAMA_MODEL": "qwen2.5:1.5b-instruct-q4_K_M",
-            "OLLAMA_EMBEDDING_MODEL": "nomic-embed-text:v1.5",
+            "VLLM_URL": "http://vllm.local:8000/v1",
+            "VLLM_MODEL": "Qwen/Qwen2.5-0.5B-Instruct",
+            "VLLM_EMBEDDING_MODEL": "BAAI/bge-small-en-v1.5",
         }
     )
 

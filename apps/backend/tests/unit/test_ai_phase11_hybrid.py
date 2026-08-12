@@ -99,7 +99,7 @@ def _fake_runtime_context(
     mode: str = "deterministic",
 ) -> AgentRuntimeContext:
     fake_settings = SimpleNamespace(
-        ollama=SimpleNamespace(
+        vllm=SimpleNamespace(
             model="mistral",
             embedding_model="nomic-embed-text:v1.5",
             timeout_ms=30_000,

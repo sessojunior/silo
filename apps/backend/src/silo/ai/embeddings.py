@@ -5,7 +5,7 @@ from typing import Final
 
 from sqlalchemy import text
 
-from silo.ai.assistant_runtime import OllamaEmbeddingRuntime
+from silo.ai.assistant_runtime import create_embedding_runtime
 from silo.ai.ports import EmbeddingPort
 from silo.config import load_settings
 
@@ -75,7 +75,7 @@ def update_embedding_sql(
 def get_embedding_provider() -> EmbeddingPort:
     global _embedding_provider
     if _embedding_provider is None:
-        _embedding_provider = OllamaEmbeddingRuntime(load_settings().ollama)
+        _embedding_provider = create_embedding_runtime(load_settings())
     return _embedding_provider
 
 

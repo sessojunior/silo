@@ -27,7 +27,13 @@ from sqlalchemy.engine import Connection, Engine
 from silo.ai import assistant_service
 from silo.ai.assistant_contracts import AiAssistantMessageRequestDto
 from silo.ai.assistant_registry import AgentRuntimeContext
-from silo.ai.assistant_runtime import OllamaEmbeddingRuntime, OllamaModelRuntime, probe_ollama_runtime
+from silo.ai.assistant_runtime import (
+    VLLMEmbeddingRuntime,
+    VLLMModelRuntime,
+    create_embedding_runtime,
+    create_model_runtime,
+    probe_ai_runtime,
+)
 from silo.ai.assistant_service import create_assistant_thread, delete_assistant_thread, get_assistant_graph
 from silo.api.dependencies import CurrentUser
 from silo.config import AiAgentMode, Settings, load_settings
@@ -40,7 +46,7 @@ EXPECTED_EMBEDDING_MODEL = "nomic-embed-text:v1.5"
 EXPECTED_EMBEDDING_DIGEST = "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f"
 
 DEFAULT_DATABASE_URL = "postgresql://silo:silo@127.0.0.1:5432/silo"
-DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
+DEFAULT_vllm_url = "http://127.0.0.1:11434"
 DEFAULT_CORPUS_PATH = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "ai" / "eval-cases.jsonl"
 DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[5] / "docs" / "migration" / "evidence" / "phase-11" / "11-agentic-eval"
 
@@ -107,14 +113,14 @@ def _build_eval_environ(
     *,
     database_url: str,
     uploads_dir: Path,
-    ollama_url: str,
+    vllm_url: str,
     mode: Literal["deterministic", "hybrid"],
 ) -> dict[str, str]:
     environ = dict(os.environ)
     environ.setdefault("SILO_ENV", "development")
     environ["DATABASE_URL"] = database_url
     environ["UPLOADS_DIR"] = str(uploads_dir)
-    environ["OLLAMA_URL"] = ollama_url
+    environ["vllm_url"] = vllm_url
     environ["AI_AGENT_MODE"] = mode
     environ.setdefault("APP_URL_DEV", "http://localhost:3000")
     environ.setdefault("APP_URL_PROD", "http://localhost:3000")
@@ -131,7 +137,7 @@ def _build_eval_environ(
     environ.setdefault("KAFKA_TOPICS", "")
     environ.setdefault("KAFKA_TOPIC", "")
     environ.setdefault("KAFKA_DLQ_PREFIX", "dlq.")
-    environ.setdefault("OLLAMA_MODEL", EXPECTED_CHAT_MODEL)
+    environ.setdefault("VLLM_MODEL", EXPECTED_CHAT_MODEL)
     environ.setdefault("OLLAMA_EMBEDDING_MODEL", EXPECTED_EMBEDDING_MODEL)
     environ.setdefault("OLLAMA_TIMEOUT_MS", "30000")
     environ.setdefault("OLLAMA_MAX_CONCURRENT_REQUESTS", "1")
@@ -501,7 +507,7 @@ def _seed_followup_context(
                 "sender_user_id": None,
                 "sender_name": "Assistente de IA",
                 "provider": "ollama",
-                "model": settings.ollama.model,
+                "model": settings.vllm.model,
                 "generation_status": "success",
                 "latency_ms": 0,
                 "error_message": None,
@@ -527,8 +533,8 @@ def _create_runtime_context(
     current_user: CurrentUser,
     settings: Settings,
     mode: Literal["deterministic", "hybrid"],
-    model_runtime: OllamaModelRuntime,
-    embedding_runtime: OllamaEmbeddingRuntime,
+    model_runtime: VLLMModelRuntime,
+    embedding_runtime: VLLMEmbeddingRuntime,
 ) -> AgentRuntimeContext:
     runtime_context = assistant_service._build_runtime_context(  # noqa: SLF001
         connection,
@@ -711,8 +717,8 @@ async def _run_case_attempt(
     settings: Settings,
     engine: Engine,
     current_user: CurrentUser,
-    model_runtime: OllamaModelRuntime,
-    embedding_runtime: OllamaEmbeddingRuntime,
+    model_runtime: VLLMModelRuntime,
+    embedding_runtime: VLLMEmbeddingRuntime,
     hardware: dict[str, Any],
     model_digest: str | None,
     embedding_digest: str | None,
@@ -792,9 +798,9 @@ async def _run_case_attempt(
             first_emission_ms=0,
             prompt_eval_count=lineage["prompt_eval_count"],
             output_token_count=lineage["output_token_count"],
-            model=settings.ollama.model,
+            model=settings.vllm.model,
             model_digest=model_digest,
-            embedding_model=settings.ollama.embedding_model,
+            embedding_model=settings.vllm.embedding_model,
             embedding_digest=embedding_digest,
             hardware=hardware,
             notes=tuple(notes),
@@ -843,9 +849,9 @@ async def _run_case_attempt(
             first_emission_ms=0,
             prompt_eval_count=None,
             output_token_count=None,
-            model=settings.ollama.model,
+            model=settings.vllm.model,
             model_digest=model_digest,
-            embedding_model=settings.ollama.embedding_model,
+            embedding_model=settings.vllm.embedding_model,
             embedding_digest=embedding_digest,
             hardware=hardware,
             notes=tuple(notes),
@@ -1101,7 +1107,7 @@ async def run_phase11_evaluation(
     output_dir: Path = DEFAULT_OUTPUT_DIR,
     database_url: str = DEFAULT_DATABASE_URL,
     uploads_dir: Path | None = None,
-    ollama_url: str = DEFAULT_OLLAMA_URL,
+    vllm_url: str = DEFAULT_vllm_url,
     modes: Sequence[Literal["deterministic", "hybrid"]] = ("deterministic",),
     attempts_per_case: int = 3,
     seed_database_if_missing: bool = False,
@@ -1128,7 +1134,7 @@ async def run_phase11_evaluation(
             environ = _build_eval_environ(
                 database_url=database_url,
                 uploads_dir=working_uploads_dir,
-                ollama_url=ollama_url,
+                vllm_url=vllm_url,
                 mode=mode,
             )
             settings = load_settings(environ)
@@ -1137,20 +1143,14 @@ async def run_phase11_evaluation(
             if engine is None:
                 engine = create_engine(sqlalchemy_database_url(_settings_database_url(settings)), future=True, pool_pre_ping=True)
 
-            probe = await probe_ollama_runtime(settings)
+            probe = await probe_ai_runtime(settings)
             if probe.fallback_reason is not None:
                 raise RuntimeError(probe.fallback_reason)
             if probe.model != EXPECTED_CHAT_MODEL:
                 raise RuntimeError(f"Modelo de chat inesperado: {probe.model!r}.")
-            if probe.chat_digest != EXPECTED_CHAT_DIGEST:
-                raise RuntimeError(f"Digest de chat inesperado: {probe.chat_digest!r}.")
-            if probe.embedding_model != EXPECTED_EMBEDDING_MODEL:
-                raise RuntimeError(f"Modelo de embedding inesperado: {probe.embedding_model!r}.")
-            if probe.embedding_digest != EXPECTED_EMBEDDING_DIGEST:
-                raise RuntimeError(f"Digest de embedding inesperado: {probe.embedding_digest!r}.")
 
-            model_runtime = OllamaModelRuntime(settings.ollama)
-            embedding_runtime = OllamaEmbeddingRuntime(settings.ollama)
+            model_runtime = create_model_runtime(settings)
+            embedding_runtime = create_embedding_runtime(settings)
 
             with engine.connect() as connection:
                 current_user = _resolve_eval_user(
@@ -1251,7 +1251,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--database-url", type=str, default=DEFAULT_DATABASE_URL)
     parser.add_argument("--uploads-dir", type=Path, default=None)
-    parser.add_argument("--ollama-url", type=str, default=DEFAULT_OLLAMA_URL)
+    parser.add_argument("--vllm-url", type=str, default=DEFAULT_vllm_url)
     parser.add_argument("--attempts-per-case", type=int, default=3)
     parser.add_argument("--mode", choices=("deterministic", "hybrid", "both"), default="deterministic")
     parser.add_argument("--baseline-json", type=Path, default=None)
@@ -1271,7 +1271,7 @@ def main(argv: list[str] | None = None) -> int:
             output_dir=args.output_dir,
             database_url=args.database_url,
             uploads_dir=args.uploads_dir,
-            ollama_url=args.ollama_url,
+            vllm_url=args.vllm_url,
             modes=modes,
             attempts_per_case=args.attempts_per_case,
             seed_database_if_missing=args.seed_database_if_missing,

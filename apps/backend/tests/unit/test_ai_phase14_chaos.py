@@ -40,7 +40,7 @@ def _make_settings(tmp_path) -> object:
             "SESSION_SECRET": "session-secret",
             "ALLOWED_EMAIL_DOMAINS": "example.test",
             "APP_URL_DEV": "http://localhost:3000",
-            "OLLAMA_URL": "http://localhost:11434",
+            "VLLM_URL": "http://localhost:8000/v1",
             "UPLOADS_DIR": str(tmp_path / "uploads"),
         }
     )
@@ -59,17 +59,14 @@ def _make_response() -> AiAssistantMessageResponseDto:
 
 
 @pytest.mark.asyncio
-async def test_probe_ollama_runtime_reports_success_when_inventory_and_runtime_are_ok(
+async def test_probe_vllm_runtime_reports_success_when_models_are_available(
     tmp_path, monkeypatch
 ) -> None:
     settings = _make_settings(tmp_path)
     calls: list[str] = []
 
-    async def fake_inventory(_url: str) -> dict[str, dict[str, object]]:
-        return {
-            settings.ollama.model: {"digest": "sha256:chat"},
-            settings.ollama.embedding_model: {"digest": "sha256:embed"},
-        }
+    async def fake_models(_url: str) -> list[str]:
+        return [settings.vllm.model, settings.vllm.embedding_model]
 
     class FakeChatRuntime:
         async def complete(self, messages):
@@ -82,32 +79,30 @@ async def test_probe_ollama_runtime_reports_success_when_inventory_and_runtime_a
             calls.append(text)
             return tuple(0.5 for _ in range(assistant_runtime.EMBEDDING_VECTOR_SIZE))
 
-    monkeypatch.setattr(assistant_runtime, "_fetch_ollama_inventory", fake_inventory)
+    monkeypatch.setattr(assistant_runtime, "_fetch_vllm_models", fake_models)
 
-    probe = await assistant_runtime.probe_ollama_runtime(
+    probe = await assistant_runtime.probe_vllm_runtime(
         settings,
         clock=FrozenClock(datetime(2026, 7, 22, 12, 0, tzinfo=UTC)),
         chat_runtime=FakeChatRuntime(),
         embedding_runtime=FakeEmbeddingRuntime(),
     )
 
-    assert probe.mode == RuntimeMode.OLLAMA
+    assert probe.mode == RuntimeMode.VLLM
     assert probe.fallback_reason is None
-    assert probe.chat_digest == "sha256:chat"
-    assert probe.embedding_digest == "sha256:embed"
-    assert probe.embedding_mode == RuntimeMode.OLLAMA
+    assert probe.embedding_mode == RuntimeMode.VLLM
     assert calls == ["chat", "probe"]
 
 
 @pytest.mark.asyncio
-async def test_probe_ollama_runtime_falls_back_when_embedding_model_is_missing(
+async def test_probe_vllm_runtime_falls_back_when_embedding_model_is_missing(
     tmp_path,
     monkeypatch,
 ) -> None:
     settings = _make_settings(tmp_path)
 
-    async def fake_inventory(_url: str) -> dict[str, dict[str, object]]:
-        return {settings.ollama.model: {"digest": "sha256:chat"}}
+    async def fake_models(_url: str) -> list[str]:
+        return [settings.vllm.model]
 
     class FakeChatRuntime:
         async def complete(self, _messages):  # pragma: no cover - should not be called
@@ -117,9 +112,9 @@ async def test_probe_ollama_runtime_falls_back_when_embedding_model_is_missing(
         async def embed(self, _text):  # pragma: no cover - should not be called
             raise AssertionError("embedding runtime should not be called on fallback")
 
-    monkeypatch.setattr(assistant_runtime, "_fetch_ollama_inventory", fake_inventory)
+    monkeypatch.setattr(assistant_runtime, "_fetch_vllm_models", fake_models)
 
-    probe = await assistant_runtime.probe_ollama_runtime(
+    probe = await assistant_runtime.probe_vllm_runtime(
         settings,
         clock=FrozenClock(datetime(2026, 7, 22, 12, 0, tzinfo=UTC)),
         chat_runtime=FakeChatRuntime(),
@@ -130,17 +125,17 @@ async def test_probe_ollama_runtime_falls_back_when_embedding_model_is_missing(
     assert probe.embedding_mode == RuntimeMode.FALLBACK
     assert (
         probe.fallback_reason
-        == f"Modelo de embedding ausente em {settings.ollama.embedding_model}."
+        == f"Modelo de embedding ausente: {settings.vllm.embedding_model}."
     )
     assert probe.embedding_latency_ms is None
 
 
 @pytest.mark.asyncio
-async def test_probe_ollama_runtime_falls_back_on_inventory_timeout(tmp_path, monkeypatch) -> None:
+async def test_probe_vllm_runtime_falls_back_on_inventory_timeout(tmp_path, monkeypatch) -> None:
     settings = _make_settings(tmp_path)
 
-    async def fake_inventory(_url: str) -> dict[str, dict[str, object]]:
-        raise httpx.ReadTimeout("ollama timed out")
+    async def fake_models(_url: str) -> list[str]:
+        raise httpx.ReadTimeout("vllm timed out")
 
     class FakeChatRuntime:
         async def complete(self, _messages):  # pragma: no cover - should not be called
@@ -150,9 +145,9 @@ async def test_probe_ollama_runtime_falls_back_on_inventory_timeout(tmp_path, mo
         async def embed(self, _text):  # pragma: no cover - should not be called
             raise AssertionError("embedding runtime should not be called on timeout fallback")
 
-    monkeypatch.setattr(assistant_runtime, "_fetch_ollama_inventory", fake_inventory)
+    monkeypatch.setattr(assistant_runtime, "_fetch_vllm_models", fake_models)
 
-    probe = await assistant_runtime.probe_ollama_runtime(
+    probe = await assistant_runtime.probe_vllm_runtime(
         settings,
         clock=FrozenClock(datetime(2026, 7, 22, 12, 0, tzinfo=UTC)),
         chat_runtime=FakeChatRuntime(),

@@ -30,12 +30,15 @@ class _FakeConnection:
     def __init__(self) -> None:
         self.transaction = _FakeTransaction()
         self.statements: list[str] = []
+        self.params: list[dict[str, object]] = []
 
     def begin(self) -> _FakeTransaction:
         return self.transaction
 
-    def execute(self, statement):  # type: ignore[no-untyped-def]
+    def execute(self, statement, params=None, **kwargs):  # type: ignore[no-untyped-def]
         self.statements.append(str(statement))
+        if params is not None:
+            self.params.append(dict(params) if isinstance(params, dict) else {})
         return None
 
 
@@ -93,7 +96,10 @@ def test_run_repeatable_read_snapshot_rolls_back_on_success_and_failure() -> Non
     assert result == "ok"
     assert connection.transaction.rollback_calls == 1
     assert any("REPEATABLE READ READ ONLY" in statement for statement in connection.statements)
-    assert any("1234ms" in statement for statement in connection.statements)
+    assert any(
+        params.get("timeout") == "1234ms"
+        for params in connection.params
+    )
 
     failure_connection = _FakeConnection()
 

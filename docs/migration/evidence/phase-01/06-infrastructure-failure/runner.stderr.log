@@ -1,5 +1,0 @@
-[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
-Error: phase1_6.infrastructure.auth.login_password_db_unavailable expected status 503 but got 429
-    at runCase (file:///D:/Projects/silo/silo-sessojunior/tests/contracts/legacy/runner.mjs:415:13)
-    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-    at async main (file:///D:/Projects/silo/silo-sessojunior/tests/contracts/legacy/runner.mjs:487:5)

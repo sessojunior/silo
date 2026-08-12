@@ -47,7 +47,7 @@ async def test_initialize_ollama_waits_pulls_and_returns_probe_result(
             embedding_digest="sha-embed",
         )
 
-    monkeypatch.setattr("silo.ai.ollama_init.probe_ollama_runtime", _fake_probe)
+    monkeypatch.setattr("silo.ai.ollama_init.probe_ai_runtime", _fake_probe)
 
     with respx.mock(assert_all_called=True) as mock:
         mock.get("http://ollama.local:11434/api/tags").mock(
@@ -108,7 +108,7 @@ async def test_initialize_ollama_and_helpers_cover_error_branches(
             embedding_digest="sha-embed",
         )
 
-    monkeypatch.setattr("silo.ai.ollama_init.probe_ollama_runtime", _fallback_probe)
+    monkeypatch.setattr("silo.ai.ollama_init.probe_ai_runtime", _fallback_probe)
 
     with monkeypatch.context() as local_monkeypatch:
         perf_values = [0.0, 0.5, 1.1]

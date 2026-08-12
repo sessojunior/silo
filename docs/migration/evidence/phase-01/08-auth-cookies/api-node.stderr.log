@@ -1,8 +1,0 @@
-[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
-[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
-[SILO_CONTRACT] determinism installed now=2026-07-21T15:00:00.000Z tz=America/Sao_Paulo
-2026-07-21T15:00:00.000Z ERROR [Better Auth]: Provider not found. Make sure to add the provider in your auth config { provider: 'google' }
-2026-07-21T15:00:00.000Z ERROR [Better Auth]: Failed to parse state [StateError [BetterAuthError]: State mismatch: auth state cookie not found] {
-  code: 'state_mismatch',
-  details: { state: 'contract-state' }
-}

@@ -1,130 +1,494 @@
-# Silo
+﻿# SILO — Sistema de Gerenciamento de Produtos Industriais
 
-SILO é dividido em dois apps executáveis:
+O **SILO** é um sistema web que ajuda equipes a organizar, monitorar e tomar decisões sobre produtos e serviços técnicos. Ele centraliza informações sobre produtos, incidentes, projetos e indicadores em um único lugar, e oferece um **assistente com inteligência artificial** que responde perguntas, gera relatórios e cria gráficos automaticamente.
 
-- `apps/backend`: backend Python com FastAPI
-- `apps/frontend`: frontend Next.js
+Desenvolvido para o **CPTEC/INPE**, o SILO resolve um problema comum em organizações técnicas: o conhecimento fica espalhado entre pessoas, planilhas e sistemas diferentes. O SILO unifica tudo isso e ainda oferece uma camada de IA que entende o contexto da operação. **Tudo roda localmente — nenhum dado sai do servidor.**
 
-A raiz contém apenas orquestração (Docker Compose, CI/CD, scripts de segurança/deploy) e pacotes compartilhados.
-Não há `package.json` na raiz — cada app gerencia suas próprias dependências.
+---
 
-## Como iniciar
+## O que o SILO faz
 
-### Backend
+- **Catálogo de produtos:** Cadastra produtos e serviços com dependências, responsáveis e documentação.
+- **Gestão de incidentes:** Registra problemas operacionais, acompanha resolução e analisa tendências.
+- **Kanban de projetos:** Organiza atividades em quadros com prioridades, prazos e responsáveis.
+- **Dashboard e relatórios:** Visualiza indicadores, disponibilidade e saúde dos produtos.
+- **Assistente de IA:** Chat que responde perguntas sobre a operação, gera gráficos, relatórios em PDF e busca informações nos dados do sistema.
+- **Busca semântica:** Encontra informações por significado, não apenas por palavras-chave.
 
-```powershell
-cd apps/backend
-uv sync --locked --all-groups
-uv run --locked uvicorn silo.api.main:app --reload --host 0.0.0.0 --port 4000
+---
+
+## Tecnologias
+
+| Camada | Tecnologia |
+|---|---|
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS |
+| **Backend** | Python 3.13, FastAPI, SQLAlchemy, Alembic, Pydantic |
+| **Banco de dados** | PostgreSQL + pgvector (para busca semântica) |
+| **IA — Orquestração** | LangChain + LangGraph (agentes, ferramentas, RAG) |
+| **IA — Servidor de modelos** | vLLM (OpenAI-compatible, PagedAttention, continuous batching) |
+| **IA — Modelos** | Qwen2.5 0.5B (chat) + BGE-small (embeddings) |
+| **Mensageria** | Kafka REST Proxy (dados de data-flow) |
+| **Infraestrutura** | Docker Compose (6 serviços) |
+
+---
+
+## Antes de começar
+
+Você precisa ter instalado:
+
+- **Docker** e **Docker Compose** — para rodar todos os serviços
+- **Git** — para clonar o repositório
+- Pelo menos **6 GB de RAM** livres (banco + modelo de IA)
+- **Windows**, **macOS** ou **Linux**
+- **Opcional mas recomendado:** GPU NVIDIA com 4+ GB de VRAM (para acelerar a IA)
+
+> Para desenvolvimento fora do Docker: **Node.js 22+**, **npm 10+**, **Python 3.13** com **uv**.
+
+---
+
+## ⚡ Começo rápido (com Docker)
+
+### 1. Clone o repositório
+
+```bash
+git clone <url-do-repositorio>
+cd silo
 ```
 
-### Frontend
+### 2. Configure o ambiente
 
-```powershell
+```bash
+cp env.example .env
+```
+
+Edite o `.env` com estes valores mínimos:
+
+```env
+# Banco de dados
+DATABASE_URL=postgresql://silo:silo@db:5432/silo
+POSTGRES_DB=silo
+POSTGRES_USER=silo
+POSTGRES_PASSWORD=silo
+
+# Segredos (gere valores únicos)
+BETTER_AUTH_SECRET=um_valor_secreto
+SESSION_SECRET=outro_valor_secreto
+
+# IA
+AI_AGENT_MODE=deterministic
+```
+
+### 3. Suba a stack
+
+```bash
+docker compose up -d --build
+```
+
+Na primeira execução, o Docker vai:
+1. Baixar as imagens (PostgreSQL, vLLM)
+2. Construir as imagens do backend e frontend
+3. Criar o banco de dados e rodar migrations
+4. **Baixar o modelo de IA** (~400 MB) — o vLLM faz isso automaticamente no primeiro boot
+5. Iniciar todos os serviços
+
+### 4. Acompanhe o progresso
+
+```bash
+docker compose logs -f vllm api
+```
+
+O vLLM mostra `Uvicorn running on http://0.0.0.0:8000` quando o modelo estiver carregado.
+O backend mostra `Uvicorn running on http://0.0.0.0:4000` quando estiver pronto.
+
+### 5. Acesse
+
+Abra **http://localhost** no navegador (porta 80).
+
+### 6. Verifique a saúde
+
+```bash
+docker compose ps
+```
+
+Todos os serviços devem estar com status `healthy` ou `Up`. O serviço `migrate` aparece como `exited (0)` — é normal (executa uma tarefa e encerra).
+
+---
+
+## Como o sistema funciona
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                     Docker Compose                        │
+├──────────────────────────────────────────────────────────┤
+│                                                           │
+│  ┌─────────┐   ┌──────────┐   ┌───────────────────────┐ │
+│  │   db    │   │  vllm    │   │         api           │ │
+│  │ :5432   │   │  :8000   │   │         :4000         │ │
+│  │PostgreSQL│  │ Qwen 0.5B│   │  FastAPI + LangChain  │ │
+│  │+pgvector│   │  OpenAI  │   │  + LangGraph          │ │
+│  └────┬────┘   │  API     │   └───────────┬───────────┘ │
+│       │        └────┬─────┘               │              │
+│       │             │                     │              │
+│       │     ChatOpenAI(base_url=          │              │
+│       │    "http://vllm:8000/v1")         │              │
+│       │             └─────────────────────┘              │
+│       │                                                 │
+│       └─────────────────────────────────┘                │
+│               SQLAlchemy (banco)                         │
+│                                                           │
+│  ┌──────────┐   ┌─────────────────────────────────────┐ │
+│  │  worker  │   │  web (:80) → Next.js                 │ │
+│  │  Kafka   │   │  Servidor web + proxy                │ │
+│  │consumer  │   │  http://localhost                     │ │
+│  └──────────┘   └─────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Ordem de inicialização
+
+1. **db** — Banco PostgreSQL + pgvector
+2. **vllm** — Servidor de IA (baixa o modelo no primeiro boot)
+3. **migrate** — Cria/atualiza tabelas do banco e encerra
+4. **api** — Backend FastAPI (depende de db + vllm)
+5. **worker** — Processa mensagens do Kafka
+6. **web** — Frontend Next.js (depende da API)
+
+### Por que dois arquivos docker-compose?
+
+O projeto tem dois arquivos de orquestração com propósitos diferentes:
+
+| | `docker-compose.yml` | `docker-compose.deploy.yml` |
+|---|---|---|
+| **Quando usar** | Desenvolvimento local | Deploy em produção |
+| **Como constrói** | Compila imagens na hora (`build:`) | Usa imagens prontas do registry (`image:`) |
+| **Banco de dados** | Container PostgreSQL incluso | Banco externo (gerenciado separadamente) |
+| **Frontend** | Container `web` incluso | Servido por proxy/Nginx externo |
+| **Serviços** | 6 (db, vllm, migrate, api, worker, web) | 4 (vllm, migrate, api, worker) |
+| **Comando** | `docker compose up -d --build` | `docker compose -f docker-compose.deploy.yml up -d` |
+
+**Por que separar?** O deploy nunca deve compilar código no servidor — ele usa a imagem já testada e publicada. E o banco de produção precisa de backup, réplicas e monitoramento que um container simples não oferece. Já no desenvolvimento, tudo é self-contained para subir com um comando.
+
+---
+
+## Parar e reiniciar
+
+```bash
+# Desenvolvimento (docker-compose.yml)
+docker compose down                          # Parar mantendo dados
+docker compose down -v                       # Parar e apagar tudo
+docker compose up -d --build                 # Subir novamente
+docker compose up -d --build api             # Reconstruir só a API
+
+# Produção (docker-compose.deploy.yml)
+docker compose -f docker-compose.deploy.yml up -d      # Subir com imagem pronta
+docker compose -f docker-compose.deploy.yml down       # Parar
+docker compose -f docker-compose.deploy.yml ps         # Status
+docker compose -f docker-compose.deploy.yml logs -f    # Logs
+```
+
+---
+
+## Desenvolvimento (sem Docker)
+
+Para hot-reload, rode infraestrutura no Docker e o código diretamente:
+
+### Terminal 1 — Banco de dados + vLLM
+
+```bash
+docker compose up -d db vllm
+docker compose run --rm migrate
+```
+
+### Terminal 2 — Backend Python
+
+```bash
+cd apps/backend
+uv sync --locked --all-groups
+uv run uvicorn silo.api.main:app --reload --host 0.0.0.0 --port 4000
+```
+
+No `.env`:
+
+```env
+DATABASE_URL=postgresql://silo:silo@localhost:5432/silo
+VLLM_URL=http://localhost:8000/v1
+```
+
+### Terminal 3 — Frontend Next.js
+
+```bash
 cd apps/frontend
 npm install
 npm run dev
 ```
 
-## Endereços locais
+No `.env`:
 
-- Frontend: `http://localhost:3000/silo`
-- Backend: `http://localhost:4000`
-- Documentação da API: `http://localhost:4000/docs`
+```env
+API_URL=http://localhost:4000
+NEXT_PUBLIC_API_ORIGIN=http://localhost:4000
+```
 
-Se `NEXT_PUBLIC_BASE_PATH` for alterado para `/`, a URL do frontend passa a ser `http://localhost:3000`.
+### Endereços
 
-## Comandos
+| Serviço | URL |
+|---|---|
+| Frontend | `http://localhost:3000/silo` |
+| Backend API | `http://localhost:4000` |
+| Documentação da API | `http://localhost:4000/docs` |
+| vLLM (API OpenAI) | `http://localhost:8000` |
+| vLLM (modelos) | `http://localhost:8000/v1/models` |
+| Banco de dados | `localhost:5432` |
+
+---
+
+## Estrutura do projeto
+
+```
+silo/
+├── apps/
+│   ├── frontend/          # Next.js — interface, route handlers, Server Actions
+│   │   └── src/
+│   │       ├── app/       # Rotas (App Router)
+│   │       ├── components/# Componentes React
+│   │       ├── hooks/     # Hooks personalizados
+│   │       ├── lib/       # Configurações, auth, utilitários
+│   │       └── types/     # Tipos TypeScript
+│   └── backend/           # FastAPI/Python — API, IA, worker, migrations
+│       └── src/silo/
+│           ├── api/       # Rotas, middleware, schemas
+│           ├── ai/        # Assistente IA (LangGraph, ferramentas)
+│           ├── auth/      # Autenticação (OTP, OAuth, sessões)
+│           ├── db/        # Modelos SQLAlchemy, migrations
+│           ├── worker/    # Consumer Kafka
+│           └── config.py  # Configuração centralizada (Pydantic)
+├── packages/
+│   ├── engine/            # @silo/engine — tipos e utilitários
+│   └── config/            # ESLint, TypeScript, Tailwind
+├── scripts/               # Deploy, carga, segurança
+├── docs/                  # Documentação completa
+└── docker-compose.yml     # Stack principal
+```
+
+---
+
+## Comandos úteis
 
 ### Frontend
 
 ```bash
 cd apps/frontend
-npm install               # Instalar dependências
-npm run dev               # Dev server
-npm run build             # Build de produção
-npm run start             # Iniciar build standalone
-npm run lint              # ESLint
-npm test                  # Vitest
-npm run typecheck         # TypeScript --noEmit
+npm install                 # Instalar dependências
+npm run dev                 # Desenvolvimento (hot-reload)
+npm run build               # Build de produção
+npm run lint                # ESLint
+npm test                    # Vitest
+npm run typecheck           # TypeScript
 ```
 
 ### Backend
 
 ```bash
 cd apps/backend
-uv sync --locked --all-groups                                       # Instalar dependências
-uv run --locked ruff format --check .                               # Formatar
-uv run --locked ruff check .                                        # Lint
-uv run --locked mypy src                                            # Typecheck
-uv run --locked pytest -q                                           # Testes
-uv run --locked pytest -q --cov=silo --cov-report=term-missing --cov-report=json:coverage.json  # Cobertura
-uv run --locked python scripts/check_coverage_thresholds.py coverage.json  # Gate cobertura
-uv run --locked silo-openapi-export --check                         # Validar OpenAPI
-uv audit --locked --no-dev                                          # Auditar deps
-```
-
-### Banco de dados
-
-```bash
-cd apps/backend
-uv run --locked silo-db-schema-capture   # Capturar schema
-uv run --locked silo-db-migrate          # Migrar
-uv run --locked silo-db-seed             # Popular
-```
-
-### Segurança
-
-```bash
-node scripts/security/check-node-audit.mjs    # Audita vulnerabilidades npm e bloqueia CI se novas high/critical aparecerem
-node scripts/security/generate-sbom.mjs       # Gera inventário CycloneDX de todas as dependências (SBOM)
-```
-
-### Carga
-
-```bash
-node scripts/load/run-http-benchmark.mjs      # Dispara tráfego real nos endpoints da API por 5 min e mede latência/erros
-node scripts/load/run-soak-benchmark.mjs      # O mesmo por 24 h — detecta vazamento de memória e degradação lenta
-```
-
-### Deploy
-
-```bash
-node scripts/deploy/cutover-runbook.mjs preflight   # Verifica pré-condições do deploy
-node scripts/deploy/cutover-runbook.mjs rehearsal   # Ensaios em staging
-node scripts/deploy/cutover-runbook.mjs cutover     # Executa o corte real Node → Python (16 passos)
-node scripts/deploy/cutover-runbook.mjs rollback    # Reverte para o backend Node anterior
+uv sync --locked --all-groups              # Instalar dependências
+uv run --locked ruff check .               # Lint
+uv run --locked ruff format --check .      # Verificar formatação
+uv run --locked mypy src                   # Type check
+uv run --locked pytest -q                  # Testes
+uv run --locked silo-openapi-export        # OpenAPI
+uv run --locked silo-db-migrate            # Migrations
+uv run --locked silo-db-seed               # Dados iniciais
 ```
 
 ### Docker
 
 ```bash
-docker compose build
-docker compose up -d --build
-docker compose down
-docker compose ps
-docker compose logs -f
-docker compose -f docker-compose.deploy.yml config
-docker compose -f docker-compose.deploy.yml up -d --remove-orphans --wait --wait-timeout 300
+# Desenvolvimento
+docker compose up -d --build               # Subir stack completa
+docker compose ps                          # Status dos serviços
+docker compose logs -f vllm                # Logs do servidor de IA
+docker compose logs -f api                 # Logs do backend
+docker compose exec api bash               # Entrar no container
+docker compose down                        # Parar tudo
+
+# Produção (usa imagem pronta, sem build)
+docker compose -f docker-compose.deploy.yml up -d
+docker compose -f docker-compose.deploy.yml ps
+docker compose -f docker-compose.deploy.yml logs -f
 docker compose -f docker-compose.deploy.yml down
 ```
 
-## Estrutura
+### Segurança e carga
 
-```text
-silo/
-├── apps/
-│   ├── backend/   # FastAPI, worker e rotinas Python
-│   └── frontend/  # Next.js e UI do sistema
-├── packages/
-│   ├── engine/    # contratos e utilitários compartilhados
-│   └── config/    # configurações compartilhadas
-├── docs/          # documentação técnica e runbooks
-├── scripts/       # automações de segurança, deploy e carga
-└── docker-compose*.yml
+```bash
+node scripts/security/check-node-audit.mjs     # Auditar vulnerabilidades npm
+node scripts/security/generate-sbom.mjs        # Gerar SBOM CycloneDX
+node scripts/load/run-http-benchmark.mjs       # Teste de carga (5 min)
+node scripts/load/run-soak-benchmark.mjs       # Teste de estabilidade (24 h)
 ```
 
-## Observação
+### Deploy
 
-Os arquivos `docker-compose*.yml` ficam na raiz porque orquestram o stack inteiro.
-`docker-compose.yml` para desenvolvimento local e `docker-compose.deploy.yml` para o deploy.
+```bash
+node scripts/deploy/cutover-runbook.mjs preflight   # Pré-condições
+node scripts/deploy/cutover-runbook.mjs cutover     # Executar deploy
+node scripts/deploy/cutover-runbook.mjs rollback    # Reverter
+```
+
+---
+
+## Inteligência Artificial — como funciona
+
+O assistente de IA do SILO roda **inteiramente no seu servidor**. Nenhum dado é enviado para serviços externos.
+
+### Fluxo de uma pergunta
+
+1. **Você pergunta** algo no chat (ex: "Quais produtos tiveram incidentes esta semana?")
+2. O **LangGraph** decide quais ferramentas usar (buscar produtos, listar incidentes, gerar gráfico)
+3. As ferramentas consultam o banco de dados e preparam os dados
+4. O **vLLM** processa a pergunta com os dados coletados e formula a resposta
+5. A resposta aparece no chat, com gráficos e relatórios quando necessário
+
+### Tecnologias da IA
+
+```
+┌─────────────────────────────────────────┐
+│  LangGraph (orquestração)               │
+│  ┌───────────────────────────────────┐  │
+│  │ StateGraph, agentes, ferramentas, │  │
+│  │ RAG, memória, cache semântico     │  │
+│  └───────────────┬───────────────────┘  │
+│                  │                       │
+│  ┌───────────────▼───────────────────┐  │
+│  │ LangChain (langchain-openai)      │  │
+│  │ ChatOpenAI, OpenAIEmbeddings      │  │
+│  └───────────────┬───────────────────┘  │
+│                  │ HTTP :8000/v1         │
+│  ┌───────────────▼───────────────────┐  │
+│  │ vLLM (servidor de modelos)        │  │
+│  │ ┌─────────────────────────────┐   │  │
+│  │ │ Qwen2.5 0.5B (chat)        │   │  │
+│  │ │ BGE-small (embeddings)      │   │  │
+│  │ │ GPU ou CPU                  │   │  │
+│  │ └─────────────────────────────┘   │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+### Modelos utilizados
+
+| Modelo | Função | Tamanho |
+|---|---|---|
+| `Qwen/Qwen2.5-0.5B-Instruct` | Chat e raciocínio | ~400 MB |
+| `BAAI/bge-small-en-v1.5` | Busca semântica (embeddings) | ~130 MB |
+
+O modelo padrão é o **Qwen2.5 0.5B** — leve para rodar em CPU, capaz para perguntas operacionais.
+
+> Para produção com GPU, use um modelo maior: `VLLM_MODEL=Qwen/Qwen2.5-7B-Instruct` no `.env`. O vLLM suporta qualquer modelo do HuggingFace Hub.
+
+### Modos do assistente
+
+| Modo | Comportamento |
+|---|---|
+| `deterministic` | Respostas previsíveis. Ideal para produção. |
+| `hybrid` | Combina respostas determinísticas com geração criativa. |
+
+Definido em `AI_AGENT_MODE` no `.env`.
+
+---
+
+## GPU — configurando aceleração
+
+Com uma GPU NVIDIA, o vLLM entrega **10 a 20 vezes mais desempenho** que em CPU.
+
+### Pré-requisitos
+
+- GPU NVIDIA com 4+ GB de VRAM
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+- Drivers NVIDIA 525+
+
+### Ativar GPU
+
+Descomente o bloco `deploy` no serviço `vllm` do `docker-compose.yml`:
+
+```yaml
+vllm:
+  image: vllm/vllm-openai:v0.11.2
+  # ...
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+```
+
+### Escolhendo o modelo para sua GPU
+
+| VRAM | Modelo recomendado | Uso |
+|---|---|---|
+| 4 GB | `Qwen/Qwen2.5-0.5B-Instruct` (padrão) | Desenvolvimento |
+| 6 GB | `Qwen/Qwen2.5-1.5B-Instruct` | Testes |
+| 8 GB | `Qwen/Qwen2.5-3B-Instruct` | Produção leve |
+| 12 GB | `Qwen/Qwen2.5-7B-Instruct` | Produção |
+| 24+ GB | `Qwen/Qwen2.5-14B-Instruct` ou `Llama-3.1-8B` | Alta qualidade |
+| 48+ GB | `Qwen/Qwen2.5-32B-Instruct` ou `Llama-3.1-70B` (quantizado) | Enterprise |
+
+Defina no `.env`:
+
+```env
+VLLM_MODEL=Qwen/Qwen2.5-7B-Instruct
+```
+
+---
+
+## Configuração
+
+Toda configuração fica no arquivo `.env` na raiz. Principais variáveis:
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `DATABASE_URL` | — | URL do PostgreSQL **(obrigatório)** |
+| `POSTGRES_DB` | `silo` | Nome do banco |
+| `POSTGRES_USER` | `silo` | Usuário do banco |
+| `POSTGRES_PASSWORD` | `silo` | Senha do banco |
+| `BETTER_AUTH_SECRET` | — | Segredo de autenticação **(obrigatório)** |
+| `SESSION_SECRET` | — | Segredo de sessão **(obrigatório)** |
+| `VLLM_MODEL` | `Qwen/Qwen2.5-0.5B-Instruct` | Modelo de IA para chat |
+| `VLLM_EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Modelo para embeddings |
+| `VLLM_GPU_MEM_UTIL` | `0.85` | Fração da VRAM usada (0 a 1) |
+| `HF_TOKEN` | — | Token HuggingFace (modelos restritos) |
+| `AI_AGENT_MODE` | `deterministic` | Modo do assistente |
+| `KAFKA_REST_PROXY_USE_MOCK_DATA` | `true` | Dados simulados (dev) |
+| `LOG_LEVEL` | `INFO` | Nível de log |
+| `NEXT_PUBLIC_BASE_PATH` | `/silo` | Caminho base da URL |
+
+Consulte [`env.example`](env.example) para a lista completa.
+
+---
+
+## Documentação
+
+| Documento | Conteúdo |
+|---|---|
+| [`docs/index.md`](docs/index.md) | Visão geral do projeto, stack, estrutura |
+| [`docs/backend.md`](docs/backend.md) | Backend Python: arquitetura, banco, auth, API, IA, Kafka |
+| [`docs/frontend.md`](docs/frontend.md) | Frontend Next.js: rotas, componentes, estado |
+| [`docs/deploy.md`](docs/deploy.md) | Docker, deploy em produção, CI/CD |
+| [`docs/monitoring.md`](docs/monitoring.md) | Monitoramento, logs, observabilidade |
+
+---
+
+## Problemas comuns
+
+| Problema | Solução |
+|---|---|
+| **"O container `vllm` demora para iniciar"** | O modelo está sendo baixado (~400 MB). Acompanhe com `docker compose logs -f vllm`. Aguarde `Uvicorn running`. |
+| **"Erro de memória no vLLM"** | O modelo é grande para sua RAM/VRAM. Use `VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct`. |
+| **"A API não sobe"** | Verifique o banco: `docker compose ps db`. Rode `docker compose run --rm migrate` se necessário. |
+| **"O frontend não carrega"** | O frontend depende da API. Aguarde o healthcheck: `docker compose ps api`. |
+| **"GPU não detectada"** | Instale o NVIDIA Container Toolkit. Sem GPU, o vLLM roda em CPU. |
+| **"Porta 5432/8000/4000/80 já em uso"** | Altere no `.env` (`POSTGRES_PORT`, `VLLM_PORT`, `API_PORT`, `SILO_HOST_PORT`). |
+| **"Modelo não encontrado"** | Verifique o nome em https://huggingface.co/models. Para modelos restritos, configure `HF_TOKEN`. |
+| **"Sem espaço em disco"** | Modelos ocupam ~500 MB. Limpe com `docker compose down -v` (apaga banco também). |

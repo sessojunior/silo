@@ -1,3 +1,0 @@
-[SILO_CONTRACT_STUB] listening on http://127.0.0.1:11435 using tests/fixtures/legacy-golden/external-responses.json
-[SILO_CONTRACT_STUB] delaying /api/chat for marker="Phase 1.13 SSE heartbeat full cancel" by 6000ms
-[SILO_CONTRACT_STUB] delaying /api/chat for marker="Phase 1.13 SSE heartbeat full" by 6000ms

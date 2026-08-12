@@ -42,9 +42,11 @@ from silo.ai.assistant_contracts import (
 from silo.ai.assistant_registry import AgentRuntimeContext, AgentState
 from silo.ai.assistant_tool_catalog import execute_hybrid_tool, get_hybrid_tool_schemas
 from silo.ai.assistant_runtime import (
-    OllamaEmbeddingRuntime,
-    OllamaModelRuntime,
-    probe_ollama_runtime,
+    VLLMEmbeddingRuntime,
+    VLLMModelRuntime,
+    create_embedding_runtime,
+    create_model_runtime,
+    probe_ai_runtime,
 )
 from silo.ai.assistant_tools import (
     AI_METRIC_VERSION,
@@ -307,7 +309,7 @@ async def get_assistant_runtime_status(*, clock=SYSTEM_CLOCK) -> AiAssistantRunt
     except Exception as exc:
         checked_at = clock.now().astimezone(UTC).isoformat().replace("+00:00", "Z")
         return AiAssistantRuntimeStatusDto(
-            provider="ollama",
+            provider="vllm",
             model="unknown",
             mode="fallback",
             latency_ms=0,
@@ -315,11 +317,11 @@ async def get_assistant_runtime_status(*, clock=SYSTEM_CLOCK) -> AiAssistantRunt
             fallback_reason=str(exc),
         )
 
-    probe = await probe_ollama_runtime(settings, clock=clock)
+    probe = await probe_ai_runtime(settings, clock=clock)
     return AiAssistantRuntimeStatusDto(
-        provider="ollama",
+        provider=probe.provider,
         model=probe.model,
-        mode="ollama" if probe.mode == "ollama" else "fallback",
+        mode=probe.mode.value if probe.mode != "fallback" else "fallback",
         latency_ms=probe.latency_ms,
         checked_at=probe.checked_at,
         fallback_reason=probe.fallback_reason,
@@ -457,8 +459,8 @@ async def send_assistant_message(
     *,
     request_id: str | None = None,
     settings: Settings | None = None,
-    model_runtime: OllamaModelRuntime | None = None,
-    embedding_provider: OllamaEmbeddingRuntime | None = None,
+    model_runtime: VLLMModelRuntime | None = None,
+    embedding_provider: VLLMEmbeddingRuntime | None = None,
 ) -> AiAssistantMessageResponseDto:
     runtime_context = _build_runtime_context(
         connection,
@@ -485,8 +487,8 @@ async def stream_assistant_message(
     *,
     request_id: str | None = None,
     settings: Settings | None = None,
-    model_runtime: OllamaModelRuntime | None = None,
-    embedding_provider: OllamaEmbeddingRuntime | None = None,
+    model_runtime: VLLMModelRuntime | None = None,
+    embedding_provider: VLLMEmbeddingRuntime | None = None,
 ) -> AsyncIterator[AssistantStreamEvent]:
     yield AssistantStreamEvent(event="thinking", data={"content": "Processando solicitação com as tools autorizadas."})
     response = await send_assistant_message(
@@ -515,8 +517,8 @@ def _build_runtime_context(
     *,
     request_id: str,
     settings: Settings | None,
-    model_runtime: OllamaModelRuntime | None,
-    embedding_provider: OllamaEmbeddingRuntime | None,
+    model_runtime: VLLMModelRuntime | None,
+    embedding_provider: VLLMEmbeddingRuntime | None,
 ) -> AgentRuntimeContext:
     effective_settings = settings or load_settings()
     runtime = AgentRuntimeContext(
@@ -525,8 +527,8 @@ def _build_runtime_context(
         request_id=request_id,
         run_id=str(uuid.uuid4()),
         settings=effective_settings,
-        model_runtime=model_runtime or OllamaModelRuntime(effective_settings.ollama),
-        embedding_provider=embedding_provider or OllamaEmbeddingRuntime(effective_settings.ollama),
+        model_runtime=model_runtime or create_model_runtime(effective_settings),
+        embedding_provider=embedding_provider or create_embedding_runtime(effective_settings),
         connection_factory=(lambda: connection.engine.connect()),
         mode=cast(Literal["deterministic", "hybrid"], effective_settings.ai_agent_mode.value),
         group_permissions=("reports:view",),
@@ -1672,7 +1674,7 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
         state["answer"] = ""
         state["generation"] = {
             "provider": "ollama",
-            "model": runtime.context.settings.ollama.model,
+            "model": runtime.context.settings.vllm.model,
             "status": "error",
             "latencyMs": 0,
             "generatedTokens": None,
@@ -1750,7 +1752,7 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
     state["answer"] = answer
     state["generation"] = {
         "provider": "ollama",
-        "model": runtime.context.settings.ollama.model,
+        "model": runtime.context.settings.vllm.model,
         "status": generation_status,
         "latencyMs": latency_ms,
         "generatedTokens": generated_tokens,
@@ -2635,8 +2637,8 @@ def _semantic_cache_key(state: AgentState, runtime_context: AgentRuntimeContext,
         "range": plan.date_range,
         "presentation": plan.presentation_intent,
         "sourceKinds": list(state.get("source_kinds") or plan.required_sources),
-        "chatModel": runtime_context.settings.ollama.model,
-        "embeddingModel": runtime_context.settings.ollama.embedding_model,
+        "chatModel": runtime_context.settings.vllm.model,
+        "embeddingModel": runtime_context.settings.vllm.embedding_model,
         "graphVersion": ASSISTANT_GRAPH_VERSION,
         "promptVersion": ASSISTANT_PROMPT_VERSION,
         "toolVersion": ASSISTANT_TOOL_VERSION,
@@ -2741,8 +2743,8 @@ def _build_runtime_context_from_cache(connection: Connection, state: AgentState)
         request_id=str(state.get("request_id") or uuid.uuid4()),
         run_id=str(state.get("run_id") or uuid.uuid4()),
         settings=settings,
-        model_runtime=OllamaModelRuntime(settings.ollama),
-        embedding_provider=OllamaEmbeddingRuntime(settings.ollama),
+        model_runtime=create_model_runtime(settings),
+        embedding_provider=create_embedding_runtime(settings),
         connection_factory=(lambda: connection.engine.connect()),
         mode=cast(Literal["deterministic", "hybrid"], settings.ai_agent_mode.value),
     )
@@ -2785,7 +2787,7 @@ def _persist_user_and_assistant_messages(runtime_context: AgentRuntimeContext, s
         "sender_user_id": None,
         "sender_name": "Assistente de IA",
         "provider": "ollama",
-        "model": runtime_context.settings.ollama.model,
+        "model": runtime_context.settings.vllm.model,
         "generation_status": str((assistant_response.get("generation") or {}).get("status") or "fallback"),
         "latency_ms": int((assistant_response.get("generation") or {}).get("latencyMs") or 0),
         "error_message": None,

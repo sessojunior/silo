@@ -1,20 +1,34 @@
 services:
-  ollama:
-    image: ${SILO_OLLAMA_IMAGE:-ollama/ollama:0.30.0-rc7@sha256:64ed5cc8e315622c4c1571b52b67b6d9cb8196f2c803e5b01673bc1d9937ffcb}
-    container_name: silo-ollama
+  vllm:
+    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai:v0.11.2}
+    container_name: silo-vllm
     environment:
-      OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_KEEP_ALIVE: 24h
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
-    command: ["serve"]
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+      VLLM_LOGGING_LEVEL: ${LOG_LEVEL:-INFO}
+    command:
+      - "--model"
+      - "${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}"
+      - "--max-model-len"
+      - "${VLLM_MAX_MODEL_LEN:-16384}"
+      - "--gpu-memory-utilization"
+      - "${VLLM_GPU_MEM_UTIL:-0.85}"
+      - "--enable-prefix-caching"
     volumes:
-      - silo-ollama-data:/root/.ollama
+      - silo-vllm-cache:/root/.cache/huggingface
     healthcheck:
-      test: ["CMD", "ollama", "list"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
-      retries: 12
+      retries: 30
+      start_period: 120s
     restart: unless-stopped
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
 
   migrate:
     image: ${SILO_IMAGE:-silo-api-python:latest}
@@ -52,53 +66,15 @@ services:
       KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
       KAFKA_PROCESS_RETRY_COUNT: ${KAFKA_PROCESS_RETRY_COUNT:-3}
       KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
-      OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
-      OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
-      OLLAMA_MAX_CONCURRENT_REQUESTS: ${OLLAMA_MAX_CONCURRENT_REQUESTS:-1}
+      VLLM_URL: http://vllm:8000/v1
+      VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
+      VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-30000}
+      VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-4}
       UPLOADS_DIR: /app/uploads
       TZ: America/Sao_Paulo
     depends_on:
-      ollama:
-        condition: service_healthy
-    restart: "no"
-
-  ollama-init:
-    image: ${SILO_IMAGE:-silo-api-python:latest}
-    container_name: silo-ollama-init
-    command: ["python", "-m", "silo.ai.ollama_init"]
-    environment:
-      SILO_ENV: ${SILO_ENV:-production}
-      NODE_ENV: ${NODE_ENV:-production}
-      DATABASE_URL: ${DATABASE_URL:-}
-      APP_URL_PROD: ${APP_URL_PROD:-}
-      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/silo}
-      SESSION_SECRET: ${SESSION_SECRET:-}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USERNAME: ${SMTP_USERNAME:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      PRODUCT_FLOW_API_KEY: ${PRODUCT_FLOW_API_KEY:-}
-      CORS_ORIGINS: ${CORS_ORIGINS:-}
-      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
-      LANGSMITH_TRACING_APPROVED: ${LANGSMITH_TRACING_APPROVED:-false}
-      OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
-      OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
-      AI_AGENT_MODE: ${AI_AGENT_MODE:-deterministic}
-      UPLOADS_DIR: /app/uploads
-      TZ: America/Sao_Paulo
-    depends_on:
-      ollama:
+      db:
         condition: service_healthy
     restart: "no"
 
@@ -144,21 +120,17 @@ services:
       KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
       KAFKA_PROCESS_RETRY_COUNT: ${KAFKA_PROCESS_RETRY_COUNT:-3}
       KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
-      OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b-instruct-q4_K_M}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text:v1.5}
-      OLLAMA_TIMEOUT_MS: ${OLLAMA_TIMEOUT_MS:-30000}
-      OLLAMA_MAX_CONCURRENT_REQUESTS: ${OLLAMA_MAX_CONCURRENT_REQUESTS:-1}
+      VLLM_URL: http://vllm:8000/v1
+      VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
+      VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-30000}
+      VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-4}
       TZ: America/Sao_Paulo
     volumes:
       - silo-storage-data:/app/uploads
     depends_on:
       migrate:
         condition: service_completed_successfully
-      ollama-init:
-        condition: service_completed_successfully
-      ollama:
-        condition: service_healthy
     healthcheck:
       test:
         [
@@ -214,5 +186,5 @@ services:
 volumes:
   silo-storage-data:
     name: silo-storage-data
-  silo-ollama-data:
-    name: silo-ollama-data
+  silo-vllm-cache:
+    name: silo-vllm-cache

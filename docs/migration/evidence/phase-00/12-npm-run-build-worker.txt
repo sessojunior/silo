@@ -1,8 +1,0 @@
-﻿
-> build:worker
-> npm --workspace @silo/worker run build
-
-
-> @silo/worker@0.0.1 build
-> tsc
-

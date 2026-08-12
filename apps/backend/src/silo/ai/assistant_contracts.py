@@ -69,9 +69,9 @@ class AiAssistantGenerationDto(CamelModel):
 
 
 class AiAssistantRuntimeStatusDto(CamelModel):
-    provider: Literal["ollama"]
+    provider: Literal["ollama", "vllm"]
     model: str
-    mode: Literal["ollama", "fallback"]
+    mode: Literal["ollama", "vllm", "fallback"]
     latency_ms: int
     checked_at: str
     fallback_reason: str | None = None

@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import delete, insert, select, update, create_engine
 from sqlalchemy.engine import Connection
 
-from silo.ai.assistant_runtime import probe_ollama_runtime
+from silo.ai.assistant_runtime import probe_ai_runtime
 from silo.ai.chunking import chunk_markdown
 from silo.ai.embeddings import generate_embedding, update_embedding_sql
 from silo.config import Settings, load_settings
@@ -50,7 +50,7 @@ async def run_backfill(
     dry_run: bool = False,
     help_char_limit: int = DEFAULT_HELP_CHAR_LIMIT,
 ) -> BackfillSummary:
-    probe = await probe_ollama_runtime(settings)
+    probe = await probe_ai_runtime(settings)
     if probe.fallback_reason is not None:
         raise RuntimeError(probe.fallback_reason)
 
@@ -59,8 +59,8 @@ async def run_backfill(
     summary = BackfillSummary(
         dry_run=dry_run,
         database_url=effective_database_url,
-        chat_model=settings.ollama.model,
-        embedding_model=settings.ollama.embedding_model,
+        chat_model=settings.vllm.model,
+        embedding_model=settings.vllm.embedding_model,
         chat_digest=probe.chat_digest,
         embedding_digest=probe.embedding_digest,
     )

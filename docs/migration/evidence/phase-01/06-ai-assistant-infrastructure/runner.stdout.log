@@ -1,7 +1,0 @@
-[legacy-contract] captured phase1_6.ai_assistant_infra.status.ollama_unavailable -> tests\fixtures\legacy-golden\phase1_6.ai_assistant_infra.status.ollama_unavailable.json
-[legacy-contract] captured phase1_6.embedding_infra.help.update_ollama_unavailable -> tests\fixtures\legacy-golden\phase1_6.embedding_infra.help.update_ollama_unavailable.json
-[legacy-contract] captured phase1_6.embedding_infra.products.manual.update_ollama_unavailable -> tests\fixtures\legacy-golden\phase1_6.embedding_infra.products.manual.update_ollama_unavailable.json
-[legacy-contract] captured phase1_6.embedding_infra.products.problems.create_ollama_unavailable -> tests\fixtures\legacy-golden\phase1_6.embedding_infra.products.problems.create_ollama_unavailable.json
-[legacy-contract] captured phase1_6.embedding_infra.products.solutions.create_ollama_unavailable -> tests\fixtures\legacy-golden\phase1_6.embedding_infra.products.solutions.create_ollama_unavailable.json
-[legacy-contract] captured phase1_6.ai_assistant_infra.messages.ollama_unavailable -> tests\fixtures\legacy-golden\phase1_6.ai_assistant_infra.messages.ollama_unavailable.json
-[legacy-contract] captured phase1_6.ai_assistant_infra.messages_stream.ollama_unavailable -> tests\fixtures\legacy-golden\phase1_6.ai_assistant_infra.messages_stream.ollama_unavailable.json

@@ -1,7 +1,0 @@
-﻿REPOSITORY          TAG          DIGEST                                                                    IMAGE ID       CREATED        SIZE
-silo-api            latest       sha256:1f7c41b32ed8af2734f31736dad3a8f325b8d57b54f7825113209df41243694c   1f7c41b32ed8   2 weeks ago    2.02GB
-silo-web            latest       sha256:f412980f76249d9c3315d7fb31b2110f74eb9c4bcfcc0935fb946e5f65b2a431   f412980f7624   2 weeks ago    441MB
-silo-worker         latest       sha256:a105a0a2d4f16ca80acb59e4b89eb43c93702557aca2d24f8083727d411d1357   a105a0a2d4f1   2 weeks ago    2.01GB
-pgvector/pgvector   pg17         sha256:be400b50812ab2cc908ed78593fda2e51e3b45fe774fa637f1c7b16e68531d95   be400b50812a   4 weeks ago    627MB
-postgres            17-alpine    sha256:979c4379dd698aba0b890599a6104e082035f98ef31d9b9291ec22f2b13059ca   979c4379dd69   2 months ago   400MB
-ollama/ollama       0.30.0-rc7   sha256:cee82c012a508ca3730f3887d44cbb9cd07c90fb1dffa5cb5417e7ace0ddab55   cee82c012a50   2 months ago   8.53GB

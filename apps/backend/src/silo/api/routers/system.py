@@ -75,8 +75,8 @@ async def warmup_ollama_model(
     warmup_client = HttpxOllamaWarmupClient() if client is None else client
     try:
         await warmup_client.warmup(
-            base_url=settings.ollama.url,
-            model=settings.ollama.model,
+            base_url=settings.vllm.url,
+            model=settings.vllm.model,
             timeout_seconds=OLLAMA_WARMUP_TIMEOUT_SECONDS,
         )
     except Exception:
@@ -86,7 +86,7 @@ async def warmup_ollama_model(
     return (
         build_success_payload(
             {
-                "model": settings.ollama.model,
+                "model": settings.vllm.model,
                 "latencyMs": latency_ms,
                 "warmedAt": _legacy_iso_timestamp(clock),
             }

@@ -1,4 +1,0 @@
-﻿group|3
-group_permissions|51
-user|4
-user_group|4

@@ -97,14 +97,15 @@ class KafkaSettings(BaseModel):
     retry_backoff_ms: int = 1000
 
 
-class OllamaSettings(BaseModel):
+class VLLMSettings(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    url: str
-    model: str = "qwen2.5:1.5b-instruct-q4_K_M"
-    embedding_model: str = "nomic-embed-text:v1.5"
+    url: str = "http://localhost:8000/v1"
+    api_key: str = "not-needed"
+    model: str = "Qwen/Qwen2.5-0.5B-Instruct"
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
     timeout_ms: int = 30_000
-    max_concurrent_requests: int = 1
+    max_concurrent_requests: int = 4
 
 
 class AiAgentMode(StrEnum):
@@ -139,7 +140,7 @@ class Settings(BaseModel):
     smtp: SmtpSettings
     google: GoogleSettings
     kafka: KafkaSettings
-    ollama: OllamaSettings
+    vllm: VLLMSettings = VLLMSettings()
 
 
 def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
@@ -195,10 +196,10 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
         _first_non_empty(environ, ("KAFKA_REST_PROXY_URL",)),
         required=False,
     )
-    ollama_url = _parse_http_url(
-        "OLLAMA_URL",
-        _first_non_empty(environ, ("OLLAMA_URL",), _default_ollama_url(silo_env_raw)),
-        required=True,
+    vllm_url = _parse_http_url(
+        "VLLM_URL",
+        _first_non_empty(environ, ("VLLM_URL",), _default_vllm_url(silo_env_raw)),
+        required=False,
     )
 
     return {
@@ -285,23 +286,24 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
                 minimum=0,
             ),
         },
-        "ollama": {
-            "url": ollama_url,
+        "vllm": {
+            "url": vllm_url,
+            "api_key": _first_non_empty(environ, ("VLLM_API_KEY",), "not-needed"),
             "model": _first_non_empty(
                 environ,
-                ("OLLAMA_MODEL",),
-                "qwen2.5:1.5b-instruct-q4_K_M",
+                ("VLLM_MODEL",),
+                "Qwen/Qwen2.5-0.5B-Instruct",
             ),
             "embedding_model": _first_non_empty(
                 environ,
-                ("OLLAMA_EMBEDDING_MODEL",),
-                "nomic-embed-text:v1.5",
+                ("VLLM_EMBEDDING_MODEL",),
+                "BAAI/bge-small-en-v1.5",
             ),
-            "timeout_ms": _parse_int(environ, ("OLLAMA_TIMEOUT_MS",), 30_000, minimum=1),
+            "timeout_ms": _parse_int(environ, ("VLLM_TIMEOUT_MS",), 30_000, minimum=1),
             "max_concurrent_requests": _parse_int(
                 environ,
-                ("OLLAMA_MAX_CONCURRENT_REQUESTS",),
-                1,
+                ("VLLM_MAX_CONCURRENT_REQUESTS",),
+                4,
                 minimum=1,
             ),
         },
@@ -465,10 +467,10 @@ def _smtp_from_address(environ: Mapping[str, str], username: str) -> str:
     return ""
 
 
-def _default_ollama_url(silo_env: str) -> str:
+def _default_vllm_url(silo_env: str) -> str:
     if silo_env == SiloEnvironment.PRODUCTION:
-        return "http://ollama:11434"
-    return "http://localhost:11434"
+        return "http://vllm:8000/v1"
+    return "http://localhost:8000/v1"
 
 
 def _sanitized_validation_error(exc: ValidationError) -> str:

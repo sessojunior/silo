@@ -78,31 +78,32 @@ async def test_assistant_examples_runtime_status_and_context_setup(monkeypatch: 
 
     monkeypatch.setattr(assistant_service, "load_settings", lambda: (_ for _ in ()).throw(RuntimeError("config ausente")))
     fallback = await assistant_service.get_assistant_runtime_status(clock=_FixedClock())
-    assert fallback.provider == "ollama"
+    assert fallback.provider == "vllm"
     assert fallback.mode == "fallback"
     assert fallback.fallback_reason == "config ausente"
     assert fallback.checked_at == "2026-08-04T12:00:00Z"
 
     async def _fake_probe(_settings, *, clock):
         return SimpleNamespace(
+            provider="vllm",
             model="mistral",
-            mode="ollama",
+            mode=SimpleNamespace(value="vllm"),
             latency_ms=17,
             checked_at=clock.now().astimezone(UTC).isoformat().replace("+00:00", "Z"),
             fallback_reason=None,
         )
 
-    monkeypatch.setattr(assistant_service, "load_settings", lambda: SimpleNamespace())
-    monkeypatch.setattr(assistant_service, "probe_ollama_runtime", _fake_probe)
+    monkeypatch.setattr(assistant_service, "load_settings", lambda: SimpleNamespace(vllm=SimpleNamespace(url="http://localhost:8000/v1")))
+    monkeypatch.setattr(assistant_service, "probe_ai_runtime", _fake_probe)
     status = await assistant_service.get_assistant_runtime_status(clock=_FixedClock())
     assert status.model == "mistral"
-    assert status.mode == "ollama"
+    assert status.mode == "vllm"
     assert status.latency_ms == 17
 
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     with engine.connect() as connection:
         fake_settings = SimpleNamespace(
-            ollama=SimpleNamespace(
+            vllm=SimpleNamespace(
                 model="mistral",
                 embedding_model="nomic-embed-text:v1.5",
                 timeout_ms=30_000,
@@ -660,7 +661,7 @@ def test_assistant_history_cache_and_persisted_response_helpers(monkeypatch: pyt
         ) is None
 
         fake_settings = SimpleNamespace(
-            ollama=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5"),
+            vllm=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5", url="http://localhost:8000/v1", api_key="k", timeout_ms=30000, max_concurrent_requests=4),
             ai_agent_mode=SimpleNamespace(value="deterministic"),
         )
         runtime_context = SimpleNamespace(
@@ -698,18 +699,19 @@ def test_assistant_history_cache_and_persisted_response_helpers(monkeypatch: pyt
             assistant_service,
             "load_settings",
             lambda: SimpleNamespace(
-                ollama=SimpleNamespace(
+                vllm=SimpleNamespace(
                     model="mistral",
                     embedding_model="nomic-embed-text:v1.5",
-                    url="http://localhost:11434",
+                    url="http://localhost:8000/v1",
+                    api_key="k",
                     timeout_ms=30_000,
-                    max_concurrent_requests=1,
+                    max_concurrent_requests=4,
                 ),
                 ai_agent_mode=SimpleNamespace(value="deterministic"),
             ),
         )
-        monkeypatch.setattr(assistant_service, "OllamaModelRuntime", lambda settings: SimpleNamespace(settings=settings))
-        monkeypatch.setattr(assistant_service, "OllamaEmbeddingRuntime", lambda settings: SimpleNamespace(settings=settings))
+        monkeypatch.setattr(assistant_service, "VLLMModelRuntime", lambda settings: SimpleNamespace(settings=settings))
+        monkeypatch.setattr(assistant_service, "VLLMEmbeddingRuntime", lambda settings: SimpleNamespace(settings=settings))
 
         cache_runtime = assistant_service._build_runtime_context_from_cache(connection, {"request_id": "req-1", "run_id": "run-1"})
         assert cache_runtime.request_id == "req-1"
@@ -1141,7 +1143,7 @@ def test_assistant_persistence_helpers_cover_message_and_pdf_artifact_writes(
         runtime_context = SimpleNamespace(
             connection=connection,
             current_user=SimpleNamespace(id="user-1", email="admin@example.test", name="Admin"),
-            settings=SimpleNamespace(ollama=SimpleNamespace(model="mistral")),
+            settings=SimpleNamespace(vllm=SimpleNamespace(model="mistral", url="http://localhost:8000/v1", api_key="k", timeout_ms=30000, max_concurrent_requests=4)),
         )
         state = {
             "thread_id": "thread-persist",
@@ -1374,7 +1376,7 @@ async def test_assistant_scope_plan_and_pdf_claim_fallback_branches(monkeypatch:
         current_user=current_user,
         has_reports_permission=True,
         settings=SimpleNamespace(
-            ollama=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5"),
+            vllm=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5", url="http://localhost:8000/v1", api_key="k", timeout_ms=30000, max_concurrent_requests=4),
         ),
         request_id="request-1",
         run_id="run-1",
@@ -1696,7 +1698,7 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(monkeypat
         connection=connection,
         current_user=current_user,
         settings=SimpleNamespace(
-            ollama=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5"),
+            vllm=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5", url="http://localhost:8000/v1", api_key="k", timeout_ms=30000, max_concurrent_requests=4),
         ),
         model_runtime=SimpleNamespace(),
         embedding_provider=SimpleNamespace(),

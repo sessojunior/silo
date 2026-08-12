@@ -246,7 +246,7 @@ async def test_assistant_runtime_status_reports_fallback_when_probe_reports_fail
         del clock
         return SimpleNamespace(
             provider="ollama",
-            model=settings.ollama.model,
+            model=settings.vllm.model,
             mode="fallback",
             latency_ms=0,
             checked_at="2026-07-31T12:00:00Z",
@@ -256,9 +256,9 @@ async def test_assistant_runtime_status_reports_fallback_when_probe_reports_fail
     monkeypatch.setattr(
         assistant_service,
         "load_settings",
-        lambda: SimpleNamespace(ollama=SimpleNamespace(model="mistral")),
+        lambda: SimpleNamespace(vllm=SimpleNamespace(model="mistral")),
     )
-    monkeypatch.setattr(assistant_service, "probe_ollama_runtime", _fake_probe)
+    monkeypatch.setattr(assistant_service, "probe_ai_runtime", _fake_probe)
 
     status = await assistant_service.get_assistant_runtime_status(
         clock=_FakeClock(datetime(2026, 7, 31, 12, 0, tzinfo=UTC))

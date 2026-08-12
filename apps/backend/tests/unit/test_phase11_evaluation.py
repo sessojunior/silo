@@ -174,7 +174,7 @@ def test_summarize_mode_uses_required_tool_recall_and_gate_status() -> None:
             first_emission_ms=0,
             prompt_eval_count=10,
             output_token_count=12,
-            model="qwen2.5:1.5b-instruct-q4_K_M",
+            model="Qwen/Qwen2.5-0.5B-Instruct",
             model_digest=phase11.EXPECTED_CHAT_DIGEST,
             embedding_model="nomic-embed-text:v1.5",
             embedding_digest=phase11.EXPECTED_EMBEDDING_DIGEST,
@@ -221,7 +221,7 @@ def test_summarize_mode_uses_required_tool_recall_and_gate_status() -> None:
             first_emission_ms=0,
             prompt_eval_count=10,
             output_token_count=12,
-            model="qwen2.5:1.5b-instruct-q4_K_M",
+            model="Qwen/Qwen2.5-0.5B-Instruct",
             model_digest=phase11.EXPECTED_CHAT_DIGEST,
             embedding_model="nomic-embed-text:v1.5",
             embedding_digest=phase11.EXPECTED_EMBEDDING_DIGEST,
@@ -397,7 +397,7 @@ async def test_run_phase11_evaluation_smoke_with_fakes(
         lambda environ=None: SimpleNamespace(
             database_url="postgresql://test-user:test-pass@localhost:5432/silo",
             ai_agent_mode=SimpleNamespace(value=(environ or {}).get("AI_AGENT_MODE", "deterministic")),
-            ollama=SimpleNamespace(
+            vllm=SimpleNamespace(
                 model=phase11.EXPECTED_CHAT_MODEL,
                 embedding_model=phase11.EXPECTED_EMBEDDING_MODEL,
                 timeout_ms=30_000,
@@ -419,15 +419,15 @@ async def test_run_phase11_evaluation_smoke_with_fakes(
             checked_at="2026-08-03T12:00:00Z",
         )
 
-    monkeypatch.setattr(phase11, "probe_ollama_runtime", _fake_probe)
+    monkeypatch.setattr(phase11, "probe_ai_runtime", _fake_probe)
     monkeypatch.setattr(
         phase11,
-        "OllamaModelRuntime",
+        "create_model_runtime",
         lambda settings: SimpleNamespace(settings=settings),
     )
     monkeypatch.setattr(
         phase11,
-        "OllamaEmbeddingRuntime",
+        "create_embedding_runtime",
         lambda settings: SimpleNamespace(settings=settings),
     )
     monkeypatch.setattr(
@@ -454,7 +454,7 @@ async def test_run_phase11_evaluation_smoke_with_fakes(
         output_dir=output_dir,
         database_url="postgresql://test-user:test-pass@localhost:5432/silo",
         uploads_dir=uploads_dir,
-        ollama_url="http://localhost:11434",
+        vllm_url="http://localhost:11434",
         modes=("deterministic", "hybrid"),
         attempts_per_case=1,
         seed_database_if_missing=False,
@@ -514,7 +514,7 @@ def test_phase11_main_parses_args_and_invokes_runner(
             "postgresql://test-user:test-pass@localhost:5432/silo",
             "--uploads-dir",
             str(tmp_path / "uploads"),
-            "--ollama-url",
+            "--vllm-url",
             "http://localhost:11434",
             "--attempts-per-case",
             "2",
@@ -571,12 +571,12 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
     environ = phase11._build_eval_environ(  # noqa: SLF001
         database_url="postgresql://user:pass@localhost:5432/silo",
         uploads_dir=tmp_path / "uploads",
-        ollama_url="http://localhost:11434",
+        vllm_url="http://localhost:11434",
         mode="hybrid",
     )
     assert environ["AI_AGENT_MODE"] == "hybrid"
     assert environ["KAFKA_DLQ_PREFIX"] == "dlq."
-    assert environ["OLLAMA_MODEL"] == phase11.EXPECTED_CHAT_MODEL
+    assert environ["VLLM_MODEL"] == phase11.EXPECTED_CHAT_MODEL
 
     class _SecretValue:
         def __init__(self, value: str) -> None:
@@ -689,7 +689,7 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
         output_dir=str(tmp_path / "output"),
         hardware={"platform": "Windows"},
         ollama={
-            "provider": "ollama",
+            "provider": "vllm",
             "model": phase11.EXPECTED_CHAT_MODEL,
             "chatDigest": phase11.EXPECTED_CHAT_DIGEST,
             "embeddingDigest": phase11.EXPECTED_EMBEDDING_DIGEST,
@@ -715,7 +715,7 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
             "postgresql://user:pass@localhost:5432/silo",
             "--uploads-dir",
             str(tmp_path / "uploads"),
-            "--ollama-url",
+            "--vllm-url",
             "http://localhost:11434",
             "--attempts-per-case",
             "2",
@@ -768,7 +768,7 @@ def test_phase11_helper_branches_cover_snapshot_resolution_seed_and_lineage(
 
     settings = SimpleNamespace(
         database_url=str(engine.url),
-        ollama=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5"),
+        vllm=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5"),
         ai_agent_mode=SimpleNamespace(value="deterministic"),
     )
     current_user = phase11.CurrentUser(
@@ -986,7 +986,7 @@ async def test_phase11_run_case_attempt_covers_success_error_and_cleanup(
         is_active=True,
     )
     settings = SimpleNamespace(
-        ollama=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5"),
+        vllm=SimpleNamespace(model="mistral", embedding_model="nomic-embed-text:v1.5"),
     )
     runtime_context = SimpleNamespace(
         connection=SimpleNamespace(),
