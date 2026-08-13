@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "silo: seed banco",
+			"type": "shell",
+			"command": "docker compose run --rm --no-deps migrate python -m silo.db.seed",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "silo: limpar temporarios",
+			"type": "shell",
+			"command": "Remove-Item C:\\Users\\sesso\\AppData\\Local\\Temp\\silo-check-login*.py -Force -ErrorAction SilentlyContinue; Write-Output 'temp limpo'",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}

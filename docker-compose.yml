@@ -57,8 +57,8 @@ services:
 
   migrate:
     build:
-      context: ./apps/backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/backend/Dockerfile
       target: api
     image: silo-api-python
     container_name: silo-api-python-migrate
@@ -111,8 +111,8 @@ services:
 
   api:
     build:
-      context: ./apps/backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/backend/Dockerfile
       target: api
     image: silo-api-python
     container_name: silo-api-python
@@ -188,8 +188,8 @@ services:
 
   worker:
     build:
-      context: ./apps/backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/backend/Dockerfile
       target: worker
     image: silo-worker-python
     container_name: silo-worker-python

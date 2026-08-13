@@ -37,7 +37,7 @@
     "py:capture-schema": "node apps/backend/scripts/run-python-module.mjs silo.db.schema_capture",
     "py:migrate": "node apps/backend/scripts/run-python-module.mjs silo.db.migrate",
     "py:seed": "node apps/backend/scripts/run-python-module.mjs silo.db.seed",
-    "py:build": "docker build --target api -t silo-api-python:migration -f apps/backend/Dockerfile apps/backend && docker build --target worker -t silo-worker-python:migration -f apps/backend/Dockerfile apps/backend",
+    "py:build": "docker build --target api -t silo-api-python:migration -f apps/backend/Dockerfile . && docker build --target worker -t silo-worker-python:migration -f apps/backend/Dockerfile .",
     "audit:node": "node scripts/security/check-node-audit.mjs",
     "audit:node:raw": "npm audit --json --audit-level=high",
     "audit:python": "uv --directory apps/backend audit --locked --no-dev",

@@ -1,0 +1,88 @@
+# Contrato canonico de semantica dos status de rodada de modelo (fail-fast).
+# Fonte unica compartilhada entre o backend Python (silo/domain/model_run_status.py)
+# e a documentacao de migracao. O backend valida este arquivo no boot: qualquer
+# divergencia entre este YAML e as constantes Python derruba a API propositalmente.
+statuses:
+  completed:
+    didExecute: true
+    isIncident: false
+    isTerminal: true
+    isAvailable: true
+    countsForAvailabilityDenominator: true
+  with_problems:
+    didExecute: true
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+  run_again:
+    didExecute: true
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+  not_run:
+    didExecute: false
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+  under_support:
+    didExecute: false
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+  suspended:
+    didExecute: false
+    isIncident: true
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: true
+  in_progress:
+    didExecute: true
+    isIncident: false
+    isTerminal: false
+    isAvailable: false
+    countsForAvailabilityDenominator: false
+  pending:
+    didExecute: false
+    isIncident: false
+    isTerminal: false
+    isAvailable: false
+    countsForAvailabilityDenominator: false
+  off:
+    didExecute: false
+    isIncident: false
+    isTerminal: true
+    isAvailable: false
+    countsForAvailabilityDenominator: false
+derivedSets:
+  incidentStatuses:
+    - with_problems
+    - run_again
+    - not_run
+    - under_support
+    - suspended
+  executedStatuses:
+    - completed
+    - with_problems
+    - run_again
+    - in_progress
+  terminalStatuses:
+    - completed
+    - with_problems
+    - run_again
+    - not_run
+    - under_support
+    - suspended
+    - off
+  availabilityDenominatorStatuses:
+    - completed
+    - with_problems
+    - run_again
+    - not_run
+    - under_support
+    - suspended
+  availabilityNumeratorStatuses:
+    - completed

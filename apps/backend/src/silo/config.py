@@ -13,8 +13,16 @@ from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
 
 def _load_dotenv() -> None:
     """Carrega variaveis do arquivo .env da raiz do projeto, sem sobrescrever as ja definidas."""
-    env_file = Path(__file__).resolve().parents[4] / ".env"
-    if not env_file.is_file():
+    # Sobe a arvore de diretorios a partir deste arquivo ate a raiz do filesystem.
+    # No host, o .env fica na raiz do monorepo; no container, as variaveis ja vem
+    # injetadas pelo docker compose, entao a ausencia do arquivo e apenas ignorada.
+    env_file = None
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / ".env"
+        if candidate.is_file():
+            env_file = candidate
+            break
+    if env_file is None:
         return
     with open(env_file, encoding="utf-8") as f:
         for line in f:

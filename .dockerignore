@@ -6,9 +6,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # Arquivos de ambiente (usar .env no host)
-.env.local
-.env.development
-.env.test
+.env
+**/.env
+.env.*
+**/.env.*
+!.env.example
+!**/.env.example
 
 # Arquivos de build e cache
 .next/
@@ -56,4 +59,3 @@ Thumbs.db
 # Arquivos Git
 .git/
 .gitignore
-README.md

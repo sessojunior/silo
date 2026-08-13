@@ -92,6 +92,13 @@ async def run_consumer(
     worker_client = client or KafkaRestClient(settings.kafka_rest)
 
     topics = resolve_topics_to_subscribe(settings, cli_topic)
+    if not topics and worker_client.should_use_mock_data():
+        # Modo mock sem topicos: consumidor ocioso que apenas mantem o health atualizado.
+        logger.info("Kafka em modo mock sem topicos configurados; consumidor ocioso.")
+        while not shutdown.stop_requested:
+            worker_health.mark_poll_succeeded()
+            await sleep(settings.poll_sleep_seconds)
+        return worker_health
     if not topics:
         raise RuntimeError("Configure KAFKA_TOPIC ou KAFKA_TOPICS com ao menos um topico.")
 

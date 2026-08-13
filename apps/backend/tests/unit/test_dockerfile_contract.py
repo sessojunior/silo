@@ -22,7 +22,7 @@ def test_dockerfile_uses_frozen_uv_lock_without_dev_dependencies() -> None:
     dockerfile = DOCKERFILE.read_text(encoding="utf-8")
 
     assert "ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.28" in dockerfile
-    assert "COPY pyproject.toml uv.lock ./" in dockerfile
+    assert "COPY apps/backend/pyproject.toml apps/backend/uv.lock ./" in dockerfile
     assert "uv sync --locked --no-dev --no-install-project" in dockerfile
     assert "uv sync --locked --no-dev --compile-bytecode" in dockerfile
     assert "--frozen" not in dockerfile
@@ -41,8 +41,8 @@ def test_dockerfile_declares_api_and_worker_targets() -> None:
     dockerfile = DOCKERFILE.read_text(encoding="utf-8")
 
     assert "FROM runtime AS api" in dockerfile
-    assert "COPY alembic.ini ./" in dockerfile
-    assert "COPY migrations ./migrations" in dockerfile
+    assert "COPY apps/backend/alembic.ini ./" in dockerfile
+    assert "COPY apps/backend/migrations ./migrations" in dockerfile
     assert (
         'CMD ["uvicorn", "silo.api.main:app", "--host", "0.0.0.0", "--port", "4001"]' in dockerfile
     )

@@ -37,7 +37,9 @@ export async function proxy(req: NextRequest) {
       ? pathname.slice(normalizedBasePath.length) || "/"
       : pathname;
 
-  const loginPath = appConfig.getPublicPath("/login");
+  // Caminho relativo a aplicacao: o Next.js aplica o basePath ao Location do
+  // redirect. Usar getPublicPath aqui duplicaria o prefixo (/silo/silo/login).
+  const loginPath = "/login";
   const smokeMode = req.cookies.get("silo_smoke_mode")?.value === "1";
 
   const requiresSessionCookie =

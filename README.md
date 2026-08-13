@@ -1,6 +1,6 @@
-﻿# SILO — Sistema de Gerenciamento de Produtos Industriais
+﻿# SILO
 
-O **SILO** é um sistema web que ajuda equipes a organizar, monitorar e tomar decisões sobre produtos e serviços técnicos. Ele centraliza informações sobre produtos, incidentes, projetos e indicadores em um único lugar, e oferece um **assistente com inteligência artificial** que responde perguntas, gera relatórios e cria gráficos automaticamente.
+O **SILO** é um sistema web que ajuda equipes a organizar, monitorar e tomar decisões sobre produtos e serviços do CPTEC. Ele centraliza informações sobre produtos, incidentes, projetos e indicadores em um único lugar, e oferece um **assistente com inteligência artificial** que responde perguntas, gera relatórios e cria gráficos automaticamente.
 
 Desenvolvido para o **CPTEC/INPE**, o SILO resolve um problema comum em organizações técnicas: o conhecimento fica espalhado entre pessoas, planilhas e sistemas diferentes. O SILO unifica tudo isso e ainda oferece uma camada de IA que entende o contexto da operação. **Tudo roda localmente — nenhum dado sai do servidor.**
 
@@ -64,31 +64,39 @@ cp env.example .env
 Edite o `.env` com estes valores mínimos:
 
 ```env
-# Banco de dados
-DATABASE_URL=postgresql://silo:silo@db:5432/silo
-POSTGRES_DB=silo
-POSTGRES_USER=silo
-POSTGRES_PASSWORD=silo
-
 # Segredos (gere valores únicos)
-BETTER_AUTH_SECRET=um_valor_secreto
-SESSION_SECRET=outro_valor_secreto
+BETTER_AUTH_SECRET=
+SESSION_SECRET=
 
-# IA
+# IA (modo deterministic nao depende do vLLM)
 AI_AGENT_MODE=deterministic
 ```
+
+> **Atenção ao `DATABASE_URL`:** dentro dos containers, o host do banco é o
+> serviço `db` do compose. **Não defina `DATABASE_URL`** para usar o padrão
+> `postgresql://silo:silo@db:5432/silo`. Use `@localhost:5432` apenas quando o
+> backend rodar **fora** do Docker.
+> Para acessar via localhost, mantenha `APP_URL_PROD=http://localhost` no `.env`
+> (esse valor é embutido na imagem do frontend no build).
+> **vLLM:** a imagem publicada é build CUDA e exige GPU. Em máquinas sem GPU,
+> suba sem o serviço: `docker compose up -d --scale vllm=0` — o app e o
+> assistente em modo `deterministic` funcionam normalmente.
 
 ### 3. Suba a stack
 
 ```bash
+# Com GPU NVIDIA (NVIDIA Container Toolkit instalado)
 docker compose up -d --build
+
+# Sem GPU: sobe tudo exceto o vLLM (IA via LLM fica indisponível)
+docker compose up -d --build --scale vllm=0
 ```
 
 Na primeira execução, o Docker vai:
 1. Baixar as imagens (PostgreSQL, vLLM)
 2. Construir as imagens do backend e frontend
 3. Criar o banco de dados e rodar migrations
-4. **Baixar o modelo de IA** (~400 MB) — o vLLM faz isso automaticamente no primeiro boot
+4. **Baixar o modelo de IA** (~400 MB) — o vLLM faz isso automaticamente no primeiro boot (somente quando ele sobe)
 5. Iniciar todos os serviços
 
 ### 4. Acompanhe o progresso
@@ -102,15 +110,49 @@ O backend mostra `Uvicorn running on http://0.0.0.0:4000` quando estiver pronto.
 
 ### 5. Acesse
 
-Abra **http://localhost** no navegador (porta 80).
+Abra **http://localhost/silo** no navegador (a raiz `http://localhost` redireciona para `/silo`).
 
-### 6. Verifique a saúde
+Um único comando (`docker compose up -d --build`) já sobe tudo o que você precisa. O que cada serviço expõe no host:
+
+| O que subiu no container | Porta interna | Porta no host | Como acessar no localhost |
+|---|---|---|---|
+| `web` (frontend Next.js) | 3000 | `SILO_HOST_PORT` (padrão 80) | `http://localhost/silo` — ex.: `/silo/admin/ai-assistant` |
+| `api` (backend FastAPI) | 4000 | `API_PORT` (padrão 4000) | `http://localhost:4000/docs` |
+| `vllm` (IA) | 8000 | `VLLM_PORT` (padrão 8000) | `http://localhost:8000/v1/models` |
+| `db` (PostgreSQL) | 5432 | `POSTGRES_PORT` (padrão 5432) | `localhost:5432` |
+
+> O prefixo `/silo` vem de `NEXT_PUBLIC_BASE_PATH`. Se trocar para `/`, acesse `http://localhost/`.
+> O `api` e o `worker` só sobem depois que o `migrate` terminar com sucesso, e o
+> `web` só sobe depois que o `api` estiver saudável — aguarde o healthcheck.
+
+### 6. Crie os usuários de desenvolvimento
+
+O banco sobe vazio. Rode o seed para criar os usuários padrão:
+
+```bash
+docker compose run --rm --no-deps migrate python -m silo.db.seed
+```
+
+Credenciais padrão:
+
+| Usuário | Senha |
+|---|---|
+| `teste@inpe.br` (Administrador) | `#Admin123` |
+| `alex@inpe.br`, `fabiano@inpe.br`, `andre@inpe.br`, `marcos@inpe.br` | `#User123` |
+
+Depois é só fazer login em `http://localhost/silo/login`.
+
+### 7. Verifique a saúde
 
 ```bash
 docker compose ps
 ```
 
 Todos os serviços devem estar com status `healthy` ou `Up`. O serviço `migrate` aparece como `exited (0)` — é normal (executa uma tarefa e encerra).
+
+> Se `api`, `worker` ou `web` aparecerem como `Created` e o `migrate` como
+> `Exited (1)`, a migração falhou (normalmente `DATABASE_URL` errado no `.env`).
+> Veja o motivo com `docker compose logs migrate`.
 
 ---
 
@@ -487,8 +529,11 @@ Consulte [`env.example`](env.example) para a lista completa.
 | **"O container `vllm` demora para iniciar"** | O modelo está sendo baixado (~400 MB). Acompanhe com `docker compose logs -f vllm`. Aguarde `Uvicorn running`. |
 | **"Erro de memória no vLLM"** | O modelo é grande para sua RAM/VRAM. Use `VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct`. |
 | **"A API não sobe"** | Verifique o banco: `docker compose ps db`. Rode `docker compose run --rm migrate` se necessário. |
-| **"O frontend não carrega"** | O frontend depende da API. Aguarde o healthcheck: `docker compose ps api`. |
-| **"GPU não detectada"** | Instale o NVIDIA Container Toolkit. Sem GPU, o vLLM roda em CPU. |
+| **"Login retorna 401 com `teste@inpe.br`"** | O banco local está sem usuários. Rode o seed: `docker compose run --rm --no-deps migrate python -m silo.db.seed` e tente de novo. |
+| **"`api`/`web` ficam em `Created` e `migrate` em `Exited (1)`"** | O `DATABASE_URL` no `.env` aponta para um host que o container não alcança. Use `postgresql://silo:silo@db:5432/silo` (ou remova a variável) e rode `docker compose up -d`. Veja `docker compose logs migrate`. |
+| **"O frontend não carrega"** | O frontend depende da API. Aguarde o healthcheck: `docker compose ps api`. Confira o prefixo: com `NEXT_PUBLIC_BASE_PATH=/silo`, acesse `http://localhost/silo`. |
+| **"GPU não detectada"** | A imagem do vLLM é build CUDA e não roda sem GPU. Sem GPU, suba sem ele: `docker compose up -d --scale vllm=0`. Com GPU NVIDIA, instale o NVIDIA Container Toolkit. |
+| **"`vllm` reinicia com `Failed to infer device type`"** | Sem GPU disponível no container. Suba sem o vLLM (`docker compose up -d --scale vllm=0`) ou ative o passthrough de GPU no Docker Desktop. |
 | **"Porta 5432/8000/4000/80 já em uso"** | Altere no `.env` (`POSTGRES_PORT`, `VLLM_PORT`, `API_PORT`, `SILO_HOST_PORT`). |
 | **"Modelo não encontrado"** | Verifique o nome em https://huggingface.co/models. Para modelos restritos, configure `HF_TOKEN`. |
 | **"Sem espaço em disco"** | Modelos ocupam ~500 MB. Limpe com `docker compose down -v` (apaga banco também). |

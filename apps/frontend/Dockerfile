@@ -12,10 +12,20 @@ COPY packages/config/package.json packages/config/
 COPY packages/config/ packages/config/
 WORKDIR /app/apps/frontend
 RUN npm install --legacy-peer-deps
+# @silo/engine e resolvido via symlink para /app/packages/engine. O webpack segue o
+# caminho real, entao as dependencias dele (zod, clsx, tailwind-merge) precisam
+# estar instaladas no proprio pacote, e nao apenas no node_modules do frontend.
+WORKDIR /app/packages/engine
+RUN npm install --legacy-peer-deps --omit=dev
 
 # ─── Build ───────────────────────────────────────────────────────────────────
 FROM deps AS builder
+# WORKDIR herdado de deps e /app/apps/frontend; volta para /app para o COPY nao aninhar o destino
+WORKDIR /app
 COPY apps/frontend/ apps/frontend/
+# package.json raiz (com workspaces) para o Next.js detectar o monorepo e gerar o
+# standalone no layout apps/frontend/server.js esperado pelo runner
+COPY package.json ./package.json
 WORKDIR /app/apps/frontend
 ARG NEXT_PUBLIC_BASE_PATH=/silo
 ARG APP_URL_DEV=http://localhost

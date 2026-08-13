@@ -35,13 +35,16 @@ RUN python -c "import sys; assert sys.version_info[:2] == (3, 13), sys.version"
 
 FROM python-base AS deps
 
-COPY pyproject.toml uv.lock ./
+COPY apps/backend/pyproject.toml apps/backend/uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project --compile-bytecode
 
 FROM deps AS runtime
 
-COPY README.md ./
-COPY src ./src
+COPY apps/backend/README.md ./
+COPY apps/backend/src ./src
+# Arquivos canonicos do repositorio lidos em runtime (contrato de status e portal de dataflow)
+COPY docs/migration/ai/model-run-status-semantics.yaml docs/migration/ai/
+COPY packages/engine/src/dataflow/pipeline-data.json packages/engine/src/dataflow/
 
 RUN uv sync --locked --no-dev --compile-bytecode \
     && chown -R silo:silo /app
@@ -56,8 +59,8 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 
 FROM runtime AS api
 
-COPY alembic.ini ./
-COPY migrations ./migrations
+COPY apps/backend/alembic.ini ./
+COPY apps/backend/migrations ./migrations
 
 EXPOSE 4001
 CMD ["uvicorn", "silo.api.main:app", "--host", "0.0.0.0", "--port", "4001"]
