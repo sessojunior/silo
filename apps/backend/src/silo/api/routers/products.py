@@ -79,14 +79,14 @@ async def delete_product(
     db: Connection = Depends(get_db),
 ):
     if not id:
-        return service_error_response(service_failure("ID do produto Ã© obrigatÃ³rio.", 400, field="id"), "Erro ao excluir produto.")
+        return service_error_response(service_failure("ID do produto é obrigatório.", 400, field="id"), "Erro ao excluir produto.")
 
     result = _delete_product(db, id)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao excluir produto.")
         assert response is not None
         return response
-    return build_success_payload(message="Produto excluÃ­do com sucesso")
+    return build_success_payload(message="Produto excluído com sucesso")
 
 
 def _list_products(
@@ -130,16 +130,16 @@ def _create_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
 
     name = _require_text(payload.get("name"))
     if not name:
-        return service_failure("Dados invÃ¡lidos.", 400)
+        return service_failure("Dados inválidos.", 400)
 
     slug_input = _optional_str(payload.get("slug")) or name
     slug = format_slug(slug_input)
     if not slug:
-        return service_failure("Slug invÃ¡lido.", 400, field="slug")
+        return service_failure("Slug inválido.", 400, field="slug")
 
     existing = db.execute(select(product_table.c.id).where(product_table.c.slug == slug).limit(1)).first()
     if existing is not None:
-        return service_failure("JÃ¡ existe um produto com este slug.", 400, field="name")
+        return service_failure("Já existe um produto com este slug.", 400, field="name")
 
     now = _now_naive()
     new_row = {
@@ -166,16 +166,16 @@ def _update_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
     product_id = _require_text(payload.get("id"))
     name = _require_text(payload.get("name"))
     if not product_id or not name:
-        return service_failure("Dados invÃ¡lidos.", 400)
+        return service_failure("Dados inválidos.", 400)
 
     current = db.execute(select(product_table).where(product_table.c.id == product_id).limit(1)).mappings().first()
     if current is None:
-        return service_failure("Produto nÃ£o encontrado.", 404)
+        return service_failure("Produto não encontrado.", 404)
 
     slug_input = _optional_str(payload.get("slug")) or name
     slug = format_slug(slug_input)
     if not slug:
-        return service_failure("Slug invÃ¡lido.", 400, field="slug")
+        return service_failure("Slug inválido.", 400, field="slug")
 
     duplicate = db.execute(
         select(product_table.c.id)
@@ -183,7 +183,7 @@ def _update_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
         .limit(1)
     ).first()
     if duplicate is not None:
-        return service_failure("JÃ¡ existe um produto com este slug.", 400, field="slug")
+        return service_failure("Já existe um produto com este slug.", 400, field="slug")
 
     updated_row = {
         "id": product_id,
@@ -221,7 +221,7 @@ def _delete_product(db: Connection, product_id: str) -> dict[str, object]:
 
     existing = db.execute(select(product_table.c.id).where(product_table.c.id == product_id).limit(1)).first()
     if existing is None:
-        return service_failure("Produto nÃ£o encontrado.", 404)
+        return service_failure("Produto não encontrado.", 404)
 
     problem_images = db.execute(
         select(problem_image_table.c.image).select_from(problem_image_table.join(problem_table, problem_table.c.id == problem_image_table.c.product_problem_id))

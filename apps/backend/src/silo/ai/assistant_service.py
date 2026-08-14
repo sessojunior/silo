@@ -805,6 +805,56 @@ def _scope_candidates(question: str) -> list[tuple[str, float]]:
     return scores
 
 
+# Intencoes explicitamente fora do dominio SILO: levam a recusa mesmo quando a
+# pergunta menciona o Silo ou cai em scope geral.
+_OFF_SCOPE_INTENT_TOKENS: tuple[str, ...] = (
+    "previsao do tempo",
+    "receita",
+    "piada",
+    "poema",
+    "filme",
+    "futebol",
+    "eleicao",
+    "criptomoeda",
+    "cripto",
+    "roteador",
+    "investir",
+)
+
+# Mencoes explicitas ao dominio SILO mantem a pergunta em escopo mesmo sem
+# keywords de scope especifico (ex.: "como esta a operacao do Silo hoje?").
+_DOMAIN_MENTION_TOKENS: tuple[str, ...] = (
+    "silo",
+    "operacao",
+    "operacional",
+    "producao",
+    "cptec",
+    "inpe",
+)
+
+
+def _question_is_out_of_scope(
+    question: str,
+    scope: str,
+    keyword_scores: list[tuple[str, float]],
+) -> bool:
+    """Decide se a pergunta foge do dominio do SILO e deve ser recusada."""
+    normalized = normalize_text(question)
+    if any(token in normalized for token in _OFF_SCOPE_INTENT_TOKENS):
+        return True
+    if scope != "general":
+        return False
+    # Alinha com o limiar de keywords usado pelo _detect_scope: abaixo de 2.0 a
+    # pergunta nao casa com nenhum scope especifico e o ruido fuzzy domina.
+    best_specific_score = max(
+        (score for scope_name, score in keyword_scores if scope_name != "general"),
+        default=0.0,
+    )
+    if best_specific_score >= 2.0:
+        return False
+    return not any(token in normalized for token in _DOMAIN_MENTION_TOKENS)
+
+
 async def _detect_scope(question: str, runtime_context: AgentRuntimeContext) -> tuple[str, float]:
     keyword_scores = _scope_candidates(question)
     top_scope, top_score = keyword_scores[0]
@@ -1033,6 +1083,15 @@ async def _node_classify_and_plan(state: AgentState, runtime: Runtime[AgentRunti
     plan = await _plan_from_question(state["question"], runtime.context, state)
     state["scope"] = plan.scope
     state["confidence"] = plan.confidence
+
+    keyword_scores = _scope_candidates(state["question"])
+    if _question_is_out_of_scope(state["question"], plan.scope, keyword_scores):
+        state["is_in_scope"] = False
+        state["refusal_reason"] = "Esta pergunta está fora do escopo do assistente SILO."
+        state["final_response"] = _build_response_from_state(state, runtime.context, refusal=True)
+        state["progress"] = progress
+        return state
+
     state["is_in_scope"] = True
     state["execution_plan"] = asdict(plan)
     state["entities"] = plan.resolved_entities
@@ -1771,9 +1830,15 @@ async def _node_validate_output_citations_and_artifacts(
     progress = list(state.get("progress", []))
     progress.append("validate_output_citations_and_artifacts")
     state["progress"] = progress
-    final_response = _build_response_from_state(state, runtime.context)
+    # Preserva o flag de recusa ao reconstruir a resposta; respostas recusadas
+    # nao ganham citacoes padrao.
+    refusal = bool(state.get("refusal_reason"))
+    final_response = _build_response_from_state(state, runtime.context, refusal=refusal)
     if not final_response["citations"] and not final_response.get("refusalReason"):
-        final_response["citations"] = _default_citations_for_scope(str(state.get("scope") or "general"), state)
+        final_response["citations"] = [
+            citation.model_dump(mode="json")
+            for citation in _default_citations_for_scope(str(state.get("scope") or "general"), state)
+        ]
     state["final_response"] = final_response
     return state
 
@@ -2973,6 +3038,12 @@ async def _graph_guard_router(state: AgentState) -> str:
     return "classify_and_plan"
 
 
+async def _graph_plan_router(state: AgentState) -> str:
+    if state.get("final_response") and state.get("refusal_reason"):
+        return "build_refusal"
+    return "claim_pdf_idempotency_if_needed"
+
+
 async def _graph_claim_router(state: AgentState) -> str:
     if state.get("final_response") and state.get("artifact_result", {}).get("status") == "attached_hit":
         return "load_persisted_result"
@@ -3039,7 +3110,14 @@ def _build_graph():
     graph.add_node("emit_result", _observed_node("emit_result", _node_emit_result))
     graph.add_edge(START, "guard_and_normalize")
     graph.add_conditional_edges("guard_and_normalize", _graph_guard_router, {"classify_and_plan": "classify_and_plan", "emit_result": "emit_result"})
-    graph.add_edge("classify_and_plan", "claim_pdf_idempotency_if_needed")
+    graph.add_conditional_edges(
+        "classify_and_plan",
+        _graph_plan_router,
+        {
+            "build_refusal": "build_refusal",
+            "claim_pdf_idempotency_if_needed": "claim_pdf_idempotency_if_needed",
+        },
+    )
     graph.add_conditional_edges(
         "claim_pdf_idempotency_if_needed",
         _graph_claim_router,
@@ -3069,7 +3147,7 @@ def _build_graph():
             "execute_required_data_tools": "execute_required_data_tools",
         },
     )
-    graph.add_conditional_edges("build_refusal", lambda state: "persist_transaction", {"persist_transaction": "persist_transaction"})
+    graph.add_conditional_edges("build_refusal", lambda state: "validate_output_citations_and_artifacts", {"validate_output_citations_and_artifacts": "validate_output_citations_and_artifacts"})
     graph.add_conditional_edges("build_clarification", lambda state: "persist_transaction", {"persist_transaction": "persist_transaction"})
     graph.add_conditional_edges("execute_required_data_tools", _graph_after_execute_router, {"agent_decide": "agent_decide"})
     graph.add_conditional_edges("agent_decide", _graph_after_agent_router, {"analyze_and_register_datasets": "analyze_and_register_datasets"})

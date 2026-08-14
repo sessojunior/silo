@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -37,50 +37,50 @@ const FALLBACK_EXAMPLES: AiAssistantExampleDto[] = [
   {
     id: "models",
     title: "Modelos e rodadas",
-    prompt: "Quais modelos estÃ£o com menor disponibilidade nos Ãºltimos 30 dias?",
-    description: "Usa disponibilidade, intervenÃ§Ãµes e sinais de rodada.",
+    prompt: "Quais modelos estão com menor disponibilidade nos últimos 30 dias?",
+    description: "Usa disponibilidade, intervenções e sinais de rodada.",
     scope: "models",
   },
   {
     id: "model-issues",
     title: "Problemas por modelo",
-    prompt: "Qual modelo estÃ¡ acumulando mais problemas nesta semana?",
+    prompt: "Qual modelo está acumulando mais problemas nesta semana?",
     description: "Cruza problemas recorrentes, disponibilidade e impacto recente.",
     scope: "problems",
   },
   {
     id: "pending",
-    title: "PendÃªncias",
-    prompt: "Quais pendÃªncias estÃ£o mais crÃ­ticas agora?",
-    description: "Mostra projetos, tarefas e avanÃ§o do trabalho.",
+    title: "Pendências",
+    prompt: "Quais pendências estão mais críticas agora?",
+    description: "Mostra projetos, tarefas e avanço do trabalho.",
     scope: "pending",
   },
   {
     id: "effectiveness",
-    title: "EficÃ¡cia de intervenÃ§Ã£o",
-    prompt: "A intervenÃ§Ã£o realizada foi eficaz e eficiente?",
-    description: "Compara o perÃ­odo atual com o anterior e indica a tendÃªncia.",
+    title: "Eficácia de intervenção",
+    prompt: "A intervenção realizada foi eficaz e eficiente?",
+    description: "Compara o período atual com o anterior e indica a tendência.",
     scope: "models",
   },
   {
     id: "reports",
-    title: "RelatÃ³rios",
-    prompt: "O que eu preciso olhar primeiro para entender o cenÃ¡rio de hoje?",
-    description: "Resume os painÃ©is que trazem visÃ£o rÃ¡pida da operaÃ§Ã£o.",
+    title: "Relatórios",
+    prompt: "O que eu preciso olhar primeiro para entender o cenário de hoje?",
+    description: "Resume os painéis que trazem visão rápida da operação.",
     scope: "reports",
   },
   {
     id: "problems",
     title: "Problemas",
-    prompt: "Quais categorias de problema mais cresceram na Ãºltima semana?",
-    description: "Cruza incidÃªncias, categorias e tendÃªncia.",
+    prompt: "Quais categorias de problema mais cresceram na última semana?",
+    description: "Cruza incidências, categorias e tendência.",
     scope: "problems",
   },
   {
     id: "projects",
     title: "Projetos em andamento",
-    prompt: "Quais projetos estÃ£o em andamento e como acelerar os mais lentos?",
-    description: "Aponta gargalos, progresso e aÃ§Ãµes prioritÃ¡rias.",
+    prompt: "Quais projetos estão em andamento e como acelerar os mais lentos?",
+    description: "Aponta gargalos, progresso e ações prioritárias.",
     scope: "projects",
   },
 ];
@@ -209,7 +209,7 @@ const mapThreadMessageToChatMessage = (
         assistantVisualization: message.visualization,
         assistantArtifacts: message.artifacts,
         assistantThinking: message.thinking,
-        messageId: message.id, // â† ID real do banco
+        messageId: message.id, // ← ID real do banco
       },
     );
   }
@@ -219,7 +219,7 @@ const mapThreadMessageToChatMessage = (
     message.senderUserId ?? currentUserId,
     message.senderName || currentUserName,
   );
-  chatMsg.id = message.id; // â† ID real do banco
+  chatMsg.id = message.id; // ← ID real do banco
   return chatMsg;
 };
 
@@ -285,7 +285,7 @@ export default function AiAssistantPage() {
   const [confirmDeleteThreadHasArtifacts, setConfirmDeleteThreadHasArtifacts] = useState(false);
 
   const currentUserId = currentUser?.id ?? "";
-  const currentUserName = currentUser?.name ?? "VocÃª";
+  const currentUserName = currentUser?.name ?? "Você";
 
   const activeMessages = useMemo(() => {
     if (!selectedThreadId) return [];
@@ -316,7 +316,7 @@ export default function AiAssistantPage() {
         setExamples(FALLBACK_EXAMPLES);
       }
     } catch (error) {
-      console.error("âŒ [AI_ASSISTANT] Erro ao carregar exemplos:", serializeClientError(error));
+      console.error("❌ [AI_ASSISTANT] Erro ao carregar exemplos:", serializeClientError(error));
       setExamples(FALLBACK_EXAMPLES);
     }
   }, []);
@@ -334,7 +334,7 @@ export default function AiAssistantPage() {
       const apiResponse = await readTypedApiResponse<AiAssistantThreadsResponseDto>(response);
 
       if (!response.ok || !apiResponse.success || !apiResponse.data) {
-        throw new Error(apiResponse.error || "NÃ£o foi possÃ­vel carregar as conversas.");
+        throw new Error(apiResponse.error || "Não foi possível carregar as conversas.");
       }
 
       const nextThreads = Array.isArray(apiResponse.data.threads)
@@ -343,7 +343,7 @@ export default function AiAssistantPage() {
       setThreads(nextThreads);
       return nextThreads;
     } catch (error) {
-      console.error("âŒ [AI_ASSISTANT] Erro ao carregar conversas:", serializeClientError(error));
+      console.error("❌ [AI_ASSISTANT] Erro ao carregar conversas:", serializeClientError(error));
       setThreads([]);
       return [] as AiAssistantThreadSummaryDto[];
     } finally {
@@ -364,19 +364,19 @@ export default function AiAssistantPage() {
       const apiResponse = await readTypedApiResponse<AiAssistantRuntimeStatusDto>(response);
 
       if (!response.ok || !apiResponse.success || !apiResponse.data) {
-        throw new Error(apiResponse.error || "NÃ£o foi possÃ­vel verificar o status do assistente.");
+        throw new Error(apiResponse.error || "Não foi possível verificar o status do assistente.");
       }
 
       setRuntimeStatus(apiResponse.data);
     } catch (error) {
-      console.error("âŒ [AI_ASSISTANT] Erro ao verificar status do runtime:", serializeClientError(error));
+      console.error("❌ [AI_ASSISTANT] Erro ao verificar status do runtime:", serializeClientError(error));
       setRuntimeStatus({
         provider: "ollama",
-        model: "indisponÃ­vel",
+        model: "indisponível",
         mode: "fallback",
         latencyMs: 0,
         checkedAt: new Date().toISOString(),
-        fallbackReason: "NÃ£o foi possÃ­vel verificar o status do assistente.",
+        fallbackReason: "Não foi possível verificar o status do assistente.",
       });
     } finally {
       setIsLoadingRuntimeStatus(false);
@@ -409,7 +409,7 @@ export default function AiAssistantPage() {
         }
 
         if (!response.ok || !apiResponse.success || !apiResponse.data) {
-          throw new Error(apiResponse.error || "NÃ£o foi possÃ­vel abrir a conversa.");
+          throw new Error(apiResponse.error || "Não foi possível abrir a conversa.");
         }
 
         const { thread, messages } = apiResponse.data;
@@ -424,7 +424,7 @@ export default function AiAssistantPage() {
 
         return thread;
       } catch (error) {
-        console.error("âŒ [AI_ASSISTANT] Erro ao carregar conversa:", serializeClientError(error));
+        console.error("❌ [AI_ASSISTANT] Erro ao carregar conversa:", serializeClientError(error));
         return null;
       } finally {
         setIsLoadingThread(false);
@@ -436,7 +436,7 @@ export default function AiAssistantPage() {
   const createConversationThread = useCallback(async () => {
     if (!currentUser) return null;
 
-    // Se a conversa atual estÃ¡ vazia (sem mensagens do usuÃ¡rio), reutiliza em vez de criar outra
+    // Se a conversa atual está vazia (sem mensagens do usuário), reutiliza em vez de criar outra
     const currentMessages = selectedThreadId ? (messagesByThread[selectedThreadId] ?? []) : [];
     const hasUserMessage = currentMessages.some((msg) => msg.senderUserId !== ASSISTANT_SENDER_ID);
     if (selectedThreadId && !hasUserMessage) {
@@ -458,7 +458,7 @@ export default function AiAssistantPage() {
       const apiResponse = await readTypedApiResponse<AiAssistantCreateThreadResponseDto>(response);
 
       if (!response.ok || !apiResponse.success || !apiResponse.data) {
-        throw new Error(apiResponse.error || "NÃ£o foi possÃ­vel criar a conversa.");
+        throw new Error(apiResponse.error || "Não foi possível criar a conversa.");
       }
 
       const thread = apiResponse.data.thread;
@@ -467,7 +467,7 @@ export default function AiAssistantPage() {
       setSelectedThreadId(thread.id);
       return thread;
     } catch (error) {
-      console.error("âŒ [AI_ASSISTANT] Erro ao criar conversa:", serializeClientError(error));
+      console.error("❌ [AI_ASSISTANT] Erro ao criar conversa:", serializeClientError(error));
       return null;
     } finally {
       setIsCreatingConversation(false);
@@ -506,7 +506,7 @@ export default function AiAssistantPage() {
         currentUserName,
       );
 
-      // Placeholder da resposta do assistente â€” serÃ¡ preenchido em tempo real via streaming SSE
+      // Placeholder da resposta do assistente — será preenchido em tempo real via streaming SSE
       const assistantPlaceholder = buildAssistantMessage("", {
         assistantThinking: null,
       });
@@ -534,7 +534,7 @@ export default function AiAssistantPage() {
         const apiUrl = config.getAssistantApiUrl("/api/admin/ai-assistant/messages/stream");
         const abortController = new AbortController();
 
-        // Timeout de seguranÃ§a: 5 minutos para o streaming completo
+        // Timeout de segurança: 5 minutos para o streaming completo
         const timeoutId = setTimeout(() => abortController.abort(), 300_000);
 
         const response = await fetch(apiUrl, {
@@ -663,7 +663,7 @@ export default function AiAssistantPage() {
           throw new Error("Stream encerrado sem resposta final.");
         }
       } catch (error) {
-        console.error("âŒ [AI_ASSISTANT] Erro ao responder mensagem:", serializeClientError(error));
+        console.error("❌ [AI_ASSISTANT] Erro ao responder mensagem:", serializeClientError(error));
 
         const isAbortError = error instanceof DOMException && error.name === "AbortError";
 
@@ -678,11 +678,11 @@ export default function AiAssistantPage() {
 
         // Mostra toast de erro
         const errorMsg = isAbortError
-          ? "O assistente de IA nÃ£o estÃ¡ disponÃ­vel no momento. Tente novamente em instantes."
-          : "NÃ£o foi possÃ­vel consultar o assistente. Verifique sua conexÃ£o e tente novamente.";
+          ? "O assistente de IA não está disponível no momento. Tente novamente em instantes."
+          : "Não foi possível consultar o assistente. Verifique sua conexão e tente novamente.";
         setAssistantError(errorMsg);
 
-        // Auto-limpa o erro apÃ³s 8 segundos
+        // Auto-limpa o erro após 8 segundos
         setTimeout(() => setAssistantError(null), 8000);
       } finally {
         if (hasReceivedResult) {
@@ -709,10 +709,10 @@ export default function AiAssistantPage() {
     [handleAssistantMessage],
   );
 
-  // Handler de exclusÃ£o de mensagem â€” verifica artefatos e abre confirmaÃ§Ã£o
+  // Handler de exclusão de mensagem — verifica artefatos e abre confirmação
   const handleDeleteMessage = useCallback(
     (messageId: string) => {
-      // Verifica se hÃ¡ artefatos nas mensagens posteriores
+      // Verifica se há artefatos nas mensagens posteriores
       const threadMessages = selectedThreadId ? messagesByThread[selectedThreadId] ?? [] : [];
       const msgIndex = threadMessages.findIndex((m) => m.id === messageId);
       const affectedMessages = msgIndex >= 0 ? threadMessages.slice(msgIndex) : [];
@@ -728,7 +728,7 @@ export default function AiAssistantPage() {
     [selectedThreadId, messagesByThread],
   );
 
-  // Confirma exclusÃ£o â€” remove do banco, artefatos e mensagens posteriores
+  // Confirma exclusão — remove do banco, artefatos e mensagens posteriores
   const confirmDelete = useCallback(async () => {
     if (!selectedThreadId || !confirmDeleteId) return;
 
@@ -749,17 +749,17 @@ export default function AiAssistantPage() {
 
       toast({
         type: "success",
-        title: "Mensagem excluÃ­da",
+        title: "Mensagem excluída",
         description: "A mensagem e as respostas seguintes foram removidas.",
       });
 
-      // Recarrega a thread inteira para refletir as exclusÃµes em cascata
+      // Recarrega a thread inteira para refletir as exclusões em cascata
       if (selectedThreadId) {
         void loadThreadDetail(selectedThreadId);
       }
       void loadThreads();
     } catch (error) {
-      console.error("âŒ [AI_ASSISTANT] Erro ao excluir mensagem:", serializeClientError(error));
+      console.error("❌ [AI_ASSISTANT] Erro ao excluir mensagem:", serializeClientError(error));
       toast({
         type: "error",
         title: "Erro ao excluir",
@@ -768,10 +768,10 @@ export default function AiAssistantPage() {
     }
   }, [selectedThreadId, confirmDeleteId, loadThreadDetail, loadThreads]);
 
-  // Abre confirmaÃ§Ã£o para excluir thread inteiro da sidebar
+  // Abre confirmação para excluir thread inteiro da sidebar
   const handleDeleteThread = useCallback(
     (threadId: string) => {
-    // Verifica se hÃ¡ artefatos no thread
+    // Verifica se há artefatos no thread
     const threadMessages = messagesByThread[threadId] ?? [];
     const hasArtifacts = threadMessages
       .some((m) =>
@@ -785,7 +785,7 @@ export default function AiAssistantPage() {
     [messagesByThread],
   );
 
-  // Confirma exclusÃ£o do thread
+  // Confirma exclusão do thread
   const confirmDeleteThread = useCallback(async () => {
     if (!confirmDeleteThreadId) return;
     const threadId = confirmDeleteThreadId;
@@ -803,7 +803,7 @@ export default function AiAssistantPage() {
         throw new Error(apiResponse.error || "Erro ao excluir conversa");
       }
 
-      // Se a thread excluÃ­da era a selecionada, limpa seleÃ§Ã£o
+      // Se a thread excluída era a selecionada, limpa seleção
       if (selectedThreadId === threadId) {
         setSelectedThreadId(null);
         setMessagesByThread((prev) => {
@@ -815,13 +815,13 @@ export default function AiAssistantPage() {
 
       toast({
         type: "success",
-        title: "Conversa excluÃ­da",
+        title: "Conversa excluída",
         description: "A conversa e todos os artefatos foram removidos.",
       });
 
       void loadThreads();
     } catch (error) {
-      console.error("âŒ [AI_ASSISTANT] Erro ao excluir conversa:", serializeClientError(error));
+      console.error("❌ [AI_ASSISTANT] Erro ao excluir conversa:", serializeClientError(error));
       toast({
         type: "error",
         title: "Erro ao excluir",
@@ -873,7 +873,7 @@ export default function AiAssistantPage() {
   if (isLoadingUser) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center bg-zinc-50 px-6 text-sm text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-        Carregando usuÃ¡rio...
+        Carregando usuário...
       </div>
     );
   }
@@ -883,10 +883,10 @@ export default function AiAssistantPage() {
       <div className="flex h-full min-h-0 items-center justify-center bg-zinc-50 px-6 text-center dark:bg-zinc-900">
         <div className="max-w-md rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
           <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            UsuÃ¡rio nÃ£o autenticado
+            Usuário não autenticado
           </p>
           <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            {userError || "FaÃ§a login novamente para acessar o assistente."}
+            {userError || "Faça login novamente para acessar o assistente."}
           </p>
         </div>
       </div>
@@ -974,13 +974,13 @@ export default function AiAssistantPage() {
             key={selectedThreadId ?? "new-thread"}
             onSendMessage={handleAssistantMessage}
             isSending={isSending}
-            placeholder="Pergunte sobre modelos, pendÃªncias, relatÃ³rios, problemas, soluÃ§Ãµes ou projetos do Silo..."
+            placeholder="Pergunte sobre modelos, pendências, relatórios, problemas, soluções ou projetos do Silo..."
             autoFocus={Boolean(selectedThreadId)}
           />
         </div>
       </div>
 
-      {/* DiÃ¡logo de confirmaÃ§Ã£o de exclusÃ£o de mensagem */}
+      {/* Diálogo de confirmação de exclusão de mensagem */}
       <Dialog
         open={!!confirmDeleteId}
         onClose={() => setConfirmDeleteId(null)}
@@ -988,16 +988,16 @@ export default function AiAssistantPage() {
       >
         <div className="p-6">
           <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
-            Esta aÃ§Ã£o vai apagar sua mensagem e todas as respostas do assistente a partir dela.
+            Esta ação vai apagar sua mensagem e todas as respostas do assistente a partir dela.
           </p>
           {confirmDeleteHasArtifacts && (
             <div className="flex items-start gap-2 mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
               <span className="icon-[lucide--alert-triangle] size-4 mt-0.5 shrink-0" />
-              <span>Imagens, PDFs e outros arquivos gerados nestas mensagens tambÃ©m serÃ£o excluÃ­dos permanentemente.</span>
+              <span>Imagens, PDFs e outros arquivos gerados nestas mensagens também serão excluídos permanentemente.</span>
             </div>
           )}
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5">
-            Esta aÃ§Ã£o nÃ£o pode ser desfeita.
+            Esta ação não pode ser desfeita.
           </p>
           <div className="flex gap-3 justify-end">
             <Button
@@ -1019,7 +1019,7 @@ export default function AiAssistantPage() {
         </div>
       </Dialog>
 
-      {/* DiÃ¡logo de confirmaÃ§Ã£o de exclusÃ£o de conversa inteira â€” mesmo design do Confirmar saÃ­da */}
+      {/* Diálogo de confirmação de exclusão de conversa inteira — mesmo design do Confirmar saída */}
       <Dialog
         open={!!confirmDeleteThreadId}
         onClose={() => setConfirmDeleteThreadId(null)}
@@ -1027,16 +1027,16 @@ export default function AiAssistantPage() {
       >
         <div className="p-6">
           <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
-            Tem certeza que deseja excluir esta conversa? Todas as mensagens serÃ£o removidas.
+            Tem certeza que deseja excluir esta conversa? Todas as mensagens serão removidas.
           </p>
           {confirmDeleteThreadHasArtifacts && (
             <div className="flex items-start gap-2 mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
               <span className="icon-[lucide--alert-triangle] size-4 mt-0.5 shrink-0" />
-              <span>Imagens, PDFs e outros arquivos gerados nesta conversa tambÃ©m serÃ£o excluÃ­dos permanentemente.</span>
+              <span>Imagens, PDFs e outros arquivos gerados nesta conversa também serão excluídos permanentemente.</span>
             </div>
           )}
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5">
-            Esta aÃ§Ã£o nÃ£o pode ser desfeita.
+            Esta ação não pode ser desfeita.
           </p>
           <div className="flex gap-3 justify-end">
             <Button

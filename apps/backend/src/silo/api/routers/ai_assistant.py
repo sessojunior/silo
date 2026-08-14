@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.engine import Connection
+from starlette.types import Receive
 
 from silo.ai.assistant_contracts import AiAssistantMessageRequestDto
 from silo.ai.assistant_service import (
@@ -58,6 +59,44 @@ def _stream_event(event_name: str, data: object) -> str:
 
 def _heartbeat_event() -> str:
     return ": heartbeat\n\n"
+
+
+def _all_leaf_runtime_errors(group: BaseExceptionGroup) -> bool:
+    """Informa se todas as folhas do grupo de excecoes sao RuntimeError."""
+    for exc in group.exceptions:
+        if isinstance(exc, BaseExceptionGroup):
+            if not _all_leaf_runtime_errors(exc):
+                return False
+        elif not isinstance(exc, RuntimeError):
+            return False
+    return True
+
+
+class AssistantStreamingResponse(StreamingResponse):
+    """StreamingResponse tolerante a mensagens `http.request` residuais.
+
+    Com BaseHTTPMiddleware na stack, o receive entregue ao listener de
+    desconexao do Starlette pode reenviar um `http.request` apos o corpo ter
+    sido consumido, o que derruba o stream com RuntimeError. Aqui, esses
+    eventos sao tratados como "cliente conectado" e o listener segue
+    aguardando o `http.disconnect` real.
+    """
+
+    async def listen_for_disconnect(self, receive: Receive) -> None:
+        while True:
+            try:
+                message = await receive()
+            except BaseExceptionGroup as group:
+                # Com varias camadas de BaseHTTPMiddleware, o RuntimeError de
+                # mensagem http.request residual chega aninhado em grupos.
+                if _all_leaf_runtime_errors(group):
+                    continue
+                raise
+            except RuntimeError:
+                # Mensagem residual do middleware; cliente segue conectado.
+                continue
+            if message["type"] == "http.disconnect":
+                break
 
 
 def _invalid_request_response(field: str | None = None):
@@ -169,9 +208,10 @@ async def post_message_stream(request: Request, current_user: AssistantUser, db:
                 try:
                     event = await asyncio.wait_for(asyncio.shield(pending_event), timeout=5.0)
                 except asyncio.TimeoutError:
-                    if await request.is_disconnected():
-                        pending_event.cancel()
-                        break
+                    # Nenhum evento do servico ainda. Mantem a conexao viva; a
+                    # desconexao do cliente e detectada pelo listener do
+                    # StreamingResponse, que cancela este stream e libera o
+                    # `finally` abaixo.
                     yield _heartbeat_event()
                     continue
                 except StopAsyncIteration:
@@ -200,7 +240,7 @@ async def post_message_stream(request: Request, current_user: AssistantUser, db:
                 await asyncio.gather(pending_event, return_exceptions=True)
             await service_stream.aclose()
 
-    return StreamingResponse(
+    return AssistantStreamingResponse(
         event_stream(),
         media_type="text/event-stream",
         headers={

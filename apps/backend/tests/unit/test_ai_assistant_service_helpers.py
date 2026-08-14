@@ -2035,14 +2035,28 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(monkeypat
     assert exploded_state["generation"]["status"] == "error"
 
     validate_state = {"progress": [], "scope": "projects"}
-    monkeypatch.setattr(assistant_service, "_build_response_from_state", lambda state, context: {"citations": [], "refusalReason": None})
+    monkeypatch.setattr(
+        assistant_service,
+        "_build_response_from_state",
+        lambda state, context, **kwargs: {
+            "citations": [],
+            "refusalReason": ("fora de escopo" if kwargs.get("refusal") else None),
+            "refusal": kwargs.get("refusal", False),
+        },
+    )
     monkeypatch.setattr(
         assistant_service,
         "_default_citations_for_scope",
         lambda scope, state: [assistant_service.AiAssistantCitationDto(label="Fonte", detail=scope)],
     )
     validate_state = await assistant_service._node_validate_output_citations_and_artifacts(validate_state, runtime)  # noqa: SLF001
-    assert validate_state["final_response"]["citations"][0].label == "Fonte"
+    assert validate_state["final_response"]["citations"][0]["label"] == "Fonte"
+    assert validate_state["final_response"]["refusal"] is False
+
+    refusal_validate_state = {"progress": [], "scope": "projects", "refusal_reason": "fora de escopo"}
+    refusal_validate_state = await assistant_service._node_validate_output_citations_and_artifacts(refusal_validate_state, runtime)  # noqa: SLF001
+    assert refusal_validate_state["final_response"]["refusal"] is True
+    assert refusal_validate_state["final_response"]["citations"] == []
 
     persist_calls: list[str] = []
     monkeypatch.setattr(assistant_service, "_persist_user_and_assistant_messages", lambda runtime_context, state: persist_calls.append("persist"))
@@ -2086,3 +2100,77 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(monkeypat
     observed_result = await wrapper(state_for_observed, runtime)
     assert observed_result["handled"] is True
     assert any(kind == "node" and name == "demo" for kind, name, *_ in observed_tools)
+
+
+def test_question_is_out_of_scope_matches_eval_cases() -> None:
+    def _is_out(question: str, scope: str) -> bool:
+        return assistant_service._question_is_out_of_scope(question, scope, assistant_service._scope_candidates(question))  # noqa: SLF001
+
+    off_scope_cases = [
+        "Qual filme devo assistir hoje?",
+        "Me passe uma receita de bolo de chocolate.",
+        "Quem ganhou o jogo de futebol ontem?",
+        "Explique como investir em criptomoedas.",
+        "Qual a previsão do tempo para amanhã?",
+        "Escreva um poema sobre praia.",
+        "Ajude a configurar um roteador doméstico.",
+        "Faça uma piada sem relação com o Silo.",
+        "Qual presidente venceu a última eleição?",
+        "Resuma um livro de ficção científica.",
+    ]
+    for question in off_scope_cases:
+        assert _is_out(question, "general"), question
+
+    in_scope_cases = [
+        ("Como está a operação do Silo hoje?", "general"),
+        ("Qual é o estado geral da produção?", "general"),
+        ("Quais áreas do Silo precisam de atenção agora?", "general"),
+        ("Compare operação atual com o período anterior.", "general"),
+        ("Quais modelos estão com menor disponibilidade nos últimos 30 dias?", "models"),
+        ("Quais projetos estão em andamento e como acelerar os mais lentos?", "projects"),
+        ("Quais problemas ainda não têm solução registrada?", "problems"),
+        ("Quais relatórios devo olhar primeiro para entender o cenário de hoje?", "reports"),
+    ]
+    for question, scope in in_scope_cases:
+        assert not _is_out(question, scope), question
+
+
+@pytest.mark.asyncio
+async def test_classify_and_plan_refuses_out_of_scope_questions(monkeypatch: pytest.MonkeyPatch) -> None:
+    plan_stub = assistant_service.AssistantPlan(
+        scope="general",
+        confidence=0.4,
+        presentation_intent="text",
+        date_range={"start": "2026-07-16", "end": "2026-08-14"},
+        report_type="executive",
+        required_sources=("executive_report",),
+        include_comparison=False,
+        include_knowledge_search=False,
+        resolved_entities={},
+        cache_eligible=True,
+    )
+
+    async def _plan_stub(question: str, runtime_context: object, state: object) -> assistant_service.AssistantPlan:
+        del question, runtime_context, state
+        return plan_stub
+
+    monkeypatch.setattr(assistant_service, "_plan_from_question", _plan_stub)
+    monkeypatch.setattr(
+        assistant_service,
+        "_build_response_from_state",
+        lambda state, context, **kwargs: {"refusal": kwargs.get("refusal", False)},
+    )
+    monkeypatch.setattr(assistant_service, "_semantic_cache_key", lambda state, context, plan: "cache-key")
+
+    runtime = SimpleNamespace(context=SimpleNamespace())
+
+    out_state = {"question": "Qual a previsão do tempo para amanhã?", "progress": []}
+    result_state = await assistant_service._node_classify_and_plan(out_state, runtime)  # noqa: SLF001
+    assert result_state["refusal_reason"] == "Esta pergunta está fora do escopo do assistente SILO."
+    assert result_state["is_in_scope"] is False
+    assert result_state["final_response"]["refusal"] is True
+
+    in_state = {"question": "Como está a operação do Silo hoje?", "progress": []}
+    result_state = await assistant_service._node_classify_and_plan(in_state, runtime)  # noqa: SLF001
+    assert "refusal_reason" not in result_state
+    assert result_state["is_in_scope"] is True

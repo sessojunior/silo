@@ -331,26 +331,28 @@ def test_ai_assistant_message_routes_return_json_and_sse(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_ai_assistant_message_stream_cancels_pending_event_on_disconnect(monkeypatch) -> None:
+async def test_ai_assistant_message_stream_emits_heartbeats_while_service_is_slow(monkeypatch) -> None:
     response_model = _assistant_response()
 
-    async def hanging_stream(*_args, **_kwargs):
-        await asyncio.Event().wait()
+    async def slow_stream(*_args, **_kwargs):
         yield AssistantStreamEvent(event="result", data=response_model.model_dump(mode="json"))
 
-    async def fake_wait_for(_awaitable, _timeout):
-        raise TimeoutError()
+    calls = 0
 
-    async def disconnected(self) -> bool:
-        return True
+    async def fake_wait_for(awaitable, timeout=None):
+        nonlocal calls
+        calls += 1
+        if calls <= 2:
+            # Simula servico demorando: gera heartbeats antes do resultado.
+            raise TimeoutError()
+        return await awaitable
 
-    monkeypatch.setattr(ai_assistant_router, "stream_assistant_message", hanging_stream)
+    monkeypatch.setattr(ai_assistant_router, "stream_assistant_message", slow_stream)
     monkeypatch.setattr(ai_assistant_router.asyncio, "wait_for", fake_wait_for)
-    monkeypatch.setattr(Request, "is_disconnected", disconnected, raising=False)
 
     payload = json.dumps(
         {
-            "content": "Quais relatÃ³rios devo olhar?",
+            "content": "Quais relatórios devo olhar?",
             "threadId": THREAD_ID,
         },
         ensure_ascii=False,
@@ -389,8 +391,8 @@ async def test_ai_assistant_message_stream_cancels_pending_event_on_disconnect(m
 
     body = "".join(chunks)
     assert "event: connected" in body
-    assert "event: result" not in body
-    assert "event: complete" not in body
+    assert body.count(": heartbeat") >= 2
+    assert "event: result" in body
 
 
 def _json_response_body(response):

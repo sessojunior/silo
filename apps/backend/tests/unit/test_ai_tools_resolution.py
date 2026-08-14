@@ -316,6 +316,10 @@ def test_resolution_helpers_cover_database_paths(monkeypatch: pytest.MonkeyPatch
 
     with engine.connect() as connection:
         exact_models = assistant_tools.resolve_models(connection, "bam")
+        generic_models = assistant_tools.resolve_models(
+            connection,
+            "Quais modelos estão com menor disponibilidade nos últimos 30 dias?",
+        )
         fuzzy_models = assistant_tools.resolve_models(connection, "operacional geral")
         exact_projects = assistant_tools.resolve_projects(connection, "project-1")
         fuzzy_projects = assistant_tools.resolve_projects(connection, "monitoramento")
@@ -334,8 +338,11 @@ def test_resolution_helpers_cover_database_paths(monkeypatch: pytest.MonkeyPatch
 
     assert exact_models["matches"][0]["id"] == "product-bam"
     assert exact_models["ambiguous"] is False
-    assert fuzzy_models["ambiguous"] is True
-    assert len(fuzzy_models["matches"]) >= 2
+    # Perguntas genericas sobre modelos nao devem gerar matches nem clarificacao.
+    assert generic_models["matches"] == []
+    assert generic_models["ambiguous"] is False
+    assert fuzzy_models["matches"] == []
+    assert fuzzy_models["ambiguous"] is False
     assert exact_projects["matches"][0]["id"] == "project-1"
     assert fuzzy_projects["ambiguous"] is True
     assert categories["matches"][0]["id"] == "model-failure"

@@ -142,22 +142,30 @@ def resolve_models(connection: Connection, query: str) -> dict[str, Any]:
 
     for row in rows:
         candidate = serialize_legacy_row(row)
+        name = str(candidate.get("name") or "")
+        slug = str(candidate.get("slug") or "")
         candidate_text = " ".join(
-            part for part in (candidate.get("name"), candidate.get("slug"), candidate.get("description")) if isinstance(part, str)
+            part for part in (name, slug, candidate.get("description")) if isinstance(part, str)
         )
+        named_text = " ".join(part for part in (name, slug) if part)
+        # A pergunta so "cita" um modelo quando menciona tokens do nome/slug;
+        # perguntas genericas (ex.: "quais modelos estao...") nao devem gerar
+        # matches ambíguos nem clarificacao.
+        named_overlap = token_overlap_score(query, named_text)
+        named_fuzzy = fuzzy_score(query, named_text)
         score = 0.0
         if query_norm and query_norm in normalize_text(str(candidate.get("id") or "")):
             score = 1.0
-        elif query_norm and query_norm in normalize_text(str(candidate.get("slug") or "")):
+        elif query_norm and query_norm in normalize_text(slug):
             score = 0.98
-        elif query_norm and query_norm == normalize_text(str(candidate.get("name") or "")):
+        elif query_norm and query_norm == normalize_text(name):
             score = 0.97
         else:
             score = max(fuzzy_score(query, candidate_text), token_overlap_score(query, candidate_text))
 
         if score >= 0.95:
             exact_matches.append({"id": candidate["id"], "slug": candidate.get("slug"), "name": candidate.get("name"), "score": score})
-        elif score > 0.0:
+        elif named_overlap > 0 or named_fuzzy >= 0.6:
             fuzzy_matches.append((score, {"id": candidate["id"], "slug": candidate.get("slug"), "name": candidate.get("name"), "score": score}))
 
     matches = exact_matches or [match for _, match in sorted(fuzzy_matches, key=lambda item: (-item[0], normalize_text(str(item[1]["name"]))))[:5]]
@@ -176,15 +184,21 @@ def resolve_projects(connection: Connection, query: str) -> dict[str, Any]:
 
     for row in rows:
         candidate = serialize_legacy_row(row)
+        name = str(candidate.get("name") or "")
         candidate_text = " ".join(
-            part for part in (candidate.get("name"), candidate.get("shortDescription"), candidate.get("description")) if isinstance(part, str)
+            part for part in (name, candidate.get("shortDescription"), candidate.get("description")) if isinstance(part, str)
         )
+        # Mesma regra dos modelos: so gera match quando a pergunta cita o projeto.
+        named_overlap = token_overlap_score(query, name)
+        named_fuzzy = fuzzy_score(query, name)
         score = 0.0
         if query_norm and query_norm == normalize_text(str(candidate.get("id") or "")):
             score = 1.0
         else:
             score = max(fuzzy_score(query, candidate_text), token_overlap_score(query, candidate_text))
-        if score > 0.0:
+        if score >= 0.95:
+            matches.append((score, {"id": candidate["id"], "name": candidate.get("name"), "score": score}))
+        elif named_overlap > 0 or named_fuzzy >= 0.6:
             matches.append((score, {"id": candidate["id"], "name": candidate.get("name"), "score": score}))
 
     ordered = [match for _, match in sorted(matches, key=lambda item: (-item[0], normalize_text(str(item[1]["name"]))))[:5]]
@@ -202,11 +216,16 @@ def resolve_problem_categories(connection: Connection, query: str | None = None)
     for row in rows:
         candidate = serialize_legacy_row(row)
         candidate_text = " ".join(part for part in (candidate.get("name"), candidate.get("id")) if isinstance(part, str))
+        # Mesma regra: so gera match quando a pergunta cita a categoria.
+        named_overlap = token_overlap_score(query_value, candidate_text)
+        named_fuzzy = fuzzy_score(query_value, candidate_text)
         score = 1.0 if query_value and query_value == normalize_text(str(candidate.get("id") or "")) else max(
             fuzzy_score(query_value, candidate_text),
             token_overlap_score(query_value, candidate_text),
         )
-        if score > 0.0:
+        if score >= 0.95:
+            matches.append((score, {"id": candidate["id"], "name": candidate.get("name"), "color": candidate.get("color"), "score": score}))
+        elif named_overlap > 0 or named_fuzzy >= 0.6:
             matches.append((score, {"id": candidate["id"], "name": candidate.get("name"), "color": candidate.get("color"), "score": score}))
 
     ordered = [match for _, match in sorted(matches, key=lambda item: (-item[0], normalize_text(str(item[1]["name"]))))[:5]]
