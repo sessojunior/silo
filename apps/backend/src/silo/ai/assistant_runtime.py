@@ -17,10 +17,18 @@ from silo.ai.ports import AiRuntimeProbe, ChatMessage, ChatModelRuntime, ChatPor
 from silo.config import VLLMSettings, Settings
 from silo.clock import SYSTEM_CLOCK, Clock
 
-DEFAULT_CHAT_TIMEOUT_SECONDS = 30.0
-DEFAULT_EMBEDDING_TIMEOUT_SECONDS = 30.0
+DEFAULT_CHAT_TIMEOUT_SECONDS = 300.0  # CPU sem GPU e lento; tolerar geracoes longas.
+DEFAULT_EMBEDDING_TIMEOUT_SECONDS = 120.0
 EMBEDDING_VECTOR_SIZE = 768
 EMBEDDING_CACHE_MAX_SIZE = 256
+
+
+def _embedding_base_url(settings: VLLMSettings) -> str:
+    # Permite servir o modelo de embedding em uma instancia vllm separada.
+    # getattr mantem compatibilidade com objetos settings-like (SimpleNamespace)
+    # que nao declaram o campo.
+    embedding_url = str(getattr(settings, "embedding_url", "") or "").strip()
+    return embedding_url if embedding_url else settings.url
 
 
 def _message_to_langchain(message: ChatMessage) -> BaseMessage:
@@ -166,8 +174,13 @@ class VLLMEmbeddingRuntime(EmbeddingPort):
         self._cache = OrderedDict()
         self._embeddings = OpenAIEmbeddings(
             model=self.settings.embedding_model,
-            base_url=self.settings.url,
+            base_url=_embedding_base_url(self.settings),
             api_key=self.settings.api_key,
+            # Sem isso o langchain tokeniza com tiktoken (cl100k) e envia ids
+            # de token no campo `input`; o vllm valida contra o vocabulario
+            # do modelo de embedding e responde 400 ("Token id X is out of
+            # vocabulary"). Enviar strings puras evita o problema.
+            check_embedding_ctx_length=False,
         )
 
     async def embed(self, text: str) -> tuple[float, ...]:
@@ -248,8 +261,12 @@ async def probe_vllm_runtime(
         available_models = await _fetch_vllm_models(settings.vllm.url)
         if settings.vllm.model not in available_models:
             fallback_reason = f"Modelo de chat ausente: {settings.vllm.model}."
-        elif settings.vllm.embedding_model not in available_models:
-            fallback_reason = f"Modelo de embedding ausente: {settings.vllm.embedding_model}."
+        else:
+            embedding_base_url = _embedding_base_url(settings.vllm)
+            if embedding_base_url.rstrip("/") != settings.vllm.url.rstrip("/"):
+                available_models = await _fetch_vllm_models(embedding_base_url)
+            if settings.vllm.embedding_model not in available_models:
+                fallback_reason = f"Modelo de embedding ausente: {settings.vllm.embedding_model}."
 
         if fallback_reason is None:
             await chat_runtime_value.complete(

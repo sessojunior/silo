@@ -376,8 +376,18 @@ async def test_assistant_prompt_and_visualization_helpers(monkeypatch: pytest.Mo
     assert assistant_service._parse_structured_synthesis_response("") is None  # noqa: SLF001
     assert assistant_service._parse_structured_synthesis_response("```json\n{\"answer\":\"ok\"}\n```") == {"answer": "ok"}  # noqa: SLF001
     assert assistant_service._parse_structured_synthesis_response("sem json") is None  # noqa: SLF001
-    assert assistant_service._synthesis_answer_is_safe("Resposta 10", "Resposta 10 e 12") is True  # noqa: SLF001
-    assert assistant_service._synthesis_answer_is_safe("Resposta 99", "Resposta 10") is False  # noqa: SLF001
+    # Respostas degeneradas (curtas ou sem texto) sao recusadas.
+    assert assistant_service._synthesis_answer_is_safe("0", "os modelos tiveram 0 rodadas") is False  # noqa: SLF001
+    assert assistant_service._synthesis_answer_is_safe("12345678901234567890", "os modelos tiveram 0 rodadas") is False  # noqa: SLF001
+    # Numeros do candidato devem estar contidos na base.
+    assert assistant_service._synthesis_answer_is_safe(
+        "No periodo, os modelos tiveram 10 rodadas",
+        "No periodo, os modelos tiveram 10 rodadas e 12 intervencoes",
+    ) is True  # noqa: SLF001
+    assert assistant_service._synthesis_answer_is_safe(
+        "No periodo, os modelos tiveram 99 rodadas",
+        "No periodo, os modelos tiveram 10 rodadas",
+    ) is False  # noqa: SLF001
 
     monkeypatch.setattr(
         assistant_service,
@@ -1991,14 +2001,14 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(monkeypat
         async def complete_with_metadata(self, messages):  # noqa: ANN001
             del messages
             return (
-                SimpleNamespace(content='{"answer":"Resposta final","contextSummary":"resumo"}'),
+                SimpleNamespace(content='{"answer":"Resposta final completa","contextSummary":"resumo"}'),
                 SimpleNamespace(prompt_eval_count=7, output_token_count=64),
             )
 
     runtime.context.model_runtime = _MetadataRuntime()
     synth_state = {"progress": [], "response_base": "Resposta base", "question": "Resumo", "scope": "projects"}
     synth_state = await assistant_service._node_synthesize_once(synth_state, runtime)  # noqa: SLF001
-    assert synth_state["answer"] == "Resposta final"
+    assert synth_state["answer"] == "Resposta final completa"
     assert synth_state["synthesis_context_summary"] == "resumo"
 
     class _TokenLimitedRuntime:
@@ -2017,7 +2027,7 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(monkeypat
     class _SimpleRuntime:
         async def complete(self, messages):  # noqa: ANN001
             del messages
-            return SimpleNamespace(content='{"answer":"Resposta final"}')
+            return SimpleNamespace(content='{"answer":"Resposta final completa"}')
 
     runtime.context.model_runtime = _SimpleRuntime()
     simple_state = {"progress": [], "response_base": "Fallback", "question": "Resumo", "scope": "projects"}

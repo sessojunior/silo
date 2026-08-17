@@ -111,8 +111,11 @@ class VLLMSettings(BaseModel):
     url: str = "http://localhost:8000/v1"
     api_key: str = "not-needed"
     model: str = "Qwen/Qwen2.5-0.5B-Instruct"
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
-    timeout_ms: int = 30_000
+    # bge-small tem 384 dims; o banco (pgvector) exige 768 -> bge-base.
+    embedding_model: str = "BAAI/bge-base-en-v1.5"
+    # Quando vazio, o runtime de embedding usa a mesma url do modelo de chat.
+    embedding_url: str = ""
+    timeout_ms: int = 180_000
     max_concurrent_requests: int = 4
 
 
@@ -305,9 +308,14 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
             "embedding_model": _first_non_empty(
                 environ,
                 ("VLLM_EMBEDDING_MODEL",),
-                "BAAI/bge-small-en-v1.5",
+                "BAAI/bge-base-en-v1.5",
             ),
-            "timeout_ms": _parse_int(environ, ("VLLM_TIMEOUT_MS",), 30_000, minimum=1),
+            "embedding_url": _first_non_empty(
+                environ,
+                ("VLLM_EMBEDDING_URL",),
+                "",
+            ),
+            "timeout_ms": _parse_int(environ, ("VLLM_TIMEOUT_MS",), 180_000, minimum=1),
             "max_concurrent_requests": _parse_int(
                 environ,
                 ("VLLM_MAX_CONCURRENT_REQUESTS",),

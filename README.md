@@ -78,25 +78,21 @@ AI_AGENT_MODE=deterministic
 > backend rodar **fora** do Docker.
 > Para acessar via localhost, mantenha `APP_URL_PROD=http://localhost` no `.env`
 > (esse valor é embutido na imagem do frontend no build).
-> **vLLM:** a imagem publicada é build CUDA e exige GPU. Em máquinas sem GPU,
-> suba sem o serviço: `docker compose up -d --scale vllm=0` — o app e o
-> assistente em modo `deterministic` funcionam normalmente.
+> **vLLM:** por padrão sobe a imagem CPU oficial (`vllm/vllm-openai-cpu`), que
+> roda em qualquer máquina (mais lenta). Com GPU NVIDIA, defina
+> `SILO_VLLM_IMAGE=vllm/vllm-openai:v0.11.2` no `.env`.
 
 ### 3. Suba a stack
 
 ```bash
-# Com GPU NVIDIA (NVIDIA Container Toolkit instalado)
 docker compose up -d --build
-
-# Sem GPU: sobe tudo exceto o vLLM (IA via LLM fica indisponível)
-docker compose up -d --build --scale vllm=0
 ```
 
 Na primeira execução, o Docker vai:
-1. Baixar as imagens (PostgreSQL, vLLM)
+1. Baixar as imagens (PostgreSQL, vLLM CPU)
 2. Construir as imagens do backend e frontend
 3. Criar o banco de dados e rodar migrations
-4. **Baixar o modelo de IA** (~400 MB) — o vLLM faz isso automaticamente no primeiro boot (somente quando ele sobe)
+4. **Baixar o modelo de IA** (~500 MB) — o vLLM faz isso automaticamente no primeiro boot
 5. Iniciar todos os serviços
 
 ### 4. Acompanhe o progresso
@@ -532,8 +528,8 @@ Consulte [`env.example`](env.example) para a lista completa.
 | **"Login retorna 401 com `teste@inpe.br`"** | O banco local está sem usuários. Rode o seed: `docker compose run --rm --no-deps migrate python -m silo.db.seed` e tente de novo. |
 | **"`api`/`web` ficam em `Created` e `migrate` em `Exited (1)`"** | O `DATABASE_URL` no `.env` aponta para um host que o container não alcança. Use `postgresql://silo:silo@db:5432/silo` (ou remova a variável) e rode `docker compose up -d`. Veja `docker compose logs migrate`. |
 | **"O frontend não carrega"** | O frontend depende da API. Aguarde o healthcheck: `docker compose ps api`. Confira o prefixo: com `NEXT_PUBLIC_BASE_PATH=/silo`, acesse `http://localhost/silo`. |
-| **"GPU não detectada"** | A imagem do vLLM é build CUDA e não roda sem GPU. Sem GPU, suba sem ele: `docker compose up -d --scale vllm=0`. Com GPU NVIDIA, instale o NVIDIA Container Toolkit. |
-| **"`vllm` reinicia com `Failed to infer device type`"** | Sem GPU disponível no container. Suba sem o vLLM (`docker compose up -d --scale vllm=0`) ou ative o passthrough de GPU no Docker Desktop. |
+| **"GPU não detectada"** | Sem GPU, o vLLM roda em CPU pela imagem `vllm/vllm-openai-cpu` (padrão do compose). Com GPU NVIDIA, instale o NVIDIA Container Toolkit e defina `SILO_VLLM_IMAGE=vllm/vllm-openai:v0.11.2`. |
+| **"`vllm` reinicia com `Failed to infer device type`"** | Você está usando a imagem CUDA sem GPU. Use a imagem CPU (`vllm/vllm-openai-cpu`, padrão) ou ative o passthrough de GPU no Docker Desktop. |
 | **"Porta 5432/8000/4000/80 já em uso"** | Altere no `.env` (`POSTGRES_PORT`, `VLLM_PORT`, `API_PORT`, `SILO_HOST_PORT`). |
 | **"Modelo não encontrado"** | Verifique o nome em https://huggingface.co/models. Para modelos restritos, configure `HF_TOKEN`. |
 | **"Sem espaço em disco"** | Modelos ocupam ~500 MB. Limpe com `docker compose down -v` (apaga banco também). |

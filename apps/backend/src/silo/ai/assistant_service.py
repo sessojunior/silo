@@ -93,7 +93,7 @@ from silo.services.pdf_artifacts import PdfArtifact
 from silo.storage.uploads import get_upload_file_path, delete_upload_file
 
 ASSISTANT_GRAPH_VERSION = "2026-07-23"
-ASSISTANT_PROMPT_VERSION = "2026-07-23"
+ASSISTANT_PROMPT_VERSION = "2026-08-17"
 ASSISTANT_TOOL_VERSION = AI_TOOL_CATALOG_VERSION
 ASSISTANT_METRIC_VERSION = AI_METRIC_VERSION
 ASSISTANT_GRAPH_DEADLINE_SECONDS = 90
@@ -2664,6 +2664,7 @@ def _build_synthesis_prompt(state: AgentState) -> str:
             "Não invente números, URLs, nomes ou citações.",
             "Não inclua raciocínio interno.",
             "Não inclua campos adicionais.",
+            "answer deve ser uma frase completa em português com pelo menos 8 palavras; nunca responda apenas com um número ou palavra isolada.",
         ],
     }
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
@@ -2685,9 +2686,15 @@ def _parse_structured_synthesis_response(content: str) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+_SYNTHESIS_ANSWER_MIN_LENGTH = 20
+
+
 def _synthesis_answer_is_safe(candidate_answer: str, base_answer: str) -> bool:
     candidate_answer = candidate_answer.strip()
-    if not candidate_answer:
+    # Respostas degeneradas (ex.: "0", "ok", numeros puros) nao substituem a base.
+    if len(candidate_answer) < _SYNTHESIS_ANSWER_MIN_LENGTH:
+        return False
+    if not re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", candidate_answer):
         return False
     candidate_numbers = set(re.findall(r"\b\d+(?:[.,]\d+)?\b", candidate_answer))
     base_numbers = set(re.findall(r"\b\d+(?:[.,]\d+)?\b", base_answer))

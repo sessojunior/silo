@@ -22,23 +22,30 @@ services:
     restart: unless-stopped
 
   vllm:
-    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai:v0.11.2}
+    # Imagem CPU oficial: roda em qualquer maquina, sem GPU (mais lento).
+    # Para GPU NVIDIA, defina no .env: SILO_VLLM_IMAGE=vllm/vllm-openai:v0.11.2
+    # e descomente o bloco `deploy` abaixo.
+    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai-cpu:v0.27.1-x86_64}
     container_name: silo-vllm
+    # vLLM usa /dev/shm para comunicao entre processos; o padrao do
+    # Docker Desktop (64 MB) e insuficiente ("Insufficient space in /dev/shm").
+    shm_size: "2gb"
     ports:
       - "${VLLM_PORT:-8000}:8000"
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
       VLLM_LOGGING_LEVEL: ${LOG_LEVEL:-INFO}
+      VLLM_CPU_KVCACHE_SPACE: ${VLLM_CPU_KVCACHE_SPACE:-1}
     command:
       - "--model"
       - "${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}"
       - "--max-model-len"
       - "${VLLM_MAX_MODEL_LEN:-16384}"
-      - "--gpu-memory-utilization"
-      - "${VLLM_GPU_MEM_UTIL:-0.85}"
-      - "--enable-prefix-caching"
+      - "--dtype"
+      - "${VLLM_DTYPE:-bfloat16}"
     volumes:
       - silo-vllm-cache:/root/.cache/huggingface
+      - silo-vllm-compile-cache:/root/.cache/vllm
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
@@ -54,6 +61,36 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
+
+  vllm-embed:
+    # vLLM serve um modelo por instancia; este servico dedicado atende o
+    # modelo de embedding (cache semantico do assistente de IA).
+    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai-cpu:v0.27.1-x86_64}
+    container_name: silo-vllm-embed
+    shm_size: "2gb"
+    ports:
+      - "${VLLM_EMBED_PORT:-8001}:8000"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+      VLLM_LOGGING_LEVEL: ${LOG_LEVEL:-INFO}
+      VLLM_CPU_KVCACHE_SPACE: ${VLLM_CPU_KVCACHE_SPACE:-1}
+    command:
+      - "--model"
+      - "${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}"
+      - "--max-model-len"
+      - "512"
+      - "--dtype"
+      - "${VLLM_DTYPE:-bfloat16}"
+    volumes:
+      - silo-vllm-cache:/root/.cache/huggingface
+      - silo-vllm-compile-cache:/root/.cache/vllm
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    restart: unless-stopped
 
   migrate:
     build:
@@ -158,8 +195,9 @@ services:
       KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
       VLLM_URL: http://vllm:8000/v1
       VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
-      VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
-      VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-30000}
+      VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
+      VLLM_EMBEDDING_URL: ${VLLM_EMBEDDING_URL:-http://vllm-embed:8000/v1}
+      VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-180000}
       VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-4}
       TZ: America/Sao_Paulo
     volumes:
@@ -267,6 +305,8 @@ volumes:
     name: silo-storage-data
   silo-vllm-cache:
     name: silo-vllm-cache
+  silo-vllm-compile-cache:
+    name: silo-vllm-compile-cache
 
 networks:
   frontend:

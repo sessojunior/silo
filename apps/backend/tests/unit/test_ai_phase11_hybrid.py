@@ -1106,6 +1106,7 @@ def test_prompt_builders_treat_untrusted_text_as_json_data() -> None:
         "Não invente números, URLs, nomes ou citações.",
         "Não inclua raciocínio interno.",
         "Não inclua campos adicionais.",
+        "answer deve ser uma frase completa em português com pelo menos 8 palavras; nunca responda apenas com um número ou palavra isolada.",
     ]
     assert synthesis_payload["outputFormat"] == {
         "answer": "string",
