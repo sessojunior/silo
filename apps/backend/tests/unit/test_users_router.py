@@ -17,6 +17,7 @@ from sqlalchemy import (
     delete,
     insert,
     select,
+    update,
 )
 
 from silo.api.dependencies import UserGroupInfo
@@ -1218,3 +1219,59 @@ async def test_users_router_routes_cover_service_error_wrappers_and_filters(
 
     empty_group_users = users_router._list_users(connection, search=None, status=None, group_id="missing-group")  # noqa: SLF001
     assert empty_group_users == {"items": [], "total": 0}
+
+
+@pytest.mark.asyncio
+async def test_delete_profile_image_remove_arquivo_e_registro(users_connection, monkeypatch) -> None:
+    connection, ids, tables = users_connection
+
+    deleted_uploads: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        users_router,
+        "delete_upload_file",
+        lambda kind, filename: deleted_uploads.append((kind, filename)),
+    )
+
+    # Usuario com imagem: apaga arquivo e zera registro para o fallback.
+    connection.execute(
+        update(tables["user"])
+        .where(tables["user"].c.id == ids.member_1)
+        .values(image="/uploads/avatars/member.webp")
+    )
+    connection.commit()
+
+    response = _payload(
+        await users_router.delete_profile_image(
+            SimpleNamespace(id=ids.member_1),
+            connection,
+        )
+    )
+    assert response["success"] is True
+    assert response["data"]["imageUrl"] == "/images/profile.png"
+    assert deleted_uploads == [("avatars", "member.webp")]
+    stored_image = connection.execute(
+        select(tables["user"].c.image).where(tables["user"].c.id == ids.member_1)
+    ).scalar_one()
+    assert stored_image == "/images/profile.png"
+
+    # Usuario sem imagem: nada para apagar no disco, registro vira fallback.
+    deleted_uploads.clear()
+    response = _payload(
+        await users_router.delete_profile_image(
+            SimpleNamespace(id=ids.member_2),
+            connection,
+        )
+    )
+    assert response["success"] is True
+    assert response["data"]["imageUrl"] == "/images/profile.png"
+    assert deleted_uploads == []
+
+    # Usuario inexistente: erro de servico.
+    response = _payload(
+        await users_router.delete_profile_image(
+            SimpleNamespace(id="missing-user"),
+            connection,
+        )
+    )
+    assert response["success"] is False
+    assert "error" in response

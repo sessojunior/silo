@@ -29,6 +29,19 @@ interface FormState {
   message: string;
 }
 
+// O backend devolve erros no campo `error`; alguns fluxos legados usam
+// `message`. Normaliza para exibir no toast e no formulario.
+function extractErrorMessage(data: unknown): string {
+  if (typeof data !== "object" || data === null) {
+    return "Não foi possível concluir a operação.";
+  }
+  const record = data as Record<string, unknown>;
+  const value = record.error ?? record.message;
+  return typeof value === "string" && value.trim()
+    ? value
+    : "Não foi possível concluir a operação.";
+}
+
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const { currentUser } = useCurrentUser();
@@ -217,10 +230,11 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setForm({ field: data.field, message: data.message });
+        const message = extractErrorMessage(data);
+        setForm({ field: data.field, message });
         toast({
           type: "error",
-          title: data.message,
+          title: message,
         });
       } else {
         // Atualizar contexto com os novos dados
@@ -266,10 +280,11 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setForm({ field: data.field, message: data.message });
+        const message = extractErrorMessage(data);
+        setForm({ field: data.field, message });
         toast({
           type: "error",
-          title: data.message,
+          title: message,
         });
       } else {
         // Atualizar contexto com as novas preferências
@@ -328,10 +343,11 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setForm({ field: data.field, message: data.message });
+        const message = extractErrorMessage(data);
+        setForm({ field: data.field, message });
         toast({
           type: "error",
-          title: data.message,
+          title: message,
         });
       } else {
         setEmailChangeNewEmail(formatEmail);
@@ -386,10 +402,11 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setForm({ field: data.field, message: data.message });
+        const message = extractErrorMessage(data);
+        setForm({ field: data.field, message });
         toast({
           type: "error",
-          title: data.message,
+          title: message,
         });
       } else {
         // Atualiza contexto com novo email
@@ -442,10 +459,11 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setForm({ field: data.field, message: data.message });
+        const message = extractErrorMessage(data);
+        setForm({ field: data.field, message });
         toast({
           type: "error",
-          title: data.message,
+          title: message,
         });
       } else {
         toast({

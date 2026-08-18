@@ -536,4 +536,62 @@ describe("SettingsPage", () => {
       }),
     );
   });
+
+  it("exibe mensagem de erro ao solicitar troca para o mesmo e-mail", async () => {
+    searchParamsState = new URLSearchParams("tab=security");
+    userContextState = {
+      userProfile: {
+        genre: "female",
+        role: "analyst",
+        phone: "5511999999999",
+        company: "INPE",
+        location: "sao-jose-dos-campos",
+        team: "inpe",
+      },
+      userPreferences: {
+        chatEnabled: true,
+        showWelcome: true,
+      },
+      updateUser: vi.fn(),
+      updateUserProfile: vi.fn(),
+      updateUserPreferences: vi.fn(),
+    };
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = new URL(String(input), "http://localhost");
+      const method = (init?.method ?? "GET").toUpperCase();
+
+      if (method === "POST" && requestUrl.pathname === "/api/admin/users/email-change") {
+        return jsonResponse(
+          {
+            success: false,
+            error: "O e-mail informado é o mesmo que o atual.",
+            field: "email",
+          },
+          400,
+        );
+      }
+
+      throw new Error(`Unexpected request: ${method} ${requestUrl.pathname}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<SettingsPage />);
+
+    fireEvent.change(screen.getByLabelText("Novo e-mail"), {
+      target: { value: "user.one@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /alterar e-mail/i }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(vi.mocked(toast)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "error",
+        title: "O e-mail informado é o mesmo que o atual.",
+      }),
+    );
+  });
 });

@@ -206,12 +206,15 @@ export default function PhotoUploadLocal({
         <div className="flex items-center justify-center">
           <div className="group relative flex size-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 transition duration-200 hover:border-zinc-400 dark:hover:border-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:ring-2 hover:ring-zinc-300 dark:hover:ring-zinc-600">
             {previewUrl ? (
+              /* Uploads exigem cookie de sessão; o optimizer do Next não
+                 repassa cookies e falha — buscar direto no browser. */
               <Image
                 src={previewUrl}
                 onError={() => setPreviewUrl(null)}
                 alt="Preview da imagem"
                 fill
                 sizes="80px"
+                unoptimized
                 className="object-cover transition-transform duration-200 group-hover:scale-105"
               />
             ) : (

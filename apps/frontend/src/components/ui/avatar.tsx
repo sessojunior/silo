@@ -44,6 +44,11 @@ export default function Avatar({
 
   // Se tem imagem, usar Image do Next.js
   if (imageSrc && imageSrc !== "/images/profile.png") {
+    // Uploads exigem cookie de sessão; o optimizer do Next não repassa
+    // cookies e falha (400) — buscar direto no browser.
+    const isAuthUpload =
+      imageSrc.startsWith("blob:") ||
+      (normalizedSrc?.startsWith("/uploads/") ?? false);
     return (
       <div className="relative inline-block">
         <Image
@@ -52,7 +57,7 @@ export default function Avatar({
           width={sizePixel}
           height={sizePixel}
           className={`${sizeClass} rounded-full object-cover ${className}`}
-          unoptimized={imageSrc.startsWith("blob:")}
+          unoptimized={isAuthUpload}
         />
         {showPresence && presenceColor && (
           <span

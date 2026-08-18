@@ -174,6 +174,19 @@ async def upload_profile_image(
     return build_success_payload(result["data"], message="Imagem alterada com sucesso!")
 
 
+@router.delete("/profile-image")
+async def delete_profile_image(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Connection = Depends(get_db),
+):
+    result = _delete_current_user_profile_image(db, current_user.id)
+    if is_service_error(result):
+        response = service_error_response(result, "Erro ao remover imagem.")
+        assert response is not None
+        return response
+    return build_success_payload(result["data"], message="Imagem removida com sucesso!")
+
+
 @router.get("/preferences")
 async def get_preferences(
     current_user: CurrentUser = Depends(get_current_user),
@@ -727,6 +740,30 @@ async def _update_current_user_profile_image(
     )
     db.commit()
     return service_success({"imageUrl": stored.url})
+
+
+_PROFILE_IMAGE_FALLBACK = "/images/profile.png"
+
+
+def _delete_current_user_profile_image(db: Connection, user_id: str) -> dict[str, object]:
+    user_table = legacy_tables["user"]
+
+    current = db.execute(
+        select(user_table.c.image).where(user_table.c.id == user_id).limit(1)
+    ).first()
+    if current is None:
+        return service_failure("Usuário não encontrado", 404)
+
+    # Remove o arquivo fisico (apenas /uploads seguros) e o registro no banco.
+    _delete_profile_image(current[0])
+
+    db.execute(
+        update(user_table)
+        .where(user_table.c.id == user_id)
+        .values(image=_PROFILE_IMAGE_FALLBACK, updated_at=_now_naive())
+    )
+    db.commit()
+    return service_success({"imageUrl": _PROFILE_IMAGE_FALLBACK})
 
 
 

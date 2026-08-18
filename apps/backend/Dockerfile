@@ -47,6 +47,7 @@ COPY docs/migration/ai/model-run-status-semantics.yaml docs/migration/ai/
 COPY packages/engine/src/dataflow/pipeline-data.json packages/engine/src/dataflow/
 
 RUN uv sync --locked --no-dev --compile-bytecode \
+    && mkdir -p /app/uploads \
     && chown -R silo:silo /app
 
 ENV PATH="/app/.venv/bin:${PATH}" \

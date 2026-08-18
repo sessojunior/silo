@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from fastapi import Request, UploadFile
-from starlette.datastructures import FormData
+from fastapi import Request
+
+# O parser de multipart (starlette 1.3) produz starlette.datastructures.UploadFile;
+# fastapi.UploadFile e uma subclasse, mas o isinstance contra a classe do fastapi
+# falha para valores vindos de request.form() -> "Arquivo não enviado".
+from starlette.datastructures import FormData, UploadFile
 
 from silo.storage.uploads import MAX_FILE_SIZE_BYTES
 
