@@ -133,12 +133,13 @@ export default function ActivityFormOffcanvas({
     if (
       formData.estimatedDays &&
       (isNaN(Number(formData.estimatedDays)) ||
+        !Number.isInteger(Number(formData.estimatedDays)) ||
         Number(formData.estimatedDays) < 0)
     ) {
       toast({
         type: "error",
         title: "Erro na validação",
-        description: "Dias estimados deve ser um número válido e positivo",
+        description: "Dias estimados deve ser um número inteiro e positivo",
       });
       return;
     }
@@ -321,7 +322,7 @@ export default function ActivityFormOffcanvas({
             <Input
               id="estimatedDays"
               type="text"
-              placeholder="Ex: 3 ou 1.5"
+              placeholder="Ex: 3"
               value={formData.estimatedDays?.toString() || ""}
               setValue={(value) => handleFieldChange("estimatedDays", value)}
               disabled={saving}

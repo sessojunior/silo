@@ -171,6 +171,10 @@ def create_project_activity(connection: Connection, project_id: str, payload: di
     if isinstance(required, dict) and required.get("error"):
         return required
 
+    estimated_days, days_error = _parse_estimated_days(payload.get("estimatedDays"))
+    if days_error is not None:
+        return days_error
+
     now = now_naive()
     row = {
         "id": new_uuid(),
@@ -178,7 +182,7 @@ def create_project_activity(connection: Connection, project_id: str, payload: di
         "name": required["name"],
         "description": required["description"],
         "category": _optional_str(payload.get("category")),
-        "estimated_days": optional_int(payload.get("estimatedDays")),
+        "estimated_days": estimated_days,
         "start_date": _optional_date(payload.get("startDate")),
         "end_date": _optional_date(payload.get("endDate")),
         "priority": _optional_str(payload.get("priority")) or "medium",
@@ -202,6 +206,10 @@ def update_project_activity(connection: Connection, project_id: str, payload: di
     if isinstance(required, dict) and required.get("error"):
         return required
 
+    estimated_days, days_error = _parse_estimated_days(payload.get("estimatedDays"))
+    if days_error is not None:
+        return days_error
+
     activity_id = required["id"]
     current = connection.execute(
         select(activity_table).where(
@@ -217,7 +225,7 @@ def update_project_activity(connection: Connection, project_id: str, payload: di
         "name": required["name"],
         "description": required["description"],
         "category": _optional_str(payload.get("category")),
-        "estimated_days": optional_int(payload.get("estimatedDays")),
+        "estimated_days": estimated_days,
         "start_date": _optional_date(payload.get("startDate")),
         "end_date": _optional_date(payload.get("endDate")),
         "priority": _optional_str(payload.get("priority")) or "medium",
@@ -928,6 +936,34 @@ def _require_activity_payload(payload: dict[str, object], *, update: bool = Fals
     if update:
         required["id"] = identifier or ""
     return required
+
+
+def _parse_estimated_days(value: object | None):
+    # A coluna estimated_days e integer no banco. Numeros decimais (ex.: 2.5)
+    # seriam perdidos como NULL pelo optional_int; melhor rejeitar com erro claro.
+    if value is None:
+        return None, None
+    if isinstance(value, bool):
+        return None, service_failure("Dias estimados inválido.", 400, field="estimatedDays")
+    if isinstance(value, int):
+        return value, None
+    if isinstance(value, float):
+        if value.is_integer():
+            return int(value), None
+        return None, service_failure(
+            "Dias estimados deve ser um número inteiro.", 400, field="estimatedDays"
+        )
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None, None
+        try:
+            return int(text), None
+        except ValueError:
+            return None, service_failure(
+                "Dias estimados deve ser um número inteiro.", 400, field="estimatedDays"
+            )
+    return None, service_failure("Dias estimados inválido.", 400, field="estimatedDays")
 
 
 def _require_task_payload(payload: dict[str, object], *, include_id: bool):

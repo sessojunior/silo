@@ -426,6 +426,42 @@ def test_project_portal_crud_and_task_history(project_connection) -> None:
     )
     assert updated_activity["data"]["activity"]["name"] == "Atividade nova atualizada"
 
+    # estimatedDays decimal deve ser rejeitado (coluna do banco e integer);
+    # antes virava NULL silenciosamente via optional_int.
+    decimal_days = project_portal.create_project_activity(
+        connection,
+        project_x_id,
+        {"name": "Atividade decimal", "description": "x", "estimatedDays": 2.5},
+    )
+    assert decimal_days["ok"] is False
+    assert decimal_days["field"] == "estimatedDays"
+
+    decimal_update = project_portal.update_project_activity(
+        connection,
+        project_x_id,
+        {
+            "id": activity_x_id,
+            "name": "Atividade nova atualizada",
+            "description": "Atividade atualizada",
+            "estimatedDays": 1.5,
+        },
+    )
+    assert decimal_update["ok"] is False
+    assert decimal_update["field"] == "estimatedDays"
+
+    # Inteiro em string deve continuar aceito.
+    string_days = project_portal.update_project_activity(
+        connection,
+        project_x_id,
+        {
+            "id": activity_x_id,
+            "name": "Atividade nova atualizada",
+            "description": "Atividade atualizada",
+            "estimatedDays": "4",
+        },
+    )
+    assert string_days["ok"] is True
+
     tasks = project_portal.list_project_activity_tasks(connection, ids.project_1, ids.activity_1)
     assert tasks["ok"] is True
     assert [task["id"] for task in tasks["data"]["tasks"]["todo"]] == [ids.task_1, ids.task_2]

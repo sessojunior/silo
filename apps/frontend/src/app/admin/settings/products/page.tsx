@@ -161,7 +161,7 @@ export default function SettingsProductsPage() {
         setEditing(null);
         await fetchProducts();
       } else {
-        throw new Error(result.message || "Erro desconhecido");
+        throw new Error(result.error ?? result.message ?? "Erro desconhecido");
       }
     } catch (error: unknown) {
       console.error("❌ [PAGE_SETTINGS_PRODUCTS] Erro ao salvar produto:", {
@@ -201,7 +201,7 @@ export default function SettingsProductsPage() {
         setDeleting(null);
         await fetchProducts();
       } else {
-        throw new Error(data.message || "Erro desconhecido");
+        throw new Error(data.error ?? data.message ?? "Erro desconhecido");
       }
     } catch (error: unknown) {
       console.error("❌ [PAGE_SETTINGS_PRODUCTS] Erro ao excluir produto:", {

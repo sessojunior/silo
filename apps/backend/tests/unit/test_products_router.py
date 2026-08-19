@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.responses import JSONResponse
+from sqlalchemy import Boolean, Column, JSON, MetaData, String, Table, create_engine, select
 
 from silo.api.routers import products as products_router
 from silo.services.common import service_failure, service_success
@@ -133,3 +134,74 @@ async def test_products_router_crud_paths(monkeypatch) -> None:
     products_router._delete_upload_url("/uploads/manual/alpha.webp?x=1")  # noqa: SLF001
     products_router._delete_upload_url("https://example.test/alpha.webp")  # noqa: SLF001
     assert deleted_uploads == [("manual", "alpha.webp"), ("manual", "alpha.webp")]
+
+
+def test_create_and_update_product_escreve_no_schema_canonico_sem_timestamps(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    # A tabela canonica `product` NAO tem created_at/updated_at. Inserts com
+    # essas colunas quebravam com CompileError "Unconsumed column names".
+    engine = create_engine(
+        f"sqlite+pysqlite:///{tmp_path / 'products.sqlite3'}",
+        future=True,
+    )
+    metadata = MetaData()
+    product_table = Table(
+        "product",
+        metadata,
+        Column("id", String, primary_key=True),
+        Column("name", String, nullable=False),
+        Column("slug", String, nullable=False),
+        Column("available", Boolean, nullable=False),
+        Column("priority", String, nullable=False),
+        Column("turns", JSON, nullable=False),
+        Column("description", String, nullable=True),
+        Column("url_product_flow", String, nullable=True),
+        Column("data_product_flow", JSON, nullable=False, default=list),
+    )
+    metadata.create_all(engine)
+    monkeypatch.setattr(products_router, "legacy_tables", {"product": product_table})
+
+    with engine.connect() as connection:
+        created = products_router._create_product(  # noqa: SLF001
+            connection,
+            {
+                "name": "Produto Teste",
+                "slug": "produto-teste",
+                "available": True,
+                "turns": ["0", "6"],
+                "priority": "high",
+                "description": "descricao",
+            },
+        )
+        assert created["ok"] is True
+        row = connection.execute(select(product_table)).mappings().first()
+        assert row["slug"] == "produto-teste"
+        assert row["priority"] == "high"
+        assert row["turns"] == ["0", "6"]
+
+        updated = products_router._update_product(  # noqa: SLF001
+            connection,
+            {
+                "id": row["id"],
+                "name": "Produto Teste Atualizado",
+                "slug": "produto-teste-atualizado",
+                "available": False,
+                "turns": ["12"],
+                "priority": "urgent",
+                "description": "nova descricao",
+            },
+        )
+        assert updated["ok"] is True
+        updated_row = connection.execute(select(product_table)).mappings().first()
+        assert updated_row["slug"] == "produto-teste-atualizado"
+        assert updated_row["available"] is False
+        assert updated_row["turns"] == ["12"]
+
+        duplicate = products_router._create_product(  # noqa: SLF001
+            connection,
+            {"name": "Outro Produto", "slug": "produto-teste-atualizado"},
+        )
+        assert duplicate["ok"] is False
+        assert duplicate["field"] == "name"

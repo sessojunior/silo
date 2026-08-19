@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unicodedata
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
@@ -141,7 +140,7 @@ def _create_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
     if existing is not None:
         return service_failure("Já existe um produto com este slug.", 400, field="name")
 
-    now = _now_naive()
+    # A tabela canonica `product` nao tem created_at/updated_at (schema legado).
     new_row = {
         "id": _new_uuid(),
         "name": name.strip(),
@@ -151,8 +150,6 @@ def _create_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
         "turns": _normalize_turns(payload.get("turns")),
         "description": _nullable_text(payload.get("description")),
         "url_product_flow": _normalize_url(payload.get("url_product_flow") or payload.get("urlProductFlow")),
-        "created_at": now,
-        "updated_at": now,
     }
 
     db.execute(insert(product_table).values(new_row))
@@ -196,7 +193,6 @@ def _update_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
         "url_product_flow": _normalize_url(payload.get("url_product_flow") or payload.get("urlProductFlow"))
         if ("url_product_flow" in payload or "urlProductFlow" in payload)
         else current["url_product_flow"],
-        "updated_at": _now_naive(),
     }
 
     db.execute(update(product_table).where(product_table.c.id == product_id).values(**updated_row))
@@ -345,7 +341,3 @@ def _new_uuid() -> str:
     import uuid
 
     return str(uuid.uuid4())
-
-
-def _now_naive() -> datetime:
-    return datetime.now()
