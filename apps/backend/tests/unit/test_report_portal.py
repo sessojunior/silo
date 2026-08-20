@@ -696,7 +696,11 @@ def test_report_portal_helpers_and_reports(report_connection) -> None:
     assert executive["summary"]["totalSolutions"] == 2
     assert executive["summary"]["activeProjects"] == 1
     assert executive["summary"]["completedTasks"] == 2
+    assert executive["summary"]["avgAvailability"] == 70.0
+    assert executive["projectsByStatus"] == {"active": 1, "completed": 1}
     assert executive["productMetrics"][0]["productId"] == ids.product_1
+    assert executive["productMetrics"][0]["availabilityPercentage"] == 40.0
+    assert executive["productMetrics"][1]["availabilityPercentage"] == 100.0
     assert executive["topProducts"][0]["productId"] == ids.product_1
 
     with pytest.raises(report_portal.UnsupportedReportFilterError):
@@ -718,6 +722,60 @@ def test_report_portal_helpers_and_reports(report_connection) -> None:
     assert projects["projects"][0]["progress"] == 67
     assert projects["tasksByStatus"] == {"done": 2, "todo": 1}
     assert projects["projectsByStatus"] == {"active": 1}
+
+
+def test_availability_report_without_activity_data_marks_no_data(tmp_path, monkeypatch) -> None:
+    database_path = tmp_path / "report-empty.sqlite"
+    engine = create_engine(f"sqlite+pysqlite:///{database_path.as_posix()}", future=True)
+    tables = _build_tables()
+    tables["product"].metadata.create_all(engine)
+    monkeypatch.setattr(report_portal, "legacy_tables", tables)
+
+    today = report_portal.get_today()
+    with engine.begin() as connection:
+        connection.execute(
+            insert(tables["product"]),
+            [
+                {
+                    "id": "product-sem-dados",
+                    "name": "Produto Sem Dados",
+                    "slug": "produto-sem-dados",
+                    "available": True,
+                    "priority": "high",
+                    "turns": ["00"],
+                    "description": None,
+                    "url_product_flow": None,
+                    "data_product_flow": [],
+                }
+            ],
+        )
+
+    with engine.connect() as connection:
+        availability = report_portal.get_availability_report(
+            connection,
+            {"start": (date.fromisoformat(today) - timedelta(days=30)).isoformat(), "end": today},
+        )
+        assert availability["totalProducts"] == 1
+        assert availability["avgAvailability"] is None
+        assert availability["products"][0]["status"] == "no_data"
+        assert availability["products"][0]["availabilityPercentage"] is None
+        assert availability["products"][0]["totalActivities"] == 0
+
+        executive = report_portal.get_executive_report(
+            connection,
+            {"start": (date.fromisoformat(today) - timedelta(days=30)).isoformat(), "end": today},
+        )
+        assert executive["summary"]["avgAvailability"] is None
+
+        problems = report_portal.get_problems_report(
+            connection,
+            {"start": (date.fromisoformat(today) - timedelta(days=30)).isoformat(), "end": today},
+        )
+        assert problems["totalProblems"] == 0
+        assert problems["avgResolutionHours"] is None
+        assert problems["summary"]["averageResolutionHours"] is None
+
+    engine.dispose()
 
 
 def test_report_portal_pdf_builders_and_auxiliary_helpers(report_connection, tmp_path, monkeypatch) -> None:

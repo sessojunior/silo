@@ -36,7 +36,7 @@ const DEFAULT_COLORS = [
   "#f97316",
 ];
 
-const AVAILABILITY_COLORS = ["#10b981", "#f59e0b", "#ef4444"];
+const AVAILABILITY_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444"];
 const PROJECTS_COLORS = [
   "#8b5cf6",
   "#6b7280",
@@ -104,9 +104,23 @@ function getReportChartData(
   switch (reportType) {
     case "availability": {
       const products = getRecordArray(data.products);
+      // Produtos sem atividades no período não têm disponibilidade a medir.
+      const productsWithData = products.filter(
+        (item) => getNumberValue(item, "totalActivities") > 0,
+      );
 
       if (type === "donut") {
-        const categories = products.map((item) => {
+        if (productsWithData.length === 0) {
+          return {
+            labels: [],
+            values: [],
+            colors: [],
+            seriesName: "Distribuição",
+            suffix: "",
+          };
+        }
+
+        const categories = productsWithData.map((item) => {
           const availability = getNumberValue(item, "availabilityPercentage");
 
           if (availability >= 90) {
@@ -114,25 +128,32 @@ function getReportChartData(
           }
 
           if (availability >= 70) {
+            return "stable";
+          }
+
+          if (availability >= 50) {
             return "warning";
           }
 
           return "critical";
         });
 
-        const availableProducts = categories.filter(
-          (value) => value === "available",
-        ).length;
-        const warningProducts = categories.filter(
-          (value) => value === "warning",
-        ).length;
-        const criticalProducts = categories.filter(
-          (value) => value === "critical",
-        ).length;
+        const countOf = (value: string) =>
+          categories.filter((item) => item === value).length;
 
         return {
-          labels: ["Disponível (≥90%)", "Atenção (70-89%)", "Crítico (<70%)"],
-          values: [availableProducts, warningProducts, criticalProducts],
+          labels: [
+            "Disponível (≥90%)",
+            "Estável (70-89%)",
+            "Atenção (50-69%)",
+            "Crítico (<50%)",
+          ],
+          values: [
+            countOf("available"),
+            countOf("stable"),
+            countOf("warning"),
+            countOf("critical"),
+          ],
           colors: AVAILABILITY_COLORS,
           seriesName: "Distribuição",
           suffix: "",
@@ -140,10 +161,10 @@ function getReportChartData(
       }
 
       return {
-        labels: products.map((item) =>
+        labels: productsWithData.map((item) =>
           getStringValue(item, "name", "Produto"),
         ),
-        values: products.map((item) =>
+        values: productsWithData.map((item) =>
           getNumberValue(item, "availabilityPercentage"),
         ),
         colors: ["#10b981"],
@@ -276,26 +297,39 @@ function getReportChartData(
         };
       }
 
+      const products = getRecordArray(data.productMetrics);
+
       if (type === "line") {
-        const projects = getRecordArray(data.projectsWithProgress);
+        // Disponibilidade por produto: somente produtos com atividades no período.
+        const withAvailability = products.filter(
+          (item) =>
+            typeof item.availabilityPercentage === "number" &&
+            Number.isFinite(item.availabilityPercentage),
+        );
         return {
-          labels: projects.map((item) => getStringValue(item, "name", "Projeto")),
-          values: projects.map((item) => getNumberValue(item, "progress")),
-          colors: ["#8b5cf6"],
-          seriesName: "Progresso (%)",
+          labels: withAvailability.map((item) =>
+            getStringValue(item, "name", "Produto"),
+          ),
+          values: withAvailability.map((item) =>
+            getNumberValue(item, "availabilityPercentage"),
+          ),
+          colors: ["#10b981"],
+          seriesName: "Disponibilidade (%)",
           suffix: "%",
         };
       }
 
-      const products = getRecordArray(data.products);
+      // Barras: problemas registrados por produto no período.
       return {
-        labels: products.map((item) => getStringValue(item, "name", "Produto")),
-        values: products.map((item) =>
-          getNumberValue(item, "availabilityPercentage"),
+        labels: products.map((item) =>
+          getStringValue(item, "name", "Produto"),
         ),
-        colors: ["#10b981"],
-        seriesName: "Disponibilidade (%)",
-        suffix: "%",
+        values: products.map((item) =>
+          getNumberValue(item, "totalProblems"),
+        ),
+        colors: ["#ef4444"],
+        seriesName: "Problemas",
+        suffix: "",
       };
     }
 

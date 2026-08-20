@@ -131,15 +131,18 @@ def get_availability_report(connection: Connection, date_range: dict[str, str]) 
         active_activities = sum(1 for row in activities if row["status"] == "in_progress")
         failed_activities = sum(1 for row in activities if str(row["status"]) in PROBLEM_INCIDENT_STATUSES)
         interventions_count = sum(1 for row in activities if _has_text(row.get("intervention")))
-        availability_percentage = round((completed_activities / total_activities) * 100, 1) if total_activities > 0 else 0
-        if availability_percentage < 50:
-            status = "critical"
-        elif availability_percentage < 70:
-            status = "warning"
-        elif availability_percentage < 90:
-            status = "stable"
-        else:
-            status = "active"
+        availability_percentage = None
+        status = "no_data"
+        if total_activities > 0:
+            availability_percentage = round((completed_activities / total_activities) * 100, 1)
+            if availability_percentage < 50:
+                status = "critical"
+            elif availability_percentage < 70:
+                status = "warning"
+            elif availability_percentage < 90:
+                status = "stable"
+            else:
+                status = "active"
 
         intervention_rows = [row for row in activities if _has_text(row.get("intervention"))]
         latest_intervention_at = None
@@ -174,10 +177,19 @@ def get_availability_report(connection: Connection, date_range: dict[str, str]) 
         products_with_availability.append(item)
 
     total_products = len(products_with_availability)
-    avg_availability = round(
-        sum(float(product["availabilityPercentage"]) for product in products_with_availability) / total_products,
-        1,
-    ) if total_products > 0 else 0
+    products_with_data = [
+        product for product in products_with_availability
+        if product["availabilityPercentage"] is not None
+    ]
+    avg_availability = (
+        round(
+            sum(float(product["availabilityPercentage"]) for product in products_with_data)
+            / len(products_with_data),
+            1,
+        )
+        if products_with_data
+        else None
+    )
     total_interventions = sum(int(product["interventionsCount"]) for product in products_with_availability)
 
     return {
@@ -302,7 +314,7 @@ def get_problems_report(
             1,
         )
         if problems_by_category
-        else 0
+        else None
     )
 
     top_problem_candidates = sorted(problems, key=lambda problem: str(problem["id"]))
@@ -344,7 +356,7 @@ def get_problems_report(
                         "image": _user_image(connection, str(problem["user_id"])) or "/images/profile.png",
                     },
                     "solutionsCount": len(solution_rows),
-                    "avgResolutionHours": avg_problem_hours or 0,
+                    "avgResolutionHours": avg_problem_hours,
                     "categoryName": category_info["name"] if category_info else "Sem categoria",
                     "categoryColor": category_info.get("color") if category_info else "#6b7280",
                 }
@@ -420,6 +432,29 @@ def get_executive_report(
     activities = connection.execute(select(activity_table.c.id, activity_table.c.status)).mappings().all()
     tasks = connection.execute(select(task_table.c.id, task_table.c.status)).mappings().all()
 
+    # Disponibilidade média do período (mesma semântica do relatório de disponibilidade):
+    # produtos sem atividades no período não entram na média; sem dados, valor nulo.
+    period_activities = connection.execute(
+        select(activity_table.c.product_id, activity_table.c.status)
+        .where(and_(activity_table.c.date >= start, activity_table.c.date <= end))
+    ).mappings().all()
+    availability_by_product: dict[str, dict[str, int]] = {}
+    for row in period_activities:
+        bucket = availability_by_product.setdefault(str(row["product_id"]), {"total": 0, "completed": 0})
+        bucket["total"] += 1
+        if row["status"] == "completed":
+            bucket["completed"] += 1
+    period_availabilities = [
+        round((bucket["completed"] / bucket["total"]) * 100, 1)
+        for bucket in availability_by_product.values()
+        if bucket["total"] > 0
+    ]
+    avg_availability = (
+        round(sum(period_availabilities) / len(period_availabilities), 1)
+        if period_availabilities
+        else None
+    )
+
     total_products = len(products)
     available_products = sum(1 for row in products if bool(row["available"]))
     total_problems = len(problems)
@@ -447,6 +482,12 @@ def get_executive_report(
         product_solution_count = sum(
             1 for solution in solutions if any(str(problem["id"]) == str(solution["product_problem_id"]) for problem in product_problems)
         )
+        activity_bucket = availability_by_product.get(str(product["id"]), {"total": 0, "completed": 0})
+        product_availability = (
+            round((activity_bucket["completed"] / activity_bucket["total"]) * 100, 1)
+            if activity_bucket["total"] > 0
+            else None
+        )
         product_metrics.append(
             {
                 "productId": str(product["id"]),
@@ -456,6 +497,7 @@ def get_executive_report(
                 "totalProblems": len(product_problems),
                 "totalSolutions": product_solution_count,
                 "activityRate": len(product_problems) + product_solution_count,
+                "availabilityPercentage": product_availability,
             }
         )
 
@@ -479,6 +521,7 @@ def get_executive_report(
             "completedTasks": completed_tasks,
             "completedProjects": sum(1 for row in projects if row["status"] == "completed"),
             "averageProgress": round((completed_tasks / len(tasks)) * 100, 1) if tasks else 0,
+            "avgAvailability": avg_availability,
         },
         "kpis": {
             "taskCompletionRate": round((completed_tasks / len(tasks)) * 100, 1) if tasks else 0,
@@ -497,6 +540,7 @@ def get_executive_report(
         },
         "productMetrics": product_metrics,
         "topProducts": top_products,
+        "projectsByStatus": _count_by(projects, "status"),
     }
 
 
@@ -711,9 +755,11 @@ def generate_pdf(
 
 def _build_availability_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
     story.append(Paragraph("Visão Geral", styles["SiloSection"]))
+    avg_availability = data.get("avgAvailability")
+    avg_availability_label = f"{avg_availability}%" if isinstance(avg_availability, (int, float)) else "Sem dados"
     story.append(_kv_table([
         ("Total de produtos", str(data.get("totalProducts", 0))),
-        ("Disponibilidade média", f"{data.get('avgAvailability', 0)}%"),
+        ("Disponibilidade média", avg_availability_label),
         ("Total de intervenções", str(data.get("totalInterventions", 0))),
     ]))
     story.append(Spacer(1, 6))
@@ -722,9 +768,11 @@ def _build_availability_pdf(story: list[Any], data: dict[str, Any], styles) -> N
         ["Produto", "Disponibilidade", "Atividades", "Concluídas", "Situação"],
     ]
     for product in data.get("products", []):
+        availability = product.get("availabilityPercentage")
+        availability_label = f"{availability}%" if isinstance(availability, (int, float)) else "Sem dados"
         rows.append([
             str(product.get("name") or "-"),
-            f"{product.get('availabilityPercentage', 0)}%",
+            availability_label,
             str(product.get("totalActivities", 0)),
             str(product.get("completedActivities", 0)),
             _status_pt(str(product.get("status") or "")),
@@ -735,9 +783,11 @@ def _build_availability_pdf(story: list[Any], data: dict[str, Any], styles) -> N
 def _build_problems_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
     story.append(Paragraph("Visão Geral", styles["SiloSection"]))
     summary = data.get("summary", {})
+    avg_resolution = data.get("avgResolutionHours", summary.get("averageResolutionHours"))
+    avg_resolution_label = f"{avg_resolution} horas" if isinstance(avg_resolution, (int, float)) else "Sem dados"
     story.append(_kv_table([
         ("Total de problemas", str(data.get("totalProblems", summary.get("totalProblems", 0)))),
-        ("Tempo médio de resolução", f"{data.get('avgResolutionHours', summary.get('averageResolutionHours', 0))} horas"),
+        ("Tempo médio de resolução", avg_resolution_label),
     ]))
     story.append(Spacer(1, 6))
 
@@ -909,6 +959,7 @@ def _status_pt(status: str) -> str:
         "critical": "crítico",
         "warning": "atenção",
         "stable": "estável",
+        "no_data": "sem dados",
         "done": "concluído",
         "completed": "concluído",
         "in_progress": "em andamento",

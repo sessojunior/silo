@@ -27,7 +27,8 @@ interface AvailabilityReportData {
   products: Array<{
     id: string;
     name: string;
-    availabilityPercentage: number;
+    status: string;
+    availabilityPercentage: number | null;
     totalActivities: number;
     completedActivities: number;
     failedActivities: number;
@@ -37,7 +38,7 @@ interface AvailabilityReportData {
     lastActivity?: Date;
   }>;
   totalProducts: number;
-  avgAvailability: number;
+  avgAvailability: number | null;
   totalInterventions: number;
 }
 
@@ -91,23 +92,49 @@ interface ProjectsReportData {
 interface ExecutiveReportData {
   summary: {
     totalProducts: number;
+    availableProducts: number;
     totalProblems: number;
+    totalSolutions: number;
+    totalUsers: number;
+    totalGroups: number;
     totalProjects: number;
-    avgAvailability: number;
+    activeProjects: number;
+    totalActivities: number;
+    totalTasks: number;
+    completedTasks: number;
+    completedProjects: number;
+    averageProgress: number;
+    avgAvailability: number | null;
   };
-  products: AvailabilityReportData["products"];
-  topProblems: ProblemsReportData["topProblems"];
-  projectsWithProgress: ProjectsReportData["projects"];
-  mostActiveProjects: Array<{
-    id: string;
-    projectId: string;
+  kpis: {
+    taskCompletionRate: number;
+  };
+  trends: {
+    problems: { current: number; previous: number; change: number };
+    solutions: { current: number; previous: number; change: number };
+  };
+  productMetrics: Array<{
+    productId: string;
     name: string;
-    activityCount: number;
-    progress: number;
-    priority?: string;
+    available: boolean;
+    priority: string;
+    totalProblems: number;
+    totalSolutions: number;
+    activityRate: number;
+    availabilityPercentage: number | null;
   }>;
-  tasksByStatus: Record<string, number>;
+  topProducts: Array<{
+    productId: string;
+    name: string;
+    available: boolean;
+    priority: string;
+    totalProblems: number;
+    totalSolutions: number;
+    activityRate: number;
+    availabilityPercentage: number | null;
+  }>;
   projectsByStatus: Record<string, number>;
+  period: { start: string; end: string };
 }
 
 type ReportDataStructure =
@@ -542,7 +569,9 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           {/* Gráfico Principal */}
           <div className="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-3 sm:mb-4">
-              Visualização dos Dados
+              {report.type === "executive"
+                ? "Problemas por Produto"
+                : "Visualização dos Dados"}
             </h3>
             <ReportChart
               type="bar"
@@ -574,7 +603,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
                 : report.type === "problems"
                   ? "Volume de Problemas"
                   : report.type === "executive"
-                    ? "Resumo Consolidado dos Produtos"
+                    ? "Disponibilidade por Produto"
                     : "Progresso dos Projetos"}
             </h3>
             <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
@@ -583,7 +612,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
                 : report.type === "problems"
                   ? "Comparação da quantidade de problemas registrados"
                   : report.type === "executive"
-                    ? "Leitura consolidada da disponibilidade dos produtos no cenário atual"
+                    ? "Disponibilidade média por produto no período selecionado"
                     : "Status de andamento das atividades"}
             </p>
             <ReportChart
@@ -602,7 +631,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
             </h3>
             <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
               {report.type === "availability"
-                ? "Classificação dos produtos por nível de disponibilidade: Disponível (≥90%), Atenção (70-89%), Crítico (<70%)"
+                ? "Classificação dos produtos por nível de disponibilidade: Disponível (≥90%), Estável (70-89%), Atenção (50-69%), Crítico (<50%)"
                 : report.type === "executive"
                   ? "Panorama resumido dos projetos em andamento, pausados e concluídos"
                   : "Proporção entre tarefas atribuídas e concluídas na equipe"}
@@ -654,7 +683,6 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
 
 function renderMetrics(data: Record<string, unknown>, reportType: string) {
   const summary = getRecordValue(data.summary);
-  const projectsByStatus = getRecordValue(data.projectsByStatus);
 
   switch (reportType) {
     case "availability":
@@ -673,9 +701,9 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Disponibilidade Média
             </span>
             <span className="text-green-900 dark:text-green-100 font-bold text-lg sm:text-xl">
-              {getNumberValue(data.avgAvailability)
+              {getNumberValue(data.avgAvailability) !== null
                 ? `${getNumberValue(data.avgAvailability)?.toFixed(1)}%`
-                : "0%"}
+                : "Sem dados"}
             </span>
           </div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 bg-blue-50 dark:bg-blue-950 rounded-lg space-y-2 sm:space-y-0">
@@ -721,7 +749,7 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Projetos Ativos
             </span>
             <span className="text-purple-900 dark:text-purple-100 font-bold text-lg sm:text-xl">
-              {getNumberValue(projectsByStatus?.active) || 0}
+              {getNumberValue(summary?.activeProjects) || 0}
             </span>
           </div>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 bg-blue-50 dark:bg-blue-950 rounded-lg space-y-2 sm:space-y-0">
@@ -729,9 +757,9 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Disponibilidade Média
             </span>
             <span className="text-blue-900 dark:text-blue-100 font-bold text-lg sm:text-xl">
-              {getNumberValue(summary?.avgAvailability)
+              {getNumberValue(summary?.avgAvailability) !== null
                 ? `${getNumberValue(summary?.avgAvailability)?.toFixed(1)}%`
-                : "0%"}
+                : "Sem dados"}
             </span>
           </div>
         </>
@@ -753,9 +781,9 @@ function renderMetrics(data: Record<string, unknown>, reportType: string) {
               Tempo Médio de Resolução
             </span>
             <span className="text-yellow-900 dark:text-yellow-100 font-bold text-lg sm:text-xl">
-              {getNumberValue(data.avgResolutionHours)
+              {getNumberValue(data.avgResolutionHours) !== null
                 ? `${getNumberValue(data.avgResolutionHours)?.toFixed(1)}h`
-                : "0h"}
+                : "Sem dados"}
             </span>
           </div>
         </>
@@ -874,14 +902,12 @@ function renderProjectsTable(data: Record<string, unknown>) {
     return project ? getNumberValue(project.activityCount) || 0 : 0;
   };
 
-  // Função para obter contagem de tarefas por projeto
-  const getProjectTaskCount = () => {
-    const tasksByStatus = getRecordValue(data.tasksByStatus) ?? {};
-    // Para simplificar, vamos usar o total de tarefas do período
-    return Object.values(tasksByStatus).reduce<number>(
-      (sum, count) => sum + (getNumberValue(count) || 0),
-      0,
+  // Função para obter contagem de tarefas por projeto (lida do relatório de projetos)
+  const getProjectTaskCount = (projectId: string) => {
+    const project = getRecordArray(data.projects).find(
+      (candidate) => getStringValue(candidate.id) === projectId,
     );
+    return project ? getNumberValue(project.tasksCount) || 0 : 0;
   };
 
   return (
@@ -976,7 +1002,7 @@ function renderProjectsTable(data: Record<string, unknown>) {
                 {getProjectActivityCount(project.id as string)}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                {getProjectTaskCount()}
+                {getProjectTaskCount(project.id as string)}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-center">
@@ -1054,6 +1080,8 @@ function renderAvailabilityTable(data: Record<string, unknown>) {
       warning:
         "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
       critical: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      no_data:
+        "bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400",
     };
     return (
       statusColors[status] ||
@@ -1067,6 +1095,7 @@ function renderAvailabilityTable(data: Record<string, unknown>) {
       stable: "Estável",
       warning: "Atenção",
       critical: "Crítico",
+      no_data: "Sem dados",
     };
     return statusLabels[status] || status;
   };
@@ -1140,21 +1169,27 @@ function renderAvailabilityTable(data: Record<string, unknown>) {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex items-center">
-                  <div className="w-16 bg-gray-200 dark:bg-zinc-700 rounded-full h-2 mr-2">
-                    <div
-                      className="bg-linear-to-r from-green-500 to-zinc-500 h-2 rounded-full transition-all duration-300"
-                      style={{
-                        width: `${(product.availabilityPercentage as number) || 0}%`,
-                      }}
-                    ></div>
-                  </div>
-                  <span
-                    className={`text-sm font-semibold ${getAvailabilityColor((product.availabilityPercentage as number) || 0)} px-2 py-1 rounded-full`}
-                  >
-                    {(product.availabilityPercentage as number) || 0}%
+                {getNumberValue(product.availabilityPercentage) === null ? (
+                  <span className="text-sm text-gray-400 dark:text-gray-500">
+                    Sem dados
                   </span>
-                </div>
+                ) : (
+                  <div className="flex items-center">
+                    <div className="w-16 bg-gray-200 dark:bg-zinc-700 rounded-full h-2 mr-2">
+                      <div
+                        className="bg-linear-to-r from-green-500 to-zinc-500 h-2 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${getNumberValue(product.availabilityPercentage) || 0}%`,
+                        }}
+                      ></div>
+                    </div>
+                    <span
+                      className={`text-sm font-semibold ${getAvailabilityColor(getNumberValue(product.availabilityPercentage) || 0)} px-2 py-1 rounded-full`}
+                    >
+                      {getNumberValue(product.availabilityPercentage)?.toFixed(1)}%
+                    </span>
+                  </div>
+                )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                 {(product.totalActivities as number) || 0}
