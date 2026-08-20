@@ -263,8 +263,6 @@ def delete_project_activity(connection: Connection, project_id: str, activity_id
 def list_project_activity_tasks(connection: Connection, project_id: str, activity_id: str):
     activity_table = legacy_tables["project_activity"]
     task_table = legacy_tables["project_task"]
-    task_user_table = legacy_tables["project_task_user"]
-    user_table = legacy_tables["user"]
 
     if connection.execute(
         select(activity_table.c.id).where(
@@ -280,32 +278,7 @@ def list_project_activity_tasks(connection: Connection, project_id: str, activit
     ).mappings().all()
 
     task_ids = [str(row["id"]) for row in task_rows]
-    user_map: dict[str, list[dict[str, object]]] = {task_id: [] for task_id in task_ids}
-    if task_ids:
-        user_rows = connection.execute(
-            select(
-                task_user_table.c.task_id,
-                user_table.c.id.label("user_id"),
-                user_table.c.name,
-                user_table.c.email,
-                user_table.c.image,
-                task_user_table.c.role,
-            )
-            .select_from(task_user_table.join(user_table, task_user_table.c.user_id == user_table.c.id))
-            .where(task_user_table.c.task_id.in_(task_ids))
-            .order_by(task_user_table.c.created_at.asc())
-        ).mappings().all()
-        for row in user_rows:
-            task_id = str(row["task_id"])
-            user_map.setdefault(task_id, []).append(
-                {
-                    "id": str(row["user_id"]),
-                    "name": str(row["name"] or "Desconhecido"),
-                    "role": str(row["role"] or "assignee"),
-                    "email": str(row["email"] or ""),
-                    "image": row["image"],
-                }
-            )
+    user_map = _task_users_by_task_id(connection, task_ids)
 
     grouped = _create_task_groups()
     for row in task_rows:
@@ -593,12 +566,11 @@ def reorder_project_activity_tasks(
     current_normalized = {task_id: {"taskId": task_id, "status": _normalize_task_status(row["status"]), "sort": int(row["sort"])} for task_id, row in current_map.items()}
 
     if len(current_normalized) != len(before_map):
-        return _kanban_outdated(current_rows)
-
+                return _kanban_outdated(connection, current_rows)
     for task_id, expected in before_map.items():
         current = current_normalized.get(task_id)
         if current is None or current["status"] != expected["status"] or current["sort"] != int(expected["sort"]):
-            return _kanban_outdated(current_rows)
+            return _kanban_outdated(connection, current_rows)
 
     now = now_naive()
     try:
@@ -655,6 +627,7 @@ def reorder_project_activity_tasks(
                     )
                 )
     except ProjectTaskReorderConflict as conflict:
+        _attach_task_users(connection, conflict.tasks)
         return service_failure("KANBAN_OUTDATED", 409, data={"tasks": conflict.tasks})
     refreshed = connection.execute(
         select(task_table)
@@ -662,6 +635,7 @@ def reorder_project_activity_tasks(
         .order_by(asc(task_table.c.sort), asc(task_table.c.created_at))
     ).mappings().all()
     tasks = [_normalize_task_view(row) for row in refreshed]
+    _attach_task_users(connection, tasks)
     return service_success({"tasks": tasks})
 
 
@@ -780,6 +754,53 @@ def _create_task_groups() -> dict[str, list[dict[str, object]]]:
     return {status: [] for status in PROJECT_TASK_STATUSES}
 
 
+def _task_users_by_task_id(
+    connection: Connection,
+    task_ids: list[str],
+) -> dict[str, list[dict[str, object]]]:
+    task_user_table = legacy_tables["project_task_user"]
+    user_table = legacy_tables["user"]
+    user_map: dict[str, list[dict[str, object]]] = {task_id: [] for task_id in task_ids}
+    if task_ids:
+        user_rows = connection.execute(
+            select(
+                task_user_table.c.task_id,
+                user_table.c.id.label("user_id"),
+                user_table.c.name,
+                user_table.c.email,
+                user_table.c.image,
+                task_user_table.c.role,
+            )
+            .select_from(task_user_table.join(user_table, task_user_table.c.user_id == user_table.c.id))
+            .where(task_user_table.c.task_id.in_(task_ids))
+            .order_by(task_user_table.c.created_at.asc())
+        ).mappings().all()
+        for row in user_rows:
+            task_id = str(row["task_id"])
+            user_map.setdefault(task_id, []).append(
+                {
+                    "id": str(row["user_id"]),
+                    "name": str(row["name"] or "Desconhecido"),
+                    "role": str(row["role"] or "assignee"),
+                    "email": str(row["email"] or ""),
+                    "image": row["image"],
+                }
+            )
+    return user_map
+
+
+def _attach_task_users(
+    connection: Connection,
+    tasks: list[dict[str, object]],
+) -> None:
+    task_ids = [str(task["id"]) for task in tasks]
+    user_map = _task_users_by_task_id(connection, task_ids)
+    for task in tasks:
+        users = user_map.get(str(task["id"]), [])
+        task["assignedUsers"] = [user["id"] for user in users]
+        task["assignedUsersDetails"] = users
+
+
 def _task_position_sort_key(task: dict[str, object]) -> tuple[int, str]:
     sort_value = task.get("sort")
     if isinstance(sort_value, int):
@@ -862,8 +883,12 @@ def _normalize_position_item(item: dict[str, object]) -> dict[str, object] | Non
     return {"taskId": task_id, "status": status, "sort": sort}
 
 
-def _kanban_outdated(rows: list[dict[str, object]]):
+def _kanban_outdated(
+    connection: Connection,
+    rows: list[dict[str, object]],
+):
     normalized = [_normalize_task_view(row) for row in rows]
+    _attach_task_users(connection, normalized)
     return service_failure("KANBAN_OUTDATED", 409, data={"tasks": normalized})
 
 

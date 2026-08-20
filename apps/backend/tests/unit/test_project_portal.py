@@ -953,7 +953,8 @@ def test_project_portal_helpers_cover_payload_and_kanban_branches(project_connec
     assert project_portal._get_next_task_sort(connection, ids.project_x, ids.activity_x, "todo") == 0  # noqa: SLF001
 
     kanban = project_portal._kanban_outdated(  # noqa: SLF001
-        [{"id": "task-a", "status": "progress", "sort": "2", "createdAt": "2026-08-01T12:00:00"}]
+        connection,
+        [{"id": "task-a", "status": "progress", "sort": "2", "createdAt": "2026-08-01T12:00:00"}],
     )
     assert kanban["ok"] is False
     assert kanban["data"]["tasks"][0]["status"] == "in_progress"

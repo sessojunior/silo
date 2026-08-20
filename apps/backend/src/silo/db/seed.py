@@ -359,6 +359,7 @@ Seed estrutural do backend Python para ambientes de desenvolvimento e migração
 - Grupos e permissões compatíveis com a API Node existente.
 - Usuários institucionais de desenvolvimento com domínio @inpe.br.
 - Contatos, categorias de problema e manuais mínimos para RAG/local search.
+- Projetos de demonstração com atividades e tarefas em diferentes status e responsáveis.
 
 Este conteúdo é idempotente e não sobrescreve documentação existente.
 """
@@ -754,99 +755,666 @@ def _seed_product_manuals(
             summary.record("product_manual_chunk", inserted=True)
 
 
+PROJECT_FIXTURES: tuple[Row, ...] = (
+    {
+        "key": "sistema-monitoramento-meteorologico",
+        "name": "Sistema de Monitoramento Meteorológico",
+        "short_description": "Modernização do monitoramento meteorológico",
+        "description": (
+            "Projeto de demonstração para validar o fluxo "
+            "Python de seed e compatibilidade com o frontend."
+        ),
+        "start_date": "2024-01-15",
+        "end_date": "2024-12-15",
+        "priority": "high",
+        "status": "active",
+        "activities": (
+            {
+                "key": "analise-requisitos",
+                "name": "Análise e Requisitos do Sistema",
+                "description": "Levantamento dos requisitos operacionais.",
+                "category": "Análise",
+                "estimated_days": 5,
+                "start_date": "2024-01-15",
+                "end_date": "2024-01-20",
+                "priority": "high",
+                "status": "done",
+                "tasks": (
+                    {
+                        "key": "levantar-requisitos",
+                        "name": "Levantar requisitos operacionais",
+                        "description": "Registrar requisitos mínimos para operação inicial.",
+                        "category": "Análise",
+                        "estimated_days": 2,
+                        "start_date": "2024-01-15",
+                        "end_date": "2024-01-17",
+                        "priority": "high",
+                        "status": "done",
+                        "sort": 0,
+                        "users": ("teste@inpe.br",),
+                    },
+                    {
+                        "key": "definir-indicadores-disponibilidade",
+                        "name": "Definir indicadores de disponibilidade",
+                        "description": "Propor métricas de disponibilidade por produto e turno.",
+                        "category": "Planejamento",
+                        "estimated_days": 1,
+                        "start_date": "2024-01-17",
+                        "end_date": "2024-01-18",
+                        "priority": "medium",
+                        "status": "done",
+                        "sort": 1,
+                        "users": ("fabiano@inpe.br",),
+                    },
+                    {
+                        "key": "aprovar-escopo-coordenacao",
+                        "name": "Aprovar escopo com a coordenação",
+                        "description": "Reunir com a coordenação e validar o escopo do projeto.",
+                        "category": "Geral",
+                        "estimated_days": 2,
+                        "start_date": "2024-01-18",
+                        "end_date": "2024-01-20",
+                        "priority": "high",
+                        "status": "done",
+                        "sort": 2,
+                        "users": ("teste@inpe.br", "alex@inpe.br"),
+                    },
+                ),
+            },
+            {
+                "key": "design-interface",
+                "name": "Design da Interface",
+                "description": (
+                    "Criação de mockups e protótipos para interface de "
+                    "visualização de dados meteorológicos."
+                ),
+                "category": "Design",
+                "estimated_days": 8,
+                "start_date": "2024-01-21",
+                "end_date": "2024-01-29",
+                "priority": "high",
+                "status": "done",
+                "tasks": (
+                    {
+                        "key": "criar-wireframes",
+                        "name": "Criar wireframes das telas principais",
+                        "description": "Esboçar as telas de dashboard, produtos e projetos.",
+                        "category": "Desenvolvimento",
+                        "estimated_days": 3,
+                        "start_date": "2024-01-21",
+                        "end_date": "2024-01-24",
+                        "priority": "medium",
+                        "status": "done",
+                        "sort": 0,
+                        "users": ("andre@inpe.br",),
+                    },
+                    {
+                        "key": "validar-prototipo-usuarios",
+                        "name": "Validar protótipo com usuários",
+                        "description": "Coletar feedback da equipe de operação sobre o protótipo.",
+                        "category": "Teste",
+                        "estimated_days": 2,
+                        "start_date": "2024-01-24",
+                        "end_date": "2024-01-26",
+                        "priority": "medium",
+                        "status": "done",
+                        "sort": 1,
+                        "users": ("marcos@inpe.br",),
+                    },
+                    {
+                        "key": "definir-guia-visual",
+                        "name": "Definir guia visual do sistema",
+                        "description": "Documentar cores, ícones e componentes visuais.",
+                        "category": "Documentação",
+                        "estimated_days": 3,
+                        "start_date": "2024-01-26",
+                        "end_date": "2024-01-29",
+                        "priority": "low",
+                        "status": "done",
+                        "sort": 2,
+                        "users": ("andre@inpe.br",),
+                    },
+                ),
+            },
+            {
+                "key": "implementacao-backend",
+                "name": "Implementação do Backend",
+                "description": (
+                    "Desenvolvimento das APIs REST para coleta, processamento "
+                    "e disponibilização de dados meteorológicos."
+                ),
+                "category": "Desenvolvimento",
+                "estimated_days": 15,
+                "start_date": "2024-01-30",
+                "end_date": "2024-02-14",
+                "priority": "urgent",
+                "status": "progress",
+                "tasks": (
+                    {
+                        "key": "definir-contrato-apis",
+                        "name": "Definir contrato das APIs REST",
+                        "description": "Especificar endpoints, payloads e códigos de erro.",
+                        "category": "Planejamento",
+                        "estimated_days": 3,
+                        "start_date": "2024-01-30",
+                        "end_date": "2024-02-02",
+                        "priority": "high",
+                        "status": "done",
+                        "sort": 0,
+                        "users": ("alex@inpe.br",),
+                    },
+                    {
+                        "key": "implementar-endpoints-coleta",
+                        "name": "Implementar endpoints de coleta de dados",
+                        "description": "Desenvolver os endpoints de ingestão de dados meteorológicos.",
+                        "category": "Desenvolvimento",
+                        "estimated_days": 5,
+                        "start_date": "2024-02-02",
+                        "end_date": "2024-02-07",
+                        "priority": "high",
+                        "status": "done",
+                        "sort": 1,
+                        "users": ("alex@inpe.br",),
+                    },
+                    {
+                        "key": "integrar-fila-processamento",
+                        "name": "Integrar fila de processamento",
+                        "description": "Conectar o backend à fila de processamento de modelos.",
+                        "category": "Infraestrutura",
+                        "estimated_days": 4,
+                        "start_date": "2024-02-07",
+                        "end_date": "2024-02-11",
+                        "priority": "high",
+                        "status": "in_progress",
+                        "sort": 2,
+                        "users": ("fabiano@inpe.br",),
+                    },
+                    {
+                        "key": "implementar-autenticacao-apis",
+                        "name": "Implementar autenticação das APIs",
+                        "description": "Proteger os endpoints com autenticação institucional.",
+                        "category": "Desenvolvimento",
+                        "estimated_days": 3,
+                        "start_date": "2024-02-11",
+                        "end_date": "2024-02-14",
+                        "priority": "urgent",
+                        "status": "blocked",
+                        "sort": 3,
+                        "users": ("alex@inpe.br", "fabiano@inpe.br"),
+                    },
+                ),
+            },
+            {
+                "key": "desenvolvimento-interface",
+                "name": "Desenvolvimento da Interface",
+                "description": (
+                    "Implementação dos componentes React para visualização "
+                    "de mapas, gráficos e alertas meteorológicos."
+                ),
+                "category": "Desenvolvimento",
+                "estimated_days": 12,
+                "start_date": "2024-02-05",
+                "end_date": "2024-02-17",
+                "priority": "urgent",
+                "status": "progress",
+                "tasks": (
+                    {
+                        "key": "construir-mapa-visualizacao",
+                        "name": "Construir mapa de visualização",
+                        "description": "Implementar o mapa interativo de dados meteorológicos.",
+                        "category": "Desenvolvimento",
+                        "estimated_days": 5,
+                        "start_date": "2024-02-05",
+                        "end_date": "2024-02-10",
+                        "priority": "high",
+                        "status": "in_progress",
+                        "sort": 0,
+                        "users": ("andre@inpe.br",),
+                    },
+                    {
+                        "key": "implementar-graficos-series",
+                        "name": "Implementar gráficos de séries meteorológicas",
+                        "description": "Exibir séries temporais de variáveis meteorológicas.",
+                        "category": "Desenvolvimento",
+                        "estimated_days": 4,
+                        "start_date": "2024-02-10",
+                        "end_date": "2024-02-14",
+                        "priority": "medium",
+                        "status": "review",
+                        "sort": 1,
+                        "users": ("andre@inpe.br",),
+                    },
+                    {
+                        "key": "adicionar-alertas-automaticos",
+                        "name": "Adicionar alertas automáticos",
+                        "description": "Notificar a equipe sobre eventos críticos dos modelos.",
+                        "category": "Desenvolvimento",
+                        "estimated_days": 3,
+                        "start_date": "2024-02-14",
+                        "end_date": "2024-02-17",
+                        "priority": "high",
+                        "status": "todo",
+                        "sort": 2,
+                        "users": ("alex@inpe.br",),
+                    },
+                    {
+                        "key": "ajustar-tema-dark-light",
+                        "name": "Ajustar tema dark/light",
+                        "description": "Garantir consistência visual nos dois temas da interface.",
+                        "category": "Teste",
+                        "estimated_days": 2,
+                        "start_date": "2024-02-12",
+                        "end_date": "2024-02-14",
+                        "priority": "low",
+                        "status": "done",
+                        "sort": 3,
+                        "users": ("marcos@inpe.br",),
+                    },
+                ),
+            },
+            {
+                "key": "testes-deploy",
+                "name": "Testes e Deploy",
+                "description": (
+                    "Validação da performance do sistema com grandes volumes "
+                    "de dados meteorológicos e deploy em produção."
+                ),
+                "category": "Testes",
+                "estimated_days": 6,
+                "start_date": "2024-02-26",
+                "end_date": "2024-03-04",
+                "priority": "medium",
+                "status": "todo",
+                "tasks": (
+                    {
+                        "key": "executar-testes-performance",
+                        "name": "Executar testes de performance",
+                        "description": "Medir tempos de resposta com grandes volumes de dados.",
+                        "category": "Teste",
+                        "estimated_days": 3,
+                        "start_date": "2024-02-26",
+                        "end_date": "2024-03-01",
+                        "priority": "medium",
+                        "status": "todo",
+                        "sort": 0,
+                        "users": ("marcos@inpe.br",),
+                    },
+                    {
+                        "key": "validar-deploy-producao",
+                        "name": "Validar deploy em produção",
+                        "description": "Executar e acompanhar o primeiro deploy produtivo.",
+                        "category": "Infraestrutura",
+                        "estimated_days": 2,
+                        "start_date": "2024-03-01",
+                        "end_date": "2024-03-04",
+                        "priority": "high",
+                        "status": "todo",
+                        "sort": 1,
+                        "users": ("fabiano@inpe.br",),
+                    },
+                    {
+                        "key": "elaborar-manual-operacao",
+                        "name": "Elaborar manual de operação",
+                        "description": "Documentar procedimentos operacionais do sistema.",
+                        "category": "Documentação",
+                        "estimated_days": 2,
+                        "start_date": "2024-03-01",
+                        "end_date": "2024-03-03",
+                        "priority": "low",
+                        "status": "todo",
+                        "sort": 2,
+                        "users": ("andre@inpe.br",),
+                    },
+                ),
+            },
+        ),
+    },
+    {
+        "key": "infra-supercomputacao",
+        "name": "Modernização da Infraestrutura de Supercomputação",
+        "short_description": "Atualização do cluster de processamento e armazenamento",
+        "description": (
+            "Migração do cluster de processamento de modelos "
+            "e do sistema de arquivos para a nova infraestrutura."
+        ),
+        "start_date": "2024-03-01",
+        "end_date": "2024-11-30",
+        "priority": "urgent",
+        "status": "active",
+        "activities": (
+            {
+                "key": "migracao-cluster",
+                "name": "Migração do Cluster de Processamento",
+                "description": "Planejamento e execução da migração dos jobs para o novo cluster.",
+                "category": "Deploy",
+                "estimated_days": 30,
+                "start_date": "2024-03-01",
+                "end_date": "2024-04-30",
+                "priority": "high",
+                "status": "progress",
+                "tasks": (
+                    {
+                        "key": "inventariar-nos-cluster",
+                        "name": "Inventariar nós do cluster",
+                        "description": "Levantar configuração e capacidade dos nós atuais.",
+                        "category": "Infraestrutura",
+                        "estimated_days": 3,
+                        "start_date": "2024-03-01",
+                        "end_date": "2024-03-04",
+                        "priority": "medium",
+                        "status": "done",
+                        "sort": 0,
+                        "users": ("fabiano@inpe.br",),
+                    },
+                    {
+                        "key": "configurar-fila-slurm",
+                        "name": "Configurar fila de jobs SLURM",
+                        "description": "Configurar partições e políticas de fila no novo cluster.",
+                        "category": "Infraestrutura",
+                        "estimated_days": 8,
+                        "start_date": "2024-03-04",
+                        "end_date": "2024-03-12",
+                        "priority": "high",
+                        "status": "in_progress",
+                        "sort": 1,
+                        "users": ("alex@inpe.br",),
+                    },
+                    {
+                        "key": "migrar-jobs-criticos",
+                        "name": "Migrar jobs críticos para o novo cluster",
+                        "description": "Mover os jobs dos turnos críticos sem indisponibilidade.",
+                        "category": "Infraestrutura",
+                        "estimated_days": 13,
+                        "start_date": "2024-03-12",
+                        "end_date": "2024-03-25",
+                        "priority": "urgent",
+                        "status": "blocked",
+                        "sort": 2,
+                        "users": ("fabiano@inpe.br", "marcos@inpe.br"),
+                    },
+                ),
+            },
+            {
+                "key": "atualizacao-sistema-arquivos",
+                "name": "Atualização do Sistema de Arquivos",
+                "description": "Avaliação e atualização do sistema de arquivos paralelo.",
+                "category": "Desenvolvimento",
+                "estimated_days": 15,
+                "start_date": "2024-05-01",
+                "end_date": "2024-05-20",
+                "priority": "medium",
+                "status": "todo",
+                "tasks": (
+                    {
+                        "key": "avaliar-lustre-gpfs",
+                        "name": "Avaliar Lustre vs GPFS",
+                        "description": "Comparar desempenho e custo das opções de sistema de arquivos.",
+                        "category": "Pesquisa",
+                        "estimated_days": 5,
+                        "start_date": "2024-05-01",
+                        "end_date": "2024-05-06",
+                        "priority": "low",
+                        "status": "todo",
+                        "sort": 0,
+                        "users": ("marcos@inpe.br",),
+                    },
+                    {
+                        "key": "elaborar-plano-rollback",
+                        "name": "Elaborar plano de rollback",
+                        "description": "Documentar procedimentos de reversão da atualização.",
+                        "category": "Documentação",
+                        "estimated_days": 3,
+                        "start_date": "2024-05-06",
+                        "end_date": "2024-05-09",
+                        "priority": "medium",
+                        "status": "todo",
+                        "sort": 1,
+                        "users": ("andre@inpe.br",),
+                    },
+                ),
+            },
+            {
+                "key": "treinamento-equipe",
+                "name": "Treinamento da Equipe",
+                "description": "Capacitação da equipe na nova infraestrutura.",
+                "category": "Reunião",
+                "estimated_days": 3,
+                "start_date": "2024-06-03",
+                "end_date": "2024-06-05",
+                "priority": "low",
+                "status": "done",
+                "tasks": (
+                    {
+                        "key": "preparar-material",
+                        "name": "Preparar material de treinamento",
+                        "description": "Elaborar slides e roteiro do workshop.",
+                        "category": "Documentação",
+                        "estimated_days": 2,
+                        "start_date": "2024-06-03",
+                        "end_date": "2024-06-04",
+                        "priority": "low",
+                        "status": "done",
+                        "sort": 0,
+                        "users": ("andre@inpe.br",),
+                    },
+                    {
+                        "key": "realizar-workshop",
+                        "name": "Realizar workshop com a equipe",
+                        "description": "Conduzir o treinamento presencial da equipe.",
+                        "category": "Geral",
+                        "estimated_days": 1,
+                        "start_date": "2024-06-05",
+                        "end_date": "2024-06-05",
+                        "priority": "medium",
+                        "status": "done",
+                        "sort": 1,
+                        "users": ("teste@inpe.br",),
+                    },
+                ),
+            },
+        ),
+    },
+    {
+        "key": "portal-dados-abertos",
+        "name": "Portal de Dados Abertos Meteorológicos",
+        "short_description": "Portal público de dados e previsões meteorológicas",
+        "description": "Portal web para publicação de dados meteorológicos abertos.",
+        "start_date": "2024-06-01",
+        "end_date": "2025-03-31",
+        "priority": "medium",
+        "status": "paused",
+        "activities": (
+            {
+                "key": "definicao-apis-publicas",
+                "name": "Definição de APIs Públicas",
+                "description": "Especificação das APIs públicas do portal.",
+                "category": "Planejamento",
+                "estimated_days": 8,
+                "start_date": "2024-06-01",
+                "end_date": "2024-06-10",
+                "priority": "high",
+                "status": "done",
+                "tasks": (
+                    {
+                        "key": "documentar-endpoints",
+                        "name": "Documentar endpoints públicos",
+                        "description": "Escrever a documentação dos endpoints do portal.",
+                        "category": "Documentação",
+                        "estimated_days": 5,
+                        "start_date": "2024-06-01",
+                        "end_date": "2024-06-06",
+                        "priority": "medium",
+                        "status": "done",
+                        "sort": 0,
+                        "users": ("alex@inpe.br",),
+                    },
+                    {
+                        "key": "definir-rate-limit",
+                        "name": "Definir política de rate limit",
+                        "description": "Estabelecer limites de consumo das APIs públicas.",
+                        "category": "Planejamento",
+                        "estimated_days": 3,
+                        "start_date": "2024-06-06",
+                        "end_date": "2024-06-10",
+                        "priority": "high",
+                        "status": "done",
+                        "sort": 1,
+                        "users": ("alex@inpe.br", "fabiano@inpe.br"),
+                    },
+                ),
+            },
+            {
+                "key": "desenvolvimento-portal-web",
+                "name": "Desenvolvimento do Portal Web",
+                "description": "Construção do frontend do portal de dados abertos.",
+                "category": "Desenvolvimento",
+                "estimated_days": 21,
+                "start_date": "2024-06-11",
+                "end_date": "2024-07-05",
+                "priority": "medium",
+                "status": "progress",
+                "tasks": (
+                    {
+                        "key": "criar-catalogo-datasets",
+                        "name": "Criar catálogo de datasets",
+                        "description": "Listar datasets disponíveis com metadados.",
+                        "category": "Desenvolvimento",
+                        "estimated_days": 8,
+                        "start_date": "2024-06-11",
+                        "end_date": "2024-06-19",
+                        "priority": "medium",
+                        "status": "in_progress",
+                        "sort": 0,
+                        "users": ("andre@inpe.br",),
+                    },
+                    {
+                        "key": "implementar-download-lote",
+                        "name": "Implementar download em lote",
+                        "description": "Permitir download de múltiplos arquivos por turno.",
+                        "category": "Desenvolvimento",
+                        "estimated_days": 5,
+                        "start_date": "2024-06-19",
+                        "end_date": "2024-06-25",
+                        "priority": "medium",
+                        "status": "todo",
+                        "sort": 1,
+                        "users": ("andre@inpe.br",),
+                    },
+                    {
+                        "key": "ajustar-acessibilidade",
+                        "name": "Ajustar acessibilidade do portal",
+                        "description": "Adequar o portal às diretrizes de acessibilidade.",
+                        "category": "Teste",
+                        "estimated_days": 3,
+                        "start_date": "2024-06-25",
+                        "end_date": "2024-06-28",
+                        "priority": "low",
+                        "status": "review",
+                        "sort": 2,
+                        "users": ("marcos@inpe.br",),
+                    },
+                ),
+            },
+        ),
+    },
+)
+
+
 def _seed_project_fixture(
     connection: Connection,
     user_ids: Mapping[str, str],
     summary: SeedSummary,
 ) -> None:
-    project_id = _stable_uuid("project:sistema-monitoramento-meteorologico")
-    activity_id = _stable_uuid("project-activity:analise-requisitos")
-    task_id = _stable_uuid("project-task:levantar-requisitos")
-    admin_user_id = user_ids.get("teste@inpe.br")
-
     project_table = legacy_tables["project"]
-    if _exists(connection, project_table, project_table.c.id == project_id):
-        summary.record("project", inserted=False)
-    else:
-        connection.execute(
-            project_table.insert().values(
-                {
-                    "id": project_id,
-                    "name": "Sistema de Monitoramento Meteorológico",
-                    "short_description": "Modernização do monitoramento meteorológico",
-                    "description": (
-                        "Projeto inicial de demonstração para validar o fluxo "
-                        "Python de seed e compatibilidade com o frontend."
-                    ),
-                    "start_date": "2024-01-15",
-                    "end_date": "2024-12-15",
-                    "priority": "high",
-                    "status": "active",
-                }
-            )
-        )
-        summary.record("project", inserted=True)
-
     activity_table = legacy_tables["project_activity"]
-    if _exists(connection, activity_table, activity_table.c.id == activity_id):
-        summary.record("project_activity", inserted=False)
-    else:
-        connection.execute(
-            activity_table.insert().values(
-                {
-                    "id": activity_id,
-                    "project_id": project_id,
-                    "name": "Análise e Requisitos do Sistema",
-                    "description": "Levantamento dos requisitos operacionais.",
-                    "category": "Análise",
-                    "estimated_days": 5,
-                    "start_date": "2024-01-15",
-                    "end_date": "2024-01-20",
-                    "priority": "high",
-                    "status": "done",
-                }
-            )
-        )
-        summary.record("project_activity", inserted=True)
-
     task_table = legacy_tables["project_task"]
-    if _exists(connection, task_table, task_table.c.id == task_id):
-        summary.record("project_task", inserted=False)
-    else:
-        connection.execute(
-            task_table.insert().values(
-                {
-                    "id": task_id,
-                    "project_id": project_id,
-                    "project_activity_id": activity_id,
-                    "name": "Levantar requisitos operacionais",
-                    "description": "Registrar requisitos mínimos para operação inicial.",
-                    "category": "Análise",
-                    "estimated_days": 2,
-                    "start_date": "2024-01-15",
-                    "end_date": "2024-01-17",
-                    "priority": "high",
-                    "status": "done",
-                    "sort": 0,
-                }
-            )
-        )
-        summary.record("project_task", inserted=True)
+    task_user_table = legacy_tables["project_task_user"]
 
-    if admin_user_id is not None:
-        task_user_table = legacy_tables["project_task_user"]
-        inserted = _insert_do_nothing(
-            connection,
-            task_user_table,
-            {
-                "id": _stable_uuid(f"project-task-user:{task_id}:{admin_user_id}"),
-                "task_id": task_id,
-                "user_id": admin_user_id,
-                "role": "assignee",
-            },
-            constraint="unique_task_user",
-        )
-        summary.record("project_task_user", inserted=inserted)
+    for project_fixture in PROJECT_FIXTURES:
+        project_id = _stable_uuid(f"project:{project_fixture['key']}")
+        if _exists(connection, project_table, project_table.c.id == project_id):
+            summary.record("project", inserted=False)
+        else:
+            connection.execute(
+                project_table.insert().values(
+                    {
+                        "id": project_id,
+                        "name": project_fixture["name"],
+                        "short_description": project_fixture["short_description"],
+                        "description": project_fixture["description"],
+                        "start_date": project_fixture["start_date"],
+                        "end_date": project_fixture["end_date"],
+                        "priority": project_fixture["priority"],
+                        "status": project_fixture["status"],
+                    }
+                )
+            )
+            summary.record("project", inserted=True)
+
+        for activity_fixture in project_fixture["activities"]:
+            activity_id = _stable_uuid(f"project-activity:{activity_fixture['key']}")
+            if _exists(connection, activity_table, activity_table.c.id == activity_id):
+                summary.record("project_activity", inserted=False)
+            else:
+                connection.execute(
+                    activity_table.insert().values(
+                        {
+                            "id": activity_id,
+                            "project_id": project_id,
+                            "name": activity_fixture["name"],
+                            "description": activity_fixture["description"],
+                            "category": activity_fixture["category"],
+                            "estimated_days": activity_fixture["estimated_days"],
+                            "start_date": activity_fixture["start_date"],
+                            "end_date": activity_fixture["end_date"],
+                            "priority": activity_fixture["priority"],
+                            "status": activity_fixture["status"],
+                        }
+                    )
+                )
+                summary.record("project_activity", inserted=True)
+
+            for task_fixture in activity_fixture["tasks"]:
+                task_id = _stable_uuid(f"project-task:{task_fixture['key']}")
+                if _exists(connection, task_table, task_table.c.id == task_id):
+                    summary.record("project_task", inserted=False)
+                else:
+                    connection.execute(
+                        task_table.insert().values(
+                            {
+                                "id": task_id,
+                                "project_id": project_id,
+                                "project_activity_id": activity_id,
+                                "name": task_fixture["name"],
+                                "description": task_fixture["description"],
+                                "category": task_fixture["category"],
+                                "estimated_days": task_fixture["estimated_days"],
+                                "start_date": task_fixture["start_date"],
+                                "end_date": task_fixture["end_date"],
+                                "priority": task_fixture["priority"],
+                                "status": task_fixture["status"],
+                                "sort": task_fixture["sort"],
+                            }
+                        )
+                    )
+                    summary.record("project_task", inserted=True)
+
+                for user_email in task_fixture["users"]:
+                    user_id = user_ids.get(user_email)
+                    if user_id is None:
+                        continue
+                    inserted = _insert_do_nothing(
+                        connection,
+                        task_user_table,
+                        {
+                            "id": _stable_uuid(f"project-task-user:{task_id}:{user_id}"),
+                            "task_id": task_id,
+                            "user_id": user_id,
+                            "role": "assignee",
+                        },
+                        constraint="unique_task_user",
+                    )
+                    summary.record("project_task_user", inserted=inserted)
 
 
 def _manual_chunks(description: str) -> Sequence[str]:

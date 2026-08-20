@@ -249,10 +249,15 @@ function TaskCardContent({
               {formatDate(task.end_date)}
             </span>
           )}
-          <span
-            className="cursor-help"
-            title={`Estimativa: ${task.estimated_days} dia${task.estimated_days !== 1 ? "s" : ""} de trabalho`}
-          ></span>
+          {task.estimated_days != null && (
+            <span
+              className="flex items-center justify-center gap-2 cursor-help"
+              title={`Estimativa: ${task.estimated_days} dia${task.estimated_days !== 1 ? "s" : ""} de trabalho`}
+            >
+              <span className="icon-[lucide--clock] size-4" />
+              {task.estimated_days} dia{task.estimated_days !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
       </div>
 

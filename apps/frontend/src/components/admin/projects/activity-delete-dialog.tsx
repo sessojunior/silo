@@ -64,9 +64,9 @@ export default function ActivityDeleteDialog({
 
   return (
     <Dialog open={open} onClose={handleClose} title="Excluir Atividade">
-      <div className="space-y-4">
+      <div className="p-6">
         {/* Informações da atividade */}
-        <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700">
+        <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 mb-4">
           <h3 className="font-medium text-zinc-900 dark:text-zinc-100 mb-2">
             {activity.name}
           </h3>
@@ -76,7 +76,7 @@ export default function ActivityDeleteDialog({
         </div>
 
         {/* Aviso de exclusão */}
-        <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+        <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-6">
           <span className="icon-[lucide--triangle-alert] size-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
           <div className="space-y-2">
             <p className="text-sm font-medium text-red-800 dark:text-red-200">
@@ -90,7 +90,7 @@ export default function ActivityDeleteDialog({
         </div>
 
         {/* Botões de ação */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+        <div className="flex justify-end gap-3">
           <Button
             type="button"
             onClick={handleClose}

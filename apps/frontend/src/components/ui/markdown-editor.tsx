@@ -508,14 +508,10 @@ export default function MarkdownEditor({
                 if (!deleteTarget || !uploadConfig) return;
                 try {
                   setDeleteLoading(true);
-                  const res = await fetch(
-                    config.getApiUrl(uploadConfig.deleteEndpoint),
-                    {
-                      method: "DELETE",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ filename: deleteTarget.filename }),
-                    },
-                  );
+                  const deleteUrl = `${config.getApiUrl(uploadConfig.deleteEndpoint)}?filename=${encodeURIComponent(deleteTarget.filename)}`;
+                  const res = await fetch(deleteUrl, {
+                    method: "DELETE",
+                  });
                   if (res.ok) {
                     toast({ type: "success", title: "Imagem excluída" });
                     setDeleteTarget(null);

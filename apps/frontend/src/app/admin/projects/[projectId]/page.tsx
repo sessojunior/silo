@@ -11,6 +11,7 @@ import type { ApiResponse } from "@/lib/api-response";
 import ActivityMiniKanban from "@/components/admin/projects/activity-mini-kanban";
 import ProjectFormOffcanvas from "@/components/admin/projects/project-form-offcanvas";
 import ActivityFormOffcanvas from "@/components/admin/projects/activity-form-offcanvas";
+import ActivityDeleteDialog from "@/components/admin/projects/activity-delete-dialog";
 import ProjectInfoCard from "@/components/admin/projects/project-info-card";
 import ProjectProgressCard from "@/components/admin/projects/project-progress-card";
 import Button from "@/components/ui/button";
@@ -54,6 +55,8 @@ export default function ProjectDetailsPage() {
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [activityFormOpen, setActivityFormOpen] = useState(false);
   const [editingActivity, setEditingActivity] =
+    useState<ProjectActivity | null>(null);
+  const [activityToDelete, setActivityToDelete] =
     useState<ProjectActivity | null>(null);
 
   // Estados para filtros de atividades
@@ -348,6 +351,31 @@ export default function ProjectDetailsPage() {
     // A atividade já está no formato correto ProjectActivity
     setEditingActivity(activity);
     setActivityFormOpen(true);
+  }
+
+  async function handleDeleteActivity(activityId: string) {
+    const response = await fetch(
+      config.getApiUrl(
+        `/api/admin/projects/${projectId}/activities?activityId=${activityId}`,
+      ),
+      { method: "DELETE" },
+    );
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.success) {
+      throw new Error(data?.error || "Erro ao excluir atividade");
+    }
+
+    setActivities((prev) => prev.filter((a) => a.id !== activityId));
+    setActivityToDelete(null);
+    if (expandedActivityId === activityId) {
+      setExpandedActivityId(null);
+    }
+    const nextCounts = { ...kanbanTaskCounts };
+    delete nextCounts[activityId];
+    setKanbanTaskCounts(nextCounts);
+    const nextProgress = { ...kanbanTaskProgress };
+    delete nextProgress[activityId];
+    setKanbanTaskProgress(nextProgress);
   }
 
   // Formatar data
@@ -777,6 +805,13 @@ export default function ProjectDetailsPage() {
                           >
                             <span className="icon-[lucide--edit] size-4 text-green-600 dark:text-green-400" />
                           </button>
+                          <button
+                            onClick={() => setActivityToDelete(activity)}
+                            className="size-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            title="Excluir atividade"
+                          >
+                            <span className="icon-[lucide--trash] size-4 text-red-600 dark:text-red-400" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -974,6 +1009,22 @@ export default function ProjectDetailsPage() {
           onSubmit={handleActivitySubmit}
         />
       )}
+
+      {/* Diálogo para excluir atividade */}
+      <ActivityDeleteDialog
+        open={Boolean(activityToDelete)}
+        onClose={() => setActivityToDelete(null)}
+        activity={
+          activityToDelete
+            ? {
+                id: activityToDelete.id,
+                name: activityToDelete.name,
+                description: activityToDelete.description || "",
+              }
+            : null
+        }
+        onConfirm={handleDeleteActivity}
+      />
     </>
   );
 }

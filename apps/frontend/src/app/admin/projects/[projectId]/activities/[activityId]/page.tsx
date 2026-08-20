@@ -93,6 +93,31 @@ interface Activity {
 
 import type { ApiResponse } from "@/lib/api-response";
 
+// Tempo máximo de espera por requisição: evita que a página fique presa em
+// "Carregando..." quando o proxy perde uma conexão (ex.: container recriado).
+const REQUEST_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeoutAndRetry(
+  url: string,
+  init: RequestInit = {},
+  attempts = 2,
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, { ...init, signal: controller.signal });
+      return response;
+    } catch (error) {
+      lastError = error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw lastError;
+}
+
 export default function TaskKanbanPage() {
   const params = useParams();
   const projectId = params.projectId as string;
@@ -120,7 +145,7 @@ export default function TaskKanbanPage() {
   // Função para carregar dados do projeto
   const fetchProject = useCallback(async () => {
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeoutAndRetry(
         config.getApiUrl(`/api/admin/projects?projectId=${projectId}`),
         { cache: "no-store" },
       );
@@ -152,7 +177,7 @@ export default function TaskKanbanPage() {
   // Função para carregar dados da atividade
   const fetchActivity = useCallback(async () => {
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeoutAndRetry(
         config.getApiUrl(`/api/admin/projects/${projectId}/activities`),
         { cache: "no-store" },
       );
@@ -190,7 +215,7 @@ export default function TaskKanbanPage() {
   // Função para carregar tarefas
   const fetchTasks = useCallback(async () => {
     try {
-      const response = await fetch(
+      const response = await fetchWithTimeoutAndRetry(
         config.getApiUrl(
           `/api/admin/projects/${projectId}/activities/${activityId}/tasks`,
         ),

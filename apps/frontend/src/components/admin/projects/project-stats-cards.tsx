@@ -16,8 +16,6 @@ function calculateProjectStats(projects: Project[]) {
 
   // Calcular progresso médio (usando progresso se disponível, senão baseado no status)
   const totalProgress = projects.reduce((sum, project) => {
-    // Sem progresso por enquanto, usar 0
-    return sum + 0;
     switch (project.status) {
       case "completed":
         return sum + 100;

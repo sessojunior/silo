@@ -275,6 +275,22 @@ def test_seed_database_populates_expected_rows_and_is_idempotent(monkeypatch: py
     first_summary = seed.seed_database(database_url)
     second_summary = seed.seed_database(database_url)
 
+    expected_projects = len(seed.PROJECT_FIXTURES)
+    expected_activities = sum(
+        len(project_fixture["activities"]) for project_fixture in seed.PROJECT_FIXTURES
+    )
+    expected_tasks = sum(
+        len(activity_fixture["tasks"])
+        for project_fixture in seed.PROJECT_FIXTURES
+        for activity_fixture in project_fixture["activities"]
+    )
+    expected_task_users = sum(
+        len(task_fixture["users"])
+        for project_fixture in seed.PROJECT_FIXTURES
+        for activity_fixture in project_fixture["activities"]
+        for task_fixture in activity_fixture["tasks"]
+    )
+
     assert first_summary.inserted["group"] == len(seed.GROUPS)
     assert first_summary.inserted["group_permissions"] == len(seed.ADMIN_GROUP_PERMISSIONS) + (3 * len(seed.DEFAULT_GROUP_PERMISSIONS))
     assert first_summary.inserted["user"] == len(seed.USERS)
@@ -290,10 +306,10 @@ def test_seed_database_populates_expected_rows_and_is_idempotent(monkeypatch: py
     assert first_summary.inserted["help"] == 1
     assert first_summary.inserted["product_manual"] == len(seed.MANUALS)
     assert first_summary.inserted["product_manual_chunk"] == len(seed.MANUALS) * 2
-    assert first_summary.inserted["project"] == 1
-    assert first_summary.inserted["project_activity"] == 1
-    assert first_summary.inserted["project_task"] == 1
-    assert first_summary.inserted["project_task_user"] == 1
+    assert first_summary.inserted["project"] == expected_projects
+    assert first_summary.inserted["project_activity"] == expected_activities
+    assert first_summary.inserted["project_task"] == expected_tasks
+    assert first_summary.inserted["project_task_user"] == expected_task_users
 
     assert second_summary.existing["group"] == len(seed.GROUPS)
     assert second_summary.existing["group_permissions"] == len(seed.ADMIN_GROUP_PERMISSIONS) + (3 * len(seed.DEFAULT_GROUP_PERMISSIONS))
@@ -310,10 +326,10 @@ def test_seed_database_populates_expected_rows_and_is_idempotent(monkeypatch: py
     assert second_summary.existing["help"] == 1
     assert second_summary.existing["product_manual"] == len(seed.MANUALS)
     assert second_summary.existing["product_manual_chunk"] == len(seed.MANUALS)
-    assert second_summary.existing["project"] == 1
-    assert second_summary.existing["project_activity"] == 1
-    assert second_summary.existing["project_task"] == 1
-    assert second_summary.existing["project_task_user"] == 1
+    assert second_summary.existing["project"] == expected_projects
+    assert second_summary.existing["project_activity"] == expected_activities
+    assert second_summary.existing["project_task"] == expected_tasks
+    assert second_summary.existing["project_task_user"] == expected_task_users
 
     with engine.connect() as connection:
         group_count = connection.execute(select(seed.legacy_tables["group"].c.id)).all()
