@@ -170,6 +170,15 @@ export default function UsersPage() {
     const newStatus = !user.isActive;
     const action = newStatus ? "ativando" : "desativando";
 
+    // Preserva todos os grupos do usuário: o backend substitui os vínculos
+    // de grupo ao atualizar o usuário.
+    const userGroups =
+      user.groups && user.groups.length > 0
+        ? user.groups.map((userGroup) => ({ groupId: userGroup.groupId }))
+        : user.groupId
+          ? [{ groupId: user.groupId }]
+          : [];
+
     try {
       const response = await fetch(config.getApiUrl("/api/admin/users"), {
         method: "PUT",
@@ -180,8 +189,7 @@ export default function UsersPage() {
           email: user.email,
           emailVerified: user.emailVerified,
           isActive: newStatus,
-          // Preservar outros campos se existirem
-          ...(user.groupId && { groupId: user.groupId }),
+          groups: userGroups,
         }),
       });
 

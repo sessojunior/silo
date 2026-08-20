@@ -24,6 +24,12 @@ interface UserWithGroup extends AuthUser {
   groupIcon?: string;
   groupColor?: string;
   isInGroup?: boolean; // Indica se o usuário está no grupo atual
+  groups?: Array<{
+    groupId: string;
+    groupName: string;
+    groupIcon: string;
+    groupColor: string;
+  }>;
 }
 
 export default function UserSelectorOffcanvas({
@@ -178,6 +184,15 @@ export default function UserSelectorOffcanvas({
           throw new Error(`Usuário ${userId} não encontrado`);
         }
 
+        // Preserva os grupos atuais do usuário e adiciona o grupo gerenciado.
+        // O backend substitui todos os vínculos de grupo ao atualizar o usuário.
+        const currentGroupIds = (userToUpdate.groups ?? []).map(
+          (userGroup: { groupId: string }) => userGroup.groupId,
+        );
+        const nextGroupIds = currentGroupIds.includes(group.id)
+          ? currentGroupIds
+          : [...currentGroupIds, group.id];
+
         return fetch(config.getApiUrl("/api/admin/users"), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -186,8 +201,8 @@ export default function UserSelectorOffcanvas({
             name: userToUpdate.name,
             email: userToUpdate.email,
             emailVerified: userToUpdate.emailVerified,
-            groupId: group.id,
             isActive: userToUpdate.isActive,
+            groups: nextGroupIds.map((groupId) => ({ groupId })),
           }),
         });
       });

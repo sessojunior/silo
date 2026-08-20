@@ -504,10 +504,11 @@ export default function GroupsPage() {
             }}
             group={groups.find((g) => g.id === selectedGroupId)!}
             onSuccess={() => {
-              // Atualizar apenas o grupo específico que foi alterado
+              // Atualizar o grupo específico que foi alterado e a lista geral
               if (selectedGroupId) {
                 refreshGroupUsers(selectedGroupId);
               }
+              fetchGroups(); // Atualizar contagem de usuários na lista
               fetchTotalUsers(); // Atualizar estatísticas gerais
               setUserSelectorOpen(false);
               setSelectedGroupId(null);
