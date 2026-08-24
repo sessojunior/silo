@@ -78,7 +78,7 @@ export default function ProductTurn({ productName, days, onTurnClick }: Props) {
         {filteredDays.map((day, i) => {
           // Contar apenas turnos com incidentes reais (baseado em category_id, não status)
           const totalIncidents = day.turns.filter(
-            (t) => t.category_id && t.category_id !== "no_incidents",
+            (t) => t.category_id && t.category_id !== "no-incidents",
           ).length;
 
           return (

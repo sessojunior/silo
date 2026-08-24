@@ -208,7 +208,7 @@ def resolve_projects(connection: Connection, query: str) -> dict[str, Any]:
 def resolve_problem_categories(connection: Connection, query: str | None = None) -> dict[str, Any]:
     table = legacy_tables["product_problem_category"]
     rows = connection.execute(
-        select(table).where(table.c.id != "no_incidents").order_by(table.c.sort_order.asc(), table.c.name.asc())
+        select(table).where(table.c.id != "no-incidents").order_by(table.c.sort_order.asc(), table.c.name.asc())
     ).mappings().all()
     query_value = normalize_text(query or "")
     matches: list[tuple[float, dict[str, Any]]] = []
@@ -600,7 +600,7 @@ def list_registered_problems(
     filters = [
         problem_table.c.created_at >= datetime.combine(start_bound, datetime.min.time()),
         problem_table.c.created_at <= datetime.combine(end_bound, datetime.max.time().replace(microsecond=0)),
-        problem_table.c.problem_category_id != "no_incidents",
+        problem_table.c.problem_category_id != "no-incidents",
     ]
     if product_id:
         filters.append(problem_table.c.product_id == product_id)

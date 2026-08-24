@@ -243,6 +243,7 @@ def upsert_product_availability_exception(
         return service_failure("Erro ao salvar exceção de disponibilidade.", 500)
 
     action = "updated" if existing is not None else "created"
+    _commit()
     return service_success({"action": action, "exception": serialize_legacy_row(created)})
 
 
@@ -598,6 +599,7 @@ def create_product_dependency(
     created = _connection_execute_first(insert(dependency_table).values(row).returning(dependency_table))
     if created is None:
         return service_failure("Erro ao criar dependência.", 500)
+    _commit()
     return service_success({"dependency": serialize_legacy_row(created)})
 
 
@@ -633,6 +635,7 @@ def update_product_dependency(
     )
     if updated is None:
         return service_failure("Dependência não encontrada.", 404)
+    _commit()
     return service_success({"dependency": serialize_legacy_row(updated)})
 
 
@@ -740,6 +743,7 @@ def upsert_product_manual(*, product_id: str, description: str) -> dict[str, obj
         if manual_row is None:
             return service_failure("Erro ao salvar manual.", 500)
 
+    _commit()
     _fire_and_forget(upsert_manual_chunks(str(manual_row["id"]), product_id, description))
     return service_success({"manual": serialize_legacy_row(manual_row)})
 
@@ -836,6 +840,7 @@ def update_product_problem(
     )
     if updated is None:
         return service_failure("Problema não encontrado.", 404)
+    _commit()
     _fire_and_forget(upsert_problem_embedding(id, title, description))
     return service_success(None)
 
@@ -851,10 +856,25 @@ def delete_product_problem(id: str) -> dict[str, object]:
     if existing is None:
         return service_failure("Problema não encontrado.", 404)
 
+    # Coleta as URLs das imagens antes da exclusao para remover os arquivos fisicos.
+    problem_image_rows = _connection_select_rows(
+        select(problem_image_table.c.image).where(problem_image_table.c.product_problem_id == id)
+    )
+    solution_rows = _connection_select_rows(select(solution_table.c.id).where(solution_table.c.product_problem_id == id))
+    solution_ids = [str(row["id"]) for row in solution_rows]
+    solution_image_rows: list[dict[str, object]] = []
+    if solution_ids:
+        solution_image_rows = _connection_select_rows(
+            select(solution_image_table.c.image).where(
+                solution_image_table.c.product_solution_id.in_(tuple(solution_ids))
+            )
+        )
+    removed_image_urls = [
+        str(row["image"]) for row in [*problem_image_rows, *solution_image_rows] if row.get("image")
+    ]
+
     _begin()
     try:
-        solution_rows = _connection_select_rows(select(solution_table.c.id).where(solution_table.c.product_problem_id == id))
-        solution_ids = [str(row["id"]) for row in solution_rows]
         if solution_ids:
             _connection_execute(delete(solution_checked_table).where(solution_checked_table.c.product_solution_id.in_(tuple(solution_ids))))
             _connection_execute(delete(solution_image_table).where(solution_image_table.c.product_solution_id.in_(tuple(solution_ids))))
@@ -865,6 +885,9 @@ def delete_product_problem(id: str) -> dict[str, object]:
     except Exception:
         _rollback()
         raise
+
+    for image_url in removed_image_urls:
+        _delete_upload_url(image_url)
     return service_success(None)
 
 
@@ -890,6 +913,7 @@ def create_product_problem_image(
     created = _connection_execute_first(insert(table).values(row).returning(table))
     if created is None:
         return service_failure("Erro ao fazer upload.", 500)
+    _commit()
     return service_success({"image": serialize_legacy_row(created)})
 
 
@@ -930,6 +954,7 @@ def create_product_problem_category(*, name: str, color: str | None = None) -> d
     created = _connection_execute_first(insert(table).values(row).returning(table))
     if created is None:
         return service_failure("Erro ao criar categoria.", 500)
+    _commit()
     return service_success({"category": serialize_legacy_row(created)})
 
 
@@ -953,6 +978,7 @@ def update_product_problem_category(*, id: str, name: str, color: str | None = N
     )
     if updated is None:
         return service_failure("Categoria não encontrada.", 404)
+    _commit()
     return service_success(None)
 
 
@@ -1075,7 +1101,16 @@ def update_product_solution(
     if updated is None:
         return service_failure("Solução não encontrada.", 404)
 
+    removed_image_urls: list[str] = []
     if image_url:
+        previous_images = _connection_select_rows(
+            select(image_table.c.image).where(image_table.c.product_solution_id == id)
+        )
+        removed_image_urls = [
+            str(row["image"])
+            for row in previous_images
+            if row.get("image") and str(row["image"]) != image_url
+        ]
         _connection_execute(delete(image_table).where(image_table.c.product_solution_id == id))
         _connection_execute(
             insert(image_table).values(
@@ -1087,11 +1122,17 @@ def update_product_solution(
         )
         _commit()
     elif remove_image:
+        previous_images = _connection_select_rows(
+            select(image_table.c.image).where(image_table.c.product_solution_id == id)
+        )
+        removed_image_urls = [str(row["image"]) for row in previous_images if row.get("image")]
         _connection_execute(delete(image_table).where(image_table.c.product_solution_id == id))
         _commit()
     else:
         _commit()
 
+    for image_url_value in removed_image_urls:
+        _delete_upload_url(image_url_value)
     _fire_and_forget(upsert_solution_embedding(id, description))
     return service_success(None)
 
@@ -1105,11 +1146,16 @@ def delete_product_solution(*, user_id: str, id: str) -> dict[str, object]:
     if existing is None or str(existing["user_id"]) != user_id:
         return service_failure("Permissão negada.", 403)
 
+    removed_image_urls: list[str] = []
     _begin()
     try:
         child_ids = _collect_solution_descendants(id)
         all_ids = [id, *child_ids]
         if all_ids:
+            image_rows = _connection_select_rows(
+                select(image_table.c.image).where(image_table.c.product_solution_id.in_(tuple(all_ids)))
+            )
+            removed_image_urls = [str(row["image"]) for row in image_rows if row.get("image")]
             _connection_execute(delete(checked_table).where(checked_table.c.product_solution_id.in_(tuple(all_ids))))
             _connection_execute(delete(image_table).where(image_table.c.product_solution_id.in_(tuple(all_ids))))
             _connection_execute(delete(solution_table).where(solution_table.c.id.in_(tuple(all_ids))))
@@ -1117,6 +1163,9 @@ def delete_product_solution(*, user_id: str, id: str) -> dict[str, object]:
     except Exception:
         _rollback()
         raise
+
+    for image_url in removed_image_urls:
+        _delete_upload_url(image_url)
     return service_success(None)
 
 
@@ -1197,6 +1246,7 @@ def create_product_solution_image(
     )
     if created is None:
         return service_failure("Erro ao fazer upload.", 500)
+    _commit()
     return service_success({"image": serialize_legacy_row(created)})
 
 
@@ -1302,6 +1352,21 @@ def _fetch_product_by_id(product_id: str) -> dict[str, object] | None:
 
 def _connection_select_rows(statement) -> list[dict[str, object]]:
     return list(_db().execute(statement).mappings().all())
+
+
+def _delete_upload_url(image_url: object | None) -> None:
+    text = image_url if isinstance(image_url, str) else None
+    if not text:
+        return
+    clean = text.split("?", maxsplit=1)[0].split("#", maxsplit=1)[0]
+    if not clean.startswith("/uploads/"):
+        return
+    parts = clean.removeprefix("/uploads/").split("/", maxsplit=1)
+    if len(parts) != 2:
+        return
+    kind, filename = parts
+    if is_upload_kind(kind) and is_safe_filename(filename):
+        delete_upload_file(kind, filename)
 
 
 def _connection_select_first(statement) -> dict[str, object] | tuple[Any, ...] | None:

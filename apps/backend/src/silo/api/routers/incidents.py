@@ -14,7 +14,7 @@ from silo.storage.uploads import decode_base64_data_uri, delete_upload_file, is_
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 
-NO_INCIDENTS_CATEGORY_ID = "no_incidents"
+NO_INCIDENTS_CATEGORY_ID = "no-incidents"
 
 
 @router.get("")

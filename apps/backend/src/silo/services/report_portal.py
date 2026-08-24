@@ -26,7 +26,7 @@ from silo.services.legacy_utils import normalize_turn_list, optional_str
 from silo.services.pdf_artifacts import PdfArtifactStore, PdfArtifactTooLargeError, PdfRenderer
 from silo.storage.uploads import list_upload_files
 
-NO_INCIDENTS_CATEGORY_ID = "no_incidents"
+NO_INCIDENTS_CATEGORY_ID = "no-incidents"
 PROBLEM_INCIDENT_STATUSES = tuple(sorted(PROBLEM_STATUSES))
 
 

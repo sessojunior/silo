@@ -13,6 +13,9 @@ import type { GroupedPipelineData } from "./types";
 
 export const SMNA_ECFLOW_TREE_URL =
   "https://unconglomerated-physiologically-grant.ngrok-free.dev/app9/json";
+// A URL acima é apenas referência: o consumo do feed SMNA vivo é feito pelo
+// backend (GET /api/products/{slug}/data-flow). O navegador não busca essa URL
+// diretamente porque o feed não permite CORS.
 
 // Todos os modelos usam este feed SMNA compartilhado por enquanto.
 // No futuro, cada modelo deve apontar para sua propria URL.
@@ -124,28 +127,6 @@ export const MOCK_ECFLOW_TREE_ROOT = FALLBACK_ECFLOW_TREE_ROOT;
 
 let smnaEcflowTreeRootPromise: Promise<EcflowKafkaNode> | null = null;
 
-function isTreeRootCandidate(value: unknown): value is EcflowKafkaNode {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-
-  const candidate = value as {
-    groups?: unknown;
-    tasks?: unknown;
-    kind?: unknown;
-    name?: unknown;
-    id?: unknown;
-  };
-
-  return (
-    Array.isArray(candidate.groups) ||
-    Array.isArray(candidate.tasks) ||
-    typeof candidate.kind === "string" ||
-    typeof candidate.name === "string" ||
-    typeof candidate.id === "string"
-  );
-}
-
 function buildFallbackDataFlowPipelinesFromRoot(
   root: EcflowKafkaNode,
   modelSlug: string,
@@ -164,30 +145,10 @@ function buildFallbackDataFlowPipelinesFromRoot(
 }
 
 async function fetchSmnaEcflowTreeRoot(): Promise<EcflowKafkaNode> {
-  try {
-    const response = await fetch(SMNA_ECFLOW_TREE_URL, {
-      cache: "no-store",
-      credentials: "omit",
-    });
-
-    if (response.ok) {
-      const payload: unknown = await response.json();
-      if (isTreeRootCandidate(payload)) {
-        return payload;
-      }
-
-      console.warn(
-        "[dataflow] SMNA payload is not an ecFlow tree root; using embedded fallback",
-      );
-    } else {
-      console.warn(
-        `[dataflow] SMNA payload returned ${response.status}; using embedded fallback`,
-      );
-    }
-  } catch (error) {
-    console.warn("[dataflow] Falling back to embedded SMNA payload", error);
-  }
-
+  // O feed SMNA vivo é consumido pelo backend (GET /api/products/{slug}/data-flow)
+  // e chega aqui como pipelines. Não fazemos fetch direto do navegador para o
+  // feed externo: ele não permite CORS e causava erro de console em toda carga.
+  // Quando a API não retorna pipelines, usamos o snapshot embutido abaixo.
   return FALLBACK_ECFLOW_TREE_ROOT;
 }
 

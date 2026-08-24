@@ -3,7 +3,7 @@
  */
 
 export const NO_INCIDENTS_CATEGORY_NAME = "Não houve incidentes";
-export const NO_INCIDENTS_CATEGORY_ID = "no_incidents";
+export const NO_INCIDENTS_CATEGORY_ID = "no-incidents";
 
 /**
  * Verifica se uma categoria representa um incidente real

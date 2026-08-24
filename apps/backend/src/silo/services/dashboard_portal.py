@@ -18,7 +18,7 @@ from silo.services.analytics_common import (
 )
 from silo.services.legacy_utils import optional_str
 
-NO_INCIDENTS_CATEGORY_ID = "no_incidents"
+NO_INCIDENTS_CATEGORY_ID = "no-incidents"
 PROBLEM_INCIDENT_STATUSES = tuple(sorted(PROBLEM_STATUSES))
 
 

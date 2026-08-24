@@ -191,7 +191,7 @@ def test_resolution_helpers_cover_database_paths(monkeypatch: pytest.MonkeyPatch
         connection.execute(
             tables["product_problem_category"].insert(),
             [
-                {"id": "no_incidents", "name": "Sem incidentes", "color": "#10B981", "sort_order": 0},
+                {"id": "no-incidents", "name": "Sem incidentes", "color": "#10B981", "sort_order": 0},
                 {"id": "model-failure", "name": "Falha de modelo", "color": "#EF4444", "sort_order": 10},
                 {"id": "data-delay", "name": "Atraso de dados", "color": "#F59E0B", "sort_order": 20},
             ],
@@ -346,7 +346,7 @@ def test_resolution_helpers_cover_database_paths(monkeypatch: pytest.MonkeyPatch
     assert exact_projects["matches"][0]["id"] == "project-1"
     assert fuzzy_projects["ambiguous"] is True
     assert categories["matches"][0]["id"] == "model-failure"
-    assert all(item["id"] != "no_incidents" for item in categories["matches"])
+    assert all(item["id"] != "no-incidents" for item in categories["matches"])
     problem_1_item = next(item for item in problems["items"] if item["id"] == "problem-1")
     problem_2_item = next(item for item in problems["items"] if item["id"] == "problem-2")
     assert problem_1_item["solutionsCount"] == 2
