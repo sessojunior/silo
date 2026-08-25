@@ -172,7 +172,7 @@ def _seed_assistant_history(
             sender_type="assistant",
             sender_user_id=None,
             sender_name="Assistente de IA",
-            provider="ollama",
+            provider="vllm",
             model="mistral",
             generation_status="fallback",
             latency_ms=0,
@@ -182,7 +182,7 @@ def _seed_assistant_history(
                 "scope": "reports",
                 "answer": "Resumo final",
                 "generation": {
-                    "provider": "ollama",
+                    "provider": "vllm",
                     "model": "mistral",
                     "status": "fallback",
                     "latencyMs": 0,
@@ -245,12 +245,12 @@ async def test_assistant_runtime_status_reports_fallback_when_probe_reports_fail
     async def _fake_probe(settings, *, clock):
         del clock
         return SimpleNamespace(
-            provider="ollama",
+            provider="vllm",
             model=settings.vllm.model,
             mode="fallback",
             latency_ms=0,
             checked_at="2026-07-31T12:00:00Z",
-            fallback_reason="ollama indisponível",
+            fallback_reason="vllm indisponível",
         )
 
     monkeypatch.setattr(
@@ -265,5 +265,5 @@ async def test_assistant_runtime_status_reports_fallback_when_probe_reports_fail
     )
 
     assert status.mode == "fallback"
-    assert status.fallback_reason == "ollama indisponível"
+    assert status.fallback_reason == "vllm indisponível"
     assert status.model == "mistral"

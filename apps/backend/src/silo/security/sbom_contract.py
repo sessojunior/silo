@@ -12,13 +12,11 @@ from typing import Any
 
 AI_ROOT_PACKAGES: tuple[str, ...] = (
     "langchain-core",
-    "langchain-ollama",
     "langgraph",
     "langchain-protocol",
     "langgraph-checkpoint",
     "langgraph-prebuilt",
     "langgraph-sdk",
-    "ollama",
 )
 
 DEPENDENCY_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+")

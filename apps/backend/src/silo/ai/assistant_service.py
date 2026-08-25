@@ -66,6 +66,7 @@ from silo.ai.assistant_tools import (
     list_model_interventions,
     list_model_runs,
     list_problematic_runs,
+    list_registered_products,
     list_registered_problems,
     normalize_text,
     render_summary_image,
@@ -216,6 +217,10 @@ _SCOPE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "prioridade",
         "prioridades",
         "andamento",
+    ),
+    "products": (
+        "produto",
+        "catalogo",
     ),
     "general": (),
     "generate_pdf": (
@@ -805,6 +810,22 @@ def _scope_candidates(question: str) -> list[tuple[str, float]]:
     return scores
 
 
+def _is_product_catalog_question(question: str) -> bool:
+    """Perguntas de catalogo (ex.: 'Quais produtos existem no SILO?') devem
+    ir para o escopo products, desde que nenhum outro escopo especifico
+    domine (ex.: 'disponibilidade por produto' segue models; 'problemas do
+    produto X' segue problems)."""
+    normalized = normalize_text(question)
+    if not any(token in normalized for token in _SCOPE_KEYWORDS["products"]):
+        return False
+    for scope, keywords in _SCOPE_KEYWORDS.items():
+        if scope in {"products", "general", "generate_pdf"}:
+            continue
+        if any(keyword in normalized for keyword in keywords):
+            return False
+    return True
+
+
 # Intencoes explicitamente fora do dominio SILO: levam a recusa mesmo quando a
 # pergunta menciona o Silo ou cai em scope geral.
 _OFF_SCOPE_INTENT_TOKENS: tuple[str, ...] = (
@@ -856,6 +877,9 @@ def _question_is_out_of_scope(
 
 
 async def _detect_scope(question: str, runtime_context: AgentRuntimeContext) -> tuple[str, float]:
+    if _is_product_catalog_question(question):
+        return "products", 0.9
+
     keyword_scores = _scope_candidates(question)
     top_scope, top_score = keyword_scores[0]
     runner_up_score = keyword_scores[1][1] if len(keyword_scores) > 1 else 0.0
@@ -882,6 +906,7 @@ async def _detect_scope_by_embedding(question: str, runtime_context: AgentRuntim
         "problems": "problemas, falhas, incidentes e categorias recorrentes",
         "solutions": "soluções, correções e recorrência de falhas",
         "projects": "projetos, atividades, progresso e prazos",
+        "products": "catálogo de produtos e serviços cadastrados no SILO",
     }
 
     try:
@@ -1025,6 +1050,7 @@ def _required_sources_for_scope(scope: str) -> tuple[str, ...]:
         "problems": ("problems_report", "problems_detail", "knowledge_search"),
         "solutions": ("problems_report", "problems_detail", "knowledge_search"),
         "projects": ("projects_snapshot", "projects_report"),
+        "products": ("products_catalog",),
         "general": ("executive_report", "availability_report", "problems_report", "projects_report"),
         "generate_pdf": ("report_pdf",),
     }
@@ -1462,6 +1488,18 @@ async def _node_execute_required_data_tools(
                     ),
                 ],
             )
+        elif scope == "products":
+            await _run_required_tool_batch(
+                runtime.context,
+                results,
+                state,
+                [
+                    (
+                        "productsCatalog",
+                        lambda connection: list_registered_products(connection),
+                    ),
+                ],
+            )
         elif scope == "reports":
             await _run_required_tool_batch(
                 runtime.context,
@@ -1732,7 +1770,7 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
     if _graph_budget_guard(state, note="synthesize_once") and not state.get("response_base"):
         state["answer"] = ""
         state["generation"] = {
-            "provider": "ollama",
+            "provider": "vllm",
             "model": runtime.context.settings.vllm.model,
             "status": "error",
             "latencyMs": 0,
@@ -1810,7 +1848,7 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
     latency_ms = int((time.perf_counter() - started_at) * 1000)
     state["answer"] = answer
     state["generation"] = {
-        "provider": "ollama",
+        "provider": "vllm",
         "model": runtime.context.settings.vllm.model,
         "status": generation_status,
         "latencyMs": latency_ms,
@@ -2309,6 +2347,11 @@ def _suggested_questions_for_scope(scope: str) -> list[str]:
             "Onde estão os maiores gargalos de execução?",
             "Quais tarefas precisam de atenção imediata?",
         ],
+        "products": [
+            "Quais produtos estão ativos no momento?",
+            "Quais produtos têm prioridade urgente?",
+            "Qual é a disponibilidade recente do BAM?",
+        ],
         "general": [
             "O que mudou mais desde o período anterior?",
             "Quais pontos exigem ação imediata?",
@@ -2328,6 +2371,7 @@ def _default_citations_for_scope(scope: str, state: AgentState) -> list[AiAssist
         "problems": [AiAssistantCitationDto(label="Problemas registrados", detail=period)],
         "solutions": [AiAssistantCitationDto(label="Problemas e soluções", detail=period)],
         "projects": [AiAssistantCitationDto(label="Projetos e atividades", detail=period)],
+        "products": [AiAssistantCitationDto(label="Catálogo de produtos", detail=period)],
         "generate_pdf": [AiAssistantCitationDto(label="Relatório em PDF", detail=period)],
     }
     return mapping.get(scope, [AiAssistantCitationDto(label="Visão consolidada", detail=period)])
@@ -2355,6 +2399,8 @@ def _build_grounded_text(
         answer = _format_solutions_answer(results, period)
     elif scope == "projects":
         answer = _format_projects_answer(results, period)
+    elif scope == "products":
+        answer = _format_products_answer(results, period)
     elif scope == "reports":
         answer = _format_reports_answer(results, period)
     elif scope == "generate_pdf":
@@ -2439,6 +2485,23 @@ def _format_projects_answer(results: dict[str, Any], period: str) -> str:
         f"Em {period}, os projetos somam {total_projects} itens principais, {open_tasks} tarefas abertas e {blocked_tasks} bloqueadas, "
         f"com progresso médio de {avg_progress}%."
     )
+
+
+def _format_products_answer(results: dict[str, Any], period: str) -> str:
+    catalog = results.get("productsCatalog") or {}
+    items = catalog.get("items") or []
+    total = catalog.get("total") or len(items)
+    if not items:
+        return f"O catálogo do SILO não possui produtos cadastrados no recorte {period}."
+    names = ", ".join(str(item.get("name") or item.get("slug") or "") for item in items if item)
+    active = sum(1 for item in items if item.get("available"))
+    priorities = [str(item.get("priority") or "") for item in items if item.get("priority")]
+    urgent = sum(1 for priority in priorities if priority == "urgent")
+    parts = [
+        f"O SILO possui {total} produtos cadastrados: {names}.",
+        f"Desses, {active} estão ativos e {urgent} com prioridade urgente.",
+    ]
+    return " ".join(parts)
 
 
 def _format_reports_answer(results: dict[str, Any], period: str) -> str:
@@ -2858,7 +2921,7 @@ def _persist_user_and_assistant_messages(runtime_context: AgentRuntimeContext, s
         "sender_type": "assistant",
         "sender_user_id": None,
         "sender_name": "Assistente de IA",
-        "provider": "ollama",
+        "provider": "vllm",
         "model": runtime_context.settings.vllm.model,
         "generation_status": str((assistant_response.get("generation") or {}).get("status") or "fallback"),
         "latency_ms": int((assistant_response.get("generation") or {}).get("latencyMs") or 0),

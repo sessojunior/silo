@@ -45,22 +45,23 @@ const getRuntimeStatusView = (
     };
   }
 
-  if (runtimeStatus?.mode === "ollama") {
+  if (runtimeStatus?.mode === "vllm" || runtimeStatus?.mode === "ollama") {
+    const isVllm = runtimeStatus?.mode === "vllm";
     return {
-      label: "IA disponível · Ollama conectado.",
-      title: `Ollama conectado: ${runtimeStatus.model}`,
+      label: isVllm ? "IA disponível · vLLM conectado." : "IA disponível · Ollama conectado.",
+      title: `${isVllm ? "vLLM" : "Ollama"} conectado: ${runtimeStatus.model}`,
       presenceColor: "bg-green-400",
       labelClassName: "text-green-600 dark:text-green-300",
     };
   }
 
   return {
-    label: "IA em fallback · Ollama indisponível.",
+    label: "IA em fallback · modelo indisponível.",
     title: (() => {
       const fallbackReason = runtimeStatus?.fallbackReason?.trim();
       return fallbackReason && fallbackReason.length > 0
         ? fallbackReason
-        : "O assistente vai responder com fallback até o Ollama voltar.";
+        : "O assistente vai responder com fallback até o vLLM voltar.";
     })(),
     presenceColor: "bg-amber-400",
     labelClassName: "text-amber-600 dark:text-amber-300",

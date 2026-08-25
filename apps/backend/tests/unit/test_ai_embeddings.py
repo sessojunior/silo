@@ -56,7 +56,7 @@ async def test_embedding_helpers_cover_cache_similarity_and_sql(monkeypatch: pyt
         monkeypatch.setattr(
             embeddings,
             "load_settings",
-            lambda: type("Settings", (), {"ai_runtime_mode": "ollama", "ollama": object(), "vllm": object()})(),
+            lambda: type("Settings", (), {"ai_runtime_mode": "vllm", "vllm": object()})(),
         )
 
         class _FakeRuntime:

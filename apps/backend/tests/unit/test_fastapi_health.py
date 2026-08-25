@@ -82,7 +82,7 @@ def test_fastapi_app_exposes_health_routes_and_lifespan(
     assert ready.json()["service"] == "silo-api-python"
     assert ready.json()["checks"]["config"]["status"] == "ok"
     assert ready.json()["checks"]["database"]["status"] == "ok"
-    assert ready.json()["checks"]["ollama"]["status"] == "ok"
+    assert ready.json()["checks"]["vllm"]["status"] == "ok"
     assert ready.json()["checks"]["kafka"]["status"] == "ok"
 
 
@@ -113,7 +113,7 @@ async def test_ready_validates_config_database_and_nonblocking_dependencies() ->
         "checks": {
             "config": {"status": "ok", "blocking": True, "detail": None},
             "database": {"status": "ok", "blocking": True, "detail": None},
-            "ollama": {"status": "ok", "blocking": False, "detail": "configured"},
+            "vllm": {"status": "ok", "blocking": False, "detail": "configured"},
             "kafka": {"status": "ok", "blocking": False, "detail": "configured"},
         },
     }

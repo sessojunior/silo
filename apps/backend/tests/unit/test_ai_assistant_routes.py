@@ -82,7 +82,7 @@ def _assistant_response() -> AiAssistantMessageResponseDto:
             )
         ],
         generation=AiAssistantGenerationDto(
-            provider="ollama",
+            provider="vllm",
             model="mistral",
             status="success",
             latency_ms=42,
@@ -117,9 +117,9 @@ def test_ai_assistant_metadata_and_thread_routes(monkeypatch) -> None:
 
     async def _fake_runtime_status() -> AiAssistantRuntimeStatusDto:
         return AiAssistantRuntimeStatusDto(
-            provider="ollama",
+            provider="vllm",
             model="mistral",
-            mode="ollama",
+            mode="vllm",
             latency_ms=15,
             checked_at=NOW,
             fallback_reason=None,
@@ -170,7 +170,7 @@ def test_ai_assistant_metadata_and_thread_routes(monkeypatch) -> None:
                     content="Resumo final",
                     thinking="Planejando resposta",
                     generation=AiAssistantGenerationDto(
-                        provider="ollama",
+                        provider="vllm",
                         model="mistral",
                         status="success",
                         latency_ms=42,

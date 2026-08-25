@@ -42,7 +42,7 @@ OBSERVABILITY_ALERT_RULES: tuple[dict[str, Any], ...] = (
         "labels": {"severity": "warning", "service": "silo-api"},
         "annotations": {
             "summary": "Fallback do agente passou a dominar o fluxo.",
-            "description": "Verifique Ollama, prompts e regressões do planner.",
+            "description": "Verifique vLLM, prompts e regressões do planner.",
         },
     },
     {

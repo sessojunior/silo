@@ -149,7 +149,7 @@ def test_assistant_message_and_thread_row_helpers() -> None:
     assert summary.last_message_preview == "Última mensagem"
 
     generation = {
-        "provider": "ollama",
+        "provider": "vllm",
         "model": "mistral",
         "status": "success",
         "latency_ms": 12,
@@ -200,7 +200,7 @@ def test_assistant_message_and_thread_row_helpers() -> None:
     assert message.artifacts is not None
     assert message.artifacts[0].filename == "report.pdf"
     assert assistant_service._safe_model_validate_generation({"generation": generation}) is not None  # noqa: SLF001
-    assert assistant_service._safe_model_validate_generation({"generation": {"provider": "ollama"}}) is None  # noqa: SLF001
+    assert assistant_service._safe_model_validate_generation({"generation": {"provider": "vllm"}}) is None  # noqa: SLF001
     assert assistant_service._safe_model_validate_visualization({"visualization": visualization}) is not None  # noqa: SLF001
     assert assistant_service._safe_model_validate_visualization({"visualization": {"kind": "unknown"}}) is None  # noqa: SLF001
     assert assistant_service._safe_model_validate_artifacts({"artifacts": artifacts}) is not None  # noqa: SLF001
@@ -876,7 +876,7 @@ def test_assistant_thread_crud_and_state_helpers(monkeypatch: pytest.MonkeyPatch
                             }
                         ],
                         "generation": {
-                            "provider": "ollama",
+                            "provider": "vllm",
                             "model": "mistral",
                             "status": "success",
                             "latency_ms": 42,
@@ -1178,7 +1178,7 @@ def test_assistant_persistence_helpers_cover_message_and_pdf_artifact_writes(
                     }
                 ],
                 "generation": {
-                    "provider": "ollama",
+                    "provider": "vllm",
                     "model": "mistral",
                     "status": "success",
                     "latencyMs": 42,

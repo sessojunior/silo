@@ -1,9 +1,9 @@
 /**
  * Instrumentação do servidor Next.js.
  *
- * Mantém o modelo de IA (Ollama) carregado em memória via warm-up periódico.
- * Roda a cada 23 horas para garantir que o modelo nunca seja descarregado
- * (OLLAMA_KEEP_ALIVE é 24h), mesmo após fins de semana ou feriados prolongados.
+ * Mantém o modelo de IA (vLLM) carregado em memória via warm-up periódico.
+ * Roda a cada 23 horas para garantir que o modelo nunca seja descarregado,
+ * mesmo após fins de semana ou feriados prolongados.
  */
 
 const WARMUP_INTERVAL_MS = 23 * 60 * 60 * 1000; // 23 horas

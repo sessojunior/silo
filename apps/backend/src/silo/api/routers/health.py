@@ -110,13 +110,13 @@ async def build_readiness_response(
             blocking=True,
             detail="configuration unavailable",
         )
-        checks["ollama"] = ComponentHealth(status="skipped", blocking=False)
+        checks["vllm"] = ComponentHealth(status="skipped", blocking=False)
         checks["kafka"] = ComponentHealth(status="skipped", blocking=False)
         return _readiness_response(status="not_ready", checks=checks, clock=clock), 503
 
     checks["config"] = ComponentHealth(status="ok", blocking=True)
     checks["database"] = await _database_component(settings, effective_database_checker)
-    checks["ollama"] = ComponentHealth(status="ok", blocking=False, detail="configured")
+    checks["vllm"] = ComponentHealth(status="ok", blocking=False, detail="configured")
     checks["kafka"] = _kafka_component(settings)
 
     readiness_status: Literal["ok", "not_ready"] = (

@@ -13,6 +13,7 @@ AI_ASSISTANT_SCOPES: tuple[str, ...] = (
     "problems",
     "solutions",
     "projects",
+    "products",
     "general",
     "generate_pdf",
 )
@@ -24,6 +25,7 @@ AiAssistantScope = Literal[
     "problems",
     "solutions",
     "projects",
+    "products",
     "general",
     "generate_pdf",
 ]
@@ -69,9 +71,9 @@ class AiAssistantGenerationDto(CamelModel):
 
 
 class AiAssistantRuntimeStatusDto(CamelModel):
-    provider: Literal["ollama", "vllm"]
+    provider: Literal["vllm"]
     model: str
-    mode: Literal["ollama", "vllm", "fallback"]
+    mode: Literal["vllm", "fallback"]
     latency_ms: int
     checked_at: str
     fallback_reason: str | None = None

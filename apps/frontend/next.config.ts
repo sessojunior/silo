@@ -27,6 +27,11 @@ const nextConfig: NextConfig = {
   ...(normalizedBasePath ? { basePath: normalizedBasePath } : {}),
   output: "standalone",
   transpilePackages: ["@silo/engine"],
+  // O proxy do Next limita requisições reescritas a 30s por padrão; o
+  // assistente de IA (vLLM em CPU) pode levar mais de 30s por geração.
+  experimental: {
+    proxyTimeout: 300_000,
+  },
   async redirects() {
     const destination = `${normalizedBasePath || ""}/images/logo.png`;
     const rootDestination = getRootRedirectDestination();

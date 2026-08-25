@@ -82,11 +82,16 @@ AI_AGENT_MODE=deterministic
 > roda em qualquer máquina (mais lenta). Com GPU NVIDIA, defina
 > `SILO_VLLM_IMAGE=vllm/vllm-openai:v0.11.2` no `.env`.
 
-### 3. Suba a stack
+### 3. Suba a stack completa (um único comando)
 
 ```bash
 docker compose up -d --build
 ```
+
+Esse comando único sobe **tudo**: `db` (PostgreSQL), `vllm` (IA), `migrate`
+(migrations), `api` (backend FastAPI), `worker` (Kafka) e `web` (frontend
+Next.js). Não é preciso subir os serviços separadamente — o Docker resolve a
+ordem de inicialização e os healthchecks por conta própria.
 
 Na primeira execução, o Docker vai:
 1. Baixar as imagens (PostgreSQL, vLLM CPU)

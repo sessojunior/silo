@@ -371,7 +371,7 @@ export default function AiAssistantPage() {
     } catch (error) {
       console.error("❌ [AI_ASSISTANT] Erro ao verificar status do runtime:", serializeClientError(error));
       setRuntimeStatus({
-        provider: "ollama",
+        provider: "vllm",
         model: "indisponível",
         mode: "fallback",
         latencyMs: 0,

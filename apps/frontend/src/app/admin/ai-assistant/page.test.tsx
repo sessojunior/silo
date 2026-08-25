@@ -205,9 +205,9 @@ describe("AiAssistantPage", () => {
         return jsonResponse({
           success: true,
           data: {
-            provider: "ollama",
+            provider: "vllm",
             model: "smna",
-            mode: "online",
+            mode: "vllm",
             latencyMs: 12,
             checkedAt: "2026-08-04T12:00:00.000Z",
           },

@@ -134,6 +134,26 @@ def _select_products_by_ids(connection: Connection, product_ids: Sequence[str]) 
     return list(rows)
 
 
+def list_registered_products(connection: Connection) -> dict[str, Any]:
+    """Lista os produtos cadastrados no SILO com prioridade, turnos e status."""
+    rows = _select_first_product_rows(connection)
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        serialized = serialize_legacy_row(row)
+        items.append(
+            {
+                "id": str(serialized.get("id") or row["id"]),
+                "name": serialized.get("name") or row["name"],
+                "slug": serialized.get("slug") or row["slug"],
+                "priority": serialized.get("priority"),
+                "turns": serialized.get("turns"),
+                "description": serialized.get("description"),
+                "available": bool(serialized.get("available", True)),
+            }
+        )
+    return {"items": items, "total": len(items)}
+
+
 def resolve_models(connection: Connection, query: str) -> dict[str, Any]:
     rows = _select_first_product_rows(connection)
     query_norm = normalize_text(query)

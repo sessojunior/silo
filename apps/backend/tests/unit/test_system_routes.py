@@ -9,21 +9,21 @@ from fastapi.testclient import TestClient
 from silo.api.dependencies import CurrentUser, UserGroupInfo, get_current_user, get_db
 from silo.api.main import create_app
 from silo.api.routers import system as system_module
-from silo.api.routers.system import warmup_ollama_model
+from silo.api.routers.system import warmup_llm_model
 from silo.clock import FrozenClock
 from silo.config import load_settings
 
 
 class _WarmupSuccessClient:
     async def warmup(self, *, base_url: str, model: str, timeout_seconds: float) -> None:
-        assert base_url == "http://localhost:11434"
+        assert base_url == "http://localhost:8000/v1"
         assert model == "Qwen/Qwen2.5-0.5B-Instruct"
         assert timeout_seconds == 60.0
 
 
 class _WarmupFailureClient:
     async def warmup(self, *, base_url: str, model: str, timeout_seconds: float) -> None:
-        raise RuntimeError("ollama unavailable")
+        raise RuntimeError("vllm unavailable")
 
 
 def test_server_time_matches_legacy_contract(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -97,13 +97,13 @@ async def test_warmup_success_matches_legacy_contract() -> None:
         {
             "SILO_ENV": "test",
             "DATABASE_URL": "postgresql://test-user:test-pass@localhost:5432/silo",
-            "VLLM_URL": "http://localhost:11434",
+            "VLLM_URL": "http://localhost:8000/v1",
             "VLLM_MODEL": "Qwen/Qwen2.5-0.5B-Instruct",
         }
     )
     clock = FrozenClock(datetime(2026, 7, 21, 15, 0, 0, tzinfo=UTC))
 
-    payload, status_code = await warmup_ollama_model(
+    payload, status_code = await warmup_llm_model(
         settings=settings,
         clock=clock,
         client=_WarmupSuccessClient(),
@@ -126,11 +126,11 @@ async def test_warmup_failure_matches_legacy_contract() -> None:
         {
             "SILO_ENV": "test",
             "DATABASE_URL": "postgresql://test-user:test-pass@localhost:5432/silo",
-            "VLLM_URL": "http://localhost:11434",
+            "VLLM_URL": "http://localhost:8000/v1",
         }
     )
 
-    payload, status_code = await warmup_ollama_model(
+    payload, status_code = await warmup_llm_model(
         settings=settings,
         client=_WarmupFailureClient(),
     )

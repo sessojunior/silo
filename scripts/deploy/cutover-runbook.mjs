@@ -102,8 +102,8 @@ const PHASE_16_STEPS = [
   },
   {
     id: "16.6",
-    title: "Executar ollama-init com modelos e digests aprovados",
-    commandKey: "runOllamaInit",
+    title: "Aguardar vLLM carregar os modelos aprovados (chat e embedding)",
+    commandKey: "waitVllmReady",
   },
   {
     id: "16.7",
@@ -328,7 +328,7 @@ function validatePrerequisites(state) {
     issues.push("Migracao destrutiva ainda presente ou nao validada como ausente.");
   }
   if (!asBoolean(checklist.noOpenIncidents)) {
-    issues.push("Ha incidentes abertos de DB/Kafka/Ollama/SMTP.");
+    issues.push("Ha incidentes abertos de DB/Kafka/vLLM/SMTP.");
   }
   if (!asNonEmptyString(checklist.finalAiAgentMode)) {
     issues.push("AI_AGENT_MODE final nao informado.");
@@ -342,8 +342,8 @@ function validatePrerequisites(state) {
   if (!asNonEmptyString(checklist.toolCatalogVersion)) {
     issues.push("Tool catalog version ausente.");
   }
-  if (!asNonEmptyString(checklist.ollamaImageDigest)) {
-    issues.push("Digest da imagem Ollama ausente.");
+  if (!asNonEmptyString(checklist.vllmImageDigest)) {
+    issues.push("Digest da imagem vLLM ausente.");
   }
   if (!asNonEmptyString(checklist.chatModelDigest)) {
     issues.push("Digest do modelo de chat ausente.");

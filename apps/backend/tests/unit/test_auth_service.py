@@ -166,7 +166,6 @@ def auth_env(
             "SESSION_SECRET": "session-secret",
             "ALLOWED_EMAIL_DOMAINS": "example.test",
             "APP_URL_DEV": "http://localhost:3000",
-            "OLLAMA_URL": "http://localhost:11434",
             "UPLOADS_DIR": str(tmp_path / "uploads"),
         }
     )

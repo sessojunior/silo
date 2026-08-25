@@ -409,9 +409,9 @@ LEGENDA:
       [M] SSE streaming — resposta aparece token por token
           (validar streaming real requer observacao visual)
       [M] Toast em caso de erro de conexao
-          (requer simular queda do Ollama — derrubar container manualmente)
+          (requer simular queda do vLLM — derrubar container manualmente)
       [M] Auto-retry ao perder conexao
-          (requer controle do servico Ollama)
+          (requer controle do servico vLLM)
       [M] Timeout apos 5 minutos
           (5 minutos e inviavel em teste automatizado)
       [ ] Mensagem vazia → nao envia

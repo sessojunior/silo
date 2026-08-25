@@ -138,9 +138,9 @@ def _build_eval_environ(
     environ.setdefault("KAFKA_TOPIC", "")
     environ.setdefault("KAFKA_DLQ_PREFIX", "dlq.")
     environ.setdefault("VLLM_MODEL", EXPECTED_CHAT_MODEL)
-    environ.setdefault("OLLAMA_EMBEDDING_MODEL", EXPECTED_EMBEDDING_MODEL)
-    environ.setdefault("OLLAMA_TIMEOUT_MS", "30000")
-    environ.setdefault("OLLAMA_MAX_CONCURRENT_REQUESTS", "1")
+    environ.setdefault("VLLM_EMBEDDING_MODEL", EXPECTED_EMBEDDING_MODEL)
+    environ.setdefault("VLLM_TIMEOUT_MS", "30000")
+    environ.setdefault("VLLM_MAX_CONCURRENT_REQUESTS", "1")
     return environ
 
 
@@ -278,7 +278,7 @@ class Phase11EvaluationReport:
     corpus_path: str
     output_dir: str
     hardware: dict[str, Any]
-    ollama: dict[str, Any]
+    runtime: dict[str, Any]
     modes: dict[str, Phase11ModeSummary]
     attempts: tuple[Phase11AttemptResult, ...]
 
@@ -506,7 +506,7 @@ def _seed_followup_context(
                 "sender_type": "assistant",
                 "sender_user_id": None,
                 "sender_name": "Assistente de IA",
-                "provider": "ollama",
+                "provider": "vllm",
                 "model": settings.vllm.model,
                 "generation_status": "success",
                 "latency_ms": 0,
@@ -1041,7 +1041,7 @@ def _summarize_mode(
 
 def _render_summary_markdown(report: Phase11EvaluationReport) -> str:
     lines = [
-        "# Fase 11 — avaliação real do assistente LangGraph/Ollama",
+        "# Fase 11 — avaliação real do assistente LangGraph/vLLM",
         "",
         f"Data da captura: `{report.generated_at}`",
         "",
@@ -1049,9 +1049,9 @@ def _render_summary_markdown(report: Phase11EvaluationReport) -> str:
         "",
         f"- Corpus: `{report.corpus_path}`",
         f"- Saída sanitizada: `{report.output_dir}`",
-        f"- Ollama: `{report.ollama['provider']} / {report.ollama['model']}`",
-        f"- Digest chat: `{report.ollama['chatDigest']}`",
-        f"- Digest embedding: `{report.ollama['embeddingDigest']}`",
+        f"- vLLM: `{report.runtime['provider']} / {report.runtime['model']}`",
+        f"- Digest chat: `{report.runtime['chatDigest']}`",
+        f"- Digest embedding: `{report.runtime['embeddingDigest']}`",
         f"- Hardware: `{report.hardware.get('platform')}`",
         "",
         "## Resumo por modo",
@@ -1220,8 +1220,8 @@ async def run_phase11_evaluation(
             corpus_path=str(corpus_path),
             output_dir=str(output_dir),
             hardware=hardware,
-            ollama={
-                "provider": "ollama",
+            runtime={
+                "provider": "vllm",
                 "model": EXPECTED_CHAT_MODEL,
                 "embeddingModel": EXPECTED_EMBEDDING_MODEL,
                 "chatDigest": EXPECTED_CHAT_DIGEST,
@@ -1246,7 +1246,7 @@ async def run_phase11_evaluation(
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Executa a avaliação da Fase 11 com Ollama real.")
+    parser = argparse.ArgumentParser(description="Executa a avaliação da Fase 11 com vLLM real.")
     parser.add_argument("--corpus-path", type=Path, default=DEFAULT_CORPUS_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--database-url", type=str, default=DEFAULT_DATABASE_URL)

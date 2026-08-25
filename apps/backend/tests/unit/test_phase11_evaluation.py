@@ -490,7 +490,7 @@ def test_phase11_main_parses_args_and_invokes_runner(
         corpus_path=str(tmp_path / "corpus.jsonl"),
         output_dir=str(tmp_path / "output"),
         hardware={"platform": "Windows"},
-        ollama={},
+        runtime={},
         modes={},
         attempts=(),
     )
@@ -688,7 +688,7 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
         corpus_path=str(tmp_path / "corpus.jsonl"),
         output_dir=str(tmp_path / "output"),
         hardware={"platform": "Windows"},
-        ollama={
+        runtime={
             "provider": "vllm",
             "model": phase11.EXPECTED_CHAT_MODEL,
             "chatDigest": phase11.EXPECTED_CHAT_DIGEST,

@@ -1276,7 +1276,7 @@ class FixtureState:
                 "visualization": None,
                 "artifacts": [],
                 "generation": {
-                    "provider": "ollama",
+                    "provider": "vllm",
                     "model": "fixture-model",
                     "status": "fallback",
                     "latencyMs": 18,
@@ -1329,7 +1329,7 @@ class FixtureState:
             ],
             "citations": [{"label": "Dados do SILO", "detail": "Fixture e2e"}],
             "generation": {
-                "provider": "ollama",
+                "provider": "vllm",
                 "model": "fixture-model",
                 "status": "success",
                 "latencyMs": 24,
@@ -2410,7 +2410,7 @@ async def api_router(path: str, request: Request) -> Response:
     if api_path == "/api/admin/ai-assistant/status" or api_path == "/api/ai-assistant/status":
         return _success(
             {
-                "provider": "ollama",
+                "provider": "vllm",
                 "model": "fixture-model",
                 "mode": "fallback",
                 "latencyMs": 18,

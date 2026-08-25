@@ -120,9 +120,9 @@ export const AiAssistantGenerationSchema = z.object({
 export type AiAssistantGenerationDto = z.infer<typeof AiAssistantGenerationSchema>;
 
 export const AiAssistantRuntimeStatusSchema = z.object({
-  provider: z.literal("ollama"),
+  provider: z.enum(["ollama", "vllm"]),
   model: z.string(),
-  mode: z.enum(["ollama", "fallback"]),
+  mode: z.enum(["ollama", "vllm", "fallback"]),
   latencyMs: z.number().int().nonnegative(),
   checkedAt: z.string(),
   fallbackReason: z.string().optional().nullable(),

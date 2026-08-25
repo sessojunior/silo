@@ -31,7 +31,6 @@
     "py:test:cov": "uv --directory apps/backend run --locked pytest -q --cov=silo --cov-report=term-missing --cov-report=json:coverage.json",
     "py:coverage:check": "uv --directory apps/backend run --locked python scripts/check_coverage_thresholds.py coverage.json",
     "py:backfill-embeddings": "uv --directory apps/backend run --locked silo-backfill-embeddings",
-    "py:ollama-init": "uv --directory apps/backend run --locked silo-ollama-init",
     "py:openapi": "uv --directory apps/backend run --locked silo-openapi-export",
     "py:openapi:check": "uv --directory apps/backend run --locked silo-openapi-export --check",
     "py:capture-schema": "node apps/backend/scripts/run-python-module.mjs silo.db.schema_capture",
