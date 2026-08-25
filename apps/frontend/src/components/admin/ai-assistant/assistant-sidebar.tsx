@@ -45,11 +45,10 @@ const getRuntimeStatusView = (
     };
   }
 
-  if (runtimeStatus?.mode === "vllm" || runtimeStatus?.mode === "ollama") {
-    const isVllm = runtimeStatus?.mode === "vllm";
+  if (runtimeStatus?.mode === "vllm") {
     return {
-      label: isVllm ? "IA disponível · vLLM conectado." : "IA disponível · Ollama conectado.",
-      title: `${isVllm ? "vLLM" : "Ollama"} conectado: ${runtimeStatus.model}`,
+      label: "IA disponível · vLLM conectado.",
+      title: `vLLM conectado: ${runtimeStatus.model}`,
       presenceColor: "bg-green-400",
       labelClassName: "text-green-600 dark:text-green-300",
     };
