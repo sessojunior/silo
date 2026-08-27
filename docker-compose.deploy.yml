@@ -107,9 +107,9 @@ services:
       VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-4}
       UPLOADS_DIR: /app/uploads
       TZ: America/Sao_Paulo
-    depends_on:
-      db:
-        condition: service_healthy
+    # Em producao o banco e externo/gerenciado, portanto nao ha servico `db`
+    # neste compose para aguardar. Garantir que o PostgreSQL esteja acessivel
+    # antes do `up`; a conexao e validada no boot do migrate.
     restart: "no"
 
   api:

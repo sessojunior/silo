@@ -1,0 +1,385 @@
+================================================================================
+ DEPLOY DO SILO - AMBIENTE DE PRODUÇÃO
+ Guia operacional interno - CPTEC/INPE
+================================================================================
+
+ ------------------------------------------------------------------------------
+ 1. OBJETIVO
+ ------------------------------------------------------------------------------
+
+ Este guia descreve o procedimento de deploy do SILO no ambiente de produção.
+ O fluxo é: validar o código, construir e publicar as imagens Docker no
+ registry e executar o deploy no servidor via docker compose.
+
+ O servidor de produção não compila código. Ele apenas baixa a imagem já
+ testada e publicada e sobe os containers.
+
+ ------------------------------------------------------------------------------
+ 2. VISÃO GERAL DO AMBIENTE DE PRODUÇÃO
+ ------------------------------------------------------------------------------
+
+ O deploy usa o arquivo docker-compose.deploy.yml (imagens prontas), diferente
+ do docker-compose.yml de desenvolvimento, que constrói as imagens na hora.
+
+ Serviços de produção:
+
+   | Serviço      | Função                                      | Porta interna |
+   |--------------|---------------------------------------------|---------------|
+   | vllm         | Modelo de chat (Qwen)                       | 8000          |
+   | vllm-embed   | Modelo de embeddings (busca semântica)      | 8001          |
+   | migrate      | Aplica migrations no banco e encerra        | --            |
+   | api          | Backend FastAPI                             | 4000          |
+   | worker       | Consumer Kafka (fluxo de dados)             | --            |
+
+ Gerenciados fora do compose:
+   - Banco de dados: PostgreSQL gerenciado (backup, réplica e monitoramento
+     próprios). Não rodar o banco em container em produção.
+   - Frontend: servido por Nginx/CDN externo. A imagem do frontend é publicada
+     e atualizada separadamente; o proxy do Next encaminha /silo/api/* para
+     a API.
+
+ Ordem de inicialização (resolvida automaticamente pelo compose):
+   vllm -> migrate -> api -> worker
+
+ ------------------------------------------------------------------------------
+ 3. PRÉ-REQUISITOS
+ ------------------------------------------------------------------------------
+
+   - Node.js 22+, npm 10+, Python 3.13 com uv, Docker e Docker Compose
+   - Acesso ao registry (GHCR/GitLab) para push e pull
+   - Acesso SSH ao servidor de produção
+   - PostgreSQL gerenciado acessível pela rede
+   - Nginx/CDN apontando para o frontend
+
+ ------------------------------------------------------------------------------
+ 4. VALIDAÇÃO DO CÓDIGO
+ ------------------------------------------------------------------------------
+
+ Executar na raiz do projeto antes de construir:
+
+   # Frontend
+   cd apps/frontend
+   npm ci --legacy-peer-deps
+   npm run typecheck
+   npm run lint
+   npm run build
+   npm test
+   cd ../..
+
+   # Backend
+   uv --directory apps/backend sync --locked --all-groups
+   uv --directory apps/backend run --locked ruff format --check .
+   uv --directory apps/backend run --locked ruff check .
+   uv --directory apps/backend run --locked mypy src
+   uv --directory apps/backend run --locked pytest -q --cov=silo --cov-report=json:coverage.json
+   uv --directory apps/backend run --locked python scripts/check_coverage_thresholds.py coverage.json
+
+   # Segurança
+   npm run audit:node
+   npm run audit:python
+   npm run security:sbom
+
+ O CI (GitHub Actions) executa os mesmos passos. Se o CI está verde, o código
+ está pronto. Qualquer falha acima deve ser corrigida antes de continuar.
+
+ ------------------------------------------------------------------------------
+ 5. BUILD E PUBLICAÇÃO DAS IMAGENS
+ ------------------------------------------------------------------------------
+
+ 5.1 Backend (gera as imagens da API e do worker)
+
+   Na raiz do projeto:
+
+     npm run py:build
+
+   Gera as imagens:
+     - silo-api-python:migration     (API)
+     - silo-worker-python:migration  (consumer Kafka)
+
+ 5.2 Frontend
+
+   Construído com apps/frontend/Dockerfile. Passar os valores de produção no
+   build (ficam embutidos na imagem):
+
+     NEXT_PUBLIC_BASE_PATH=/silo
+     APP_URL_DEV=http://localhost
+     APP_URL_PROD=https://fortuna.cptec.inpe.br
+     NEXT_PUBLIC_API_ORIGIN=http://localhost:4000   # em produção, usar a origem pública da API
+
+   A versão exibida no sistema é a literal `appVersion` em
+   apps/frontend/src/lib/config.ts. Atualizar no commit antes de construir.
+
+ 5.3 Publicação no registry
+
+   Publicar com a tag do commit para rastreabilidade:
+
+     docker tag silo-api-python:migration ghcr.io/<org>/silo-api-python:<sha>
+     docker push ghcr.io/<org>/silo-api-python:<sha>
+
+   Repetir para a imagem do worker e do frontend.
+
+ ------------------------------------------------------------------------------
+ 6. CONFIGURAÇÃO DO SERVIDOR (primeira vez)
+ ------------------------------------------------------------------------------
+
+ 6.1 Obter o repositório no servidor
+
+     ssh <usuario>@<servidor>
+     mkdir -p /opt/silo
+     cd /opt/silo
+     git clone <url-do-repositorio> .     # ou: git pull, se já existir
+
+ 6.2 Criar o arquivo .env
+
+   Os valores abaixo refletem o .env real do projeto. Legenda desta seção:
+     - [.env] = valor usado exatamente como está no .env (válido em produção)
+     - [prod] = o .env tem um valor local/de desenvolvimento; em produção usar
+                o valor indicado (o valor local do .env aparece como referência)
+     - <...>  = segredo que vive somente no .env do servidor; não copiar para
+                este guia nem versionar
+
+     cp env.example .env
+     nano .env
+
+   Variáveis obrigatórias em produção (o backend valida no boot e recusa
+   subir sem elas):
+
+     SILO_ENV=production                            # [prod] .env local usa development
+     NODE_ENV=production                            # [.env]
+     DATABASE_URL=postgresql://<usuario>:<senha>@<host-do-banco>:5432/silo   # [prod] .env local usa @db:5432
+     APP_URL_PROD=https://fortuna.cptec.inpe.br     # [prod] .env local usa http://localhost (fortuna comentado)
+     SESSION_SECRET=                                # [.env] vazio; o backend usa BETTER_AUTH_SECRET como fallback
+     BETTER_AUTH_SECRET=<valor real do .env>        # [.env] segredo
+     SMTP_HOST=smtp.gmail.com                       # [.env]
+     SMTP_PORT=587                                  # [.env]
+     SMTP_SECURE=false                              # [.env]
+     SMTP_USERNAME=silo.inpe@gmail.com              # [.env]
+     SMTP_PASSWORD=<senha de app real do .env>      # [.env] segredo
+     SMTP_FROM=silo.inpe@gmail.com                  # [.env]
+     GOOGLE_CLIENT_ID=765242401168-pthceokkgigp0vf3ri1osp7ajhqamfr9.apps.googleusercontent.com   # [.env]
+     GOOGLE_CLIENT_SECRET=<segredo real do .env>    # [.env] segredo
+
+   Web/API (origens usadas pelo frontend e pelo proxy):
+
+     API_URL=http://localhost:4000                  # [prod] .env local usa localhost; em produção apontar para a API
+     NEXT_PUBLIC_API_ORIGIN=http://localhost:4000   # [prod] idem
+     NEXT_PUBLIC_BASE_PATH=/silo                    # [.env]
+
+   Recomendadas (valores já definidos no .env):
+
+     CORS_ORIGINS=https://fortuna.cptec.inpe.br     # [prod] .env local usa a lista de localhost
+     TRUSTED_PROXY_CIDRS=<CIDRs dos proxies, se houver>    # [.env] vazio
+     ALLOWED_EMAIL_DOMAINS=inpe.br                  # [prod] .env local vazio
+     LOG_LEVEL=INFO                                 # [.env]
+     TZ=America/Sao_Paulo                           # [.env]
+     API_PORT=4000                                  # [.env]
+     SILO_HOST_PORT=80                              # [.env]
+     AI_AGENT_MODE=deterministic                    # [.env]
+     LANGSMITH_TRACING=false                        # [.env] se true, exige LANGSMITH_TRACING_APPROVED=true
+
+   IA (vLLM) e Kafka:
+
+     SILO_IMAGE=ghcr.io/<org>/silo-api-python:<sha> # [prod] .env local usa silo-api-python:latest
+     SILO_VLLM_IMAGE=vllm/vllm-openai:v0.11.2       # [prod] GPU; .env local usa vllm-openai-cpu
+     VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct          # [.env]
+     VLLM_EMBEDDING_MODEL=BAAI/bge-base-en-v1.5     # [.env]
+     VLLM_GPU_MEM_UTIL=0.85                         # [.env]
+     VLLM_MAX_MODEL_LEN=16384                       # [.env]
+     HF_TOKEN=                                      # [.env] vazio; somente para modelos restritos
+     KAFKA_REST_PROXY_URL=<url do kafka rest proxy> # [prod] OBRIGATÓRIA p/ worker; .env local usa http://localhost:8082
+     KAFKA_REST_PROXY_AUTH=<token, se houver>       # [.env] vazio
+     KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.     # [.env]
+     KAFKA_GROUP_ID=silo-consumer-group             # [.env]
+     KAFKA_TOPICS=<tópicos do fluxo de dados>       # [prod] .env local vazio
+
+   Integração (opcional):
+
+     PRODUCT_FLOW_API_KEY=<chave, se houver>        # [.env] vazio
+
+   Em produção o worker exige KAFKA_REST_PROXY_URL (KAFKA_REST_PROXY_USE_MOCK_DATA
+   é false por padrão no compose de deploy; não há fallback de mock). Sem essa
+   variável, o worker não sobe.
+
+   Referência do banco (valores de desenvolvimento do .env):
+     - Em containers (docker compose): postgresql://silo:silo@db:5432/silo
+     - Fora do Docker: postgresql://silo:silo@localhost:5432/silo
+     - Produção: usar o PostgreSQL gerenciado; host e credenciais são
+       fornecidos pela equipe do banco.
+
+   O .env não deve ser versionado (já está no .gitignore).
+
+ 6.3 vLLM: GPU e CPU
+
+   Com GPU NVIDIA: instalar o NVIDIA Container Toolkit e drivers 525+, e
+   descomentar o bloco `deploy` do serviço vllm no docker-compose.deploy.yml.
+
+   Em servidor SEM GPU (imagem vllm-openai-cpu): o compose de deploy passa
+   `--gpu-memory-utilization ${VLLM_GPU_MEM_UTIL:-0.85}`. No backend CPU esse
+   flag controla a fração de RAM reservada (apesar do nome). Com pouca memória
+   o vLLM falha ao iniciar com erro "Available memory ... less than desired CPU
+   memory utilization". Nesse caso, reduzir VLLM_GPU_MEM_UTIL no .env (ex.:
+   0.25 a 0.5) e garantir RAM suficiente para os DOIS modelos (chat e
+   embeddings) rodarem simultaneamente.
+
+ 6.4 Validar a configuração (não sobe nada)
+
+     docker compose -f docker-compose.deploy.yml config
+
+   Corrigir qualquer erro de variável ou sintaxe antes de prosseguir.
+
+ ------------------------------------------------------------------------------
+ 7. DEPLOY
+ ------------------------------------------------------------------------------
+
+ Executar na pasta /opt/silo do servidor:
+
+   # 1. Login no registry (uma vez por sessão)
+   echo "$REGISTRY_DEPLOY_PASSWORD" | docker login ghcr.io \
+     -u "$REGISTRY_DEPLOY_USER" --password-stdin
+
+   # 2. Baixar a imagem nova
+   docker compose -f docker-compose.deploy.yml pull
+
+   (O pull exige que SILO_IMAGE exista no registry. Para testes locais com
+   imagem já construída na máquina, esse passo pode ser dispensado.)
+
+   # 3. Subir a stack (migrate primeiro, depois api e worker, aguardando
+   #    os healthchecks)
+   docker compose -f docker-compose.deploy.yml up -d --remove-orphans \
+     --wait --wait-timeout 300
+
+   Na primeira subida o vLLM baixa o modelo de IA (~500 MB); pode levar
+   alguns minutos. Se o `--wait` atingir o timeout de 300s com o vLLM ainda
+   carregando, não é falha: confira o progresso com `ps` e `logs` e aguarde
+   o modelo terminar de carregar.
+
+   # 4. Status
+   docker compose -f docker-compose.deploy.yml ps
+
+   Esperado: vllm, api e worker em "Up"/"healthy"; migrate em "exited (0)"
+   (executa a tarefa e encerra - normal).
+
+   # 5. Healthcheck da API e do worker
+   docker compose -f docker-compose.deploy.yml exec -T api python -c \
+     "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health', timeout=5).read()"
+   docker compose -f docker-compose.deploy.yml exec -T worker python -m silo.worker.healthcheck
+
+   # 6. Logs
+   docker compose -f docker-compose.deploy.yml logs -f
+
+   A API está pronta quando o log mostra "Uvicorn running on
+   http://0.0.0.0:4000" e "Application startup complete".
+
+ Frontend: após publicar a imagem nova, atualizar o Nginx/CDN e confirmar que
+ o proxy aponta para a API. O proxy do Next usa `API_URL` (ou
+ `NEXT_PUBLIC_API_ORIGIN`) para alcançar a API: use `http://api:4000` se o web
+ rodar na mesma rede do compose, ou a origem pública da API em produção.
+
+ ------------------------------------------------------------------------------
+ 8. TESTE PÓS-DEPLOY
+ ------------------------------------------------------------------------------
+
+ 8.1 Seed (o banco de produção sobe vazio)
+
+   O seed recusa execução em modo produção sem o flag --allow-production
+   (proteção do código). Usar o comando abaixo:
+
+     docker compose -f docker-compose.deploy.yml run --rm --no-deps \
+       migrate python -m silo.db.seed --allow-production
+
+   Usuários criados:
+
+     | Email             | Papel        | Senha     |
+     |-------------------|--------------|-----------|
+     | teste@inpe.br     | Administrador| #Admin123 |
+     | alex@inpe.br      | Usuário      | #User123  |
+     | fabiano@inpe.br   | Usuário      | #User123  |
+     | andre@inpe.br     | Usuário      | #User123  |
+     | marcos@inpe.br    | Usuário      | #User123  |
+
+ 8.2 Login
+
+   Acessar https://fortuna.cptec.inpe.br/silo e entrar com:
+
+     Email: teste@inpe.br
+     Senha: #Admin123
+
+   Deve abrir o dashboard. Se a tela solicitar redefinição de senha, seguir o
+   fluxo - é o comportamento esperado após reset de sessão no deploy.
+
+ 8.3 Smoke test
+
+   [ ] Login com teste@inpe.br / #Admin123
+   [ ] Dashboard carregado com dados
+   [ ] Lista de produtos com itens
+   [ ] Criar/editar um registro e desfazer (mutation reversível)
+   [ ] Upload e download de arquivo
+   [ ] Relatório PDF
+   [ ] Assistente de IA respondendo (WebSocket/SSE)
+   [ ] Busca semântica
+   [ ] Fluxo de dados: offsets subindo e lag estável (worker)
+   [ ] Página /admin/monitoring com produtos e radares
+
+ 8.4 Trocar a senha do usuário teste após a validação. #Admin123 é senha
+     padrão de desenvolvimento; o administrador real deve ter senha própria.
+
+ ------------------------------------------------------------------------------
+ 9. ROLLBACK
+ ------------------------------------------------------------------------------
+
+ Rollback de código, nunca de banco. Não executar downgrade de migração em
+ produção.
+
+ Para voltar à versão anterior:
+
+   # 1. No .env, apontar SILO_IMAGE para a versão anterior
+   #    (ex.: ghcr.io/<org>/silo-api-python:<sha-anterior>)
+
+   # 2. Baixar e subir
+   docker compose -f docker-compose.deploy.yml pull
+   docker compose -f docker-compose.deploy.yml up -d --remove-orphans --wait --wait-timeout 300
+
+   # 3. Validar saúde
+   docker compose -f docker-compose.deploy.yml ps
+
+ Se o problema for exclusivamente do modo hybrid, voltar
+ AI_AGENT_MODE=deterministic no .env e reiniciar a API.
+
+ Para cutover/rollback completo, usar scripts/deploy/cutover-runbook.mjs
+ (preflight, rehearsal, cutover, rollback).
+
+ ------------------------------------------------------------------------------
+ 10. ACOMPANHAMENTO
+ ------------------------------------------------------------------------------
+
+   - Logs:   docker compose -f docker-compose.deploy.yml logs -f
+   - Status: docker compose -f docker-compose.deploy.yml ps
+   - Health: http://<servidor>:4000/health/live  (e /health)
+   - Docs:   http://<servidor>:4000/docs
+   - Monitoramento: /admin/monitoring
+   - Acompanhar o lag do Kafka e a fila de erros (dlq.*) diariamente
+
+   Erros comuns nas primeiras 24h:
+     - migrate "Exited (1)": problema de conexão com o banco (DATABASE_URL)
+     - vllm sem responder: modelo ainda carregando ou sem RAM/VRAM
+     - API "Application startup failed": variável obrigatória faltando
+
+ ------------------------------------------------------------------------------
+ 11. CHECKLIST FINAL
+ ------------------------------------------------------------------------------
+
+ [ ] CI verde (typecheck, lint, testes, cobertura, audit, SBOM)
+ [ ] appVersion atualizada em apps/frontend/src/lib/config.ts
+ [ ] Imagens do backend (api + worker) e frontend publicadas no registry
+ [ ] .env do servidor completo e validado (docker compose config ok)
+ [ ] Banco acessível e com backup recente testado
+ [ ] vLLM com os modelos carregados (chat + embedding)
+ [ ] migrate com exit 0
+ [ ] API saudável (health/live) e /docs respondendo
+ [ ] Login com teste@inpe.br / #Admin123 validado
+ [ ] Smoke test completo (seção 8.3)
+ [ ] Worker processando com lag estável
+ [ ] Senha do usuário teste trocada
+ [ ] Usuários avisados (deploy de grande impacto)
+
+================================================================================
