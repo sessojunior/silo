@@ -55,12 +55,12 @@ const getRuntimeStatusView = (
   }
 
   return {
-    label: "IA em fallback · modelo indisponível.",
+    label: "IA indisponível · resposta bloqueada.",
     title: (() => {
       const fallbackReason = runtimeStatus?.fallbackReason?.trim();
       return fallbackReason && fallbackReason.length > 0
         ? fallbackReason
-        : "O assistente vai responder com fallback até o vLLM voltar.";
+        : "O assistente não responderá com dados genéricos até o vLLM voltar.";
     })(),
     presenceColor: "bg-amber-400",
     labelClassName: "text-amber-600 dark:text-amber-300",
@@ -280,5 +280,4 @@ function ConversationItem({
     </div>
   );
 }
-
 

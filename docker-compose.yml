@@ -196,7 +196,8 @@ services:
       VLLM_URL: http://vllm:8000/v1
       VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
       VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
-      VLLM_EMBEDDING_URL: ${VLLM_EMBEDDING_URL:-http://vllm-embed:8000/v1}
+      # O backend roda na rede Docker; nao herdar localhost do .env do host.
+      VLLM_EMBEDDING_URL: http://vllm-embed:8000/v1
       VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-180000}
       VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-4}
       TZ: America/Sao_Paulo

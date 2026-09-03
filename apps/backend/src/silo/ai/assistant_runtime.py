@@ -122,7 +122,9 @@ class VLLMModelRuntime(ChatModelRuntime):
             base_url=self.settings.url,
             api_key=self.settings.api_key,
             temperature=0,
-            max_tokens=768,
+            # O modelo CPU pequeno pode entrar em loop de JSON quando recebe
+            # espaço excessivo; 256 mantém respostas completas e limita a espera.
+            max_tokens=256,
         )
 
     async def complete(self, messages: Sequence[ChatMessage]) -> ChatResponse:

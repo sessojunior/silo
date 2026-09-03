@@ -345,8 +345,8 @@ async def test_synthesize_once_respeita_orcamento_de_prompt_sem_chamar_modelo() 
 
     await assistant_service._node_synthesize_once(state, runtime)
 
-    assert state["answer"] == state["response_base"]
-    assert state["generation"]["status"] == "fallback"
+    assert "limite de contexto" in state["answer"]
+    assert state["generation"]["status"] == "error"
 
 
 @pytest.mark.asyncio
@@ -418,8 +418,8 @@ async def test_synthesize_once_rejeita_saida_estruturada_que_altera_numeros() ->
 
     await assistant_service._node_synthesize_once(state, runtime)
 
-    assert state["answer"] == "Resumo base com número 42"
-    assert state["generation"]["status"] == "fallback"
+    assert "formato inválido" in state["answer"]
+    assert state["generation"]["status"] == "error"
 
 
 def test_build_response_usa_context_summary_da_sintese(monkeypatch: pytest.MonkeyPatch) -> None:

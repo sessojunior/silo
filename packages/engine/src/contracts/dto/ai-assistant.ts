@@ -139,6 +139,7 @@ export const AiAssistantVisualizationImageSchema = z.object({
   caption: z.string().optional(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
+  templateId: z.string().optional(),
 });
 
 export type AiAssistantVisualizationImageDto = z.infer<
@@ -180,10 +181,21 @@ export type AiAssistantVisualizationMermaidDto = z.infer<
   typeof AiAssistantVisualizationMermaidSchema
 >;
 
+export const AiAssistantVisualizationAudioSchema = z.object({
+  kind: z.literal("audio"),
+  title: z.string().min(1),
+  text: z.string().min(1),
+});
+
+export type AiAssistantVisualizationAudioDto = z.infer<
+  typeof AiAssistantVisualizationAudioSchema
+>;
+
 export const AiAssistantVisualizationSchema = z.discriminatedUnion("kind", [
   AiAssistantVisualizationImageSchema,
   AiAssistantVisualizationChartSchema,
   AiAssistantVisualizationMermaidSchema,
+  AiAssistantVisualizationAudioSchema,
 ]);
 
 export type AiAssistantVisualizationDto = z.infer<

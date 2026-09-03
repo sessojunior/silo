@@ -16,7 +16,7 @@ from typing import Any, Callable, Literal, cast
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import Runtime
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import case, delete, insert, select, update
 from sqlalchemy.engine import Connection
 
 from silo.ai.assistant_contracts import (
@@ -35,6 +35,7 @@ from silo.ai.assistant_contracts import (
     AiAssistantThreadSummaryDto,
     AiAssistantThreadsResponseDto,
     AiAssistantVisualizationChartDto,
+    AiAssistantVisualizationAudioDto,
     AiAssistantVisualizationDto,
     AiAssistantVisualizationImageDto,
     AiAssistantVisualizationMermaidDto,
@@ -151,6 +152,38 @@ DEFAULT_ASSISTANT_EXAMPLES = (
         scope="projects",
     ),
 )
+
+DEFAULT_ASSISTANT_EXAMPLES += (
+    AiAssistantExampleDto(
+        id="chart",
+        title="Gr\u00e1fico",
+        prompt="Mostre um gr\u00e1fico de disponibilidade dos modelos nos \u00faltimos 30 dias.",
+        description="Gera uma visualiza\u00e7\u00e3o interativa com os dados autorizados.",
+        scope="models",
+    ),
+    AiAssistantExampleDto(
+        id="image",
+        title="Imagem-resumo",
+        prompt="Gere uma imagem-resumo dos projetos em andamento.",
+        description="Cria uma imagem visual para compartilhar o resumo operacional.",
+        scope="projects",
+    ),
+    AiAssistantExampleDto(
+        id="audio",
+        title="Ouvir resumo",
+        prompt="Leia em \u00e1udio um resumo dos principais problemas da \u00faltima semana.",
+        description="Disponibiliza controles para ouvir a resposta em voz no navegador.",
+        scope="problems",
+    ),
+    AiAssistantExampleDto(
+        id="pdf",
+        title="Relat\u00f3rio PDF",
+        prompt="Gere um relat\u00f3rio PDF executivo com o cen\u00e1rio atual.",
+        description="Gera um arquivo PDF com op\u00e7\u00e3o de visualiza\u00e7\u00e3o e download.",
+        scope="generate_pdf",
+    ),
+)
+
 
 _SCOPE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "models": (
@@ -386,6 +419,7 @@ def get_assistant_thread_details(
         .where(message_table.c.thread_id == thread_row["id"])
         .order_by(
             message_table.c.created_at.desc(),
+            case((message_table.c.sender_type == "user", 0), else_=1).desc(),
             message_table.c.id.desc(),
         )
         .limit(MAX_THREAD_MESSAGES)
@@ -495,7 +529,10 @@ async def stream_assistant_message(
     model_runtime: VLLMModelRuntime | None = None,
     embedding_provider: VLLMEmbeddingRuntime | None = None,
 ) -> AsyncIterator[AssistantStreamEvent]:
-    yield AssistantStreamEvent(event="thinking", data={"content": "Processando solicitação com as tools autorizadas."})
+    yield AssistantStreamEvent(
+        event="thinking",
+        data={"content": "Estou consultando os dados autorizados do SILO e preparando a resposta com o modelo vLLM..."},
+    )
     response = await send_assistant_message(
         connection,
         current_user,
@@ -733,7 +770,11 @@ def _recalculate_thread_state(connection: Connection, thread_id: str) -> None:
     rows = connection.execute(
         select(message_table.c.content, message_table.c.created_at)
         .where(message_table.c.thread_id == thread_id)
-        .order_by(message_table.c.created_at.desc(), message_table.c.id.desc())
+        .order_by(
+            message_table.c.created_at.desc(),
+            case((message_table.c.sender_type == "user", 0), else_=1).desc(),
+            message_table.c.id.desc(),
+        )
         .limit(1)
     ).mappings().first()
     message_count = connection.execute(
@@ -762,7 +803,11 @@ def _prune_thread_messages(connection: Connection, thread_id: str) -> None:
     rows = connection.execute(
         select(message_table.c.id)
         .where(message_table.c.thread_id == thread_id)
-        .order_by(message_table.c.created_at.asc(), message_table.c.id.asc())
+        .order_by(
+            message_table.c.created_at.asc(),
+            case((message_table.c.sender_type == "user", 0), else_=1).asc(),
+            message_table.c.id.asc(),
+        )
     ).all()
     excess = len(rows) - MAX_THREAD_MESSAGES
     if excess <= 0:
@@ -971,8 +1016,10 @@ async def _detect_scope_by_model(
     return scope
 
 
-def _detect_presentation_intent(question: str) -> Literal["chart", "image", "mermaid", "pdf", "text"]:
+def _detect_presentation_intent(question: str) -> Literal["chart", "image", "mermaid", "pdf", "audio", "text"]:
     normalized = normalize_text(question)
+    if any(keyword in normalized for keyword in ("audio", "voz", "ouvir", "narracao")):
+        return "audio"
     for kind, keywords in _PRESENTATION_KEYWORDS.items():
         if any(keyword in normalized for keyword in keywords):
             return kind  # type: ignore[return-value]
@@ -1026,7 +1073,9 @@ async def _plan_from_question(question: str, runtime_context: AgentRuntimeContex
     report_type = _select_report_type(question, scope)
     include_comparison = any(token in normalize_text(question) for token in ("compar", "antes", "depois", "delta", "variação", "variacao"))
     include_knowledge_search = scope in {"problems", "solutions", "general"}
-    cache_eligible = presentation_intent == "text"
+    # Cada pergunta deve passar pelo vLLM para manter geração, metadados e
+    # validação atuais; cache semântico não pode substituir uma chamada de IA.
+    cache_eligible = False
     entities = _resolve_entities(question, scope, runtime_context.connection)
     return AssistantPlan(
         scope=scope,
@@ -1749,6 +1798,8 @@ async def _node_presentation_router(
             visualization = _build_image_visualization(scope, state, results)
         elif intent == "mermaid":
             visualization = _build_mermaid_visualization(scope, state, results)
+        elif intent == "audio":
+            visualization = _build_audio_visualization(scope, state)
         elif intent == "pdf":
             artifact_result, visualization = await _build_pdf_artifact(runtime.context, state, results)
     except Exception as exc:
@@ -1757,7 +1808,11 @@ async def _node_presentation_router(
     if visualization is not None:
         state["visualization"] = visualization.model_dump(mode="json")
     if artifact_result is not None:
-        state["artifact_result"] = artifact_result
+        current_artifact_state = state.get("artifact_result")
+        state["artifact_result"] = {
+            **(current_artifact_state if isinstance(current_artifact_state, dict) else {}),
+            **artifact_result,
+        }
     return state
 
 
@@ -1782,15 +1837,16 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
 
     started_at = time.perf_counter()
     prompt = _build_synthesis_prompt(state)
-    answer = str(state.get("response_base") or "")
-    generation_status: Literal["success", "fallback", "error"] = "fallback"
+    answer = ""
+    generation_status: Literal["success", "fallback", "error"] = "error"
+    generation_error_message = "O modelo vLLM não conseguiu gerar uma resposta."
     generated_tokens: int | None = None
     prompt_eval_count: int | None = None
     prompt_size_bytes = len(prompt.encode("utf-8"))
     try:
         if prompt_size_bytes > 12_000:
             state.setdefault("errors", []).append("Prompt de síntese excedeu o orçamento de 12.000 bytes.")
-            generation_status = "fallback" if answer else "error"
+            generation_error_message = "A solicitação excedeu o limite de contexto do modelo vLLM."
         else:
             messages = [
                 ChatMessage(
@@ -1813,9 +1869,9 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
                 )
                 prompt_eval_count = telemetry.prompt_eval_count
                 generated_tokens = telemetry.output_token_count
-                if telemetry.output_token_count is not None and telemetry.output_token_count > 768:
+                if telemetry.output_token_count is not None and telemetry.output_token_count > 256:
                     state.setdefault("errors", []).append("Síntese ultrapassou o limite de tokens de saída.")
-                    generation_status = "fallback" if answer else "error"
+                    generation_error_message = "O modelo vLLM excedeu o limite de tokens de saída."
                 else:
                     parsed = _parse_structured_synthesis_response(response.content)
                     candidate_answer = _optional_text(parsed.get("answer")) if isinstance(parsed, dict) else None
@@ -1824,8 +1880,8 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
                         if isinstance(parsed, dict) and isinstance(parsed.get("contextSummary"), str):
                             state["synthesis_context_summary"] = str(parsed["contextSummary"])
                         generation_status = "success"
-                    elif not answer:
-                        generation_status = "error"
+                    else:
+                        generation_error_message = "O modelo vLLM respondeu em formato inválido ou fora do contexto."
             else:
                 model_started_at = time.perf_counter()
                 response = await runtime.context.model_runtime.complete(messages)
@@ -1842,9 +1898,13 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
                     if isinstance(parsed, dict) and isinstance(parsed.get("contextSummary"), str):
                         state["synthesis_context_summary"] = str(parsed["contextSummary"])
                     generation_status = "success"
+                else:
+                    generation_error_message = "O modelo vLLM respondeu em formato inválido ou fora do contexto."
     except Exception as exc:
         state.setdefault("errors", []).append(str(exc))
-        generation_status = "fallback" if answer else "error"
+        generation_error_message = "Não foi possível acessar o modelo vLLM neste momento. Aguarde e tente novamente."
+    if generation_status == "error" and not answer:
+        answer = generation_error_message
     latency_ms = int((time.perf_counter() - started_at) * 1000)
     state["answer"] = answer
     state["generation"] = {
@@ -1854,7 +1914,7 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
         "latencyMs": latency_ms,
         "generatedTokens": generated_tokens,
         "thinkingTimeMs": None,
-        "errorMessage": None if generation_status != "error" else "Falha na síntese final.",
+        "errorMessage": None if generation_status != "error" else generation_error_message,
     }
     if prompt_eval_count is not None:
         state["prompt_eval_count"] = prompt_eval_count
@@ -1941,7 +2001,7 @@ def _build_response_from_state(
         is_in_scope=not refusal,
         refusal_reason=str(state.get("refusal_reason")) if refusal else None,
         answer=answer,
-        thinking=" · ".join(state.get("progress", [])[-4:]) if state.get("progress") else None,
+        thinking=_humanize_progress(state.get("progress", [])),
         suggested_questions=list(state.get("suggested_questions") or _suggested_questions_for_scope(scope)),
         citations=[AiAssistantCitationDto.model_validate(item) if isinstance(item, dict) else item for item in state.get("citations", [])],
         visualization=_current_visualization(state),
@@ -1950,6 +2010,31 @@ def _build_response_from_state(
         context_summary=str(state.get("synthesis_context_summary") or _build_context_summary(state)),
     )
     return final_response.model_dump(mode="json")
+
+
+_HUMANIZED_PROGRESS: dict[str, str] = {
+    "guard_and_normalize": "Entendi a pergunta e preparei a consulta.",
+    "classify_and_plan": "Identifiquei o tipo de análise e o período solicitado.",
+    "claim_pdf_idempotency_if_needed": "Preparei a geração segura do relatório.",
+    "load_persisted_result": "Recuperei o resultado já preparado para esta solicitação.",
+    "semantic_cache_if_text_only": "Verifiquei se havia uma resposta recente reutilizável.",
+    "resolve_entities": "Confirmei os modelos, projetos e categorias envolvidos.",
+    "execute_required_data_tools": "Consultei os dados autorizados do SILO.",
+    "agent_decide": "Avaliei quais ferramentas adicionais eram necessárias.",
+    "analyze_and_register_datasets": "Organizei os dados e as fontes da resposta.",
+    "presentation_router": "Preparei a apresentação solicitada.",
+    "synthesize_once": "O modelo vLLM está redigindo a resposta final.",
+    "validate_output_citations_and_artifacts": "Validei números, fontes e arquivos gerados.",
+    "persist_transaction": "Registrei a resposta e os artefatos da conversa.",
+    "emit_result": "Resposta pronta.",
+}
+
+
+def _humanize_progress(progress: object) -> str | None:
+    if not isinstance(progress, list):
+        return None
+    readable = [_HUMANIZED_PROGRESS.get(str(item)) for item in progress[-4:]]
+    return " ".join(message for message in readable if message) or None
 
 
 def _build_context_summary(state: AgentState) -> str:
@@ -2509,9 +2594,10 @@ def _format_reports_answer(results: dict[str, Any], period: str) -> str:
     availability = results.get("availabilityReport") or {}
     problems = results.get("problemsReport") or {}
     projects = results.get("projectsReport") or {}
+    availability_value = availability.get("avgAvailability") or availability.get("avgAvailabilityPct") or 0
     return (
         f"O resumo executivo do período {period} indica {executive.get('summary', {}).get('totalProducts', 0)} produtos monitorados, "
-        f"disponibilidade média de {availability.get('avgAvailability', availability.get('avgAvailabilityPct', 0))}%, "
+        f"disponibilidade média de {availability_value}%, "
         f"{problems.get('totalProblems', 0)} problemas e {projects.get('summary', {}).get('totalProjects', 0)} projetos."
     )
 
@@ -2613,6 +2699,17 @@ def _build_mermaid_visualization(scope: str, state: AgentState, results: dict[st
     template_id = "project_flow" if scope in {"projects", "pending"} else "problem_flow"
     diagram = build_mermaid_diagram(template_id=template_id, dataset=dataset, title=title)
     return AiAssistantVisualizationMermaidDto.model_validate(diagram)
+
+
+def _build_audio_visualization(scope: str, state: AgentState) -> AiAssistantVisualizationDto:
+    text = str(state.get("response_base") or "").strip()
+    if not text:
+        text = f"Resumo operacional do escopo {scope}."
+    return AiAssistantVisualizationAudioDto(
+        kind="audio",
+        title="Ouvir resumo da resposta",
+        text=text,
+    )
 
 
 async def _build_pdf_artifact(
@@ -3073,6 +3170,7 @@ def _load_recent_history(connection: Connection, thread_id: str) -> list[dict[st
     rows = connection.execute(
         select(message_table).where(message_table.c.thread_id == thread_id).order_by(
             message_table.c.created_at.asc(),
+            case((message_table.c.sender_type == "user", 0), else_=1).asc(),
             message_table.c.id.asc(),
         ).limit(12)
     ).mappings().all()

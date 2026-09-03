@@ -102,6 +102,7 @@ class AiAssistantVisualizationChartDto(CamelModel):
     categories: list[str]
     series: list[AiAssistantVisualizationChartSeriesDto]
     height: int | None = None
+    template_id: str | None = None
 
 
 class AiAssistantVisualizationMermaidDto(CamelModel):
@@ -111,8 +112,17 @@ class AiAssistantVisualizationMermaidDto(CamelModel):
     caption: str | None = None
 
 
+class AiAssistantVisualizationAudioDto(CamelModel):
+    kind: Literal["audio"]
+    title: str
+    text: str
+
+
 AiAssistantVisualizationDto = Annotated[
-    AiAssistantVisualizationImageDto | AiAssistantVisualizationChartDto | AiAssistantVisualizationMermaidDto,
+    AiAssistantVisualizationImageDto
+    | AiAssistantVisualizationChartDto
+    | AiAssistantVisualizationMermaidDto
+    | AiAssistantVisualizationAudioDto,
     Field(discriminator="kind"),
 ]
 

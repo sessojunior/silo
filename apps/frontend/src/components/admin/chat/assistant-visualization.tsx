@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import type { EChartsOption } from "echarts";
 
 import type { AiAssistantVisualizationDto } from "@silo/engine/contracts/dto/ai-assistant";
@@ -211,6 +211,51 @@ export default function AssistantVisualizationBlock({
 
     return buildChartOptions(visualization, isDarkMode);
   }, [isDarkMode, visualization]);
+
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  useEffect(() => () => window.speechSynthesis?.cancel(), []);
+
+  if (visualization.kind === "audio") {
+    const speak = () => {
+      if (!window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(visualization.text);
+      utterance.lang = "pt-BR";
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+    };
+
+    const stop = () => {
+      window.speechSynthesis?.cancel();
+      setIsSpeaking(false);
+    };
+
+    return (
+      <div className="mt-3 w-full rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/70">
+        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          {visualization.title}
+        </h4>
+        <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+          O navegador pode ler este resumo em voz alta.
+        </p>
+        <div className="mt-3 flex gap-2">
+          <button type="button" onClick={speak} disabled={isSpeaking} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+            <span className="icon-[lucide--volume-2] size-4" />
+            Ouvir
+          </button>
+          <button type="button" onClick={stop} disabled={!isSpeaking} className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300">
+            Parar
+          </button>
+        </div>
+        <details className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+          <summary className="cursor-pointer">Texto do áudio</summary>
+          <p className="mt-2 whitespace-pre-wrap leading-5">{visualization.text}</p>
+        </details>
+      </div>
+    );
+  }
 
   if (visualization.kind === "image") {
     const src = visualization.src;

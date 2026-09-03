@@ -993,6 +993,53 @@ def test_assistant_thread_crud_and_state_helpers(monkeypatch: pytest.MonkeyPatch
         assert loaded is not None and loaded["user_id"] == "user-1"
         assert assistant_service._load_thread_row_by_id(connection, "missing") is None  # noqa: SLF001
 
+        tie_timestamp = datetime(2026, 8, 4, 12, 0)
+        connection.execute(
+            thread_table.insert().values(
+                id="thread-tie",
+                user_id="user-1",
+                title="Empate de timestamps",
+                last_message_preview="Resposta",
+                message_count=2,
+                last_message_at=tie_timestamp,
+                created_at=tie_timestamp,
+                updated_at=tie_timestamp,
+            )
+        )
+        connection.execute(
+            message_table.insert(),
+            [
+                {
+                    "id": "z-user-message",
+                    "thread_id": "thread-tie",
+                    "sender_type": "user",
+                    "sender_user_id": "user-1",
+                    "sender_name": "User One",
+                    "content": "Pergunta antes da resposta",
+                    "metadata": {},
+                    "created_at": tie_timestamp,
+                    "updated_at": tie_timestamp,
+                },
+                {
+                    "id": "a-assistant-message",
+                    "thread_id": "thread-tie",
+                    "sender_type": "assistant",
+                    "sender_user_id": None,
+                    "sender_name": "Assistente",
+                    "content": "Resposta depois da pergunta",
+                    "metadata": {},
+                    "created_at": tie_timestamp,
+                    "updated_at": tie_timestamp,
+                },
+            ],
+        )
+        tied_details = assistant_service.get_assistant_thread_details(connection, "user-1", "thread-tie")
+        assert tied_details is not None
+        assert [message.id for message in tied_details.messages] == [
+            "z-user-message",
+            "a-assistant-message",
+        ]
+
         details = assistant_service.get_assistant_thread_details(connection, "user-1", "thread-1")
         assert details is not None
         assert details.thread.id == "thread-1"
@@ -2022,7 +2069,7 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(monkeypat
     runtime.context.model_runtime = _TokenLimitedRuntime()
     token_limited_state = {"progress": [], "response_base": "Fallback", "question": "Resumo", "scope": "projects"}
     token_limited_state = await assistant_service._node_synthesize_once(token_limited_state, runtime)  # noqa: SLF001
-    assert token_limited_state["generation"]["status"] == "fallback"
+    assert token_limited_state["generation"]["status"] == "error"
 
     class _SimpleRuntime:
         async def complete(self, messages):  # noqa: ANN001

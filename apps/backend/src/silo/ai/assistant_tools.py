@@ -401,7 +401,7 @@ def summarize_model_runs(
         )
         .select_from(activity_table.join(product_table, product_table.c.id == activity_table.c.product_id))
         .where(and_(*filters))
-        .group_by(activity_table.c.product_id, product_table.c.name, product_table.c.slug)
+        .group_by(activity_table.c.product_id, product_table.c.id, product_table.c.name, product_table.c.slug)
         .order_by(desc("incident_runs"), desc("executed_runs"), product_table.c.name.asc(), product_table.c.id.asc())
         .limit(5)
     ).mappings().all()
@@ -964,7 +964,15 @@ def search_silo_knowledge(
             )
         )
 
-    filtered = [candidate for candidate in candidates if candidate["similarity"] >= AI_RAG_THRESHOLD]
+    filtered = [
+        candidate
+        for candidate in candidates
+        if candidate["similarity"] >= AI_RAG_THRESHOLD
+        or (
+            candidate["vectorSimilarity"] == 0.0
+            and candidate["contentSimilarity"] >= AI_RAG_THRESHOLD
+        )
+    ]
     primary_ranked = sorted(filtered, key=lambda item: (-item["baseSimilarity"], item["source"], str(item["id"])))
     candidate_pool = primary_ranked[: normalized_limit * AI_RAG_CANDIDATE_MULTIPLIER]
     candidate_pool.sort(key=lambda item: (-item["similarity"], item["source"], str(item["id"])))
@@ -1007,6 +1015,8 @@ def build_chart_spec(
 
     if "categories" in dataset and "series" in dataset:
         categories = [str(category) for category in dataset["categories"]][:50]
+        if not categories:
+            categories = ["Sem dados no período"]
         series: list[dict[str, Any]] = []
         for index, series_item in enumerate(dataset["series"][:6]):
             values = [_coerce_chart_number(value) for value in series_item.get("values", [])][:500]
@@ -1041,6 +1051,8 @@ def build_chart_spec(
 
     if "products" in dataset:
         products = list(dataset["products"])[:50]
+        if not products:
+            products = [{"name": "Sem dados no período", "availabilityPercentage": 0.0}]
         categories = [str(product.get("name") or product.get("slug") or product.get("id")) for product in products]
         values = [_coerce_chart_number(product.get("availabilityPercentage") or product.get("progress") or 0.0) for product in products]
         return _finalize_chart_spec(
@@ -1261,6 +1273,8 @@ def _score_knowledge_candidate(
         "content": truncated_content,
         "similarity": reranked_similarity,
         "baseSimilarity": base_similarity,
+        "contentSimilarity": content_similarity,
+        "vectorSimilarity": vector_similarity,
         "recencyScore": recency_score,
         "truncated": len(cleaned_content) > AI_RAG_CONTEXT_LIMIT,
     }

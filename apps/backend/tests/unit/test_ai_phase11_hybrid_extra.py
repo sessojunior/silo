@@ -100,5 +100,5 @@ async def test_synthesize_once_rejects_malformed_structured_output() -> None:
 
         await assistant_service._node_synthesize_once(state, runtime)
 
-    assert state["answer"] == "Resumo base preservado"
-    assert state["generation"]["status"] == "fallback"
+    assert "formato inválido" in state["answer"]
+    assert state["generation"]["status"] == "error"

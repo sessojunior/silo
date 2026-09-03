@@ -940,7 +940,7 @@ export default function AiAssistantPage() {
               currentUserId={currentUserId}
               activeTargetId={selectedThreadId ?? undefined}
               variant="assistant"
-              assistantStatusText={null}
+              assistantStatusText={isSending ? "Consultando o modelo vLLM..." : null}
               onLoadOlderMessages={() => undefined}
               onLoadNewerMessages={() => undefined}
               onDeleteMessage={handleDeleteMessage}
@@ -963,7 +963,7 @@ export default function AiAssistantPage() {
               currentUserId={currentUserId}
               activeTargetId={selectedThreadId ?? undefined}
               variant="assistant"
-              assistantStatusText={null}
+              assistantStatusText={isSending ? "Consultando o modelo vLLM..." : null}
               onLoadOlderMessages={() => undefined}
               onLoadNewerMessages={() => undefined}
               onDeleteMessage={handleDeleteMessage}
@@ -1079,4 +1079,3 @@ export default function AiAssistantPage() {
     </div>
   );
 }
-

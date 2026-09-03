@@ -76,7 +76,7 @@ def test_vllm_model_runtime_construction() -> None:
     assert runtime._model.kwargs["base_url"] == "http://vllm.local:8000/v1"
     assert runtime._model.kwargs["api_key"] == "test-key"
     assert runtime._model.kwargs["temperature"] == 0
-    assert runtime._model.kwargs["max_tokens"] == 768
+    assert runtime._model.kwargs["max_tokens"] == 256
 
 
 def test_vllm_timeout_seconds() -> None:
