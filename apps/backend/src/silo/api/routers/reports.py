@@ -53,7 +53,11 @@ async def availability_pdf(request: Request, db: Connection = Depends(get_snapsh
 
     try:
         data = get_availability_report(db, period)
-        pdf = generate_pdf(report_type="availability", data=data, period_label=f"{period['start']} a {period['end']}")
+        pdf = generate_pdf(
+            report_type="availability",
+            data=data,
+            period_label=f"{period['start']} a {period['end']}",
+        )
         return build_success_payload({"url": pdf["url"], "filename": pdf["filename"]})
     except PdfArtifactTooLargeError as exc:
         return json_error_response(413, "ARTIFACT_TOO_LARGE", data=exc.as_payload())
@@ -68,7 +72,9 @@ async def problems_report(request: Request, db: Connection = Depends(get_snapsho
         return period
 
     product_id = _optional_text(request.query_params.get("productId"))
-    problem_category = _optional_text(request.query_params.get("problemCategory")) or _optional_text(request.query_params.get("problem_category"))
+    problem_category = _optional_text(
+        request.query_params.get("problemCategory")
+    ) or _optional_text(request.query_params.get("problem_category"))
 
     try:
         data = get_problems_report(db, period, product_id, problem_category)
@@ -85,11 +91,15 @@ async def problems_pdf(request: Request, db: Connection = Depends(get_snapshot_d
         return period
 
     product_id = _optional_text(body.get("productId"))
-    problem_category = _optional_text(body.get("problemCategory")) or _optional_text(body.get("problem_category"))
+    problem_category = _optional_text(body.get("problemCategory")) or _optional_text(
+        body.get("problem_category")
+    )
 
     try:
         data = get_problems_report(db, period, product_id, problem_category)
-        pdf = generate_pdf(report_type="problems", data=data, period_label=f"{period['start']} a {period['end']}")
+        pdf = generate_pdf(
+            report_type="problems", data=data, period_label=f"{period['start']} a {period['end']}"
+        )
         return build_success_payload({"url": pdf["url"], "filename": pdf["filename"]})
     except PdfArtifactTooLargeError as exc:
         return json_error_response(413, "ARTIFACT_TOO_LARGE", data=exc.as_payload())
@@ -127,7 +137,9 @@ async def executive_pdf(request: Request, db: Connection = Depends(get_snapshot_
 
     try:
         data = get_executive_report(db, period, product_id, group_id)
-        pdf = generate_pdf(report_type="executive", data=data, period_label=f"{period['start']} a {period['end']}")
+        pdf = generate_pdf(
+            report_type="executive", data=data, period_label=f"{period['start']} a {period['end']}"
+        )
         return build_success_payload({"url": pdf["url"], "filename": pdf["filename"]})
     except PdfArtifactTooLargeError as exc:
         return json_error_response(413, "ARTIFACT_TOO_LARGE", data=exc.as_payload())
@@ -159,7 +171,9 @@ async def projects_pdf(request: Request, db: Connection = Depends(get_snapshot_d
 
     try:
         data = get_projects_report(db, period)
-        pdf = generate_pdf(report_type="projects", data=data, period_label=f"{period['start']} a {period['end']}")
+        pdf = generate_pdf(
+            report_type="projects", data=data, period_label=f"{period['start']} a {period['end']}"
+        )
         return build_success_payload({"url": pdf["url"], "filename": pdf["filename"]})
     except PdfArtifactTooLargeError as exc:
         return json_error_response(413, "ARTIFACT_TOO_LARGE", data=exc.as_payload())

@@ -194,11 +194,17 @@ def store_image_as_webp(
 
     try:
         with Image.open(io.BytesIO(buffer)) as image:
-            image.load()
             if image.width * image.height > MAX_IMAGE_PIXELS:
                 return {"error": "Arquivo de imagem muito grande."}
-            if image.format is None or image.format.lower() not in {"jpeg", "jpg", "png", "webp", "gif"}:
+            if image.format is None or image.format.lower() not in {
+                "jpeg",
+                "jpg",
+                "png",
+                "webp",
+                "gif",
+            }:
                 return {"error": "Tipo de arquivo não permitido."}
+            image.load()
             processed_source = ImageOps.exif_transpose(image)
 
         if processed_source.mode not in {"RGB", "RGBA"}:

@@ -8,7 +8,14 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.engine import Connection
 
-from silo.api.dependencies import CurrentUser, get_current_user, get_db, get_user_groups, is_admin
+from silo.api.dependencies import (
+    CurrentUser,
+    get_current_user,
+    get_db,
+    get_user_groups,
+    is_admin,
+    require_admin,
+)
 from silo.api.responses import build_success_payload
 from silo.clock import SYSTEM_CLOCK, Clock, ensure_utc
 from silo.config import Settings, load_settings
@@ -66,7 +73,7 @@ def check_admin(
 
 
 @router.post("/api/warmup")
-async def warmup_model() -> JSONResponse:
+async def warmup_model(_current_user: object = Depends(require_admin)) -> JSONResponse:
     payload, status_code = await warmup_llm_model(settings=load_settings(), clock=SYSTEM_CLOCK)
     return JSONResponse(status_code=status_code, content=payload)
 

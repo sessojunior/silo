@@ -13,6 +13,7 @@ from silo.api.middleware import (
     CsrfProtectionMiddleware,
     GlobalRateLimitMiddleware,
     JsonBodyLimitMiddleware,
+    NoStoreReportsMiddleware,
     RequestContextMiddleware,
     TrustedProxyMiddleware,
 )
@@ -109,6 +110,7 @@ def _iso_utc_now() -> str:
 
 
 def _install_http_compatibility_layer(app: FastAPI, config: HttpRuntimeConfig) -> None:
+    app.add_middleware(JsonBodyLimitMiddleware, max_body_bytes=config.http_body_limit_bytes)
     app.add_middleware(
         GlobalRateLimitMiddleware,
         limiter=GlobalRateLimiter(
@@ -116,7 +118,6 @@ def _install_http_compatibility_layer(app: FastAPI, config: HttpRuntimeConfig) -
             window_seconds=max(1, config.http_rate_limit_window_ms // 1000),
         ),
     )
-    app.add_middleware(JsonBodyLimitMiddleware, max_body_bytes=config.http_body_limit_bytes)
     app.add_middleware(CsrfProtectionMiddleware, trusted_origins=config.csrf_trusted_origins)
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(TrustedProxyMiddleware, trusted_proxy_cidrs=config.trusted_proxy_cidrs)
@@ -127,6 +128,7 @@ def _install_http_compatibility_layer(app: FastAPI, config: HttpRuntimeConfig) -
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(NoStoreReportsMiddleware)
 
 
 def _load_http_runtime_config() -> HttpRuntimeConfig:

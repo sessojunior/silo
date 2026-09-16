@@ -7,11 +7,16 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import and_, delete, desc, func, insert, not_, select, update
 from sqlalchemy.engine import Connection
 
-from silo.api.dependencies import get_db, require_permission
+from silo.api.dependencies import get_db, require_permission, require_admin
 from silo.api.responses import build_success_payload
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
-from silo.services.common import is_service_error, service_error_response, service_failure, service_success
+from silo.services.common import (
+    is_service_error,
+    service_error_response,
+    service_failure,
+    service_success,
+)
 
 router = APIRouter(prefix="/api/groups", tags=["groups"])
 
@@ -40,7 +45,7 @@ async def list_groups(
 @router.post("/")
 async def create_group(
     payload: dict[str, object],
-    _current_user: object = Depends(require_permission("groups", "manage")),
+    _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
 ):
     result = _create_group(db, payload)
@@ -59,7 +64,7 @@ async def create_group(
 @router.put("/")
 async def update_group(
     payload: dict[str, object],
-    _current_user: object = Depends(require_permission("groups", "manage")),
+    _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
 ):
     result = _update_group(db, payload)
@@ -75,11 +80,13 @@ async def update_group(
 @router.delete("/")
 async def delete_group(
     id: str | None = Query(default=None),
-    _current_user: object = Depends(require_permission("groups", "manage")),
+    _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
 ):
     if not id:
-        return service_error_response(service_failure("ID é obrigatório.", 400, field="id"), "Erro ao excluir grupo.")
+        return service_error_response(
+            service_failure("ID é obrigatório.", 400, field="id"), "Erro ao excluir grupo."
+        )
 
     result = _delete_group(db, id)
     if is_service_error(result):
@@ -114,7 +121,7 @@ async def get_group_permissions(
 @router.put("/permissions")
 async def update_group_permission(
     payload: dict[str, object],
-    _current_user: object = Depends(require_permission("groups", "manage")),
+    _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
 ):
     result = _update_group_permission(db, payload)
@@ -131,7 +138,7 @@ async def update_group_permission(
 async def remove_user_from_group(
     userId: str | None = Query(default=None),
     groupId: str | None = Query(default=None),
-    _current_user: object = Depends(require_permission("groups", "manage")),
+    _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
 ):
     if not userId or not groupId:
@@ -157,7 +164,9 @@ def _list_groups(db: Connection, *, search: str | None, status: str | None) -> d
     elif status == "inactive":
         conditions.append(group_table.c.active.is_(False))
 
-    statement = select(group_table).order_by(group_table.c.is_default.desc(), group_table.c.created_at.desc())
+    statement = select(group_table).order_by(
+        group_table.c.is_default.desc(), group_table.c.created_at.desc()
+    )
     if conditions:
         statement = statement.where(and_(*conditions))
 
@@ -187,7 +196,9 @@ def _create_group(db: Connection, payload: dict[str, object]) -> dict[str, objec
     normalized_name = name.strip()
     role = _optional_str(payload.get("role"))
     if role == "admin":
-        return service_failure("Não é possível criar grupos com permissões de administrador.", 400, field="role")
+        return service_failure(
+            "Não é possível criar grupos com permissões de administrador.", 400, field="role"
+        )
 
     existing = db.execute(
         select(group_table.c.id).where(group_table.c.name == normalized_name).limit(1)
@@ -245,19 +256,29 @@ def _update_group(db: Connection, payload: dict[str, object]) -> dict[str, objec
     if not group_id or not name:
         return service_failure("Dados inválidos.", 400)
 
-    current = db.execute(select(group_table).where(group_table.c.id == group_id).limit(1)).mappings().first()
+    current = (
+        db.execute(select(group_table).where(group_table.c.id == group_id).limit(1))
+        .mappings()
+        .first()
+    )
     if current is None:
         return service_failure("Grupo não encontrado.", 404)
 
     normalized_name = name.strip()
     if current["role"] == "admin":
         if payload.get("active") is False:
-            return service_failure("Não é possível desativar o grupo de administradores.", 400, field="active")
+            return service_failure(
+                "Não é possível desativar o grupo de administradores.", 400, field="active"
+            )
         if payload.get("isDefault") is True:
-            return service_failure("Não é possível tornar grupos administrativos como padrão.", 400, field="isDefault")
+            return service_failure(
+                "Não é possível tornar grupos administrativos como padrão.", 400, field="isDefault"
+            )
 
     if current["name"] == "Administradores" and normalized_name != "Administradores":
-        return service_failure("Não é possível alterar o nome do grupo Administradores.", 400, field="name")
+        return service_failure(
+            "Não é possível alterar o nome do grupo Administradores.", 400, field="name"
+        )
 
     duplicate = db.execute(
         select(group_table.c.id)
@@ -268,23 +289,37 @@ def _update_group(db: Connection, payload: dict[str, object]) -> dict[str, objec
         return service_failure("Já existe outro grupo com este nome.", 400, field="name")
 
     if payload.get("isDefault") is False:
-        current_defaults = db.execute(
-            select(group_table).where(group_table.c.is_default.is_(True))
-        ).mappings().all()
+        current_defaults = (
+            db.execute(select(group_table).where(group_table.c.is_default.is_(True)))
+            .mappings()
+            .all()
+        )
         if len(current_defaults) == 1 and current_defaults[0]["id"] == group_id:
-            return service_failure("Não é possível desmarcar o último grupo padrão.", 400, field="isDefault")
+            return service_failure(
+                "Não é possível desmarcar o último grupo padrão.", 400, field="isDefault"
+            )
 
     role = _optional_str(payload.get("role"))
     if role == "admin":
-        return service_failure("Não é possível alterar um grupo para ter permissões de administrador.", 400, field="role")
+        return service_failure(
+            "Não é possível alterar um grupo para ter permissões de administrador.",
+            400,
+            field="role",
+        )
 
     is_default = bool(payload.get("isDefault", current["is_default"]))
     if is_default:
-        db.execute(update(group_table).values(is_default=False, updated_at=now_naive()).where(group_table.c.is_default.is_(True)))
+        db.execute(
+            update(group_table)
+            .values(is_default=False, updated_at=now_naive())
+            .where(group_table.c.is_default.is_(True))
+        )
 
     updated_data = {
         "name": normalized_name,
-        "description": _nullable_text(payload.get("description")) if "description" in payload else current["description"],
+        "description": _nullable_text(payload.get("description"))
+        if "description" in payload
+        else current["description"],
         "icon": _optional_str(payload.get("icon")) or current["icon"],
         "color": _optional_str(payload.get("color")) or current["color"],
         "role": current["role"] if role is None or role == "admin" else role,
@@ -308,10 +343,15 @@ def _get_group_permissions(db: Connection, group_id: str) -> dict[str, object]:
     if existing_group is None:
         return service_failure("Grupo não encontrado.", 404)
 
-    rows = db.execute(
-        select(group_permission_table.c.resource, group_permission_table.c.action)
-        .where(group_permission_table.c.group_id == group_id)
-    ).mappings().all()
+    rows = (
+        db.execute(
+            select(group_permission_table.c.resource, group_permission_table.c.action).where(
+                group_permission_table.c.group_id == group_id
+            )
+        )
+        .mappings()
+        .all()
+    )
 
     existing_set = {f"{row['resource']}:{row['action']}" for row in rows}
     missing = [
@@ -335,10 +375,15 @@ def _get_group_permissions(db: Connection, group_id: str) -> dict[str, object]:
             ],
         )
         db.commit()
-        rows = db.execute(
-            select(group_permission_table.c.resource, group_permission_table.c.action)
-            .where(group_permission_table.c.group_id == group_id)
-        ).mappings().all()
+        rows = (
+            db.execute(
+                select(group_permission_table.c.resource, group_permission_table.c.action).where(
+                    group_permission_table.c.group_id == group_id
+                )
+            )
+            .mappings()
+            .all()
+        )
 
     permissions: dict[str, list[str]] = {}
     for row in rows:
@@ -366,7 +411,10 @@ def _update_group_permission(db: Connection, payload: dict[str, object]) -> dict
     if existing_group[1] == "admin":
         return service_failure("Não é possível alterar permissões do grupo administrador.", 400)
 
-    immutable = any(resource == default_resource and action == default_action for default_resource, default_action in DEFAULT_GROUP_PERMISSIONS)
+    immutable = any(
+        resource == default_resource and action == default_action
+        for default_resource, default_action in DEFAULT_GROUP_PERMISSIONS
+    )
     if not enabled and immutable:
         return service_failure("Esta permissão é obrigatória e não pode ser desativada.", 400)
 
@@ -429,9 +477,11 @@ def _delete_group(db: Connection, group_id: str) -> dict[str, object]:
     user_group_table = legacy_tables["user_group"]
     chat_message_table = legacy_tables["chat_message"]
 
-    current = db.execute(
-        select(group_table).where(group_table.c.id == group_id).limit(1)
-    ).mappings().first()
+    current = (
+        db.execute(select(group_table).where(group_table.c.id == group_id).limit(1))
+        .mappings()
+        .first()
+    )
     if current is None:
         return service_failure("Grupo não encontrado.", 404)
     if current["is_default"]:
@@ -441,12 +491,16 @@ def _delete_group(db: Connection, group_id: str) -> dict[str, object]:
 
     db.rollback()
     with db.begin():
-        default_group = db.execute(
-            select(group_table)
-            .where(group_table.c.is_default.is_(True))
-            .order_by(group_table.c.updated_at.desc())
-            .limit(1)
-        ).mappings().first()
+        default_group = (
+            db.execute(
+                select(group_table)
+                .where(group_table.c.is_default.is_(True))
+                .order_by(group_table.c.updated_at.desc())
+                .limit(1)
+            )
+            .mappings()
+            .first()
+        )
         if default_group is None:
             raise RuntimeError("Grupo padrão não encontrado.")
 
@@ -456,8 +510,7 @@ def _delete_group(db: Connection, group_id: str) -> dict[str, object]:
         if users_in_group:
             user_ids = [row[0] for row in users_in_group]
             users_in_other = db.execute(
-                select(user_group_table.c.user_id)
-                .where(
+                select(user_group_table.c.user_id).where(
                     and_(
                         user_group_table.c.group_id != group_id,
                         user_group_table.c.user_id.in_(user_ids),
@@ -482,7 +535,9 @@ def _delete_group(db: Connection, group_id: str) -> dict[str, object]:
                 )
 
         db.execute(delete(user_group_table).where(user_group_table.c.group_id == group_id))
-        db.execute(delete(chat_message_table).where(chat_message_table.c.receiver_group_id == group_id))
+        db.execute(
+            delete(chat_message_table).where(chat_message_table.c.receiver_group_id == group_id)
+        )
         db.execute(delete(group_table).where(group_table.c.id == group_id))
 
     return service_success(None)

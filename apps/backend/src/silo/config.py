@@ -109,7 +109,6 @@ class VLLMSettings(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     url: str = "http://localhost:8000/v1"
-    api_key: str = "not-needed"
     model: str = "Qwen/Qwen2.5-0.5B-Instruct"
     # bge-small tem 384 dims; o banco (pgvector) exige 768 -> bge-base.
     embedding_model: str = "BAAI/bge-base-en-v1.5"
@@ -299,7 +298,6 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
         },
         "vllm": {
             "url": vllm_url,
-            "api_key": _first_non_empty(environ, ("VLLM_API_KEY",), "not-needed"),
             "model": _first_non_empty(
                 environ,
                 ("VLLM_MODEL",),
@@ -444,7 +442,6 @@ def _validate_production_requirements(environ: Mapping[str, str], silo_env: str)
         missing.append("APP_URL_PROD")
     if not _has_any_non_empty(environ, ("SESSION_SECRET", "BETTER_AUTH_SECRET")):
         missing.append("SESSION_SECRET")
-
     for name in (
         "SMTP_HOST",
         "SMTP_USERNAME",

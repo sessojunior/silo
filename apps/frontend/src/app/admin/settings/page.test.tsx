@@ -485,11 +485,15 @@ describe("SettingsPage", () => {
         return jsonResponse({ success: true, message: "Email atualizado" });
       }
 
-      if (method === "PUT" && requestUrl.pathname === "/api/user-password") {
+      if (method === "PUT" && requestUrl.pathname === "/api/admin/users/password") {
         expect(parseJsonBody(init?.body)).toEqual({
           password: "StrongPass123!",
         });
         return jsonResponse({ success: true, message: "Senha atualizada" });
+      }
+
+      if (method === "POST" && requestUrl.pathname === "/api/auth/sign-out") {
+        return jsonResponse({ success: true });
       }
 
       throw new Error(`Unexpected request: ${method} ${requestUrl.pathname}`);
@@ -523,7 +527,7 @@ describe("SettingsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /alterar senha/i }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock).toHaveBeenCalledTimes(4);
     });
 
     expect(userContextState.updateUser).toHaveBeenCalledWith({
@@ -532,9 +536,11 @@ describe("SettingsPage", () => {
     expect(vi.mocked(toast)).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "success",
-        title: "A senha foi alterada com sucesso.",
+        title: "Senha alterada. Entre novamente para continuar.",
       }),
     );
+    expect(screen.getByRole("status")).toHaveTextContent("Todas as sessoes foram encerradas.");
+    expect(screen.getByRole("link", { name: "Entre novamente." })).toHaveAttribute("href", "/login");
   });
 
   it("exibe mensagem de erro ao solicitar troca para o mesmo e-mail", async () => {

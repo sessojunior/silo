@@ -1,7 +1,9 @@
 services:
   vllm:
-    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai:v0.11.2}
+    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai:v0.29.0}
     container_name: silo-vllm
+    networks:
+      - inference
     # vLLM usa /dev/shm para comunicacao entre processos (padrao de 64 MB
     # e insuficiente -> "Insufficient space in /dev/shm").
     shm_size: "2gb"
@@ -36,11 +38,11 @@ services:
 
   vllm-embed:
     # vLLM serve um modelo por instancia; servico dedicado para o embedding.
-    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai:v0.11.2}
+    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai:v0.29.0}
     container_name: silo-vllm-embed
+    networks:
+      - inference
     shm_size: "2gb"
-    ports:
-      - "${VLLM_EMBED_PORT:-8001}:8000"
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
       VLLM_LOGGING_LEVEL: ${LOG_LEVEL:-INFO}
@@ -66,6 +68,8 @@ services:
   migrate:
     image: ${SILO_IMAGE:-silo-api-python:latest}
     container_name: silo-api-python-migrate
+    networks:
+      - backend
     command: ["python", "-m", "silo.db.migrate"]
     environment:
       SILO_ENV: ${SILO_ENV:-production}
@@ -115,8 +119,11 @@ services:
   api:
     image: ${SILO_IMAGE:-silo-api-python:latest}
     container_name: silo-api-python
+    networks:
+      - backend
+      - inference
     ports:
-      - "${API_PORT:-4000}:4000"
+      - "${SILO_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-4000}:4000"
     command: ["uvicorn", "silo.api.main:app", "--host", "0.0.0.0", "--port", "4000"]
     environment:
       SILO_ENV: ${SILO_ENV:-production}
@@ -186,6 +193,9 @@ services:
   worker:
     image: ${SILO_IMAGE:-silo-api-python:latest}
     container_name: silo-worker-python
+    networks:
+      - backend
+      - inference
     command: ["python", "-m", "silo.worker.main"]
     environment:
       SILO_ENV: ${SILO_ENV:-production}
@@ -225,3 +235,9 @@ volumes:
     name: silo-vllm-cache
   silo-vllm-compile-cache:
     name: silo-vllm-compile-cache
+
+networks:
+  backend:
+    driver: bridge
+  inference:
+    driver: bridge

@@ -32,17 +32,20 @@ DEPLOY_COMPOSE_FILE="${DEPLOY_COMPOSE_FILE:-docker-compose.deploy.yml}"
 REGISTRY_HOST="${REGISTRY_HOST:-$CI_REGISTRY}"
 
 private_key_file="$(mktemp)"
-known_hosts_file="$(mktemp)"
 cleanup() {
-  rm -f "$private_key_file" "$known_hosts_file"
+  rm -f "$private_key_file"
 }
 trap cleanup EXIT INT TERM
 
 printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > "$private_key_file"
 chmod 600 "$private_key_file"
 
-ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" > "$known_hosts_file" 2>/dev/null || {
-  fail "nao foi possivel obter a chave SSH de $DEPLOY_SSH_HOST"
+known_hosts_host="$DEPLOY_SSH_HOST"
+if [ "$DEPLOY_SSH_PORT" != "22" ]; then
+  known_hosts_host="[$DEPLOY_SSH_HOST]:$DEPLOY_SSH_PORT"
+fi
+ssh-keygen -F "$known_hosts_host" >/dev/null 2>&1 || {
+  fail "known_hosts do runner nao contem uma chave previamente verificada para $known_hosts_host"
 }
 
 remote_env="DEPLOY_PATH=$(shell_quote "$DEPLOY_PATH") \
@@ -55,8 +58,8 @@ REGISTRY_DEPLOY_PASSWORD=$(shell_quote "$REGISTRY_DEPLOY_PASSWORD")"
 ssh \
   -i "$private_key_file" \
   -p "$DEPLOY_SSH_PORT" \
-  -o UserKnownHostsFile="$known_hosts_file" \
   -o StrictHostKeyChecking=yes \
+  -o BatchMode=yes \
   "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
   "$remote_env sh -se" <<'REMOTE'
 set -eu

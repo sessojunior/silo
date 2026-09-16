@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import hmac
 
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy import select
@@ -22,7 +23,11 @@ async def receive_product_flow(
 ):
     settings = load_settings()
     expected_key = settings.product_flow_api_key.get_secret_value()
-    if expected_key and x_api_key != expected_key:
+    if (
+        not expected_key
+        or not x_api_key
+        or not hmac.compare_digest(x_api_key.encode("utf-8"), expected_key.encode("utf-8"))
+    ):
         return json_error_response(401, "Não autorizado.")
 
     product_id = _optional_str(payload.get("productId"))
@@ -52,7 +57,7 @@ async def receive_product_flow(
     current_flow = product_row["data_product_flow"]
     if not isinstance(current_flow, list):
         current_flow = []
-    current_flow = [*current_flow, entry]
+    current_flow = [*current_flow[-999:], entry]
 
     db.execute(
         product_table.update()

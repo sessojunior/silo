@@ -7,7 +7,18 @@ from types import ModuleType, SimpleNamespace
 from typing import Literal
 
 import pytest
-from sqlalchemy import Boolean, Column, DateTime, JSON, MetaData, String, Table, create_engine, insert, select
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    JSON,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    insert,
+    select,
+)
 
 from silo.ai import phase11_evaluation as phase11
 from silo.ai.assistant_registry import DatasetRegistry
@@ -37,7 +48,13 @@ def test_load_phase11_cases_preserves_followup_context(tmp_path: Path) -> None:
                         "forbiddenTools": ["shell"],
                         "sourceKind": "product_activity",
                         "sources": ["product_activity"],
-                        "verifiableNumbers": [{"name": "totalRuns", "source": "dataset.totalRuns", "assertion": "equals_fixture"}],
+                        "verifiableNumbers": [
+                            {
+                                "name": "totalRuns",
+                                "source": "dataset.totalRuns",
+                                "assertion": "equals_fixture",
+                            }
+                        ],
                         "expectedDataset": {
                             "schemaId": "model_runs_summary.v1",
                             "sourceKind": "product_activity",
@@ -74,7 +91,12 @@ def test_lineage_for_case_detects_forbidden_tools_and_artifacts() -> None:
         prompt="Gere PDF de projetos.",
         conversation_context=None,
         is_in_scope_expected=True,
-        expected_plan=("normalize_question", "classify_scope", "get_projects_report_data", "generate_report_pdf"),
+        expected_plan=(
+            "normalize_question",
+            "classify_scope",
+            "get_projects_report_data",
+            "generate_report_pdf",
+        ),
         required_tools=("get_projects_report_data", "generate_report_pdf"),
         allowed_tools=("get_projects_report_data", "generate_report_pdf"),
         forbidden_tools=("shell", "delete_data"),
@@ -101,7 +123,9 @@ def test_lineage_for_case_detects_forbidden_tools_and_artifacts() -> None:
         "final_response": {
             "scope": "generate_pdf",
             "isInScope": True,
-            "artifacts": [{"kind": "pdf", "url": "/uploads/reports/example.pdf", "filename": "example.pdf"}],
+            "artifacts": [
+                {"kind": "pdf", "url": "/uploads/reports/example.pdf", "filename": "example.pdf"}
+            ],
             "citations": [{"label": "Relatório", "detail": "ok"}],
             "generation": {"status": "success", "latencyMs": 120, "generatedTokens": 32},
         },
@@ -396,7 +420,9 @@ async def test_run_phase11_evaluation_smoke_with_fakes(
         "load_settings",
         lambda environ=None: SimpleNamespace(
             database_url="postgresql://test-user:test-pass@localhost:5432/silo",
-            ai_agent_mode=SimpleNamespace(value=(environ or {}).get("AI_AGENT_MODE", "deterministic")),
+            ai_agent_mode=SimpleNamespace(
+                value=(environ or {}).get("AI_AGENT_MODE", "deterministic")
+            ),
             vllm=SimpleNamespace(
                 model=phase11.EXPECTED_CHAT_MODEL,
                 embedding_model=phase11.EXPECTED_EMBEDDING_MODEL,
@@ -444,7 +470,9 @@ async def test_run_phase11_evaluation_smoke_with_fakes(
         **_kwargs,
     ):  # noqa: ANN001
         captured_modes.append(mode)
-        return _make_phase11_attempt(case, mode=mode, attempt=attempt, latency_ms=100), f"thread-{case.id}"
+        return _make_phase11_attempt(
+            case, mode=mode, attempt=attempt, latency_ms=100
+        ), f"thread-{case.id}"
 
     monkeypatch.setattr(phase11, "_run_case_attempt", _fake_run_case_attempt)
     monkeypatch.setattr("builtins.print", lambda *args, **kwargs: None)
@@ -465,9 +493,10 @@ async def test_run_phase11_evaluation_smoke_with_fakes(
     assert captured_modes == ["deterministic"] * 210 + ["hybrid"] * 210
     assert report.modes["deterministic"].cases_total == 210
     assert report.modes["deterministic"].gate_status == "approved"
-    assert report.modes["hybrid"].deterministic_final_p95_ms == report.modes[
-        "deterministic"
-    ].final_p95_ms
+    assert (
+        report.modes["hybrid"].deterministic_final_p95_ms
+        == report.modes["deterministic"].final_p95_ms
+    )
     assert (output_dir / "phase11-evaluation.sanitized.json").exists()
     assert (output_dir / "phase11-evaluation.md").exists()
 
@@ -502,7 +531,9 @@ def test_phase11_main_parses_args_and_invokes_runner(
         return fake_report
 
     monkeypatch.setattr(phase11, "run_phase11_evaluation", _fake_run_phase11_evaluation)
-    monkeypatch.setattr("builtins.print", lambda *args, **kwargs: printed.append(" ".join(str(arg) for arg in args)))
+    monkeypatch.setattr(
+        "builtins.print", lambda *args, **kwargs: printed.append(" ".join(str(arg) for arg in args))
+    )
 
     exit_code = phase11.main(
         [
@@ -543,11 +574,17 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
     assert phase11._coerce_str_tuple("ignorar") == ()  # noqa: SLF001
     assert phase11._coerce_mapping({"x": 1}) == {"x": 1}  # noqa: SLF001
     assert phase11._coerce_mapping(("x",)) is None  # noqa: SLF001
-    assert phase11._hash_text("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"  # noqa: SLF001
+    assert (
+        phase11._hash_text("abc")
+        == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    )  # noqa: SLF001
 
     assert phase11._json_default(case)["id"] == "case-utils"  # noqa: SLF001
     assert phase11._json_default(Path("rel") / "path") == str(Path("rel") / "path")  # noqa: SLF001
-    assert phase11._json_default(phase11.datetime(2026, 8, 4, 12, 0, tzinfo=phase11.UTC)) == phase11.datetime(2026, 8, 4, 12, 0, tzinfo=phase11.UTC).astimezone().isoformat()  # noqa: SLF001
+    assert (
+        phase11._json_default(phase11.datetime(2026, 8, 4, 12, 0, tzinfo=phase11.UTC))
+        == phase11.datetime(2026, 8, 4, 12, 0, tzinfo=phase11.UTC).astimezone().isoformat()
+    )  # noqa: SLF001
     assert phase11._json_default({3, 1, 2}) == [1, 2, 3]  # noqa: SLF001
     with pytest.raises(TypeError):
         phase11._json_default(object())  # noqa: SLF001
@@ -568,6 +605,7 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
     jsonl_path.write_text('{"a":1}\n\n{"b":2}\n', encoding="utf-8")
     assert phase11._load_jsonl(jsonl_path) == [{"a": 1}, {"b": 2}]  # noqa: SLF001
 
+    monkeypatch.delenv("VLLM_MODEL", raising=False)
     environ = phase11._build_eval_environ(  # noqa: SLF001
         database_url="postgresql://user:pass@localhost:5432/silo",
         uploads_dir=tmp_path / "uploads",
@@ -585,8 +623,16 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
         def get_secret_value(self) -> str:
             return self.value
 
-    assert phase11._settings_database_url(SimpleNamespace(database_url=_SecretValue("postgresql://secret"))) == "postgresql://secret"  # noqa: SLF001
-    assert phase11._settings_database_url(SimpleNamespace(database_url="postgresql://plain")) == "postgresql://plain"  # noqa: SLF001
+    assert (
+        phase11._settings_database_url(
+            SimpleNamespace(database_url=_SecretValue("postgresql://secret"))
+        )
+        == "postgresql://secret"
+    )  # noqa: SLF001
+    assert (
+        phase11._settings_database_url(SimpleNamespace(database_url="postgresql://plain"))
+        == "postgresql://plain"
+    )  # noqa: SLF001
 
     def fake_gpu_run(command, **kwargs):  # noqa: ANN001
         del kwargs
@@ -595,7 +641,10 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
         raise AssertionError("powershell fallback should not be used")
 
     monkeypatch.setattr(phase11.subprocess, "run", fake_gpu_run)
-    assert phase11._capture_gpu_snapshot() == {"source": "nvidia-smi", "lines": ["GPU One, 1024", "GPU Two, 2048"]}  # noqa: SLF001
+    assert phase11._capture_gpu_snapshot() == {
+        "source": "nvidia-smi",
+        "lines": ["GPU One, 1024", "GPU Two, 2048"],
+    }  # noqa: SLF001
 
     def fake_gpu_json_run(command, **kwargs):  # noqa: ANN001
         del kwargs
@@ -604,7 +653,10 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
         return SimpleNamespace(returncode=0, stdout='[{"Name":"GPU X","AdapterRAM":2048}]')
 
     monkeypatch.setattr(phase11.subprocess, "run", fake_gpu_json_run)
-    assert phase11._capture_gpu_snapshot() == {"source": "powershell", "value": [{"Name": "GPU X", "AdapterRAM": 2048}]}  # noqa: SLF001
+    assert phase11._capture_gpu_snapshot() == {
+        "source": "powershell",
+        "value": [{"Name": "GPU X", "AdapterRAM": 2048}],
+    }  # noqa: SLF001
 
     def fake_cpu_run(command, **kwargs):  # noqa: ANN001
         del kwargs
@@ -616,8 +668,13 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
     assert phase11._capture_cpu_name() == "Intel Xeon"  # noqa: SLF001
 
     baseline_path = tmp_path / "baseline.json"
-    baseline_path.write_text(json.dumps({"first_emission_p95_ms": 11, "finalP95Ms": 22}), encoding="utf-8")
-    assert phase11._load_latency_baseline(baseline_path) == {"firstEmissionP95Ms": 11, "finalP95Ms": 22}  # noqa: SLF001
+    baseline_path.write_text(
+        json.dumps({"first_emission_p95_ms": 11, "finalP95Ms": 22}), encoding="utf-8"
+    )
+    assert phase11._load_latency_baseline(baseline_path) == {
+        "firstEmissionP95Ms": 11,
+        "finalP95Ms": 22,
+    }  # noqa: SLF001
     bad_baseline_path = tmp_path / "baseline-empty.json"
     bad_baseline_path.write_text("{}", encoding="utf-8")
     with pytest.raises(ValueError):
@@ -643,7 +700,10 @@ def test_phase11_helper_utilities_cover_serialization_snapshot_and_report_branch
     }
 
     assert phase11._actual_artifact_kind(state) == "pdf"  # noqa: SLF001
-    assert phase11._actual_dataset_summary(state) == (("schema-1", "schema-2"), ("source-1", "source-2", "ignored"))  # noqa: SLF001
+    assert phase11._actual_dataset_summary(state) == (
+        ("schema-1", "schema-2"),
+        ("source-1", "source-2", "ignored"),
+    )  # noqa: SLF001
     assert phase11._trajectory_from_state(state) == (  # noqa: SLF001
         "normalize_question",
         "classify_scope",
@@ -734,7 +794,9 @@ def test_phase11_helper_branches_cover_snapshot_resolution_seed_and_lineage(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'phase11-helpers.sqlite3'}", future=True)
+    engine = create_engine(
+        f"sqlite+pysqlite:///{tmp_path / 'phase11-helpers.sqlite3'}", future=True
+    )
     metadata = MetaData()
     user_table = Table(
         "user",
@@ -764,7 +826,9 @@ def test_phase11_helper_branches_cover_snapshot_resolution_seed_and_lineage(
         Column("updated_at", DateTime, nullable=False),
     )
     metadata.create_all(engine)
-    monkeypatch.setattr(phase11, "legacy_tables", {"user": user_table, "ai_assistant_message": message_table})
+    monkeypatch.setattr(
+        phase11, "legacy_tables", {"user": user_table, "ai_assistant_message": message_table}
+    )
 
     settings = SimpleNamespace(
         database_url=str(engine.url),
@@ -816,7 +880,10 @@ def test_phase11_helper_branches_cover_snapshot_resolution_seed_and_lineage(
     assert snapshot["memoryAvailableBytes"] == 4
     assert snapshot["gpu"] == {"source": "nvidia-smi", "lines": ["GPU One, 1024", "GPU Two, 2048"]}
     assert snapshot["cpuName"] == "Intel Xeon"
-    assert phase11._capture_gpu_snapshot() == {"source": "nvidia-smi", "lines": ["GPU One, 1024", "GPU Two, 2048"]}  # noqa: SLF001
+    assert phase11._capture_gpu_snapshot() == {
+        "source": "nvidia-smi",
+        "lines": ["GPU One, 1024", "GPU Two, 2048"],
+    }  # noqa: SLF001
 
     def fake_gpu_raw_run(command, **kwargs):  # noqa: ANN001
         del kwargs
@@ -832,20 +899,34 @@ def test_phase11_helper_branches_cover_snapshot_resolution_seed_and_lineage(
         connection.execute(
             user_table.insert(),
             [
-                {"id": "user-active", "email": "active@example.test", "name": "Active", "is_active": True},
-                {"id": "user-inactive", "email": "inactive@example.test", "name": "Inactive", "is_active": False},
+                {
+                    "id": "user-active",
+                    "email": "active@example.test",
+                    "name": "Active",
+                    "is_active": True,
+                },
+                {
+                    "id": "user-inactive",
+                    "email": "inactive@example.test",
+                    "name": "Inactive",
+                    "is_active": False,
+                },
             ],
         )
 
     with engine.connect() as connection:
-        active_user = phase11._resolve_eval_user(connection, seed_database_if_missing=False, settings=settings)  # noqa: SLF001
+        active_user = phase11._resolve_eval_user(
+            connection, seed_database_if_missing=False, settings=settings
+        )  # noqa: SLF001
     assert active_user.id == "user-active"
 
     with engine.begin() as connection:
         connection.execute(user_table.delete().where(user_table.c.id == "user-active"))
 
     with engine.connect() as connection:
-        fallback_user = phase11._resolve_eval_user(connection, seed_database_if_missing=False, settings=settings)  # noqa: SLF001
+        fallback_user = phase11._resolve_eval_user(
+            connection, seed_database_if_missing=False, settings=settings
+        )  # noqa: SLF001
     assert fallback_user.id == "user-inactive"
 
     with engine.begin() as connection:
@@ -853,7 +934,9 @@ def test_phase11_helper_branches_cover_snapshot_resolution_seed_and_lineage(
 
     with engine.connect() as connection:
         with pytest.raises(RuntimeError):
-            phase11._resolve_eval_user(connection, seed_database_if_missing=False, settings=settings)  # noqa: SLF001
+            phase11._resolve_eval_user(
+                connection, seed_database_if_missing=False, settings=settings
+            )  # noqa: SLF001
 
     def fake_seed_database(database_url: str) -> None:
         seeded_engine = create_engine(database_url, future=True)
@@ -861,13 +944,20 @@ def test_phase11_helper_branches_cover_snapshot_resolution_seed_and_lineage(
             seeded_connection.execute(
                 user_table.insert(),
                 [
-                    {"id": "user-seeded", "email": "seeded@example.test", "name": "Seeded", "is_active": True},
+                    {
+                        "id": "user-seeded",
+                        "email": "seeded@example.test",
+                        "name": "Seeded",
+                        "is_active": True,
+                    },
                 ],
             )
 
     monkeypatch.setattr("silo.db.seed.seed_database", fake_seed_database)
     with engine.connect() as connection:
-        seeded_user = phase11._resolve_eval_user(connection, seed_database_if_missing=True, settings=settings)  # noqa: SLF001
+        seeded_user = phase11._resolve_eval_user(
+            connection, seed_database_if_missing=True, settings=settings
+        )  # noqa: SLF001
     assert seeded_user.id == "user-seeded"
 
     with engine.begin() as connection:
@@ -894,7 +984,11 @@ def test_phase11_helper_branches_cover_snapshot_resolution_seed_and_lineage(
             settings=settings,
         )  # noqa: SLF001
     with engine.connect() as connection:
-        seeded_messages = connection.execute(select(message_table).order_by(message_table.c.created_at.asc())).mappings().all()
+        seeded_messages = (
+            connection.execute(select(message_table).order_by(message_table.c.created_at.asc()))
+            .mappings()
+            .all()
+        )
     assert len(seeded_messages) == 2
     assert seeded_messages[0]["sender_type"] == "user"
     assert seeded_messages[1]["sender_type"] == "assistant"
@@ -919,15 +1013,23 @@ def test_phase11_helper_branches_cover_snapshot_resolution_seed_and_lineage(
         assert built_state["question"] == empty_context_case.prompt
         assert built_state["thread_id"] == "thread-1"
 
-    assert phase11._actual_artifact_kind({"final_response": {"visualization": {"kind": "chart"}}}) == "chart"  # noqa: SLF001
-    assert phase11._actual_artifact_kind({"artifact_result": {"artifact": {"kind": "mermaid"}}}) == "mermaid"  # noqa: SLF001
+    assert (
+        phase11._actual_artifact_kind({"final_response": {"visualization": {"kind": "chart"}}})
+        == "chart"
+    )  # noqa: SLF001
+    assert (
+        phase11._actual_artifact_kind({"artifact_result": {"artifact": {"kind": "mermaid"}}})
+        == "mermaid"
+    )  # noqa: SLF001
     assert phase11._actual_artifact_kind({}) == "none"  # noqa: SLF001
-    assert phase11._actual_dataset_summary({  # noqa: SLF001
-        "dataset_manifests": [
-            {"schema_id": "", "source_kind": "ignored"},
-            {"schemaId": "schema-1", "sourceKind": "source-1"},
-        ]
-    }) == (("schema-1",), ("ignored", "source-1"))
+    assert phase11._actual_dataset_summary(
+        {  # noqa: SLF001
+            "dataset_manifests": [
+                {"schema_id": "", "source_kind": "ignored"},
+                {"schemaId": "schema-1", "sourceKind": "source-1"},
+            ]
+        }
+    ) == (("schema-1",), ("ignored", "source-1"))
 
     lineage_case = phase11.Phase11CorpusCase(
         id="case-lineage",
@@ -1010,7 +1112,11 @@ async def test_phase11_run_case_attempt_covers_success_error_and_cleanup(
     monkeypatch.setattr(
         phase11,
         "_build_state_for_case",
-        lambda case, runtime_context, thread_id: {"question": case.prompt, "progress": [], "thread_id": thread_id},
+        lambda case, runtime_context, thread_id: {
+            "question": case.prompt,
+            "progress": [],
+            "thread_id": thread_id,
+        },
     )
     monkeypatch.setattr(
         phase11,
@@ -1051,7 +1157,9 @@ async def test_phase11_run_case_attempt_covers_success_error_and_cleanup(
             "citations": [{"label": "Fonte"}],
         }
 
-    monkeypatch.setattr(phase11, "get_assistant_graph", lambda: SimpleNamespace(ainvoke=_success_invoke))
+    monkeypatch.setattr(
+        phase11, "get_assistant_graph", lambda: SimpleNamespace(ainvoke=_success_invoke)
+    )
 
     def fake_delete_assistant_thread(connection, user_id, thread_id):  # noqa: ANN001
         del connection
@@ -1083,7 +1191,9 @@ async def test_phase11_run_case_attempt_covers_success_error_and_cleanup(
         del state, context
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(phase11, "get_assistant_graph", lambda: SimpleNamespace(ainvoke=_failing_invoke))
+    monkeypatch.setattr(
+        phase11, "get_assistant_graph", lambda: SimpleNamespace(ainvoke=_failing_invoke)
+    )
     monkeypatch.setattr(phase11.time, "perf_counter", iter([2.0, 2.1]).__next__)
 
     failed_attempt, failed_thread_id = await phase11._run_case_attempt(

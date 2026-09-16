@@ -49,9 +49,16 @@ class TrustedProxyMiddleware(BaseHTTPMiddleware):
             return direct_ip
 
         forwarded_for = request.headers.get("x-forwarded-for", "")
-        forwarded_ip = forwarded_for.split(",", maxsplit=1)[0].strip()
-        if _is_ip_address(forwarded_ip):
-            return forwarded_ip
+        chain = [part.strip() for part in forwarded_for.split(",") if part.strip()]
+        # The proxy appends its peer. Discard trusted hops from the right;
+        # the first address on the left may have been supplied by the client.
+        for forwarded_ip in reversed(chain):
+            if not _is_ip_address(forwarded_ip):
+                return direct_ip
+            if not self._is_trusted_proxy(forwarded_ip):
+                return forwarded_ip
+        if chain:
+            return chain[0]
 
         real_ip = request.headers.get("x-real-ip", "").strip()
         if _is_ip_address(real_ip):
@@ -101,6 +108,18 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class NoStoreReportsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        response = await call_next(request)
+        if request.url.path == "/api/reports" or request.url.path.startswith("/api/reports/"):
+            response.headers["Cache-Control"] = "private, no-store"
+        return response
+
+
 class JsonBodyLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, *, max_body_bytes: int, max_json_depth: int = 64) -> None:
         super().__init__(app)
@@ -116,22 +135,30 @@ class JsonBodyLimitMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: RequestResponseEndpoint,
     ) -> Response:
-        if not _should_limit_json_body(request):
+        if request.method.upper() in {"GET", "HEAD", "OPTIONS"}:
             return await call_next(request)
 
+        multipart = request.headers.get("content-type", "").lower().startswith("multipart/")
+        limit = 5 * 1024 * 1024 if multipart else self._max_body_bytes
         content_length = request.headers.get("content-length")
         if content_length is not None and _content_length_exceeds_limit(
             content_length,
-            self._max_body_bytes,
+            limit,
         ):
             return _body_too_large_response()
 
-        body = await request.body()
-        if len(body) > self._max_body_bytes:
-            return _body_too_large_response()
-        if _json_depth_exceeds_limit(body, self._max_json_depth):
+        chunks: list[bytes] = []
+        total = 0
+        async for chunk in request.stream():
+            total += len(chunk)
+            if total > limit:
+                return _body_too_large_response()
+            chunks.append(chunk)
+        body = b"".join(chunks)
+        if not multipart and _json_depth_exceeds_limit(body, self._max_json_depth):
             return _json_too_deep_response()
 
+        request._body = body
         request_receive = _single_body_receive(body)
         request._receive = request_receive
         return await call_next(request)
@@ -158,7 +185,7 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: RequestResponseEndpoint,
     ) -> Response:
-        path = request.url.path
+        path = request.scope["path"]
         if not path.startswith(self._api_prefix) or path.startswith(self._skip_prefixes):
             return await call_next(request)
 

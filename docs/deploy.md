@@ -81,6 +81,13 @@ O workflow principal executa:
 
 Pipeline com jobs explícitos para Node.js e Python, build de imagem backend e deploy script.
 
+O runner precisa ter a chave SSH do destino previamente verificada em
+`~/.ssh/known_hosts`, obtida por um canal independente. O deploy usa o arquivo
+padrao com `StrictHostKeyChecking=yes`; se o host ou a porta não tiverem uma chave
+cadastrada, a conexão falha. O pipeline não descobre chaves durante o deploy.
+Como o job roda em um container efêmero, o runner deve montar ou fornecer esse
+arquivo antes de executar o script.
+
 ---
 
 ## Variáveis de ambiente
@@ -102,6 +109,22 @@ HF_TOKEN=              # Para modelos restritos
 SILO_IMAGE=ghcr.io/... # Imagem publicada
 SILO_ENV=production
 ```
+
+O vLLM não usa autenticação por chave. No Compose de produção, os serviços de
+inferência não publicam portas no host e ficam apenas na rede privada `inference`,
+acessível pela API e pelo worker. No Compose local, as portas publicadas ficam em
+`127.0.0.1` por padrão. Não exponha essas portas em uma interface pública. Se um
+proxy estiver em outra máquina, configure `SILO_BIND_ADDRESS` para uma interface
+privada e restrinja o firewall ao proxy; containers autorizados na rede `inference`
+podem chamar o vLLM sem credencial.
+
+Em 16/09/2026, a imagem fixada em `v0.29.0` ainda está no intervalo afetado pelo
+aviso upstream [GHSA-p6g9-7v3x-m8mv](https://github.com/vllm-project/vllm/security/advisories/GHSA-p6g9-7v3x-m8mv),
+que descreve consumo excessivo de memória e banda ao buscar mídia remota antes de
+aplicar limites. O aviso indica correção em versões posteriores a `0.29.0`, mas
+essa ainda é a versão mais recente publicada. O SILO envia texto simples ao vLLM
+e mantém os serviços de inferência privados; reavalie este risco antes de habilitar
+entrada multimodal ou atualizar a imagem.
 
 ---
 

@@ -30,7 +30,8 @@ BETTER_AUTH_CLEAR_COOKIE_NAMES = (
     "better-auth.dont_remember",
     "__Secure-better-auth.dont_remember",
 )
-SESSION_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
+SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
+SESSION_ABSOLUTE_MAX_AGE_SECONDS = 90 * 24 * 60 * 60
 SESSION_SLIDING_UPDATE_SECONDS = 24 * 60 * 60
 
 
@@ -110,10 +111,21 @@ def get_session_by_token(
         return None
 
     session = _session_from_row(row)
+    absolute_expires_at = session.created_at + timedelta(seconds=SESSION_ABSOLUTE_MAX_AGE_SECONDS)
+    if absolute_expires_at <= now:
+        connection.execute(
+            delete(legacy_tables["session"]).where(
+                legacy_tables["session"].c.id == session.session_id
+            )
+        )
+        _commit_if_possible(connection)
+        return None
     if refresh_sliding and session.updated_at <= now - timedelta(
         seconds=SESSION_SLIDING_UPDATE_SECONDS
     ):
-        refreshed_expires_at = now + timedelta(seconds=SESSION_MAX_AGE_SECONDS)
+        refreshed_expires_at = min(
+            now + timedelta(seconds=SESSION_MAX_AGE_SECONDS), absolute_expires_at
+        )
         session_table = legacy_tables["session"]
         connection.execute(
             update(session_table)
@@ -194,7 +206,7 @@ def set_session_cookie(response: Response, token: str, settings: Settings) -> No
         _cookie_header(
             SESSION_COOKIE_NAME,
             token,
-            max_age=SESSION_MAX_AGE_SECONDS,
+            max_age=SESSION_ABSOLUTE_MAX_AGE_SECONDS,
             secure=settings.silo_env is SiloEnvironment.PRODUCTION,
         ),
     )

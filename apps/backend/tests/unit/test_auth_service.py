@@ -457,8 +457,9 @@ def test_auth_service_email_signup_and_forget_password_flow(auth_env) -> None:
     ).first()
     assert user_group_row is not None
 
-    resend = service.send_sign_up_email_otp(email="new@example.test", ip_address="127.0.0.1")
-    assert resend == {"cooldownSeconds": auth_service.SIGN_UP_COOLDOWN_SECONDS}
+    with pytest.raises(ApiError) as exc_info:
+        service.send_sign_up_email_otp(email="new@example.test", ip_address="127.0.0.1")
+    assert exc_info.value.status_code == 403
 
     with pytest.raises(ApiError) as exc_info:
         service.send_sign_up_email_otp(email="missing@example.test", ip_address="127.0.0.1")
@@ -585,9 +586,7 @@ def test_auth_service_setup_password_and_login_rate_limit_edges(auth_env) -> Non
     assert session is not None
     assert session.user_id == "user-reset-auto"
     session_row = connection.execute(
-        select(tables["session"].c.user_id).where(
-            tables["session"].c.user_id == "user-reset-auto"
-        )
+        select(tables["session"].c.user_id).where(tables["session"].c.user_id == "user-reset-auto")
     ).first()
     assert session_row is not None
 
@@ -662,7 +661,9 @@ def test_auth_service_private_helpers_cover_missing_account_and_update_branches(
         )
 
 
-def test_auth_service_rate_limit_helper_branches_raise_expected_errors(auth_env, monkeypatch) -> None:
+def test_auth_service_rate_limit_helper_branches_raise_expected_errors(
+    auth_env, monkeypatch
+) -> None:
     service, _connection, _tables, _sender = auth_env
 
     monkeypatch.setattr(

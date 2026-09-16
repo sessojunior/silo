@@ -15,6 +15,8 @@ const nextConfig = defineConfig([
   ...nextTypescript,
   {
     rules: {
+      "react-hooks/immutability": "warn",
+      "react-hooks/refs": "warn",
       "react-hooks/set-state-in-effect": "off",
     },
   },

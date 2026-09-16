@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.3.5"
+  },
   "exports": {
     "./eslint/next": "./eslint-config/next.mjs",
     "./eslint/node": "./eslint-config/node.mjs",

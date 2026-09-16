@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import { errorResponse } from "@/lib/api-response";
+import { forwardUpload, mutationHeaders } from "@/lib/upload-proxy";
 
 export const runtime = "nodejs";
 
@@ -11,47 +12,7 @@ export const runtime = "nodejs";
  * ao reescrever para o backend. Esta rota encaminha o upload diretamente.
  */
 export async function POST(req: NextRequest) {
-  const sessionCookie = req.cookies.get("silo_session")?.value?.trim();
-  if (!sessionCookie) {
-    return errorResponse("Usuário não autenticado.", 401);
-  }
-
-  try {
-    const bodyBuffer = await req.arrayBuffer();
-
-    const backendUrl = config.getApiUrl("/api/users/profile-image");
-    const forwardHeaders = new Headers();
-    const cookieHeader = req.headers.get("cookie");
-    if (cookieHeader) {
-      forwardHeaders.set("cookie", cookieHeader);
-    }
-    forwardHeaders.set(
-      "content-type",
-      req.headers.get("content-type") ?? "multipart/form-data",
-    );
-    forwardHeaders.set("accept", "application/json");
-
-    const upstream = await fetch(backendUrl, {
-      method: "POST",
-      headers: forwardHeaders,
-      body: bodyBuffer,
-    });
-
-    const payload: unknown = await upstream.json().catch(() => null);
-
-    if (!upstream.ok) {
-      const message =
-        (payload && typeof payload === "object" && "error" in payload
-          ? String((payload as Record<string, unknown>).error)
-          : null) ?? `Erro no upload: ${upstream.status}`;
-      return errorResponse(message, upstream.status);
-    }
-
-    return NextResponse.json(payload, { status: upstream.status });
-  } catch (error) {
-    console.error("[profile-image-route] Erro ao encaminhar upload:", error);
-    return errorResponse("Erro ao processar upload.", 502);
-  }
+  return forwardUpload(req, "/api/users/profile-image");
 }
 
 /**
@@ -64,11 +25,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    const cookieHeader = req.headers.get("cookie");
-    const forwardHeaders = new Headers();
-    if (cookieHeader) {
-      forwardHeaders.set("cookie", cookieHeader);
-    }
+    const forwardHeaders = mutationHeaders(req);
 
     const upstream = await fetch(
       config.getApiUrl("/api/users/profile-image"),

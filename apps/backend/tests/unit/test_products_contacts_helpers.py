@@ -2,7 +2,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, JSON, MetaData, String, Table, create_engine, select
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    JSON,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    select,
+)
 
 from silo.api.routers import contacts as contacts_router
 from silo.api.routers import products as products_router
@@ -15,9 +25,17 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
 
     deleted_uploads: list[tuple[str, str]] = []
     monkeypatch.setattr(products_router, "legacy_tables", tables)
-    monkeypatch.setattr(products_router, "delete_upload_file", lambda kind, filename: deleted_uploads.append((kind, filename)) or True)
-    monkeypatch.setattr(products_router, "is_upload_kind", lambda kind: kind in {"manual", "problems", "solutions"})
-    monkeypatch.setattr(products_router, "is_safe_filename", lambda filename: filename != "bad.webp")
+    monkeypatch.setattr(
+        products_router,
+        "delete_upload_file",
+        lambda kind, filename: deleted_uploads.append((kind, filename)) or True,
+    )
+    monkeypatch.setattr(
+        products_router, "is_upload_kind", lambda kind: kind in {"manual", "problems", "solutions"}
+    )
+    monkeypatch.setattr(
+        products_router, "is_safe_filename", lambda filename: filename != "bad.webp"
+    )
 
     with engine.begin() as connection:
         connection.execute(
@@ -32,8 +50,6 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
                     "turns": ["0", "6"],
                     "description": "Alpha product",
                     "url_product_flow": "https://example.test/alpha",
-                    "created_at": datetime(2026, 7, 23, 12, 0, 0),
-                    "updated_at": datetime(2026, 7, 23, 12, 0, 0),
                 },
                 {
                     "id": "product-2",
@@ -44,8 +60,6 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
                     "turns": ["12"],
                     "description": "Beta product",
                     "url_product_flow": "https://example.test/beta",
-                    "created_at": datetime(2026, 7, 23, 12, 0, 0),
-                    "updated_at": datetime(2026, 7, 23, 12, 0, 0),
                 },
                 {
                     "id": "product-3",
@@ -56,8 +70,6 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
                     "turns": ["18"],
                     "description": "Beef product",
                     "url_product_flow": "https://example.test/beef",
-                    "created_at": datetime(2026, 7, 23, 12, 0, 0),
-                    "updated_at": datetime(2026, 7, 23, 12, 0, 0),
                 },
             ],
         )
@@ -188,8 +200,12 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
         deleted = products_router._delete_product(connection, "product-1")  # noqa: SLF001
         missing_delete = products_router._delete_product(connection, "missing")  # noqa: SLF001
 
-        remaining_product = connection.execute(select(tables["product"].c.id).where(tables["product"].c.id == "product-1")).first()
-        remaining_history = connection.execute(select(tables["product_activity_history"].c.id)).first()
+        remaining_product = connection.execute(
+            select(tables["product"].c.id).where(tables["product"].c.id == "product-1")
+        ).first()
+        remaining_history = connection.execute(
+            select(tables["product_activity_history"].c.id)
+        ).first()
         remaining_manual = connection.execute(select(tables["product_manual"].c.id)).first()
 
     assert slug_listing["total"] == 1
@@ -226,7 +242,6 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
         ("solutions", "solution-1.webp"),
     ]
     assert isinstance(products_router._new_uuid(), str)  # noqa: SLF001
-    assert isinstance(products_router._now_naive(), datetime)  # noqa: SLF001
 
 
 def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) -> None:
@@ -236,9 +251,15 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
 
     deleted_uploads: list[tuple[str, str]] = []
     monkeypatch.setattr(contacts_router, "legacy_tables", tables)
-    monkeypatch.setattr(contacts_router, "delete_upload_file", lambda kind, filename: deleted_uploads.append((kind, filename)) or True)
+    monkeypatch.setattr(
+        contacts_router,
+        "delete_upload_file",
+        lambda kind, filename: deleted_uploads.append((kind, filename)) or True,
+    )
     monkeypatch.setattr(contacts_router, "is_upload_kind", lambda kind: kind == "avatars")
-    monkeypatch.setattr(contacts_router, "is_safe_filename", lambda filename: filename != "bad.webp")
+    monkeypatch.setattr(
+        contacts_router, "is_safe_filename", lambda filename: filename != "bad.webp"
+    )
 
     with engine.begin() as connection:
         connection.execute(
@@ -275,7 +296,9 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
 
     with engine.connect() as connection:
         listed_active = contacts_router._list_contacts(connection, search="ana", status="active")  # noqa: SLF001
-        listed_inactive = contacts_router._list_contacts(connection, search="ops", status="inactive")  # noqa: SLF001
+        listed_inactive = contacts_router._list_contacts(
+            connection, search="ops", status="inactive"
+        )  # noqa: SLF001
         created = contacts_router._create_contact(  # noqa: SLF001
             connection,
             {
@@ -297,8 +320,12 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
                 "email": "ana@example.test",
             },
         )
-        invalid_email = contacts_router._create_contact(connection, {"name": "Dan", "role": "QA", "team": "Ops", "email": 42})  # noqa: SLF001
-        invalid_data = contacts_router._create_contact(connection, {"name": "Dan", "role": "QA", "team": "Ops", "email": "   "})  # noqa: SLF001
+        invalid_email = contacts_router._create_contact(
+            connection, {"name": "Dan", "role": "QA", "team": "Ops", "email": 42}
+        )  # noqa: SLF001
+        invalid_data = contacts_router._create_contact(
+            connection, {"name": "Dan", "role": "QA", "team": "Ops", "email": "   "}
+        )  # noqa: SLF001
 
         contacts_router.select_now(connection)  # noqa: SLF001
 
@@ -337,8 +364,14 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
         deleted = contacts_router._delete_contact(connection, "contact-1")  # noqa: SLF001
         missing_delete = contacts_router._delete_contact(connection, "missing")  # noqa: SLF001
 
-        remaining_contact = connection.execute(select(tables["contact"].c.id).where(tables["contact"].c.id == "contact-1")).first()
-        remaining_link = connection.execute(select(tables["product_contact"].c.id).where(tables["product_contact"].c.contact_id == "contact-1")).first()
+        remaining_contact = connection.execute(
+            select(tables["contact"].c.id).where(tables["contact"].c.id == "contact-1")
+        ).first()
+        remaining_link = connection.execute(
+            select(tables["product_contact"].c.id).where(
+                tables["product_contact"].c.contact_id == "contact-1"
+            )
+        ).first()
 
     assert listed_active["items"][0]["id"] == "contact-1"
     assert listed_active["total"] == 1
@@ -373,8 +406,6 @@ def _make_products_tables(metadata: MetaData) -> dict[str, Table]:
         Column("turns", JSON, nullable=False),
         Column("description", String, nullable=True),
         Column("url_product_flow", String, nullable=True),
-        Column("created_at", DateTime, nullable=False),
-        Column("updated_at", DateTime, nullable=False),
     )
     product_activity = Table(
         "product_activity",

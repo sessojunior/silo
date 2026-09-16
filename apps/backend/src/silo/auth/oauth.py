@@ -282,7 +282,11 @@ def _find_or_create_google_user(
 
     user_table = legacy_tables["user"]
     user = (
-        connection.execute(select(user_table.c.id).where(user_table.c.email == identity.email))
+        connection.execute(
+            select(user_table.c.id, user_table.c.is_active).where(
+                user_table.c.email == identity.email
+            )
+        )
         .mappings()
         .first()
     )
@@ -303,13 +307,14 @@ def _find_or_create_google_user(
         )
         _ensure_default_group(connection, user_id=user_id, now=now)
     else:
+        if not user["is_active"]:
+            raise ValueError("inactive accounts cannot be linked to Google")
         user_id = str(user["id"])
         connection.execute(
             update(user_table)
             .where(user_table.c.id == user_id)
             .values(
                 email_verified=True,
-                is_active=True,
                 image=identity.picture,
                 updated_at=now,
             )

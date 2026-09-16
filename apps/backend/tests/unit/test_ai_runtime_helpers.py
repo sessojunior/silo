@@ -67,7 +67,6 @@ def test_message_and_token_helpers_cover_core_branches(monkeypatch: pytest.Monke
     monkeypatch.setattr(assistant_runtime, "ChatOpenAI", _FakeChatOpenAI)
     settings = VLLMSettings(
         url="http://vllm.local:8000/v1",
-        api_key="k",
         model="chat-model",
         embedding_model="embed-model",
         timeout_ms=500,
@@ -80,7 +79,6 @@ def test_message_and_token_helpers_cover_core_branches(monkeypatch: pytest.Monke
     slower_runtime = assistant_runtime.VLLMModelRuntime(
         VLLMSettings(
             url="http://vllm.local:8000/v1",
-            api_key="k",
             model="chat-model",
             embedding_model="embed-model",
             timeout_ms=70_000,
@@ -105,13 +103,14 @@ def test_message_and_token_helpers_cover_core_branches(monkeypatch: pytest.Monke
 
 
 @pytest.mark.asyncio
-async def test_model_and_embedding_runtimes_cover_stream_and_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_model_and_embedding_runtimes_cover_stream_and_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(assistant_runtime, "ChatOpenAI", _FakeChatOpenAI)
     monkeypatch.setattr(assistant_runtime, "OpenAIEmbeddings", _FakeEmbeddings)
 
     settings = VLLMSettings(
         url="http://vllm.local:8000/v1",
-        api_key="k",
         model="chat-model",
         embedding_model="embed-model",
         timeout_ms=2_000,

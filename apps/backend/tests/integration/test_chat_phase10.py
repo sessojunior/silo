@@ -169,6 +169,7 @@ def _build_chat_integration_app(
     monkeypatch.setattr(chat_service, "get_chat_access_state", lambda _db, _user_id: allow_all_access)
     monkeypatch.setattr(chat_service, "legacy_local_now", lambda: FIXED_NOW)
     monkeypatch.setattr(chat_module, "get_chat_access_state", lambda _db, _user_id: allow_all_access)
+    monkeypatch.setattr(chat_module, "_websocket_authorized", lambda _db, _token, _user_id: True)
     monkeypatch.setattr(chat_module, "_authenticate_websocket", _authenticate_websocket_override)
     monkeypatch.setattr(chat_module, "legacy_local_now", lambda: FIXED_NOW)
 
@@ -181,6 +182,10 @@ def _headers(user_id: str) -> dict[str, str]:
         "x-test-user-id": user_id,
         "x-request-id": f"test-{user_id}",
     }
+
+
+def _websocket_headers(user_id: str) -> dict[str, str]:
+    return {**_headers(user_id), "Origin": "http://localhost:3000"}
 
 
 def _assert_event(websocket, expected_type: str) -> dict[str, Any]:
@@ -237,14 +242,18 @@ def test_chat_phase10_end_to_end_flow_with_two_tabs_and_receipts(
         partial_headers = _headers(PARTIAL_ID)
         admin_headers = _headers(ADMIN_ID)
 
-        with client.websocket_connect("/api/chat/ws", headers=partial_headers) as partial_ws:
+        with client.websocket_connect(
+            "/api/chat/ws", headers=_websocket_headers(PARTIAL_ID)
+        ) as partial_ws:
             partial_presence = _assert_event(partial_ws, "chat.presence.updated")
             partial_connected = _assert_event(partial_ws, "chat.connected")
             assert partial_presence["data"]["userId"] == PARTIAL_ID
             assert partial_presence["data"]["status"] == "visible"
             assert partial_connected["data"]["userId"] == PARTIAL_ID
 
-            with client.websocket_connect("/api/chat/ws", headers=admin_headers) as admin_a_ws:
+            with client.websocket_connect(
+                "/api/chat/ws", headers=_websocket_headers(ADMIN_ID)
+            ) as admin_a_ws:
                 admin_a_presence = _assert_event(admin_a_ws, "chat.presence.updated")
                 admin_a_connected = _assert_event(admin_a_ws, "chat.connected")
                 assert admin_a_presence["data"]["userId"] == ADMIN_ID
@@ -255,7 +264,9 @@ def test_chat_phase10_end_to_end_flow_with_two_tabs_and_receipts(
                 assert partial_admin_visible["data"]["userId"] == ADMIN_ID
                 assert partial_admin_visible["data"]["status"] == "visible"
 
-                with client.websocket_connect("/api/chat/ws", headers=admin_headers) as admin_b_ws:
+                with client.websocket_connect(
+                    "/api/chat/ws", headers=_websocket_headers(ADMIN_ID)
+                ) as admin_b_ws:
                     admin_b_connected = _assert_event(admin_b_ws, "chat.connected")
                     assert admin_b_connected["data"]["userId"] == ADMIN_ID
 
@@ -364,7 +375,9 @@ def test_chat_phase10_end_to_end_flow_with_two_tabs_and_receipts(
     client.app.state.chat_realtime_hub._connections.clear()
     client.app.state.chat_realtime_hub._connection_counts.clear()
     time.sleep(0.2)
-    with client.websocket_connect("/api/chat/ws", headers=admin_headers) as admin_reconnect_ws:
+    with client.websocket_connect(
+        "/api/chat/ws", headers=_websocket_headers(ADMIN_ID)
+    ) as admin_reconnect_ws:
         reconnect_event = admin_reconnect_ws.receive_json()
         assert reconnect_event["type"] in {"chat.presence.updated", "chat.connected"}
         if reconnect_event["type"] == "chat.presence.updated":
@@ -401,7 +414,9 @@ def test_chat_phase10_soak_repeated_connect_disconnect_keeps_hub_and_pool_empty(
         user_headers = _headers(ADMIN_ID)
 
         for index in range(25):
-            with client.websocket_connect("/api/chat/ws", headers=user_headers) as websocket:
+            with client.websocket_connect(
+                "/api/chat/ws", headers=_websocket_headers(ADMIN_ID)
+            ) as websocket:
                 presence_event = _assert_event(websocket, "chat.presence.updated")
                 connected_event = _assert_event(websocket, "chat.connected")
                 assert presence_event["data"]["userId"] == ADMIN_ID

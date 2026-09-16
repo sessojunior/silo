@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import secrets
 from dataclasses import dataclass
+from collections.abc import Mapping
 from datetime import timedelta
 from enum import StrEnum
 from uuid import uuid4
@@ -297,6 +298,7 @@ class AuthService:
         user = self._find_user_by_email(email)
         if user is None:
             raise ApiError(status_code=404, error="E-mail inexistente.", field="email")
+        self._ensure_pending_registration(user)
         self._enforce_cooldown(
             email=email,
             ip_address=ip_address,
@@ -333,6 +335,7 @@ class AuthService:
         user = self._find_user_by_email(email)
         if user is None:
             raise ApiError(status_code=404, error="E-mail inexistente.", field="email")
+        self._ensure_pending_registration(user)
         if not self._consume_valid_otp(email=email, code=code, flow=OtpFlow.SIGN_UP_EMAIL):
             self._record_otp_attempt_or_lockout(
                 email=email,
@@ -377,6 +380,7 @@ class AuthService:
                 route=FORGET_PASSWORD_WRONG_EMAIL_ROUTE,
             )
             raise ApiError(status_code=404, error="E-mail inexistente.", field="email")
+        self._ensure_active_user(user)
         self._enforce_cooldown(
             email=email,
             ip_address=ip_address,
@@ -434,6 +438,7 @@ class AuthService:
         user = self._find_user_by_email(email)
         if user is None:
             raise ApiError(status_code=404, error="E-mail inexistente.", field="email")
+        self._ensure_active_user(user)
 
         attempts = self._otp_attempt_count(email=email, flow=OtpFlow.FORGET_PASSWORD)
         if attempts >= OTP_MAX_ATTEMPTS:
@@ -463,9 +468,12 @@ class AuthService:
         self.connection.execute(
             update(user_table)
             .where(user_table.c.id == user["id"])
-            .values(email_verified=True, is_active=True, updated_at=now)
+            .values(email_verified=True, updated_at=now)
         )
         self._ensure_default_group(user_id=str(user["id"]), now=now)
+        self.connection.execute(
+            delete(legacy_tables["session"]).where(legacy_tables["session"].c.user_id == user["id"])
+        )
         self._clear_otp_attempts(email=email, flow=OtpFlow.FORGET_PASSWORD)
         clear_auth_rate_limit_for_email(
             self.connection, email=email, routes=ALL_AUTH_RATE_LIMIT_ROUTES
@@ -598,12 +606,14 @@ class AuthService:
         identifier = self._otp_identifier(email=email, flow=flow)
         row = (
             self.connection.execute(
-                select(verification_table.c.id, verification_table.c.value).where(
+                select(verification_table.c.id, verification_table.c.value)
+                .where(
                     and_(
                         verification_table.c.identifier == identifier,
                         verification_table.c.expires_at > now,
                     )
                 )
+                .with_for_update()
             )
             .mappings()
             .first()
@@ -838,6 +848,23 @@ class AuthService:
             ensure_allowed_email_domain(email, self.settings.allowed_email_domains)
         except AuthInputError as exc:
             raise ApiError(status_code=400, error=ALLOWED_DOMAIN_ERROR, field=exc.field) from exc
+
+    def _ensure_active_user(self, user: Mapping[str, object]) -> None:
+        if not bool(user["is_active"]):
+            raise ApiError(status_code=403, error="Usuário inativo. Contate o administrador.")
+
+    def _ensure_pending_registration(self, user: Mapping[str, object]) -> None:
+        # Only the original, unfinished registration may activate an account.
+        # Administrative suspension removes its verification records as well.
+        verification = legacy_tables["verification"]
+        pending = self.connection.execute(
+            select(verification.c.id).where(
+                verification.c.identifier
+                == self._otp_identifier(email=str(user["email"]), flow=OtpFlow.SIGN_UP_EMAIL)
+            )
+        ).first()
+        if bool(user["email_verified"]) or bool(user["is_active"]) or pending is None:
+            raise ApiError(status_code=403, error="Cadastro não está aguardando confirmação.")
 
     def _otp_identifier(self, *, email: str, flow: OtpFlow) -> str:
         return f"silo:otp:{flow.value}:{email}"

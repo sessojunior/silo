@@ -2,8 +2,10 @@ services:
   db:
     image: ${SILO_POSTGRES_IMAGE:-pgvector/pgvector:pg17@sha256:f193b9c848deb27b0e892f85ed07b53fd83ccb1feb634ba415b1cdc44411bedc}
     container_name: silo-db
+    networks:
+      - backend
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${SILO_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-silo}
       POSTGRES_USER: ${POSTGRES_USER:-silo}
@@ -23,15 +25,17 @@ services:
 
   vllm:
     # Imagem CPU oficial: roda em qualquer maquina, sem GPU (mais lento).
-    # Para GPU NVIDIA, defina no .env: SILO_VLLM_IMAGE=vllm/vllm-openai:v0.11.2
+    # Para GPU NVIDIA, defina no .env a imagem vLLM 0.29.0 ou superior.
     # e descomente o bloco `deploy` abaixo.
-    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai-cpu:v0.27.1-x86_64}
+    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}
     container_name: silo-vllm
+    networks:
+      - inference
     # vLLM usa /dev/shm para comunicao entre processos; o padrao do
     # Docker Desktop (64 MB) e insuficiente ("Insufficient space in /dev/shm").
     shm_size: "2gb"
     ports:
-      - "${VLLM_PORT:-8000}:8000"
+      - "${SILO_BIND_ADDRESS:-127.0.0.1}:${VLLM_PORT:-8000}:8000"
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
       VLLM_LOGGING_LEVEL: ${LOG_LEVEL:-INFO}
@@ -65,11 +69,13 @@ services:
   vllm-embed:
     # vLLM serve um modelo por instancia; este servico dedicado atende o
     # modelo de embedding (cache semantico do assistente de IA).
-    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai-cpu:v0.27.1-x86_64}
+    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}
     container_name: silo-vllm-embed
+    networks:
+      - inference
     shm_size: "2gb"
     ports:
-      - "${VLLM_EMBED_PORT:-8001}:8000"
+      - "${SILO_BIND_ADDRESS:-127.0.0.1}:${VLLM_EMBED_PORT:-8001}:8000"
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
       VLLM_LOGGING_LEVEL: ${LOG_LEVEL:-INFO}
@@ -144,6 +150,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - backend
     restart: "no"
 
   api:
@@ -154,7 +162,7 @@ services:
     image: silo-api-python
     container_name: silo-api-python
     ports:
-      - "${API_PORT:-4000}:4000"
+      - "${SILO_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-4000}:4000"
     command: ["uvicorn", "silo.api.main:app", "--host", "0.0.0.0", "--port", "4000"]
     environment:
       SILO_ENV: ${SILO_ENV:-development}
@@ -208,6 +216,10 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
+    networks:
+      - frontend
+      - backend
+      - inference
     healthcheck:
       test:
         [
@@ -254,6 +266,9 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
+    networks:
+      - backend
+      - inference
     healthcheck:
       test: ["CMD", "python", "-m", "silo.worker.healthcheck"]
       interval: 10s
@@ -277,7 +292,7 @@ services:
     image: silo-web
     container_name: silo-web
     ports:
-      - "${SILO_HOST_PORT:-80}:3000"
+      - "${SILO_BIND_ADDRESS:-127.0.0.1}:${SILO_HOST_PORT:-80}:3000"
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       API_URL: http://api:4000
@@ -293,7 +308,6 @@ services:
         condition: service_healthy
     networks:
       - frontend
-      - default
     stop_grace_period: 45s
     mem_limit: 1g
     cpus: "1.0"
@@ -311,4 +325,8 @@ volumes:
 
 networks:
   frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+  inference:
     driver: bridge

@@ -4,9 +4,14 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.formparsers import MultiPartException
 
-from silo.api.dependencies import get_current_user, require_admin
+from silo.api.dependencies import get_current_user, require_admin, require_upload_access
 from silo.api.responses import build_success_payload, json_error_response
-from silo.api.upload_io import is_multipart_content_type, parse_multipart_form, read_upload_bytes, select_upload_from_form
+from silo.api.upload_io import (
+    is_multipart_content_type,
+    parse_multipart_form,
+    read_upload_bytes,
+    select_upload_from_form,
+)
 from silo.storage.uploads import (
     MAX_FILE_SIZE_BYTES,
     delete_upload_file,
@@ -80,7 +85,7 @@ async def upload_file(
 async def serve_upload(
     kind: str,
     filename: str,
-    _current_user: object = Depends(get_current_user),
+    _current_user: object = Depends(require_upload_access),
 ):
     normalized_kind = _normalize_kind(kind)
     if not is_upload_kind(normalized_kind) or not is_safe_filename(filename):
@@ -93,7 +98,7 @@ async def serve_upload(
     return FileResponse(
         file_path,
         media_type=get_content_type_from_filename(filename),
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
         filename=filename,
     )
 

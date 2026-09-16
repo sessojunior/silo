@@ -40,7 +40,6 @@ export async function proxy(req: NextRequest) {
   // Caminho relativo a aplicacao: o Next.js aplica o basePath ao Location do
   // redirect. Usar getPublicPath aqui duplicaria o prefixo (/silo/silo/login).
   const loginPath = "/login";
-  const smokeMode = req.cookies.get("silo_smoke_mode")?.value === "1";
 
   const requiresSessionCookie =
     routePath === "/" ||
@@ -51,7 +50,7 @@ export async function proxy(req: NextRequest) {
   const sessionCookie = requiresSessionCookie ? req.cookies.get(SESSION_COOKIE_NAME)?.value?.trim() ?? null : null;
 
   if (routePath === "/") {
-    if (!sessionCookie && !smokeMode) {
+    if (!sessionCookie) {
       const url = req.nextUrl.clone();
       url.pathname = loginPath;
       return NextResponse.redirect(url);
@@ -61,7 +60,7 @@ export async function proxy(req: NextRequest) {
 
   // Proteção de páginas administrativas
   if (routePath.startsWith("/admin")) {
-    if (!sessionCookie && !smokeMode) {
+    if (!sessionCookie) {
       const url = req.nextUrl.clone();
       url.pathname = loginPath;
       return NextResponse.redirect(url);

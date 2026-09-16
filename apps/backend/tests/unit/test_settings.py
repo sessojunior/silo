@@ -301,6 +301,7 @@ def test_production_settings_validate_when_required_variables_exist() -> None:
     assert settings.session_secret.get_secret_value() == "session-secret"
     assert settings.ai_agent_mode.value == "deterministic"
     assert settings.langsmith_tracing is False
+    assert not hasattr(settings.vllm, "api_key")
 
 
 def test_production_rejects_langsmith_tracing_without_approval() -> None:

@@ -1,10 +1,20 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import Request, Response
-from sqlalchemy import Boolean, Column, DateTime, MetaData, String, Table, create_engine, insert, select
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    insert,
+    select,
+)
 from starlette.datastructures import Headers
 
 import silo.auth.sessions as sessions_module
@@ -55,7 +65,7 @@ def test_session_cookie_attrs_are_dual_runtime_safe() -> None:
     set_session_cookie(response, "token", settings)
 
     assert response.headers.get("set-cookie") == (
-        f"{SESSION_COOKIE_NAME}=token; Max-Age={365 * 24 * 60 * 60}; Path=/; HttpOnly; SameSite=Lax"
+        f"{SESSION_COOKIE_NAME}=token; Max-Age={sessions_module.SESSION_ABSOLUTE_MAX_AGE_SECONDS}; Path=/; HttpOnly; SameSite=Lax"
     )
 
 
@@ -89,7 +99,9 @@ def test_clear_auth_cookies_expires_python_and_better_auth_cookies() -> None:
     assert "Secure" in set_cookie
 
 
-def test_session_lookup_refreshes_sliding_window_and_commits(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_session_lookup_refreshes_sliding_window_and_commits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     tables = _build_session_tables(engine)
     monkeypatch.setattr(sessions_module, "legacy_tables", tables)
@@ -134,7 +146,7 @@ def test_session_lookup_refreshes_sliding_window_and_commits(monkeypatch: pytest
                     "ip_address": None,
                     "user_agent": None,
                     "user_id": "user-1",
-                }
+                },
             ],
         )
 
@@ -143,19 +155,68 @@ def test_session_lookup_refreshes_sliding_window_and_commits(monkeypatch: pytest
         assert session is not None
         assert session.session_id == "session-1"
         assert session.updated_at == expected_now
-        assert session.expires_at == expected_now.replace(year=expected_now.year + 1)
+        assert session.expires_at == expected_now + timedelta(
+            seconds=sessions_module.SESSION_MAX_AGE_SECONDS
+        )
 
-        row = connection.execute(
-            select(
-                tables["session"].c.updated_at,
-                tables["session"].c.expires_at,
-            ).where(tables["session"].c.token == "session-token")
-        ).mappings().one()
+        row = (
+            connection.execute(
+                select(
+                    tables["session"].c.updated_at,
+                    tables["session"].c.expires_at,
+                ).where(tables["session"].c.token == "session-token")
+            )
+            .mappings()
+            .one()
+        )
         assert row["updated_at"] == expected_now
-        assert row["expires_at"] == expected_now.replace(year=expected_now.year + 1)
+        assert row["expires_at"] == expected_now + timedelta(
+            seconds=sessions_module.SESSION_MAX_AGE_SECONDS
+        )
 
 
-def test_session_lookup_cleans_expired_rows_and_clear_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_session_lookup_enforces_an_absolute_lifetime(monkeypatch: pytest.MonkeyPatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    tables = _build_session_tables(engine)
+    monkeypatch.setattr(sessions_module, "legacy_tables", tables)
+    now = datetime(2026, 7, 22, 12, 0, 0)
+    monkeypatch.setattr(sessions_module, "legacy_local_now", lambda _clock=None: now)
+
+    with engine.begin() as connection:
+        connection.execute(
+            insert(tables["user"]).values(
+                id="user-1",
+                name="User One",
+                email="user@example.test",
+                email_verified=True,
+                image=None,
+                created_at=now - timedelta(days=120),
+                updated_at=now - timedelta(days=120),
+                is_active=True,
+            )
+        )
+        connection.execute(
+            insert(tables["session"]).values(
+                id="old-session",
+                expires_at=now + timedelta(days=30),
+                token="old-session-token",
+                created_at=now
+                - timedelta(seconds=sessions_module.SESSION_ABSOLUTE_MAX_AGE_SECONDS),
+                updated_at=now - timedelta(days=1),
+                ip_address=None,
+                user_agent=None,
+                user_id="user-1",
+            )
+        )
+
+    with engine.connect() as connection:
+        assert get_session_by_token(connection, "old-session-token") is None
+        assert connection.execute(select(tables["session"].c.id)).first() is None
+
+
+def test_session_lookup_cleans_expired_rows_and_clear_helpers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     tables = _build_session_tables(engine)
     monkeypatch.setattr(sessions_module, "legacy_tables", tables)
@@ -195,10 +256,7 @@ def test_session_lookup_cleans_expired_rows_and_clear_helpers(monkeypatch: pytes
 
     with engine.connect() as connection:
         assert get_session_by_token(connection, "expired-token", clock=clock) is None
-        assert (
-            connection.execute(select(tables["session"].c.id)).all()
-            == []
-        )
+        assert connection.execute(select(tables["session"].c.id)).all() == []
 
         connection.execute(
             insert(tables["session"]),

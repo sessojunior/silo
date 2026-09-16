@@ -291,6 +291,7 @@ async def post_messages_read(
                 {
                     "type": "chat.messages.read",
                     "data": {
+                        "actorUserId": current_user.id,
                         "targetId": target_id,
                         "targetType": target_type,
                         "readAt": result["read_at"],
@@ -336,6 +337,7 @@ async def _handle_single_message_read(
                 {
                     "type": "chat.message.read",
                     "data": {
+                        "actorUserId": current_user.id,
                         "messageId": result["message_id"],
                         "targetId": result["target_id"],
                         "targetType": result["target_type"],
@@ -408,6 +410,7 @@ async def delete_message_route(
             {
                 "type": "chat.message.deleted",
                 "data": {
+                    "actorUserId": current_user.id,
                     "messageId": result["message_id"],
                     "targetId": result["target_id"],
                     "targetType": result["target_type"],
@@ -680,9 +683,19 @@ async def post_status(
 @router.websocket("/ws")
 async def websocket_chat(websocket: WebSocket) -> None:
     request_id = websocket.headers.get("x-request-id") or str(uuid4())
+    origin = websocket.headers.get("origin")
+    settings = load_settings()
+    trusted_origins = set(settings.cors_origins)
+    trusted_origins.add(settings.app_url_dev)
+    if settings.app_url_prod:
+        trusted_origins.add(settings.app_url_prod)
+    if not origin or origin.rstrip("/") not in {value.rstrip("/") for value in trusted_origins}:
+        await websocket.close(code=1008, reason="Origem não autorizada.")
+        return
     engine = _get_engine_from_app(websocket.app)
 
     with engine.connect() as db:
+        token = extract_session_token_from_cookies(websocket.cookies)
         current_user = _authenticate_websocket(websocket, db)
         if current_user is None:
             await websocket.close(code=1008, reason="Usuário não autenticado.")
@@ -699,6 +712,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
             websocket,
             user_id=current_user.id,
             request_id=request_id,
+            authorization_check=lambda: _websocket_authorized(db, token, current_user.id),
         )
 
         try:
@@ -799,6 +813,15 @@ def _authenticate_websocket(websocket: WebSocket, db: Connection) -> CurrentUser
         name=session.user_name,
         is_active=True,
     )
+
+
+def _websocket_authorized(db: Connection, token: str | None, user_id: str) -> bool:
+    if not token:
+        return False
+    session = get_session_by_token(db, token, refresh_sliding=False)
+    if session is None or session.user_id != user_id:
+        return False
+    return get_chat_access_state(db, user_id).can_view_chat
 
 
 def _get_engine_from_app(app: Any) -> Engine:

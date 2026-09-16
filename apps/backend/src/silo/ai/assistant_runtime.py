@@ -10,10 +10,24 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+)
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-from silo.ai.ports import AiRuntimeProbe, ChatMessage, ChatModelRuntime, ChatPort, ChatResponse, EmbeddingPort, RuntimeMode
+from silo.ai.ports import (
+    AiRuntimeProbe,
+    ChatMessage,
+    ChatModelRuntime,
+    ChatPort,
+    ChatResponse,
+    EmbeddingPort,
+    RuntimeMode,
+)
 from silo.config import VLLMSettings, Settings
 from silo.clock import SYSTEM_CLOCK, Clock
 
@@ -21,6 +35,8 @@ DEFAULT_CHAT_TIMEOUT_SECONDS = 300.0  # CPU sem GPU e lento; tolerar geracoes lo
 DEFAULT_EMBEDDING_TIMEOUT_SECONDS = 120.0
 EMBEDDING_VECTOR_SIZE = 768
 EMBEDDING_CACHE_MAX_SIZE = 256
+# The OpenAI SDK requires a value even when this local vLLM server has no auth.
+VLLM_OPENAI_COMPAT_PLACEHOLDER = "not-needed"
 
 
 def _embedding_base_url(settings: VLLMSettings) -> str:
@@ -56,7 +72,9 @@ def _coerce_text(value: object) -> str:
     return str(value)
 
 
-def _ensure_finite_vector(values: Sequence[float], *, allow_zero_vector: bool = False) -> tuple[float, ...]:
+def _ensure_finite_vector(
+    values: Sequence[float], *, allow_zero_vector: bool = False
+) -> tuple[float, ...]:
     if len(values) != EMBEDDING_VECTOR_SIZE:
         raise ValueError(
             f"Embedding deve ter exatamente {EMBEDDING_VECTOR_SIZE} dimensões; "
@@ -120,7 +138,7 @@ class VLLMModelRuntime(ChatModelRuntime):
         self._model = ChatOpenAI(
             model=self.settings.model,
             base_url=self.settings.url,
-            api_key=self.settings.api_key,
+            api_key=VLLM_OPENAI_COMPAT_PLACEHOLDER,
             temperature=0,
             # O modelo CPU pequeno pode entrar em loop de JSON quando recebe
             # espaço excessivo; 256 mantém respostas completas e limita a espera.
@@ -140,7 +158,9 @@ class VLLMModelRuntime(ChatModelRuntime):
                 else:
                     yield _coerce_text(getattr(chunk, "content", chunk))
 
-    async def complete_with_metadata(self, messages: Sequence[ChatMessage]) -> tuple[ChatResponse, ChatCompletionTelemetry]:
+    async def complete_with_metadata(
+        self, messages: Sequence[ChatMessage]
+    ) -> tuple[ChatResponse, ChatCompletionTelemetry]:
         async with self.semaphore:
             started_at = time.perf_counter()
             ai_message = await asyncio.wait_for(
@@ -177,7 +197,7 @@ class VLLMEmbeddingRuntime(EmbeddingPort):
         self._embeddings = OpenAIEmbeddings(
             model=self.settings.embedding_model,
             base_url=_embedding_base_url(self.settings),
-            api_key=self.settings.api_key,
+            api_key=VLLM_OPENAI_COMPAT_PLACEHOLDER,
             # Sem isso o langchain tokeniza com tiktoken (cl100k) e envia ids
             # de token no campo `input`; o vllm valida contra o vocabulario
             # do modelo de embedding e responde 400 ("Token id X is out of

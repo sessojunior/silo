@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -27,6 +27,7 @@ class ChatSocketState:
     user_id: str
     request_id: str
     last_pong_at: datetime
+    authorization_check: Callable[[], bool] | None = None
     closing: bool = False
 
 
@@ -72,13 +73,21 @@ class ChatRealtimeHub:
             self._connections.clear()
             self._connection_counts.clear()
 
-    async def register(self, websocket: WebSocket, *, user_id: str, request_id: str) -> bool:
+    async def register(
+        self,
+        websocket: WebSocket,
+        *,
+        user_id: str,
+        request_id: str,
+        authorization_check: Callable[[], bool] | None = None,
+    ) -> bool:
         state = ChatSocketState(
             connection_id=id(websocket),
             websocket=websocket,
             user_id=user_id,
             request_id=request_id,
             last_pong_at=legacy_local_now(),
+            authorization_check=authorization_check,
         )
         async with self._lock:
             self._connections[state.connection_id] = state
@@ -113,6 +122,14 @@ class ChatRealtimeHub:
         states = await self._snapshot_states()
         for state in states:
             if state.closing:
+                continue
+
+            if not self._is_authorized(state):
+                await self._close_socket(state, code=1008, reason="Acesso revogado")
+                continue
+
+            recipients = _private_event_recipients(event)
+            if recipients is not None and state.user_id not in recipients:
                 continue
 
             try:
@@ -168,6 +185,10 @@ class ChatRealtimeHub:
                     if state.closing:
                         continue
 
+                    if not self._is_authorized(state):
+                        await self._close_socket(state, code=1008, reason="Acesso revogado")
+                        continue
+
                     if now - state.last_pong_at > self._heartbeat_timeout:
                         logger.warning(
                             "Heartbeat do chat expirou",
@@ -212,6 +233,52 @@ class ChatRealtimeHub:
         async with self._lock:
             return list(self._connections.values())
 
+    @staticmethod
+    def _is_authorized(state: ChatSocketState) -> bool:
+        if state.authorization_check is None:
+            return True
+        try:
+            return state.authorization_check()
+        except Exception:
+            logger.warning(
+                "Falha ao revalidar acesso do websocket de chat",
+                extra={"context": {"request_id": state.request_id, "user_id": state.user_id}},
+            )
+            return False
+
     def _user_id_from_socket(self, websocket: WebSocket) -> str | None:
         state = self._connections.get(id(websocket))
         return state.user_id if state is not None else None
+
+
+def _private_event_recipients(event: Mapping[str, Any]) -> set[str] | None:
+    """Return the allowed user IDs for private events; group/public events stay global."""
+    event_type = event.get("type")
+    data = event.get("data")
+    if not isinstance(data, Mapping):
+        return None
+
+    if event_type == "chat.message.created":
+        message = data.get("message")
+        if not isinstance(message, Mapping):
+            return None
+        group_id = message.get("receiverGroupId", message.get("receiver_group_id"))
+        if group_id:
+            return None
+        sender_id = message.get("senderUserId", message.get("sender_user_id"))
+        receiver_id = message.get("receiverUserId", message.get("receiver_user_id"))
+        recipients = {
+            value for value in (sender_id, receiver_id) if isinstance(value, str) and value
+        }
+        return recipients or set()
+
+    if event_type in {"chat.messages.read", "chat.message.read", "chat.message.deleted"}:
+        target_type = data.get("targetType", data.get("target_type"))
+        if target_type != "user":
+            return None
+        actor_id = data.get("actorUserId", data.get("actor_user_id"))
+        target_id = data.get("targetId", data.get("target_id"))
+        recipients = {value for value in (actor_id, target_id) if isinstance(value, str) and value}
+        return recipients or set()
+
+    return None

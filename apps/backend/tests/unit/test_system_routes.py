@@ -4,12 +4,14 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+import respx
+from httpx import Response
 from fastapi.testclient import TestClient
 
 from silo.api.dependencies import CurrentUser, UserGroupInfo, get_current_user, get_db
 from silo.api.main import create_app
 from silo.api.routers import system as system_module
-from silo.api.routers.system import warmup_llm_model
+from silo.api.routers.system import HttpxVllmWarmupClient, warmup_llm_model
 from silo.clock import FrozenClock
 from silo.config import load_settings
 
@@ -137,6 +139,23 @@ async def test_warmup_failure_matches_legacy_contract() -> None:
 
     assert status_code == 500
     assert payload == {"success": False, "error": "Falha ao carregar modelo de IA."}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_vllm_warmup_does_not_send_authorization_header() -> None:
+    route = respx.post("http://localhost:8000/v1/chat/completions").mock(
+        return_value=Response(200, json={"choices": []})
+    )
+
+    await HttpxVllmWarmupClient().warmup(
+        base_url="http://localhost:8000/v1",
+        model="Qwen/Qwen2.5-0.5B-Instruct",
+        timeout_seconds=1.0,
+    )
+
+    assert route.called
+    assert "Authorization" not in route.calls[0].request.headers
 
 
 def _db_override() -> Any:

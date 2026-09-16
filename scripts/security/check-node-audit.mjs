@@ -47,8 +47,26 @@ const formatList = (values) => (values.length === 0 ? "-" : values.join(", "));
 const main = async () => {
   const allowlistPath = process.env.NODE_AUDIT_ALLOWLIST_PATH || DEFAULT_ALLOWLIST_PATH;
   const allowlist = await loadJson(allowlistPath);
+  if (!allowlist || typeof allowlist !== "object" || Array.isArray(allowlist)) {
+    throw new Error("Node audit allowlist must be a JSON object.");
+  }
+  if (
+    !allowlist.packages ||
+    typeof allowlist.packages !== "object" ||
+    Array.isArray(allowlist.packages)
+  ) {
+    throw new Error("Node audit allowlist must contain a packages object.");
+  }
   const allowlistedPackages = new Map(
-    Object.entries(allowlist.packages || {}).map(([name, entry]) => [name, entry || {}]),
+    Object.entries(allowlist.packages).map(([name, entry]) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        throw new Error(`Invalid allowlist entry for ${name}.`);
+      }
+      if (typeof entry.reason !== "string" || entry.reason.trim().length === 0) {
+        throw new Error(`Allowlist entry for ${name} must include a reason.`);
+      }
+      return [name, entry];
+    }),
   );
 
   const audit = runAudit();
@@ -58,17 +76,31 @@ const main = async () => {
   }
 
   const report = JSON.parse(auditOutput);
-  const vulnerabilities =
-    report.vulnerabilities && typeof report.vulnerabilities === "object"
-      ? report.vulnerabilities
-      : {};
+  if (
+    !report ||
+    typeof report !== "object" ||
+    !report.vulnerabilities ||
+    typeof report.vulnerabilities !== "object" ||
+    Array.isArray(report.vulnerabilities) ||
+    !report.metadata?.vulnerabilities ||
+    typeof report.metadata.vulnerabilities !== "object"
+  ) {
+    throw new Error("npm audit returned incomplete or invalid vulnerability data.");
+  }
+  const vulnerabilities = report.vulnerabilities;
 
   const blocking = [];
   const allowed = [];
   const lowerSeverity = [];
 
   for (const [name, entry] of Object.entries(vulnerabilities)) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(`npm audit returned an invalid entry for ${name}.`);
+    }
     const severity = normalizeSeverity(entry?.severity);
+    if (!["info", "low", "moderate", "high", "critical"].includes(severity)) {
+      throw new Error(`npm audit returned an unknown severity for ${name}.`);
+    }
     const location = entry?.range ? `${name} (${entry.range})` : name;
 
     if (severity !== "high" && severity !== "critical") {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import { errorResponse, successResponse } from "@/lib/api-response";
 import { getApiUrl } from "@/lib/api-client";
+import { mutationHeaders } from "@/lib/upload-proxy";
 
 export const runtime = "nodejs";
 
@@ -64,7 +65,7 @@ export async function GET(
     const responseHeaders = new Headers(corsHeaders);
     const ct = upstream.headers.get("content-type");
     if (ct) responseHeaders.set("Content-Type", ct);
-    responseHeaders.set("Cache-Control", "public, max-age=3600");
+    responseHeaders.set("Cache-Control", "private, no-store");
     return new NextResponse(upstream.body, { status: 200, headers: responseHeaders });
   } catch {
     return errorResponse("Erro ao ler arquivo.", 502, undefined, corsHeaders);
@@ -77,9 +78,7 @@ export async function DELETE(
 ) {
   const { type, filename } = await context.params;
   const corsHeaders = buildCorsHeaders(req);
-  const forwardHeaders = new Headers();
-  const cookie = req.headers.get("cookie");
-  if (cookie) forwardHeaders.set("cookie", cookie);
+  const forwardHeaders = mutationHeaders(req);
   try {
     const upstream = await fetch(getApiUrl(`/api/upload/serve/${type}/${filename}`), {
       method: "DELETE",

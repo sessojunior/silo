@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Annotated, Any, cast
 
 from fastapi import Depends, Request
@@ -9,7 +10,7 @@ from sqlalchemy import select, text
 from sqlalchemy.engine import Connection, Engine, create_engine
 
 from silo.api.errors import ForbiddenError, UnauthenticatedError
-from silo.auth.sessions import extract_session_token, get_session_by_token
+from silo.auth.sessions import extract_session_token, get_session_by_token, legacy_local_now
 from silo.config import load_settings
 from silo.db.models import legacy_tables
 from silo.db.url import sqlalchemy_database_url
@@ -90,6 +91,53 @@ def require_admin(
     if is_admin(groups):
         return current_user
     raise ForbiddenError("Acesso restrito a administradores.")
+
+
+def require_recent_auth(
+    request: Request,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Connection, Depends(get_db)],
+) -> CurrentUser:
+    token = extract_session_token(request)
+    session = get_session_by_token(db, token, refresh_sliding=False) if token else None
+    if session is None or session.user_id != current_user.id:
+        raise UnauthenticatedError()
+    # created_at records an interactive authentication; sliding updates do not.
+    age = legacy_local_now() - session.created_at
+    if age < timedelta(0) or age > timedelta(minutes=10):
+        raise ForbiddenError(
+            "Entre novamente para alterar seu e-mail ou senha.",
+            data={"reauthenticationRequired": True},
+        )
+    return current_user
+
+
+def require_upload_access(
+    kind: str,
+    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Connection, Depends(get_db)],
+) -> CurrentUser:
+    resources = {
+        "reports": "reports",
+        "contacts": "contacts",
+        "contact": "contacts",
+        "projects": "projects",
+        "incidents": "products",
+        "problems": "products",
+        "problem": "products",
+        "solutions": "products",
+        "solution": "products",
+        "manual": "products",
+        "help": "help",
+    }
+    resource = resources.get(kind)
+    if resource is not None:
+        groups = get_user_groups(db, current_user.id)
+        if not is_admin(groups) and not has_permission(
+            get_permissions(db, groups), resource, "view"
+        ):
+            raise ForbiddenError()
+    return current_user
 
 
 def require_permission(resource: str, action: str) -> Callable[..., CurrentUser]:

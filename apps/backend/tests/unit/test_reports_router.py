@@ -5,13 +5,25 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.responses import JSONResponse
+from fastapi.testclient import TestClient
 
+import silo.api.dependencies as dependencies_module
+from silo.api.dependencies import (
+    CurrentUser,
+    UserGroupInfo,
+    get_current_user,
+    get_db,
+    get_snapshot_db,
+)
+from silo.api.main import create_app
 from silo.api.routers import reports as reports_router
 from silo.services.report_portal import PdfArtifactTooLargeError, UnsupportedReportFilterError
 
 
 class _FakeRequest:
-    def __init__(self, *, query_params: dict[str, object] | None = None, body: object | None = None) -> None:
+    def __init__(
+        self, *, query_params: dict[str, object] | None = None, body: object | None = None
+    ) -> None:
         self.query_params = query_params or {}
         self._body = body
 
@@ -28,7 +40,9 @@ def _payload(response):
 
 
 @pytest.mark.asyncio
-async def test_reports_router_covers_success_and_error_branches(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_reports_router_covers_success_and_error_branches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     period = {"start": "2026-07-01", "end": "2026-07-31"}
 
     def parse_period_stub(mapping: dict[str, object]) -> dict[str, str]:
@@ -146,7 +160,13 @@ async def test_reports_router_covers_success_and_error_branches(monkeypatch: pyt
 
     problems = _payload(
         await reports_router.problems_report(
-            _FakeRequest(query_params={"start": period["start"], "end": period["end"], "productId": "product-1"}), 
+            _FakeRequest(
+                query_params={
+                    "start": period["start"],
+                    "end": period["end"],
+                    "productId": "product-1",
+                }
+            ),
             SimpleNamespace(),
         )
     )
@@ -154,7 +174,9 @@ async def test_reports_router_covers_success_and_error_branches(monkeypatch: pyt
 
     problems_pdf = _payload(
         await reports_router.problems_pdf(
-            _FakeRequest(body={"start": period["start"], "end": period["end"], "productId": "product-1"}),
+            _FakeRequest(
+                body={"start": period["start"], "end": period["end"], "productId": "product-1"}
+            ),
             SimpleNamespace(),
         )
     )
@@ -170,7 +192,9 @@ async def test_reports_router_covers_success_and_error_branches(monkeypatch: pyt
 
     executive = _payload(
         await reports_router.executive_report(
-            _FakeRequest(query_params={"start": period["start"], "end": period["end"], "groupId": "group-1"}),
+            _FakeRequest(
+                query_params={"start": period["start"], "end": period["end"], "groupId": "group-1"}
+            ),
             SimpleNamespace(),
         )
     )
@@ -187,7 +211,9 @@ async def test_reports_router_covers_success_and_error_branches(monkeypatch: pyt
 
     executive_pdf = _payload(
         await reports_router.executive_pdf(
-            _FakeRequest(body={"start": period["start"], "end": period["end"], "groupId": "group-1"}),
+            _FakeRequest(
+                body={"start": period["start"], "end": period["end"], "groupId": "group-1"}
+            ),
             SimpleNamespace(),
         )
     )
@@ -220,9 +246,66 @@ async def test_reports_router_covers_success_and_error_branches(monkeypatch: pyt
     report_files = _payload(await reports_router.report_files())
     assert report_files["data"][0]["name"] == "availability.pdf"
 
-    monkeypatch.setattr(reports_router, "list_report_files", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(
+        reports_router, "list_report_files", lambda: (_ for _ in ()).throw(RuntimeError("boom"))
+    )
     report_files_failure = _payload(await reports_router.report_files())
     assert report_files_failure["success"] is False
+
+
+def test_reports_require_permission_and_disable_http_caching(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(id="report-viewer")
+    app.dependency_overrides[get_db] = lambda: object()
+    app.dependency_overrides[get_snapshot_db] = lambda: object()
+    monkeypatch.setattr(
+        dependencies_module,
+        "get_user_groups",
+        lambda _db, _user_id: (UserGroupInfo(id="g1", name="Reports", role="user"),),
+    )
+    monkeypatch.setattr(dependencies_module, "get_permissions", lambda _db, _groups: {})
+    monkeypatch.setattr(
+        reports_router,
+        "get_availability_report",
+        lambda _db, _period: {"report": "availability"},
+    )
+
+    with TestClient(app) as client:
+        denied = client.get(
+            "/api/reports/availability",
+            params={"start": "2026-07-01", "end": "2026-07-31"},
+        )
+
+    assert denied.status_code == 403
+    assert denied.headers["cache-control"] == "private, no-store"
+
+
+def test_authorized_report_responses_are_not_cacheable(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = create_app()
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(id="report-admin")
+    app.dependency_overrides[get_db] = lambda: object()
+    app.dependency_overrides[get_snapshot_db] = lambda: object()
+    monkeypatch.setattr(
+        dependencies_module,
+        "get_user_groups",
+        lambda _db, _user_id: (UserGroupInfo(id="g1", name="Admins", role="admin"),),
+    )
+    monkeypatch.setattr(
+        reports_router,
+        "get_availability_report",
+        lambda _db, _period: {"report": "availability"},
+    )
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/reports/availability",
+            params={"start": "2026-07-01", "end": "2026-07-31"},
+        )
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "private, no-store"
 
 
 @pytest.mark.asyncio
@@ -231,6 +314,8 @@ async def test_reports_router_helpers_cover_json_fallback_and_text_normalization
     assert reports_router._optional_text("   ") is None  # noqa: SLF001
     assert reports_router._optional_text(None) is None  # noqa: SLF001
 
-    assert await reports_router._request_json_object(_FakeRequest(body={"start": "2026-07-01"})) == {"start": "2026-07-01"}  # noqa: SLF001
+    assert await reports_router._request_json_object(
+        _FakeRequest(body={"start": "2026-07-01"})
+    ) == {"start": "2026-07-01"}  # noqa: SLF001
     assert await reports_router._request_json_object(_FakeRequest(body="not-a-dict")) == {}  # noqa: SLF001
     assert await reports_router._request_json_object(_FakeRequest(body=RuntimeError("boom"))) == {}  # noqa: SLF001

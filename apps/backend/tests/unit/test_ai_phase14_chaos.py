@@ -123,10 +123,7 @@ async def test_probe_vllm_runtime_falls_back_when_embedding_model_is_missing(
 
     assert probe.mode == RuntimeMode.FALLBACK
     assert probe.embedding_mode == RuntimeMode.FALLBACK
-    assert (
-        probe.fallback_reason
-        == f"Modelo de embedding ausente: {settings.vllm.embedding_model}."
-    )
+    assert probe.fallback_reason == f"Modelo de embedding ausente: {settings.vllm.embedding_model}."
     assert probe.embedding_latency_ms is None
 
 
@@ -274,6 +271,8 @@ async def test_stream_assistant_message_emits_expected_events(monkeypatch) -> No
         events.append(event)
 
     assert [event.event for event in events] == ["thinking", "scope", "result"]
-    assert events[0].data == {"content": "Processando solicitação com as tools autorizadas."}
+    assert events[0].data == {
+        "content": "Estou consultando os dados autorizados do SILO e preparando a resposta com o modelo vLLM..."
+    }
     assert events[1].data == {"scope": "general", "isInScope": True}
     assert events[2].data["answer"] == "Resposta final objetiva."

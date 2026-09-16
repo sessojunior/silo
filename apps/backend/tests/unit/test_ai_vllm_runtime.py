@@ -61,7 +61,6 @@ class _FakeOpenAIEmbeddings:
 def test_vllm_model_runtime_construction() -> None:
     settings = VLLMSettings(
         url="http://vllm.local:8000/v1",
-        api_key="test-key",
         model="test-model",
         embedding_model="test-embed",
         timeout_ms=500,
@@ -74,7 +73,7 @@ def test_vllm_model_runtime_construction() -> None:
     assert isinstance(runtime._model, _FakeChatOpenAI)
     assert runtime._model.kwargs["model"] == "test-model"
     assert runtime._model.kwargs["base_url"] == "http://vllm.local:8000/v1"
-    assert runtime._model.kwargs["api_key"] == "test-key"
+    assert runtime._model.kwargs["api_key"] == "not-needed"
     assert runtime._model.kwargs["temperature"] == 0
     assert runtime._model.kwargs["max_tokens"] == 256
 
@@ -99,7 +98,6 @@ def test_vllm_timeout_seconds() -> None:
 async def test_vllm_model_runtime_complete() -> None:
     settings = VLLMSettings(
         url="http://vllm.local:8000/v1",
-        api_key="k",
         model="m",
         embedding_model="emb",
     )
@@ -121,7 +119,6 @@ async def test_vllm_model_runtime_complete() -> None:
 async def test_vllm_model_runtime_stream() -> None:
     settings = VLLMSettings(
         url="http://vllm.local:8000/v1",
-        api_key="k",
         model="m",
         embedding_model="emb",
     )
@@ -138,7 +135,6 @@ async def test_vllm_model_runtime_stream() -> None:
 def test_vllm_model_runtime_bind_tools() -> None:
     settings = VLLMSettings(
         url="http://vllm.local:8000/v1",
-        api_key="k",
         model="m",
         embedding_model="emb",
     )

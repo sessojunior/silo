@@ -164,6 +164,15 @@ def test_chat_websocket_emits_presence_then_connected(
     monkeypatch,
 ) -> None:
     app = create_app()
+    monkeypatch.setattr(
+        chat_module,
+        "load_settings",
+        lambda: SimpleNamespace(
+            cors_origins=("http://testserver",),
+            app_url_dev="http://testserver",
+            app_url_prod="",
+        ),
+    )
     monkeypatch.setattr(chat_module, "_get_engine_from_app", lambda _app: _FakeEngine())
     monkeypatch.setattr(
         chat_module,
@@ -173,7 +182,7 @@ def test_chat_websocket_emits_presence_then_connected(
     monkeypatch.setattr(
         chat_module,
         "get_session_by_token",
-        lambda _db, _token: SimpleNamespace(
+        lambda _db, _token, **_kwargs: SimpleNamespace(
             user_id="user-1",
             user_email="user@example.com",
             user_name="User One",
@@ -203,7 +212,7 @@ def test_chat_websocket_emits_presence_then_connected(
     with TestClient(app) as client:
         with client.websocket_connect(
             "/api/chat/ws",
-            headers={"x-request-id": "req-1"},
+            headers={"x-request-id": "req-1", "origin": "http://testserver"},
         ) as websocket:
             presence_event = websocket.receive_json()
             connected_event = websocket.receive_json()
@@ -304,7 +313,9 @@ def test_chat_router_helpers_cover_parsing_engine_and_payload_paths(
         lambda: UUID("11111111-1111-1111-1111-111111111111"),
     )
     generated_request = _FakeRequest()
-    assert chat_module._request_request_id(generated_request) == "11111111-1111-1111-1111-111111111111"
+    assert (
+        chat_module._request_request_id(generated_request) == "11111111-1111-1111-1111-111111111111"
+    )
 
     assert chat_module._query_param({"value": "  texto  "}, "value") == "texto"
     assert chat_module._query_param({"value": [" ", "  outro  "]}, "value") == "outro"
@@ -481,7 +492,9 @@ def test_chat_router_endpoints_cover_success_error_and_websocket_rejections(
     assert invalid_messages_response.status_code == 400
     assert json.loads(invalid_messages_response.body)["field"] == "limit"
 
-    monkeypatch.setattr(chat_module, "get_messages_count", lambda _db, _user_id, group_id, user_id: 4)
+    monkeypatch.setattr(
+        chat_module, "get_messages_count", lambda _db, _user_id, group_id, user_id: 4
+    )
     count_response = asyncio_run(
         chat_module.get_messages_count_route(
             _FakeRequest(query_items=[("groupId", "group-1")]),
@@ -498,7 +511,9 @@ def test_chat_router_endpoints_cover_success_error_and_websocket_rejections(
 
     created_messages: list[dict[str, object]] = []
 
-    def _create_message(_db, sender_user_id, content, receiver_group_id=None, receiver_user_id=None):
+    def _create_message(
+        _db, sender_user_id, content, receiver_group_id=None, receiver_user_id=None
+    ):
         created_messages.append(
             {
                 "sender_user_id": sender_user_id,
@@ -802,7 +817,10 @@ def test_chat_router_endpoints_cover_success_error_and_websocket_rejections(
     )
     assert unread_all_response["data"]["count"] == 3
     assert list(unread_all_response["data"]["unreadMessages"]) == ["group-1"]
-    assert unread_all_response["data"]["unreadMessages"]["group-1"]["messages"][0]["id"] == "group-unread-1"
+    assert (
+        unread_all_response["data"]["unreadMessages"]["group-1"]["messages"][0]["id"]
+        == "group-unread-1"
+    )
 
     unread_group_response = asyncio_run(
         chat_module.get_unread_messages_route(
@@ -893,9 +911,22 @@ def test_chat_websocket_rejects_invalid_auth_and_reports_runtime_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = SimpleNamespace(state=SimpleNamespace())
+    monkeypatch.setattr(
+        chat_module,
+        "load_settings",
+        lambda: SimpleNamespace(
+            cors_origins=("http://testserver",),
+            app_url_dev="http://testserver",
+            app_url_prod="",
+        ),
+    )
 
     monkeypatch.setattr(chat_module, "_get_engine_from_app", lambda _app: _FakeEngine())
-    monkeypatch.setattr(chat_module, "get_chat_access_state", lambda _db, _user_id: SimpleNamespace(can_view_chat=True))
+    monkeypatch.setattr(
+        chat_module,
+        "get_chat_access_state",
+        lambda _db, _user_id: SimpleNamespace(can_view_chat=True),
+    )
     monkeypatch.setattr(
         chat_module,
         "touch_presence_on_connect",
@@ -906,7 +937,9 @@ def test_chat_websocket_rejects_invalid_auth_and_reports_runtime_errors(
             "updated_at": datetime(2026, 7, 23, 12, 0),
         },
     )
-    monkeypatch.setattr(chat_module, "mark_presence_offline_on_disconnect", lambda _db, _user_id: None)
+    monkeypatch.setattr(
+        chat_module, "mark_presence_offline_on_disconnect", lambda _db, _user_id: None
+    )
     monkeypatch.setattr(
         chat_module,
         "extract_session_token_from_cookies",
@@ -914,9 +947,19 @@ def test_chat_websocket_rejects_invalid_auth_and_reports_runtime_errors(
     )
     monkeypatch.setattr(chat_module, "get_session_by_token", lambda _db, _token: None)
 
-    unauthenticated_socket = _RouteWebSocket(app=app, cookies={}, headers={"x-request-id": "req-unauth"})
+    unauthenticated_socket = _RouteWebSocket(
+        app=app, cookies={}, headers={"x-request-id": "req-unauth", "origin": "http://testserver"}
+    )
     asyncio_run(chat_module.websocket_chat(unauthenticated_socket))
     assert unauthenticated_socket.accepted is False
+    wrong_origin_socket = _RouteWebSocket(
+        app=app,
+        cookies={"session": "token"},
+        headers={"origin": "https://attacker.example"},
+    )
+    asyncio_run(chat_module.websocket_chat(wrong_origin_socket))
+    assert wrong_origin_socket.accepted is False
+    assert wrong_origin_socket.closed == [(1008, "Origem não autorizada.")]
     assert unauthenticated_socket.closed == [(1008, "Usuário não autenticado.")]
 
     monkeypatch.setattr(
@@ -939,7 +982,9 @@ def test_chat_websocket_rejects_invalid_auth_and_reports_runtime_errors(
         lambda _db, _user_id: SimpleNamespace(can_view_chat=False),
     )
 
-    denied_socket = _RouteWebSocket(app=app, cookies={}, headers={"x-request-id": "req-denied"})
+    denied_socket = _RouteWebSocket(
+        app=app, cookies={}, headers={"x-request-id": "req-denied", "origin": "http://testserver"}
+    )
     asyncio_run(chat_module.websocket_chat(denied_socket))
     assert denied_socket.accepted is False
     assert denied_socket.closed == [(1008, "Acesso ao chat negado.")]
@@ -956,10 +1001,15 @@ def test_chat_websocket_rejects_invalid_auth_and_reports_runtime_errors(
             self.unregistered: list[object] = []
             self.shutting_down = False
 
-        async def register(self, websocket, user_id: str, request_id: str) -> bool:
+        async def register(
+            self, websocket, user_id: str, request_id: str, authorization_check=None
+        ) -> bool:
+            del authorization_check
             return True
 
-        async def broadcast(self, payload: dict[str, object], request_id: str | None = None) -> None:
+        async def broadcast(
+            self, payload: dict[str, object], request_id: str | None = None
+        ) -> None:
             self.broadcasts.append(payload)
 
         async def receive_client_message(self, websocket, raw_message: str) -> None:
@@ -974,7 +1024,7 @@ def test_chat_websocket_rejects_invalid_auth_and_reports_runtime_errors(
     runtime_socket = _RouteWebSocket(
         app=app,
         cookies={"session": "token"},
-        headers={"x-request-id": "req-runtime"},
+        headers={"x-request-id": "req-runtime", "origin": "http://testserver"},
         messages=[json.dumps({"type": "chat.ping"})],
     )
     asyncio_run(chat_module.websocket_chat(runtime_socket))
@@ -1115,7 +1165,9 @@ def test_chat_router_cover_additional_error_branches_and_engine_creation(
         "update_presence_heartbeat",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
     )
-    presence_patch_error = asyncio_run(chat_module.patch_presence(_FakeRequest(), current_user, object()))
+    presence_patch_error = asyncio_run(
+        chat_module.patch_presence(_FakeRequest(), current_user, object())
+    )
     assert presence_patch_error.status_code == 500
 
     monkeypatch.setattr(

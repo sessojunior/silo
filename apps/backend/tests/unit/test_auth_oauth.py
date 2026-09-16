@@ -366,18 +366,23 @@ def test_google_oauth_complete_callback_covers_new_and_existing_user_paths(
     monkeypatch.setattr(
         oauth_module,
         "exchange_google_code_for_token",
-        lambda **kwargs: token_calls.append(kwargs["code"]) or {
-            "access_token": "access-1" if kwargs["code"] == "code-1" else "access-2",
-            "refresh_token": "refresh-1" if kwargs["code"] == "code-1" else "refresh-2",
-            "id_token": "id-1" if kwargs["code"] == "code-1" else "id-2",
-            "scope": "openid email profile",
-        },
+        lambda **kwargs: (
+            token_calls.append(kwargs["code"])
+            or {
+                "access_token": "access-1" if kwargs["code"] == "code-1" else "access-2",
+                "refresh_token": "refresh-1" if kwargs["code"] == "code-1" else "refresh-2",
+                "id_token": "id-1" if kwargs["code"] == "code-1" else "id-2",
+                "scope": "openid email profile",
+            }
+        ),
     )
     monkeypatch.setattr(oauth_module, "validate_google_identity", lambda **kwargs: identity)
 
     with engine.begin() as connection:
         connection.execute(
-            tables["group"].insert().values(
+            tables["group"]
+            .insert()
+            .values(
                 id="group-default",
                 name="Default",
                 role="user",

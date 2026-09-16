@@ -56,6 +56,7 @@ export default function SettingsPage() {
   const [loadingPreferences, setLoadingPreferences] = useState(false);
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
   const [form, setForm] = useState<FormState>({ field: null, message: "" });
 
   // Profile tab state - usar dados do contexto quando disponível
@@ -450,7 +451,7 @@ export default function SettingsPage() {
     setForm({ field: null, message: "" });
 
     try {
-      const res = await fetch(config.getApiUrl("/api/user-password"), {
+      const res = await fetch(config.getApiUrl("/api/admin/users/password"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -466,9 +467,15 @@ export default function SettingsPage() {
           title: message,
         });
       } else {
+        try {
+          await fetch(config.getApiUrl("/api/auth/sign-out"), { method: "POST" });
+        } catch {
+          // The password endpoint already revoked every session.
+        }
+        setPasswordChanged(true);
         toast({
           type: "success",
-          title: "A senha foi alterada com sucesso.",
+          title: "Senha alterada. Entre novamente para continuar.",
         });
         setPassword("");
       }
@@ -867,6 +874,11 @@ export default function SettingsPage() {
           </p>
         </div>
 
+        {passwordChanged ? (
+          <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
+            Todas as sessoes foram encerradas. <a className="underline" href={config.getPublicPath("/login")}>Entre novamente.</a>
+          </p>
+        ) : (
         <form onSubmit={handleUpdatePassword} className="space-y-4">
           <fieldset className="space-y-4" disabled={loadingPassword}>
             <div>
@@ -909,6 +921,7 @@ export default function SettingsPage() {
             </div>
           </fieldset>
         </form>
+        )}
       </div>
 
       {/* Security Info */}

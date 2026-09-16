@@ -34,11 +34,10 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }>) {
   const requestCookies = await cookies();
-  const smokeMode = requestCookies.get("silo_smoke_mode")?.value === "1";
 
   // Verificar se o usuário está autenticado
   const currentUser = await getAuthUser();
-  if (!currentUser && !smokeMode) {
+  if (!currentUser) {
     redirect("/login");
   }
 

@@ -107,7 +107,8 @@ export default function Lightbox({ open, image, alt, onClose }: LightboxProps) {
             sizes={displaySize ? `${displaySize.width}px` : "90vw"}
             className="rounded-lg shadow-2xl border-2 border-zinc-200 dark:border-zinc-600 object-contain"
             unoptimized
-            onLoadingComplete={(img) => {
+            onLoad={(event: React.SyntheticEvent<HTMLImageElement>) => {
+              const img = event.currentTarget;
               const w = img.naturalWidth || 1;
               const h = img.naturalHeight || 1;
               setNaturalSize({ width: w, height: h });

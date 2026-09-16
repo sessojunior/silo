@@ -21,7 +21,10 @@ def test_github_actions_has_explicit_node_python_and_windows_jobs_without_turbo(
     assert "working-directory: apps/frontend" in workflow
     assert "node scripts/security/check-node-audit.mjs" in workflow
     assert "uv --directory apps/backend run --locked pytest" in workflow
-    assert "uv --directory apps/backend run --locked python scripts/check_coverage_thresholds.py" in workflow
+    assert (
+        "uv --directory apps/backend run --locked python scripts/check_coverage_thresholds.py"
+        in workflow
+    )
     assert "uv --directory apps/backend audit --locked --no-dev" in workflow
     assert "npm run typecheck" in workflow
     assert "npm run lint" in workflow
@@ -45,7 +48,10 @@ def test_gitlab_ci_has_explicit_node_python_and_backend_image_jobs_without_turbo
     assert "uv --directory apps/backend run --locked ruff format --check" in pipeline
     assert "uv --directory apps/backend run --locked mypy src" in pipeline
     assert "uv --directory apps/backend run --locked pytest" in pipeline
-    assert "uv --directory apps/backend run --locked python scripts/check_coverage_thresholds.py" in pipeline
+    assert (
+        "uv --directory apps/backend run --locked python scripts/check_coverage_thresholds.py"
+        in pipeline
+    )
     assert "uv --directory apps/backend run --locked silo-openapi-export --check" in pipeline
     assert "node scripts/security/check-node-audit.mjs" in pipeline
     assert "uv --directory apps/backend audit --locked --no-dev" in pipeline
@@ -85,6 +91,22 @@ def test_deploy_compose_and_script_exist_for_gitlab_release_flow() -> None:
     assert "container_name: silo-api-python" in compose
     assert "container_name: silo-worker-python" in compose
     assert 'command: ["python", "-m", "silo.worker.main"]' in compose
-    assert "docker compose -f \"$DEPLOY_COMPOSE_FILE\" up -d --remove-orphans --wait --wait-timeout 300" in script
-    assert "docker compose -f \"$DEPLOY_COMPOSE_FILE\" exec -T api python -c" in script
-    assert "docker compose -f \"$DEPLOY_COMPOSE_FILE\" exec -T worker python -m silo.worker.healthcheck" in script
+    assert (
+        'docker compose -f "$DEPLOY_COMPOSE_FILE" up -d --remove-orphans --wait --wait-timeout 300'
+        in script
+    )
+    assert 'docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T api python -c' in script
+    assert (
+        'docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T worker python -m silo.worker.healthcheck'
+        in script
+    )
+
+
+def test_deploy_uses_preprovisioned_known_hosts_and_never_discovers_it() -> None:
+    script = DEPLOY_SCRIPT.read_text(encoding="utf-8")
+
+    assert "DEPLOY_SSH_KNOWN_HOSTS" not in script
+    assert "ssh-keyscan" not in script
+    assert 'ssh-keygen -F "$known_hosts_host"' in script
+    assert "-o StrictHostKeyChecking=yes" in script
+    assert "-o BatchMode=yes" in script

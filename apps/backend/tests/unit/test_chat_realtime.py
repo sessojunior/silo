@@ -183,3 +183,55 @@ async def test_chat_realtime_hub_heartbeat_loop_returns_on_cancelled_sleep(
     monkeypatch.setattr(asyncio, "sleep", _cancelled_sleep)
 
     await hub._heartbeat_loop()
+
+
+@pytest.mark.asyncio
+async def test_private_chat_events_are_sent_only_to_conversation_participants() -> None:
+    hub = ChatRealtimeHub()
+    sender = _TrackedWebSocket("sender")
+    recipient = _TrackedWebSocket("recipient")
+    unrelated = _TrackedWebSocket("unrelated")
+    for socket, user_id in ((sender, "u1"), (recipient, "u2"), (unrelated, "u3")):
+        await hub.register(socket, user_id=user_id, request_id=user_id)
+
+    created = {
+        "type": "chat.message.created",
+        "data": {"message": {"senderUserId": "u1", "receiverUserId": "u2", "content": "private"}},
+    }
+    await hub.broadcast(created)
+    assert sender.events == [created]
+    assert recipient.events == [created]
+    assert unrelated.events == []
+
+    read = {
+        "type": "chat.message.read",
+        "data": {"actorUserId": "u2", "targetId": "u1", "targetType": "user"},
+    }
+    await hub.broadcast(read)
+    assert sender.events[-1] == read
+    assert recipient.events[-1] == read
+    assert unrelated.events == []
+
+    group = {
+        "type": "chat.message.created",
+        "data": {"message": {"senderUserId": "u1", "receiverGroupId": "g1", "content": "group"}},
+    }
+    await hub.broadcast(group)
+    assert unrelated.events[-1] == group
+
+
+@pytest.mark.asyncio
+async def test_chat_hub_closes_connections_after_session_or_permission_revocation() -> None:
+    hub = ChatRealtimeHub()
+    socket = _TrackedWebSocket("revoked")
+    await hub.register(
+        socket,
+        user_id="u1",
+        request_id="u1",
+        authorization_check=lambda: False,
+    )
+
+    await hub.broadcast({"type": "chat.presence.updated", "data": {"userId": "u2"}})
+
+    assert socket.events == []
+    assert socket.closed == [(1008, "Acesso revogado")]

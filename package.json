@@ -9,19 +9,14 @@
   ],
   "scripts": {
     "dev:web": "npm --workspace @silo/web run dev",
-
     "build:web": "npm --workspace @silo/web run build",
     "build": "npm run build:web",
-
     "test:web": "npm --workspace @silo/web run test",
     "test": "npm run test:web",
-
     "lint:web": "npm --workspace @silo/web run lint",
     "lint": "npm run lint:web",
-
     "typecheck:web": "npm --workspace @silo/web run typecheck",
     "typecheck": "npm run typecheck:web",
-
     "format": "prettier --write .",
     "py:sync": "uv --directory apps/backend sync --locked --all-groups",
     "py:lint": "uv --directory apps/backend run --locked ruff check .",
@@ -61,15 +56,24 @@
     "db:generate": "npm run py:capture-schema",
     "db:migrate": "npm run py:migrate",
     "db:seed": "npm run py:seed",
-
     "docker:db:generate": "docker compose exec api python -m silo.db.schema_capture",
     "docker:db:migrate": "docker compose exec api python -m silo.db.migrate",
     "docker:db:seed": "docker compose exec api python -m silo.db.seed",
-
     "deploy": "npm run docker:up"
   },
   "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "jsdom": "^26.1.0",
     "prettier": "^3.8.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "gantt-task-react": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }
