@@ -6,6 +6,7 @@ from datetime import datetime as real_datetime
 from zoneinfo import ZoneInfo
 
 import pytest
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -19,7 +20,6 @@ from sqlalchemy import (
     create_engine,
     insert,
 )
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 
 from silo.services import report_portal
 
@@ -778,49 +778,91 @@ def test_availability_report_without_activity_data_marks_no_data(tmp_path, monke
     engine.dispose()
 
 
-def test_report_portal_pdf_builders_and_auxiliary_helpers(report_connection, tmp_path, monkeypatch) -> None:
-    connection, _ids = report_connection
+def test_report_portal_pdf_builders_and_auxiliary_helpers(
+    report_connection, tmp_path, monkeypatch
+) -> None:
+    _connection, _ids = report_connection
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="SiloSection", parent=styles["Heading2"]))
 
     story: list[object] = []
-    report_portal._build_availability_pdf(  # noqa: SLF001
+    report_portal._build_availability_pdf(
         story,
         {
             "totalProducts": 2,
             "avgAvailability": 70.0,
             "totalInterventions": 3,
             "products": [
-                {"name": "Produto Alfa", "availabilityPercentage": 80, "totalActivities": 5, "completedActivities": 4, "status": "stable"},
-                {"name": "Produto Beta", "availabilityPercentage": 40, "totalActivities": 5, "completedActivities": 2, "status": "critical"},
+                {
+                    "name": "Produto Alfa",
+                    "availabilityPercentage": 80,
+                    "totalActivities": 5,
+                    "completedActivities": 4,
+                    "status": "stable",
+                },
+                {
+                    "name": "Produto Beta",
+                    "availabilityPercentage": 40,
+                    "totalActivities": 5,
+                    "completedActivities": 2,
+                    "status": "critical",
+                },
             ],
         },
         styles,
     )
-    report_portal._build_problems_pdf(  # noqa: SLF001
+    report_portal._build_problems_pdf(
         story,
         {
             "summary": {"totalProblems": 3, "averageResolutionHours": 7.5},
-            "problemsByCategory": [{"name": "Categoria A", "problemsCount": 2, "avgResolutionHours": 5}],
+            "problemsByCategory": [
+                {"name": "Categoria A", "problemsCount": 2, "avgResolutionHours": 5}
+            ],
             "topProblems": [
-                {"title": "Problema 1", "product": {"name": "Produto Alfa"}, "category": {"name": "Categoria A"}, "solutionsCount": 1}
+                {
+                    "title": "Problema 1",
+                    "product": {"name": "Produto Alfa"},
+                    "category": {"name": "Categoria A"},
+                    "solutionsCount": 1,
+                }
             ],
         },
         styles,
     )
-    report_portal._build_executive_pdf(  # noqa: SLF001
+    report_portal._build_executive_pdf(
         story,
         {
-            "summary": {"totalProducts": 2, "totalProblems": 3, "activeProjects": 1, "completedTasks": 2},
-            "trends": {"problems": {"current": 2, "previous": 1, "change": 100}, "solutions": {"current": 5, "previous": 4, "change": 25}},
-            "productMetrics": [{"name": "Produto Alfa", "priority": "high", "totalProblems": 2, "totalSolutions": 1, "available": True}],
+            "summary": {
+                "totalProducts": 2,
+                "totalProblems": 3,
+                "activeProjects": 1,
+                "completedTasks": 2,
+            },
+            "trends": {
+                "problems": {"current": 2, "previous": 1, "change": 100},
+                "solutions": {"current": 5, "previous": 4, "change": 25},
+            },
+            "productMetrics": [
+                {
+                    "name": "Produto Alfa",
+                    "priority": "high",
+                    "totalProblems": 2,
+                    "totalSolutions": 1,
+                    "available": True,
+                }
+            ],
         },
         styles,
     )
-    report_portal._build_projects_pdf(  # noqa: SLF001
+    report_portal._build_projects_pdf(
         story,
         {
-            "summary": {"totalProjects": 1, "totalActivities": 2, "totalTasks": 3, "avgProgress": 67},
+            "summary": {
+                "totalProjects": 1,
+                "totalActivities": 2,
+                "totalTasks": 3,
+                "avgProgress": 67,
+            },
             "projectsByStatus": {"active": 1},
             "tasksByStatus": {"done": 2, "todo": 1},
             "projects": [{"name": "Projeto A", "progress": 67, "status": "active"}],
@@ -828,10 +870,25 @@ def test_report_portal_pdf_builders_and_auxiliary_helpers(report_connection, tmp
         styles,
     )
 
-    assert any(getattr(item, "text", "") == "Visão Geral" for item in story if hasattr(item, "text"))
-    assert report_portal._status_pt("unknown") == "unknown"  # noqa: SLF001
-    assert report_portal.parse_period({"start": "2026-08-01", "end": "2026-08-04"}) == {"start": "2026-08-01", "end": "2026-08-04"}
-    assert report_portal.parse_period({"dateRange": "90d"})["start"] <= report_portal.parse_period({"dateRange": "90d"})["end"]
+    assert any(
+        getattr(item, "text", "") == "Visão Geral" for item in story if hasattr(item, "text")
+    )
+    assert report_portal._status_pt("unknown") == "unknown"
+    assert report_portal.parse_period({"start": "2026-08-01", "end": "2026-08-04"}) == {
+        "start": "2026-08-01",
+        "end": "2026-08-04",
+    }
+    assert (
+        report_portal.parse_period({"dateRange": "90d"})["start"]
+        <= report_portal.parse_period({"dateRange": "90d"})["end"]
+    )
 
-    monkeypatch.setattr(report_portal, "list_upload_files", lambda kind: [{"kind": kind, "filename": "report.pdf"}, {"kind": kind, "filename": "ignored.txt"}])
+    monkeypatch.setattr(
+        report_portal,
+        "list_upload_files",
+        lambda kind: [
+            {"kind": kind, "filename": "report.pdf"},
+            {"kind": kind, "filename": "ignored.txt"},
+        ],
+    )
     assert report_portal.list_report_files() == [{"kind": "reports", "filename": "report.pdf"}]

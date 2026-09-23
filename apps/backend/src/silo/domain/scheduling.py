@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal, TypeAlias
+from typing import Literal
 
-ShiftCode: TypeAlias = Literal["0", "6", "12", "18"]
-DayOfWeek: TypeAlias = Literal[0, 1, 2, 3, 4, 5, 6]
+type ShiftCode = Literal["0", "6", "12", "18"]
+type DayOfWeek = Literal[0, 1, 2, 3, 4, 5, 6]
 
 SHIFT_CODES: tuple[ShiftCode, ...] = ("0", "6", "12", "18")
 SHIFT_START_HOURS: dict[ShiftCode, int] = {"0": 0, "6": 6, "12": 12, "18": 18}
@@ -130,9 +130,7 @@ def get_available_slots_in_range(
 
 def check_slot_fit(requested: TimeSlot, professional: ProfessionalSchedule) -> SlotFitResult:
     block_conflicts = [
-        block
-        for block in professional.blocks
-        if slots_overlap(requested, block.slot)
+        block for block in professional.blocks if slots_overlap(requested, block.slot)
     ]
     conflicts = [
         SchedulingConflict(

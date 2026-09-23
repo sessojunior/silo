@@ -27,4 +27,3 @@ def test_chunk_markdown_splits_long_text_into_sequential_chunks() -> None:
     assert [chunk.index for chunk in chunks] == list(range(len(chunks)))
     assert all(len(chunk.content) <= 2_048 for chunk in chunks)
     assert all(chunk.token_count > 0 for chunk in chunks)
-

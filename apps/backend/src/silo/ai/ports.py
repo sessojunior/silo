@@ -22,7 +22,7 @@ class ChatPort(Protocol):
 
 
 class ChatModelRuntime(ChatPort, Protocol):
-    async def stream(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]: ...
+    def stream(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]: ...
 
 
 class EmbeddingPort(Protocol):

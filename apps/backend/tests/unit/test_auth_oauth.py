@@ -13,10 +13,10 @@ from silo.auth import oauth as oauth_module
 from silo.auth.oauth import (
     GoogleIdentity,
     GoogleState,
+    _ensure_allowed_google_domain,
     _optional_token_str,
     _safe_from_page,
     _state_identifier,
-    _ensure_allowed_google_domain,
     app_redirect_url,
 )
 from silo.config import SiloEnvironment, load_settings

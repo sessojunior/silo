@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from silo.domain.dataflow.helpers import normalize_data_flow_reference_key
@@ -53,7 +53,9 @@ def topo_sort(nodes: list[dict[str, Any]], edges: list[dict[str, str]]) -> dict[
             if next_degree == 0:
                 queue.append(neighbor)
 
-    leftover = [str(node.get("id") or "") for node in nodes if str(node.get("id") or "") not in order]
+    leftover = [
+        str(node.get("id") or "") for node in nodes if str(node.get("id") or "") not in order
+    ]
     leftover = [item for item in leftover if item]
     return {"order": order, "leftover": leftover}
 
@@ -85,7 +87,11 @@ def apply_pert_schedule(nodes: list[dict[str, Any]], edges: list[dict[str, str]]
         node["esMinutes"] = es
         node["efMinutes"] = es + duration
 
-    project_ef = 0.0 if not order else max(float(by_id[node_id].get("efMinutes", 0) or 0) for node_id in order)
+    project_ef = (
+        0.0
+        if not order
+        else max(float(by_id[node_id].get("efMinutes", 0) or 0) for node_id in order)
+    )
 
     for node_id in reversed(order):
         node = by_id.get(node_id)
@@ -93,7 +99,9 @@ def apply_pert_schedule(nodes: list[dict[str, Any]], edges: list[dict[str, str]]
             continue
         succ = successors.get(node_id, [])
         if succ:
-            lf = min(float(by_id[target].get("lsMinutes", project_ef) or project_ef) for target in succ)
+            lf = min(
+                float(by_id[target].get("lsMinutes", project_ef) or project_ef) for target in succ
+            )
         else:
             lf = project_ef
         duration = _effective_duration(node)
@@ -114,9 +122,7 @@ def build_pert_graph_from_groups(
             "colorToken": LANE_COLOR_BY_INDEX[index % len(LANE_COLOR_BY_INDEX)],
             "iconToken": _pick_icon_token(str(group.get("name") or "")),
             "taskIds": [
-                str(task.get("id") or "")
-                for task in _task_list(group)
-                if str(task.get("id") or "")
+                str(task.get("id") or "") for task in _task_list(group) if str(task.get("id") or "")
             ],
         }
         for index, group in enumerate(groups)
@@ -148,7 +154,7 @@ def build_pert_graph_from_groups(
     nodes: list[dict[str, Any]] = []
     for group in groups:
         group_id = str(group.get("id") or "")
-        group_name = str(group.get("name") or group_id or "group")
+        _group_name = str(group.get("name") or group_id or "group")
         for task in _task_list(group):
             task_id = str(task.get("id") or "")
             if not task_id:
@@ -249,7 +255,12 @@ def build_pert_graph_from_groups(
     for edge in edges:
         source = node_by_id.get(str(edge["source"]))
         target = node_by_id.get(str(edge["target"]))
-        if source is not None and target is not None and source["isCritical"] and target["isCritical"]:
+        if (
+            source is not None
+            and target is not None
+            and source["isCritical"]
+            and target["isCritical"]
+        ):
             edge["isCritical"] = True
 
     blocked: set[str] = set()
@@ -295,7 +306,9 @@ def build_pert_graph_from_groups(
     failed_task_ids = [str(node["id"]) for node in nodes if str(node["status"]) in FAILURE_STATUSES]
     affected_task_ids = [str(node["id"]) for node in nodes if bool(node.get("isBlocked"))]
     critical_failed_count = sum(
-        1 for node in nodes if bool(node.get("isCritical")) and str(node["status"]) in FAILURE_STATUSES
+        1
+        for node in nodes
+        if bool(node.get("isCritical")) and str(node["status"]) in FAILURE_STATUSES
     )
 
     return {
@@ -316,7 +329,11 @@ def build_pert_graph_from_groups(
 
 def _task_list(group: Mapping[str, Any]) -> list[dict[str, Any]]:
     tasks = group.get("tasks", [])
-    return [task for task in tasks if isinstance(task, Mapping)] if isinstance(tasks, list) else []
+    return (
+        [dict(task) for task in tasks if isinstance(task, Mapping)]
+        if isinstance(tasks, list)
+        else []
+    )
 
 
 def _dependency_list(task: Mapping[str, Any]) -> list[str]:

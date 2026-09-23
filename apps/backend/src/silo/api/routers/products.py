@@ -4,14 +4,19 @@ import unicodedata
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import and_, delete, desc, func, insert, or_, select, update
+from sqlalchemy import and_, delete, insert, select, update
 from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import get_db, require_permission
 from silo.api.responses import build_success_payload
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
-from silo.services.common import is_service_error, service_error_response, service_failure, service_success
+from silo.services.common import (
+    is_service_error,
+    service_error_response,
+    service_failure,
+    service_success,
+)
 from silo.storage.uploads import delete_upload_file, is_safe_filename, is_upload_kind
 
 router = APIRouter(prefix="/api/products", tags=["products"])
@@ -31,7 +36,9 @@ async def list_products(
     _current_user: object = Depends(require_permission("products", "view")),
     db: Connection = Depends(get_db),
 ):
-    items = _list_products(db, slug=slug, name=name, page=page or 1, limit=limit or 40, available=available)
+    items = _list_products(
+        db, slug=slug, name=name, page=page or 1, limit=limit or 40, available=available
+    )
     if slug:
         return build_success_payload({"products": items["items"]})
     return build_success_payload({"items": items["items"]})
@@ -78,7 +85,10 @@ async def delete_product(
     db: Connection = Depends(get_db),
 ):
     if not id:
-        return service_error_response(service_failure("ID do produto é obrigatório.", 400, field="id"), "Erro ao excluir produto.")
+        return service_error_response(
+            service_failure("ID do produto é obrigatório.", 400, field="id"),
+            "Erro ao excluir produto.",
+        )
 
     result = _delete_product(db, id)
     if is_service_error(result):
@@ -100,7 +110,11 @@ def _list_products(
     product_table = legacy_tables["product"]
 
     if slug:
-        row = db.execute(select(product_table).where(product_table.c.slug == slug.strip()).limit(1)).mappings().first()
+        row = (
+            db.execute(select(product_table).where(product_table.c.slug == slug.strip()).limit(1))
+            .mappings()
+            .first()
+        )
         items = [serialize_legacy_row(row)] if row is not None else []
         if available is True:
             items = [item for item in items if bool(item.get("available"))]
@@ -136,7 +150,9 @@ def _create_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
     if not slug:
         return service_failure("Slug inválido.", 400, field="slug")
 
-    existing = db.execute(select(product_table.c.id).where(product_table.c.slug == slug).limit(1)).first()
+    existing = db.execute(
+        select(product_table.c.id).where(product_table.c.slug == slug).limit(1)
+    ).first()
     if existing is not None:
         return service_failure("Já existe um produto com este slug.", 400, field="name")
 
@@ -149,7 +165,9 @@ def _create_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
         "priority": _normalize_priority(payload.get("priority")) or "normal",
         "turns": _normalize_turns(payload.get("turns")),
         "description": _nullable_text(payload.get("description")),
-        "url_product_flow": _normalize_url(payload.get("url_product_flow") or payload.get("urlProductFlow")),
+        "url_product_flow": _normalize_url(
+            payload.get("url_product_flow") or payload.get("urlProductFlow")
+        ),
     }
 
     db.execute(insert(product_table).values(new_row))
@@ -165,7 +183,11 @@ def _update_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
     if not product_id or not name:
         return service_failure("Dados inválidos.", 400)
 
-    current = db.execute(select(product_table).where(product_table.c.id == product_id).limit(1)).mappings().first()
+    current = (
+        db.execute(select(product_table).where(product_table.c.id == product_id).limit(1))
+        .mappings()
+        .first()
+    )
     if current is None:
         return service_failure("Produto não encontrado.", 404)
 
@@ -189,8 +211,12 @@ def _update_product(db: Connection, payload: dict[str, object]) -> dict[str, obj
         "available": bool(payload.get("available", current["available"])),
         "priority": _normalize_priority(payload.get("priority")) or str(current["priority"]),
         "turns": _normalize_turns(payload.get("turns")) or current["turns"],
-        "description": _nullable_text(payload.get("description")) if "description" in payload else current["description"],
-        "url_product_flow": _normalize_url(payload.get("url_product_flow") or payload.get("urlProductFlow"))
+        "description": _nullable_text(payload.get("description"))
+        if "description" in payload
+        else current["description"],
+        "url_product_flow": _normalize_url(
+            payload.get("url_product_flow") or payload.get("urlProductFlow")
+        )
         if ("url_product_flow" in payload or "urlProductFlow" in payload)
         else current["url_product_flow"],
     }
@@ -215,34 +241,85 @@ def _delete_product(db: Connection, product_id: str) -> dict[str, object]:
     solution_checked_table = legacy_tables["product_solution_checked"]
     solution_image_table = legacy_tables["product_solution_image"]
 
-    existing = db.execute(select(product_table.c.id).where(product_table.c.id == product_id).limit(1)).first()
+    existing = db.execute(
+        select(product_table.c.id).where(product_table.c.id == product_id).limit(1)
+    ).first()
     if existing is None:
         return service_failure("Produto não encontrado.", 404)
 
     problem_images = db.execute(
-        select(problem_image_table.c.image).select_from(problem_image_table.join(problem_table, problem_table.c.id == problem_image_table.c.product_problem_id))
+        select(problem_image_table.c.image)
+        .select_from(
+            problem_image_table.join(
+                problem_table, problem_table.c.id == problem_image_table.c.product_problem_id
+            )
+        )
         .where(problem_table.c.product_id == product_id)
     ).all()
     solution_images = db.execute(
-        select(solution_image_table.c.image).select_from(solution_image_table.join(solution_table, solution_table.c.id == solution_image_table.c.product_solution_id))
-        .where(solution_table.c.product_problem_id.in_(select(problem_table.c.id).where(problem_table.c.product_id == product_id)))
+        select(solution_image_table.c.image)
+        .select_from(
+            solution_image_table.join(
+                solution_table, solution_table.c.id == solution_image_table.c.product_solution_id
+            )
+        )
+        .where(
+            solution_table.c.product_problem_id.in_(
+                select(problem_table.c.id).where(problem_table.c.product_id == product_id)
+            )
+        )
     ).all()
 
     db.rollback()
     with db.begin():
-        activity_ids = [row[0] for row in db.execute(select(activity_table.c.id).where(activity_table.c.product_id == product_id)).all()]
+        activity_ids = [
+            row[0]
+            for row in db.execute(
+                select(activity_table.c.id).where(activity_table.c.product_id == product_id)
+            ).all()
+        ]
         if activity_ids:
-            db.execute(delete(activity_history_table).where(activity_history_table.c.product_activity_id.in_(activity_ids)))
+            db.execute(
+                delete(activity_history_table).where(
+                    activity_history_table.c.product_activity_id.in_(activity_ids)
+                )
+            )
         db.execute(delete(activity_table).where(activity_table.c.product_id == product_id))
 
-        problem_ids = [row[0] for row in db.execute(select(problem_table.c.id).where(problem_table.c.product_id == product_id)).all()]
+        problem_ids = [
+            row[0]
+            for row in db.execute(
+                select(problem_table.c.id).where(problem_table.c.product_id == product_id)
+            ).all()
+        ]
         if problem_ids:
-            solution_ids = [row[0] for row in db.execute(select(solution_table.c.id).where(solution_table.c.product_problem_id.in_(problem_ids))).all()]
+            solution_ids = [
+                row[0]
+                for row in db.execute(
+                    select(solution_table.c.id).where(
+                        solution_table.c.product_problem_id.in_(problem_ids)
+                    )
+                ).all()
+            ]
             if solution_ids:
-                db.execute(delete(solution_checked_table).where(solution_checked_table.c.product_solution_id.in_(solution_ids)))
-                db.execute(delete(solution_image_table).where(solution_image_table.c.product_solution_id.in_(solution_ids)))
-            db.execute(delete(solution_table).where(solution_table.c.product_problem_id.in_(problem_ids)))
-            db.execute(delete(problem_image_table).where(problem_image_table.c.product_problem_id.in_(problem_ids)))
+                db.execute(
+                    delete(solution_checked_table).where(
+                        solution_checked_table.c.product_solution_id.in_(solution_ids)
+                    )
+                )
+                db.execute(
+                    delete(solution_image_table).where(
+                        solution_image_table.c.product_solution_id.in_(solution_ids)
+                    )
+                )
+            db.execute(
+                delete(solution_table).where(solution_table.c.product_problem_id.in_(problem_ids))
+            )
+            db.execute(
+                delete(problem_image_table).where(
+                    problem_image_table.c.product_problem_id.in_(problem_ids)
+                )
+            )
             db.execute(delete(problem_table).where(problem_table.c.product_id == product_id))
 
         db.execute(delete(availability_table).where(availability_table.c.product_id == product_id))

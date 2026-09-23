@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, select
 from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import get_db, require_permission
-from silo.api.responses import build_success_payload
+from silo.api.responses import ApiResponse, build_success_payload
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
-from silo.services.common import is_service_error, service_error_response, service_failure, service_success
+from silo.services.common import (
+    is_service_error,
+    service_error_response,
+    service_failure,
+    service_success,
+)
 from silo.storage.uploads import delete_upload_file, is_safe_filename, is_upload_kind
 
 router = APIRouter(prefix="/api/contacts", tags=["contacts"])
@@ -22,7 +29,7 @@ async def list_contacts(
     status: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("contacts", "view")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     items = _list_contacts(db, search=search, status=status)
     return build_success_payload({"items": items["items"], "total": items["total"]})
 
@@ -33,7 +40,7 @@ async def create_contact(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("contacts", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = _create_contact(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao criar contato.")
@@ -53,7 +60,7 @@ async def update_contact(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("contacts", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = _update_contact(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar contato.")
@@ -68,10 +75,12 @@ async def delete_contact(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("contacts", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     contact_id = id
     if not contact_id:
-        return service_error_response(service_failure("ID é obrigatório.", 400, field="id"), "Erro ao excluir contato.")
+        return service_error_response(
+            service_failure("ID é obrigatório.", 400, field="id"), "Erro ao excluir contato."
+        )
 
     result = _delete_contact(db, contact_id)
     if is_service_error(result):
@@ -142,26 +151,35 @@ def _create_contact(db: Connection, payload: dict[str, object]) -> dict[str, obj
 
 def _update_contact(db: Connection, payload: dict[str, object]) -> dict[str, object]:
     contact_table = legacy_tables["contact"]
-    product_contact_table = legacy_tables["product_contact"]
 
     contact_id = _require_text(payload.get("id"), "id")
     name = _require_text(payload.get("name"), "name")
     role = _require_text(payload.get("role"), "role")
     team = _require_text(payload.get("team"), "team")
     normalized_email = _normalize_email(payload.get("email"))
-    if contact_id is None or name is None or role is None or team is None or normalized_email is None:
+    if (
+        contact_id is None
+        or name is None
+        or role is None
+        or team is None
+        or normalized_email is None
+    ):
         return service_failure("Dados inválidos.", 400)
 
-    current = db.execute(
-        select(contact_table).where(contact_table.c.id == contact_id).limit(1)
-    ).mappings().first()
+    current = (
+        db.execute(select(contact_table).where(contact_table.c.id == contact_id).limit(1))
+        .mappings()
+        .first()
+    )
     if current is None:
         return service_failure("Contato não encontrado.", 404)
 
     if normalized_email != str(current["email"]):
         existing = db.execute(
             select(contact_table.c.id)
-            .where(and_(contact_table.c.email == normalized_email, contact_table.c.id != contact_id))
+            .where(
+                and_(contact_table.c.email == normalized_email, contact_table.c.id != contact_id)
+            )
             .limit(1)
         ).first()
         if existing is not None:
@@ -200,13 +218,17 @@ def _delete_contact(db: Connection, contact_id: str) -> dict[str, object]:
     contact_table = legacy_tables["contact"]
     product_contact_table = legacy_tables["product_contact"]
 
-    current = db.execute(
-        select(contact_table).where(contact_table.c.id == contact_id).limit(1)
-    ).mappings().first()
+    current = (
+        db.execute(select(contact_table).where(contact_table.c.id == contact_id).limit(1))
+        .mappings()
+        .first()
+    )
     if current is None:
         return service_failure("Contato não encontrado.", 404)
 
-    db.execute(product_contact_table.delete().where(product_contact_table.c.contact_id == contact_id))
+    db.execute(
+        product_contact_table.delete().where(product_contact_table.c.contact_id == contact_id)
+    )
     db.execute(contact_table.delete().where(contact_table.c.id == contact_id))
     db.commit()
 
@@ -258,7 +280,5 @@ def _new_uuid() -> str:
     return str(uuid.uuid4())
 
 
-def select_now(db: Connection):
-    from datetime import datetime
-
+def select_now(db: Connection) -> datetime:
     return datetime.now()

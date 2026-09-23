@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
-    JSON,
     MetaData,
     String,
     Table,
@@ -135,7 +135,7 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
         )
 
     with engine.connect() as connection:
-        slug_listing = products_router._list_products(  # noqa: SLF001
+        slug_listing = products_router._list_products(
             connection,
             slug=" alpha ",
             name=None,
@@ -143,7 +143,7 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
             limit=20,
             available=True,
         )
-        name_listing = products_router._list_products(  # noqa: SLF001
+        name_listing = products_router._list_products(
             connection,
             slug=None,
             name="be",
@@ -152,7 +152,7 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
             available=False,
         )
 
-        created = products_router._create_product(  # noqa: SLF001
+        created = products_router._create_product(
             connection,
             {
                 "name": "Gamma",
@@ -164,14 +164,14 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
                 "urlProductFlow": "https://example.test/gamma",
             },
         )
-        duplicate_slug = products_router._create_product(  # noqa: SLF001
+        duplicate_slug = products_router._create_product(
             connection,
             {"name": "Gamma 2", "slug": "gamma-flow"},
         )
-        invalid_name = products_router._create_product(connection, {"name": "   "})  # noqa: SLF001
-        invalid_slug = products_router._create_product(connection, {"name": "Delta", "slug": "!!!"})  # noqa: SLF001
+        invalid_name = products_router._create_product(connection, {"name": "   "})
+        invalid_slug = products_router._create_product(connection, {"name": "Delta", "slug": "!!!"})
 
-        updated = products_router._update_product(  # noqa: SLF001
+        updated = products_router._update_product(
             connection,
             {
                 "id": "product-1",
@@ -184,21 +184,21 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
                 "urlProductFlow": "https://example.test/alpha-prime",
             },
         )
-        duplicate_update = products_router._update_product(  # noqa: SLF001
+        duplicate_update = products_router._update_product(
             connection,
             {"id": "product-1", "name": "Alpha Prime", "slug": "beta"},
         )
-        missing_update = products_router._update_product(  # noqa: SLF001
+        missing_update = products_router._update_product(
             connection,
             {"id": "missing", "name": "Missing"},
         )
-        invalid_update = products_router._update_product(  # noqa: SLF001
+        invalid_update = products_router._update_product(
             connection,
             {"id": "product-1", "name": "Alpha Prime", "slug": "!!!"},
         )
 
-        deleted = products_router._delete_product(connection, "product-1")  # noqa: SLF001
-        missing_delete = products_router._delete_product(connection, "missing")  # noqa: SLF001
+        deleted = products_router._delete_product(connection, "product-1")
+        missing_delete = products_router._delete_product(connection, "missing")
 
         remaining_product = connection.execute(
             select(tables["product"].c.id).where(tables["product"].c.id == "product-1")
@@ -241,7 +241,7 @@ def test_products_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
         ("problems", "problem-1.webp"),
         ("solutions", "solution-1.webp"),
     ]
-    assert isinstance(products_router._new_uuid(), str)  # noqa: SLF001
+    assert isinstance(products_router._new_uuid(), str)
 
 
 def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) -> None:
@@ -295,11 +295,11 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
         )
 
     with engine.connect() as connection:
-        listed_active = contacts_router._list_contacts(connection, search="ana", status="active")  # noqa: SLF001
+        listed_active = contacts_router._list_contacts(connection, search="ana", status="active")
         listed_inactive = contacts_router._list_contacts(
             connection, search="ops", status="inactive"
-        )  # noqa: SLF001
-        created = contacts_router._create_contact(  # noqa: SLF001
+        )
+        created = contacts_router._create_contact(
             connection,
             {
                 "name": "Carla",
@@ -311,7 +311,7 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
                 "active": True,
             },
         )
-        duplicate_email = contacts_router._create_contact(  # noqa: SLF001
+        duplicate_email = contacts_router._create_contact(
             connection,
             {
                 "name": "Carla 2",
@@ -322,14 +322,14 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
         )
         invalid_email = contacts_router._create_contact(
             connection, {"name": "Dan", "role": "QA", "team": "Ops", "email": 42}
-        )  # noqa: SLF001
+        )
         invalid_data = contacts_router._create_contact(
             connection, {"name": "Dan", "role": "QA", "team": "Ops", "email": "   "}
-        )  # noqa: SLF001
+        )
 
-        contacts_router.select_now(connection)  # noqa: SLF001
+        contacts_router.select_now(connection)
 
-        updated = contacts_router._update_contact(  # noqa: SLF001
+        updated = contacts_router._update_contact(
             connection,
             {
                 "id": "contact-1",
@@ -340,7 +340,7 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
                 "removeImage": True,
             },
         )
-        duplicate_update = contacts_router._update_contact(  # noqa: SLF001
+        duplicate_update = contacts_router._update_contact(
             connection,
             {
                 "id": "contact-1",
@@ -350,7 +350,7 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
                 "email": "bruno@example.test",
             },
         )
-        missing_update = contacts_router._update_contact(  # noqa: SLF001
+        missing_update = contacts_router._update_contact(
             connection,
             {
                 "id": "missing",
@@ -361,8 +361,8 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
             },
         )
 
-        deleted = contacts_router._delete_contact(connection, "contact-1")  # noqa: SLF001
-        missing_delete = contacts_router._delete_contact(connection, "missing")  # noqa: SLF001
+        deleted = contacts_router._delete_contact(connection, "contact-1")
+        missing_delete = contacts_router._delete_contact(connection, "missing")
 
         remaining_contact = connection.execute(
             select(tables["contact"].c.id).where(tables["contact"].c.id == "contact-1")
@@ -390,8 +390,8 @@ def test_contacts_router_database_helpers_cover_crud_and_cleanup(monkeypatch) ->
     assert remaining_contact is None
     assert remaining_link is None
     assert deleted_uploads == [("avatars", "contact-1.webp")]
-    assert isinstance(contacts_router._new_uuid(), str)  # noqa: SLF001
-    assert isinstance(contacts_router.select_now(engine.connect()), datetime)  # noqa: SLF001
+    assert isinstance(contacts_router._new_uuid(), str)
+    assert isinstance(contacts_router.select_now(engine.connect()), datetime)
 
 
 def _make_products_tables(metadata: MetaData) -> dict[str, Table]:

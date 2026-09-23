@@ -21,7 +21,9 @@ MODEL_RUN_STATUSES: tuple[str, ...] = (
 )
 
 SUCCESS_STATUSES = frozenset(("completed",))
-PROBLEM_STATUSES = frozenset(("with_problems", "run_again", "not_run", "under_support", "suspended"))
+PROBLEM_STATUSES = frozenset(
+    ("with_problems", "run_again", "not_run", "under_support", "suspended")
+)
 EXECUTION_STATUSES = frozenset(("completed", "with_problems", "run_again", "in_progress"))
 NON_EXECUTION_STATUSES = frozenset(("pending",))
 TERMINAL_STATUSES = frozenset(
@@ -132,7 +134,9 @@ def _find_model_run_status_semantics_path() -> Path:
         candidate = parent / "docs" / "migration" / "ai" / "model-run-status-semantics.yaml"
         if candidate.exists():
             return candidate
-    raise FileNotFoundError("Não foi possível localizar docs/migration/ai/model-run-status-semantics.yaml")
+    raise FileNotFoundError(
+        "Não foi possível localizar docs/migration/ai/model-run-status-semantics.yaml"
+    )
 
 
 def _parse_model_run_status_semantics_yaml(text: str) -> dict[str, Any]:

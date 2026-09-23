@@ -4,7 +4,19 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
 import pytest
-from sqlalchemy import Boolean, Column, Date, DateTime, Integer, JSON, MetaData, String, Table, create_engine, insert
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    insert,
+)
 
 from silo.services import monitoring_data
 
@@ -366,9 +378,13 @@ def test_monitoring_data_pages_radars_and_products(monitoring_connection) -> Non
             "delayMinutes": 9,
         },
     )
-    page_row = connection.execute(
-        tables["picture_page"].select().where(tables["picture_page"].c.id == "page-3")
-    ).mappings().first()
+    page_row = (
+        connection.execute(
+            tables["picture_page"].select().where(tables["picture_page"].c.id == "page-3")
+        )
+        .mappings()
+        .first()
+    )
     assert page_row is not None
     assert page_row["name"] == "Página 3 atualizada"
     assert page_row["check_mode"] == "page"
@@ -404,9 +420,13 @@ def test_monitoring_data_pages_radars_and_products(monitoring_connection) -> Non
             "status": "delayed",
         },
     )
-    link_row = connection.execute(
-        tables["picture_link"].select().where(tables["picture_link"].c.id == "link-3")
-    ).mappings().first()
+    link_row = (
+        connection.execute(
+            tables["picture_link"].select().where(tables["picture_link"].c.id == "link-3")
+        )
+        .mappings()
+        .first()
+    )
     assert link_row is not None
     assert link_row["name"] == "Link 3 atualizado"
     assert link_row["status"] == "delayed"
@@ -422,9 +442,13 @@ def test_monitoring_data_pages_radars_and_products(monitoring_connection) -> Non
         connection,
         {"id": "group-3", "slug": "group-3", "name": "Grupo 3 atualizado", "sortOrder": 4},
     )
-    group_row = connection.execute(
-        tables["radar_group"].select().where(tables["radar_group"].c.id == "group-3")
-    ).mappings().first()
+    group_row = (
+        connection.execute(
+            tables["radar_group"].select().where(tables["radar_group"].c.id == "group-3")
+        )
+        .mappings()
+        .first()
+    )
     assert group_row is not None
     assert group_row["name"] == "Grupo 3 atualizado"
     assert group_row["sort_order"] == 4
@@ -450,9 +474,11 @@ def test_monitoring_data_pages_radars_and_products(monitoring_connection) -> Non
             "active": False,
         },
     )
-    radar_row = connection.execute(
-        tables["radar"].select().where(tables["radar"].c.id == "radar-3")
-    ).mappings().first()
+    radar_row = (
+        connection.execute(tables["radar"].select().where(tables["radar"].c.id == "radar-3"))
+        .mappings()
+        .first()
+    )
     assert radar_row is not None
     assert radar_row["status"] == "off"
     assert radar_row["active"] is False
@@ -461,7 +487,9 @@ def test_monitoring_data_pages_radars_and_products(monitoring_connection) -> Non
     assert (
         connection.execute(
             tables["picture_link"].select().where(tables["picture_link"].c.id == ids.link_1)
-        ).mappings().first()
+        )
+        .mappings()
+        .first()
         is None
     )
 
@@ -469,15 +497,17 @@ def test_monitoring_data_pages_radars_and_products(monitoring_connection) -> Non
     assert (
         connection.execute(
             tables["picture_page"].select().where(tables["picture_page"].c.id == ids.page_2)
-        ).mappings().first()
+        )
+        .mappings()
+        .first()
         is None
     )
 
     monitoring_data.delete_radar(connection, ids.radar_2)
     assert (
-        connection.execute(
-            tables["radar"].select().where(tables["radar"].c.id == ids.radar_2)
-        ).mappings().first()
+        connection.execute(tables["radar"].select().where(tables["radar"].c.id == ids.radar_2))
+        .mappings()
+        .first()
         is None
     )
 
@@ -485,7 +515,9 @@ def test_monitoring_data_pages_radars_and_products(monitoring_connection) -> Non
     assert (
         connection.execute(
             tables["radar_group"].select().where(tables["radar_group"].c.id == "group-3")
-        ).mappings().first()
+        )
+        .mappings()
+        .first()
         is None
     )
 
@@ -631,7 +663,7 @@ def test_monitoring_data_seed_fallback_when_products_are_missing(tmp_path, monke
 def test_monitoring_data_helpers_cover_normalization_and_seed_matching(monkeypatch) -> None:
     monkeypatch.setattr(monitoring_data, "datetime", _FixedDateTime)
 
-    matched = monitoring_data._build_seed_monitoring_products(  # noqa: SLF001
+    matched = monitoring_data._build_seed_monitoring_products(
         {
             "bam": {"slug": "bam", "name": "BAM"},
             "smec-alias": {"slug": "smec-alias", "name": "SMEC"},
@@ -641,60 +673,68 @@ def test_monitoring_data_helpers_cover_normalization_and_seed_matching(monkeypat
     assert [item["productId"] for item in matched] == ["bam", "smec-alias"]
     assert matched[1]["turns"][0]["status"] == "completed"
 
-    assert monitoring_data._normalize_check_mode("items") == "items"  # noqa: SLF001
-    assert monitoring_data._normalize_check_mode("bad") == "page"  # noqa: SLF001
-    assert monitoring_data._normalize_picture_status("offline") == "offline"  # noqa: SLF001
-    assert monitoring_data._normalize_picture_status("bad") == "ok"  # noqa: SLF001
-    assert monitoring_data._normalize_picture_status("bad", default="delayed") == "delayed"  # noqa: SLF001
-    assert monitoring_data._normalize_radar_status("off") == "off"  # noqa: SLF001
-    assert monitoring_data._normalize_radar_status("bad") == "ok"  # noqa: SLF001
+    assert monitoring_data._normalize_check_mode("items") == "items"
+    assert monitoring_data._normalize_check_mode("bad") == "page"
+    assert monitoring_data._normalize_picture_status("offline") == "offline"
+    assert monitoring_data._normalize_picture_status("bad") == "ok"
+    assert monitoring_data._normalize_picture_status("bad", default="delayed") == "delayed"
+    assert monitoring_data._normalize_radar_status("off") == "off"
+    assert monitoring_data._normalize_radar_status("bad") == "ok"
 
-    assert monitoring_data._normalize_monitoring_status("completed") == "completed"  # noqa: SLF001
-    assert monitoring_data._normalize_monitoring_status("with_problems") == "with_problems"  # noqa: SLF001
-    assert monitoring_data._normalize_monitoring_status("run_again") == "run_again"  # noqa: SLF001
-    assert monitoring_data._normalize_monitoring_status("under_support") == "under_support"  # noqa: SLF001
-    assert monitoring_data._normalize_monitoring_status("suspended") == "suspended"  # noqa: SLF001
-    assert monitoring_data._normalize_monitoring_status("in_progress") == "in_progress"  # noqa: SLF001
-    assert monitoring_data._normalize_monitoring_status("pending") == "pending"  # noqa: SLF001
-    assert monitoring_data._normalize_monitoring_status("not_run") == "not_run"  # noqa: SLF001
+    assert monitoring_data._normalize_monitoring_status("completed") == "completed"
+    assert monitoring_data._normalize_monitoring_status("with_problems") == "with_problems"
+    assert monitoring_data._normalize_monitoring_status("run_again") == "run_again"
+    assert monitoring_data._normalize_monitoring_status("under_support") == "under_support"
+    assert monitoring_data._normalize_monitoring_status("suspended") == "suspended"
+    assert monitoring_data._normalize_monitoring_status("in_progress") == "in_progress"
+    assert monitoring_data._normalize_monitoring_status("pending") == "pending"
+    assert monitoring_data._normalize_monitoring_status("not_run") == "not_run"
 
-    assert monitoring_data._status_progress("completed") == 100  # noqa: SLF001
-    assert monitoring_data._status_progress("missing") == 0  # noqa: SLF001
+    assert monitoring_data._status_progress("completed") == 100
+    assert monitoring_data._status_progress("missing") == 0
 
-    assert monitoring_data._latest_activity_date([]) is None  # noqa: SLF001
-    assert monitoring_data._latest_activity_date([{ "date": date(2026, 3, 5) }, { "date": date(2026, 3, 6) }]) == "2026-03-06"  # noqa: SLF001
+    assert monitoring_data._latest_activity_date([]) is None
+    assert (
+        monitoring_data._latest_activity_date(
+            [{"date": date(2026, 3, 5)}, {"date": date(2026, 3, 6)}]
+        )
+        == "2026-03-06"
+    )
 
-    assert monitoring_data._missing_turn_status("2026-03-06", "12") == "pending"  # noqa: SLF001
-    assert monitoring_data._missing_turn_status("2026-03-06", "0") == "not_run"  # noqa: SLF001
-    assert monitoring_data._missing_turn_status("2026-03-05", "12") == "not_run"  # noqa: SLF001
+    assert monitoring_data._missing_turn_status("2026-03-06", "12") == "pending"
+    assert monitoring_data._missing_turn_status("2026-03-06", "0") == "not_run"
+    assert monitoring_data._missing_turn_status("2026-03-05", "12") == "not_run"
 
-    assert monitoring_data._date_text(date(2026, 3, 6)) == "2026-03-06"  # noqa: SLF001
-    assert monitoring_data._date_text(" 2026-03-06 ") == "2026-03-06"  # noqa: SLF001
-    assert monitoring_data._date_text("   ") is None  # noqa: SLF001
-    assert monitoring_data._date_text(None) is None  # noqa: SLF001
+    assert monitoring_data._date_text(date(2026, 3, 6)) == "2026-03-06"
+    assert monitoring_data._date_text(" 2026-03-06 ") == "2026-03-06"
+    assert monitoring_data._date_text("   ") is None
+    assert monitoring_data._date_text(None) is None
 
-    parsed = monitoring_data._parse_datetimeish("2026-03-06T10:00:00")  # noqa: SLF001
+    parsed = monitoring_data._parse_datetimeish("2026-03-06T10:00:00")
     assert parsed is not None and parsed.year == 2026 and parsed.minute == 0
-    assert monitoring_data._parse_datetimeish(_FixedDateTime(2026, 3, 6, 10, 0, tzinfo=UTC)) is not None  # noqa: SLF001
-    assert monitoring_data._parse_datetimeish("bad") is None  # noqa: SLF001
-    assert monitoring_data._parse_datetimeish(None) is None  # noqa: SLF001
+    assert (
+        monitoring_data._parse_datetimeish(_FixedDateTime(2026, 3, 6, 10, 0, tzinfo=UTC))
+        is not None
+    )
+    assert monitoring_data._parse_datetimeish("bad") is None
+    assert monitoring_data._parse_datetimeish(None) is None
 
-    assert monitoring_data._required_text("  texto  ") == "texto"  # noqa: SLF001
-    assert monitoring_data._required_text("   ") is None  # noqa: SLF001
-    assert monitoring_data._required_text(None) is None  # noqa: SLF001
+    assert monitoring_data._required_text("  texto  ") == "texto"
+    assert monitoring_data._required_text("   ") is None
+    assert monitoring_data._required_text(None) is None
 
-    assert monitoring_data._optional_int(True) is None  # noqa: SLF001
-    assert monitoring_data._optional_int(7) == 7  # noqa: SLF001
-    assert monitoring_data._optional_int("8") == 8  # noqa: SLF001
-    assert monitoring_data._optional_int("   ") is None  # noqa: SLF001
-    assert monitoring_data._optional_int("bad") is None  # noqa: SLF001
-    assert monitoring_data._optional_int(None) is None  # noqa: SLF001
+    assert monitoring_data._optional_int(True) is None
+    assert monitoring_data._optional_int(7) == 7
+    assert monitoring_data._optional_int("8") == 8
+    assert monitoring_data._optional_int("   ") is None
+    assert monitoring_data._optional_int("bad") is None
+    assert monitoring_data._optional_int(None) is None
 
-    assert monitoring_data._optional_bool(True) is True  # noqa: SLF001
-    assert monitoring_data._optional_bool(False) is False  # noqa: SLF001
-    assert monitoring_data._optional_bool("true") is True  # noqa: SLF001
-    assert monitoring_data._optional_bool("off") is False  # noqa: SLF001
-    assert monitoring_data._optional_bool("maybe", default=True) is True  # noqa: SLF001
-    assert monitoring_data._optional_bool("maybe", default=False) is False  # noqa: SLF001
+    assert monitoring_data._optional_bool(True) is True
+    assert monitoring_data._optional_bool(False) is False
+    assert monitoring_data._optional_bool("true") is True
+    assert monitoring_data._optional_bool("off") is False
+    assert monitoring_data._optional_bool("maybe", default=True) is True
+    assert monitoring_data._optional_bool("maybe", default=False) is False
 
-    assert monitoring_data._today_text() == "2026-03-06"  # noqa: SLF001
+    assert monitoring_data._today_text() == "2026-03-06"

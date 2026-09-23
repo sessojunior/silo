@@ -207,7 +207,7 @@ async def post_message_stream(request: Request, current_user: AssistantUser, db:
             while True:
                 try:
                     event = await asyncio.wait_for(asyncio.shield(pending_event), timeout=5.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Nenhum evento do servico ainda. Mantem a conexao viva; a
                     # desconexao do cliente e detectada pelo listener do
                     # StreamingResponse, que cancela este stream e libera o

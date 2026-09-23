@@ -6,6 +6,10 @@ from typing import Any
 from fastapi.responses import JSONResponse
 
 JsonObject = dict[str, Any]
+# Endpoints may return either a JSON object or an explicit JSONResponse.  FastAPI
+# cannot build a response model for that union, so keep the public annotation
+# open while preserving precise types for the payload helpers below.
+type ApiResponse = Any
 
 
 def build_success_payload(

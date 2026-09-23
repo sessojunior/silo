@@ -5,7 +5,6 @@ from pathlib import Path
 
 from silo.ai import assistant_service
 
-
 CORPUS_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "ai" / "eval-cases.jsonl"
 
 
@@ -29,7 +28,11 @@ _PHASE_TO_RESULT_KEY = {
 
 
 def _read_corpus() -> list[dict[str, object]]:
-    return [json.loads(line) for line in CORPUS_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return [
+        json.loads(line)
+        for line in CORPUS_PATH.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
 
 def _state_from_case(case: dict[str, object]) -> dict[str, object]:
@@ -73,6 +76,6 @@ def test_corpus_expected_plan_matches_canonical_trajectory() -> None:
 
     for case in cases:
         state = _state_from_case(case)
-        trajectory = assistant_service._canonical_trajectory(state)  # noqa: SLF001
+        trajectory = assistant_service._canonical_trajectory(state)
         expected_plan = [str(item) for item in case["expectedPlan"]]  # type: ignore[index]
         assert trajectory == expected_plan, f"case={case['id']}"

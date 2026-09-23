@@ -11,8 +11,8 @@ from silo.api.dependencies import (
     UserGroupInfo,
     canonicalize_action,
     canonicalize_requested_action,
-    get_chat_enabled,
     get_chat_access_state,
+    get_chat_enabled,
     get_current_user,
     get_permissions,
     get_user_groups,
@@ -125,7 +125,9 @@ def test_get_current_user_prefers_active_user_from_request_state() -> None:
     assert request.state.current_user_id == "user-1"
 
 
-def test_get_current_user_falls_back_to_session_token_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_current_user_falls_back_to_session_token_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     request = SimpleNamespace(state=SimpleNamespace(current_user=None, current_user_id=None))
     session = SimpleNamespace(
         user_id="user-2",
@@ -142,7 +144,9 @@ def test_get_current_user_falls_back_to_session_token_lookup(monkeypatch: pytest
     assert request.state.current_user_id == "user-2"
 
 
-def test_get_current_user_raises_when_request_is_unauthenticated(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_current_user_raises_when_request_is_unauthenticated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     request = SimpleNamespace(state=SimpleNamespace(current_user=None, current_user_id=None))
     monkeypatch.setattr(dependencies_module, "extract_session_token", lambda _request: None)
 
@@ -224,10 +228,10 @@ def test_permission_dependencies_follow_database_state(monkeypatch: pytest.Monke
         admin_permissions = get_permissions(connection, admin_groups)
         editor_permissions = get_permissions(connection, editor_groups)
 
-        assert admin_groups == (UserGroupInfo(id="group-admin", name="Administradores", role="admin"),)
-        assert editor_groups == (
-            UserGroupInfo(id="group-editor", name="Editores", role="user"),
+        assert admin_groups == (
+            UserGroupInfo(id="group-admin", name="Administradores", role="admin"),
         )
+        assert editor_groups == (UserGroupInfo(id="group-editor", name="Editores", role="user"),)
         assert admin_permissions == {}
         assert editor_permissions["projects"] == {"manage"}
         assert editor_permissions["chat"] == {"view_private"}
@@ -241,10 +245,13 @@ def test_permission_dependencies_follow_database_state(monkeypatch: pytest.Monke
         assert editor_state.chat_enabled is False
         assert editor_state.can_view_chat is False
 
-        assert require_admin(
-            current_user=CurrentUser(id="user-admin"),
-            db=connection,
-        ).id == "user-admin"
+        assert (
+            require_admin(
+                current_user=CurrentUser(id="user-admin"),
+                db=connection,
+            ).id
+            == "user-admin"
+        )
 
         with pytest.raises(ForbiddenError):
             require_admin(
@@ -252,10 +259,13 @@ def test_permission_dependencies_follow_database_state(monkeypatch: pytest.Monke
                 db=connection,
             )
 
-        assert require_permission("projects", "manage")(
-            current_user=CurrentUser(id="user-editor"),
-            db=connection,
-        ).id == "user-editor"
+        assert (
+            require_permission("projects", "manage")(
+                current_user=CurrentUser(id="user-editor"),
+                db=connection,
+            ).id
+            == "user-editor"
+        )
 
         with pytest.raises(ForbiddenError):
             require_permission("contacts", "manage")(
@@ -355,14 +365,20 @@ def test_permission_helpers_allow_chat_when_admin_or_explicit_permission(
 
         assert admin_state.can_view_chat is True
         assert editor_state.can_view_chat is True
-        assert require_chat_access(
-            current_user=CurrentUser(id="user-editor"),
-            db=connection,
-        ).id == "user-editor"
-        assert require_permission("products", "list")(
-            current_user=CurrentUser(id="user-editor"),
-            db=connection,
-        ).id == "user-editor"
+        assert (
+            require_chat_access(
+                current_user=CurrentUser(id="user-editor"),
+                db=connection,
+            ).id
+            == "user-editor"
+        )
+        assert (
+            require_permission("products", "list")(
+                current_user=CurrentUser(id="user-editor"),
+                db=connection,
+            ).id
+            == "user-editor"
+        )
 
 
 def test_snapshot_db_and_engine_cache_paths(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -405,7 +421,9 @@ def test_snapshot_db_and_engine_cache_paths(monkeypatch: pytest.MonkeyPatch) -> 
     generator = dependencies_module.get_snapshot_db(request)
     connection = next(generator)
     assert connection is request.app.state.db_engine.connection
-    assert any("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY" in item for item in executed)
+    assert any(
+        "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY" in item for item in executed
+    )
     assert any("SET LOCAL statement_timeout = '5000ms'" in item for item in executed)
     generator.close()
     assert rollback_called is True

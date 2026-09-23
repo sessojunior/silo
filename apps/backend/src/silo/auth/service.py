@@ -3,8 +3,8 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
-from dataclasses import dataclass
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 from uuid import uuid4

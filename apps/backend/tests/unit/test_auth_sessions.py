@@ -21,18 +21,18 @@ import silo.auth.sessions as sessions_module
 from silo.auth.sessions import (
     BETTER_AUTH_COOKIE_NAMES,
     SESSION_COOKIE_NAME,
-    create_session,
+    _commit_if_possible,
+    _datetime,
+    clean_expired_sessions,
     clear_auth_cookies,
     clear_session_token,
-    clean_expired_sessions,
+    create_session,
     extract_session_token,
+    get_session_by_token,
     legacy_local_now,
     request_ip,
     request_user_agent,
     set_session_cookie,
-    get_session_by_token,
-    _commit_if_possible,
-    _datetime,
 )
 from silo.clock import FrozenClock
 from silo.config import SiloEnvironment, load_settings

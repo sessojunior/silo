@@ -100,7 +100,8 @@ class ChatRealtimeHub:
         async with self._lock:
             state = self._connections.pop(connection_id, None)
             if state is None:
-                return self._connection_counts.get(self._user_id_from_socket(websocket), 0)
+                user_id = self._user_id_from_socket(websocket)
+                return self._connection_counts.get(user_id, 0) if user_id is not None else 0
 
             current_count = self._connection_counts.get(state.user_id, 0)
             if current_count <= 1:

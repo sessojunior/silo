@@ -169,7 +169,9 @@ async def test_auth_router_happy_paths_cover_session_and_otp_routes(
 
     response = Response()
     verify_payload = await auth_router_module.login_email_verify_otp(
-        _DummyRequest({"email": "user@example.test", "code": "123456"}, headers={"user-agent": "pytest"}),
+        _DummyRequest(
+            {"email": "user@example.test", "code": "123456"}, headers={"user-agent": "pytest"}
+        ),
         response,
         db=object(),
     )
@@ -227,7 +229,9 @@ async def test_auth_router_happy_paths_cover_session_and_otp_routes(
 
     sign_out_response = Response()
     cleared_tokens: list[str | None] = []
-    monkeypatch.setattr(auth_router_module, "clear_session_token", lambda _db, token: cleared_tokens.append(token))
+    monkeypatch.setattr(
+        auth_router_module, "clear_session_token", lambda _db, token: cleared_tokens.append(token)
+    )
     sign_out_payload = await auth_router_module.sign_out(
         _DummyRequest({}, cookies={"silo_session": session.token}),
         sign_out_response,
@@ -251,7 +255,9 @@ async def test_auth_router_google_and_validation_errors(
     monkeypatch.setattr(
         auth_router_module,
         "parse_auth_payload",
-        lambda _schema, _payload: (_ for _ in ()).throw(AuthInputError("Dados inválidos.", field="email")),
+        lambda _schema, _payload: (_ for _ in ()).throw(
+            AuthInputError("Dados inválidos.", field="email")
+        ),
     )
     with pytest.raises(ApiValidationError):
         auth_router_module._parse("login_password", {})
@@ -259,7 +265,9 @@ async def test_auth_router_google_and_validation_errors(
     with pytest.raises(UnauthenticatedError):
         await auth_router_module.get_session(_DummyRequest({}, cookies={}), db=object())
 
-    monkeypatch.setattr(auth_router_module, "should_use_legacy_contract_google_response", lambda _settings: True)
+    monkeypatch.setattr(
+        auth_router_module, "should_use_legacy_contract_google_response", lambda _settings: True
+    )
     legacy_result = await auth_router_module.login_google(
         _DummyRequest({}, query_params={"from": "login"}),
         Response(),
@@ -267,15 +275,23 @@ async def test_auth_router_google_and_validation_errors(
     )
     assert legacy_result.status_code == 404
 
-    monkeypatch.setattr(auth_router_module, "should_use_legacy_contract_google_response", lambda _settings: False)
-    monkeypatch.setattr(auth_router_module, "google_credentials_configured", lambda _settings: False)
+    monkeypatch.setattr(
+        auth_router_module, "should_use_legacy_contract_google_response", lambda _settings: False
+    )
+    monkeypatch.setattr(
+        auth_router_module, "google_credentials_configured", lambda _settings: False
+    )
     with pytest.raises(InfrastructureUnavailableError):
-        await auth_router_module.login_google(_DummyRequest({}, query_params={"from": "login"}), Response(), db=object())
+        await auth_router_module.login_google(
+            _DummyRequest({}, query_params={"from": "login"}), Response(), db=object()
+        )
 
-    def _build_google_login_start(db, *, settings, request, response, from_page):  # noqa: ANN001
+    def _build_google_login_start(db, *, settings, request, response, from_page):
         del db, settings, request, from_page
         response.headers.append("Set-Cookie", "google-login-start=1; Path=/; HttpOnly")
-        return SimpleNamespace(authorization_url="https://accounts.google.com/o/oauth2/auth?state=state-1")
+        return SimpleNamespace(
+            authorization_url="https://accounts.google.com/o/oauth2/auth?state=state-1"
+        )
 
     monkeypatch.setattr(auth_router_module, "google_credentials_configured", lambda _settings: True)
     monkeypatch.setattr(auth_router_module, "build_google_login_start", _build_google_login_start)

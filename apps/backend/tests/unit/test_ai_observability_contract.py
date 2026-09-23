@@ -19,7 +19,16 @@ def test_observability_dashboard_uses_safe_labels_and_known_metrics() -> None:
     assert [metric["name"] for metric in dashboard["metrics"]] == list(OBSERVABILITY_METRICS)
 
     panel_queries = [query for panel in dashboard["panels"] for query in panel["queries"]]
-    for forbidden in ("question", "user_id", "thread_id", "dataset_id", "prompt", "reasoning", "toolArgs", "toolResults"):
+    for forbidden in (
+        "question",
+        "user_id",
+        "thread_id",
+        "dataset_id",
+        "prompt",
+        "reasoning",
+        "toolArgs",
+        "toolResults",
+    ):
         assert all(forbidden not in query for query in panel_queries)
 
 

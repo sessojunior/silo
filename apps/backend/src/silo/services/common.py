@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, TypeVar
+from typing import Any, TypeGuard
 
 from fastapi.responses import JSONResponse
 
-T = TypeVar("T")
 
-
-def service_success(data: T, *, message: str | None = None) -> dict[str, Any]:
+def service_success[T](data: T, *, message: str | None = None) -> dict[str, Any]:
     payload: dict[str, Any] = {"ok": True, "data": data}
     if message is not None:
         payload["message"] = message
@@ -36,7 +34,7 @@ def service_failure(
     return payload
 
 
-def is_service_error(result: object) -> bool:
+def is_service_error(result: object) -> TypeGuard[Mapping[str, object]]:
     return isinstance(result, Mapping) and result.get("ok") is False and "error" in result
 
 
@@ -45,12 +43,14 @@ def service_error_response(result: object, fallback_message: str) -> JSONRespons
         return None
 
     error_result = result
-    status = int(error_result.get("status") or 400)
-    retry_after_seconds = (
-        int(error_result["retryAfterSeconds"])
-        if isinstance(error_result.get("retryAfterSeconds"), int)
-        else None
+    status_value = error_result.get("status")
+    status = (
+        int(status_value)
+        if isinstance(status_value, (str, int, float)) and not isinstance(status_value, bool)
+        else 400
     )
+    retry_value = error_result.get("retryAfterSeconds")
+    retry_after_seconds = retry_value if isinstance(retry_value, int) else None
 
     payload: dict[str, Any] = {
         "success": False,

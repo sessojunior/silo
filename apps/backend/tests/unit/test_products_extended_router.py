@@ -26,7 +26,9 @@ def _patch_success(mp, name: str, data: object) -> None:
 
 
 @pytest.mark.asyncio
-async def test_products_extended_activity_contacts_dependencies_and_manual_paths(monkeypatch) -> None:
+async def test_products_extended_activity_contacts_dependencies_and_manual_paths(
+    monkeypatch,
+) -> None:
     activity_calls: list[dict[str, object]] = []
     availability_exception_calls = 0
     pending_email_calls = 0
@@ -81,34 +83,64 @@ async def test_products_extended_activity_contacts_dependencies_and_manual_paths
 
     def _record_dependency(*args, **kwargs):
         dependency_calls.append((args, kwargs))
-        return service_success({"dependency": {"id": kwargs.get("product_id"), "name": kwargs.get("name")}})
+        return service_success(
+            {"dependency": {"id": kwargs.get("product_id"), "name": kwargs.get("name")}}
+        )
 
-    monkeypatch.setattr(products_extended_router, "_call_product_service", lambda db, func, *args, **kwargs: func(*args, **kwargs))
-    monkeypatch.setattr(products_extended_router, "get_product_data_flow_pipelines_from_kafka_rest", _pipelines_stub)
-    monkeypatch.setattr(products_extended_router, "is_upload_kind", lambda kind: kind in {"manual", "problems", "solutions"})
-    monkeypatch.setattr(products_extended_router, "is_safe_filename", lambda filename: filename != "bad.webp")
+    monkeypatch.setattr(
+        products_extended_router,
+        "_call_product_service",
+        lambda db, func, *args, **kwargs: func(*args, **kwargs),
+    )
+    monkeypatch.setattr(
+        products_extended_router, "get_product_data_flow_pipelines_from_kafka_rest", _pipelines_stub
+    )
+    monkeypatch.setattr(
+        products_extended_router,
+        "is_upload_kind",
+        lambda kind: kind in {"manual", "problems", "solutions"},
+    )
+    monkeypatch.setattr(
+        products_extended_router, "is_safe_filename", lambda filename: filename != "bad.webp"
+    )
     monkeypatch.setattr(products_extended_router, "delete_upload_file", _delete_upload_stub)
-    monkeypatch.setattr(products_extended_router, "list_upload_files", lambda kind: [{"kind": kind, "filename": "manual-1.webp"}])
+    monkeypatch.setattr(
+        products_extended_router,
+        "list_upload_files",
+        lambda kind: [{"kind": kind, "filename": "manual-1.webp"}],
+    )
 
     monkeypatch.setattr(
         products_extended_router,
         "get_product_activity_availability",
-        lambda *args, **kwargs: service_success({"available": True, "turn": kwargs.get("turn"), "activityId": kwargs.get("activity_id")}),
+        lambda *args, **kwargs: service_success(
+            {"available": True, "turn": kwargs.get("turn"), "activityId": kwargs.get("activity_id")}
+        ),
     )
     monkeypatch.setattr(products_extended_router, "upsert_product_activity", _activity_stub)
     monkeypatch.setattr(
         products_extended_router,
         "update_product_activity",
-        lambda *args, **kwargs: service_success({"activity": {"id": kwargs["id"], "status": kwargs.get("status")}}),
+        lambda *args, **kwargs: service_success(
+            {"activity": {"id": kwargs["id"], "status": kwargs.get("status")}}
+        ),
     )
     monkeypatch.setattr(
         products_extended_router,
         "list_product_activity_pending_email_recipients",
         lambda *args, **kwargs: service_success({"items": [{"userId": "user-1"}], "total": 1}),
     )
-    monkeypatch.setattr(products_extended_router, "send_product_activity_pending_email", _pending_email_stub)
-    _patch_success(monkeypatch, "list_product_availability_exceptions", {"items": [{"id": "exception-1"}]})
-    monkeypatch.setattr(products_extended_router, "upsert_product_availability_exception", _availability_exception_stub)
+    monkeypatch.setattr(
+        products_extended_router, "send_product_activity_pending_email", _pending_email_stub
+    )
+    _patch_success(
+        monkeypatch, "list_product_availability_exceptions", {"items": [{"id": "exception-1"}]}
+    )
+    monkeypatch.setattr(
+        products_extended_router,
+        "upsert_product_availability_exception",
+        _availability_exception_stub,
+    )
     _patch_success(monkeypatch, "delete_product_availability_exception", None)
 
     monkeypatch.setattr(
@@ -119,12 +151,16 @@ async def test_products_extended_activity_contacts_dependencies_and_manual_paths
     monkeypatch.setattr(products_extended_router, "replace_product_contacts", _record_contact)
     _patch_success(monkeypatch, "delete_product_contact_association", None)
 
-    _patch_success(monkeypatch, "list_product_dependencies", [{"id": "dep-1", "name": "Dependencia 1"}])
+    _patch_success(
+        monkeypatch, "list_product_dependencies", [{"id": "dep-1", "name": "Dependencia 1"}]
+    )
     monkeypatch.setattr(products_extended_router, "create_product_dependency", _record_dependency)
     monkeypatch.setattr(
         products_extended_router,
         "update_product_dependency",
-        lambda *args, **kwargs: service_success({"dependency": {"id": kwargs["id"], "name": kwargs.get("name")}}),
+        lambda *args, **kwargs: service_success(
+            {"dependency": {"id": kwargs["id"], "name": kwargs.get("name")}}
+        ),
     )
     _patch_success(monkeypatch, "delete_product_dependency", None)
     _patch_success(monkeypatch, "reorder_product_dependencies", None)
@@ -405,9 +441,7 @@ async def test_products_extended_activity_contacts_dependencies_and_manual_paths
     )
     assert manual_saved["message"] == "Manual salvo com sucesso"
 
-    manual_images = _payload(
-        await products_extended_router.get_manual_images(object())
-    )
+    manual_images = _payload(await products_extended_router.get_manual_images(object()))
     assert manual_images["data"]["items"][0]["filename"] == "manual-1.webp"
 
     invalid_manual_image_delete = _payload(
@@ -428,7 +462,7 @@ async def test_products_extended_activity_contacts_dependencies_and_manual_paths
 
     assert deleted_uploads == [("manual", "manual-1.webp")]
 
-    upload_helper = products_extended_router._delete_upload_from_url  # noqa: SLF001
+    upload_helper = products_extended_router._delete_upload_from_url
     upload_helper("/uploads/manual/manual-2.webp?download=1")
     upload_helper("/uploads/manual/bad.webp")
     upload_helper("https://example.test/manual-3.webp")
@@ -445,11 +479,25 @@ async def test_products_extended_problem_solution_and_data_flow_paths(monkeypatc
     async def _pipelines_error_stub(*, slug: str, date: str | None, turn: str | None):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(products_extended_router, "_call_product_service", lambda db, func, *args, **kwargs: func(*args, **kwargs))
-    monkeypatch.setattr(products_extended_router, "get_product_data_flow_pipelines_from_kafka_rest", _pipelines_stub)
-    monkeypatch.setattr(products_extended_router, "delete_upload_file", lambda kind, filename: deleted_uploads.append((kind, filename)) or True)
-    monkeypatch.setattr(products_extended_router, "is_upload_kind", lambda kind: kind in {"problems", "solutions"})
-    monkeypatch.setattr(products_extended_router, "is_safe_filename", lambda filename: filename != "bad.webp")
+    monkeypatch.setattr(
+        products_extended_router,
+        "_call_product_service",
+        lambda db, func, *args, **kwargs: func(*args, **kwargs),
+    )
+    monkeypatch.setattr(
+        products_extended_router, "get_product_data_flow_pipelines_from_kafka_rest", _pipelines_stub
+    )
+    monkeypatch.setattr(
+        products_extended_router,
+        "delete_upload_file",
+        lambda kind, filename: deleted_uploads.append((kind, filename)) or True,
+    )
+    monkeypatch.setattr(
+        products_extended_router, "is_upload_kind", lambda kind: kind in {"problems", "solutions"}
+    )
+    monkeypatch.setattr(
+        products_extended_router, "is_safe_filename", lambda filename: filename != "bad.webp"
+    )
 
     _patch_success(monkeypatch, "list_product_problems", {"items": [{"id": "problem-1"}]})
     _patch_success(monkeypatch, "create_product_problem", None)
@@ -459,18 +507,38 @@ async def test_products_extended_problem_solution_and_data_flow_paths(monkeypatc
     _patch_success(monkeypatch, "create_product_problem_category", {"category": {"id": "cat-new"}})
     _patch_success(monkeypatch, "update_product_problem_category", None)
     _patch_success(monkeypatch, "delete_product_problem_category", None)
-    _patch_success(monkeypatch, "list_product_problem_images", {"items": [{"id": "problem-image-1"}]})
-    _patch_success(monkeypatch, "create_product_problem_image", {"image": {"image": "/uploads/problems/problem-1.webp"}})
-    _patch_success(monkeypatch, "delete_product_problem_image", {"image": {"image": "/uploads/problems/problem-1.webp"}})
+    _patch_success(
+        monkeypatch, "list_product_problem_images", {"items": [{"id": "problem-image-1"}]}
+    )
+    _patch_success(
+        monkeypatch,
+        "create_product_problem_image",
+        {"image": {"image": "/uploads/problems/problem-1.webp"}},
+    )
+    _patch_success(
+        monkeypatch,
+        "delete_product_problem_image",
+        {"image": {"image": "/uploads/problems/problem-1.webp"}},
+    )
     _patch_success(monkeypatch, "list_product_solutions", {"items": [{"id": "solution-1"}]})
     _patch_success(monkeypatch, "create_product_solution", None)
     _patch_success(monkeypatch, "update_product_solution", None)
     _patch_success(monkeypatch, "delete_product_solution", None)
     _patch_success(monkeypatch, "count_product_solutions", {"counts": {"problem-1": 2}})
     _patch_success(monkeypatch, "get_product_solutions_summary", {"summary": {"count": 2}})
-    _patch_success(monkeypatch, "list_product_solution_images", {"items": [{"id": "solution-image-1"}]})
-    _patch_success(monkeypatch, "create_product_solution_image", {"image": {"image": "/uploads/solutions/solution-1.webp"}})
-    _patch_success(monkeypatch, "delete_product_solution_image", {"image": {"image": "/uploads/solutions/solution-1.webp"}})
+    _patch_success(
+        monkeypatch, "list_product_solution_images", {"items": [{"id": "solution-image-1"}]}
+    )
+    _patch_success(
+        monkeypatch,
+        "create_product_solution_image",
+        {"image": {"image": "/uploads/solutions/solution-1.webp"}},
+    )
+    _patch_success(
+        monkeypatch,
+        "delete_product_solution_image",
+        {"image": {"image": "/uploads/solutions/solution-1.webp"}},
+    )
     _patch_success(monkeypatch, "list_product_activity_history", {"history": [{"id": "history-1"}]})
 
     invalid_problem = _payload(
@@ -770,7 +838,11 @@ async def test_products_extended_problem_solution_and_data_flow_paths(monkeypatc
     )
     assert data_flow["data"]["pipelines"][0]["pipeline"] == "pipe-1"
 
-    monkeypatch.setattr(products_extended_router, "get_product_data_flow_pipelines_from_kafka_rest", _pipelines_error_stub)
+    monkeypatch.setattr(
+        products_extended_router,
+        "get_product_data_flow_pipelines_from_kafka_rest",
+        _pipelines_error_stub,
+    )
     data_flow_error = _payload(
         await products_extended_router.get_data_flow(
             "produto-alpha",
@@ -792,20 +864,26 @@ def test_products_extended_helpers_cover_optional_parsing_and_upload_cleanup(mon
     deleted_uploads: list[tuple[str, str]] = []
 
     monkeypatch.setattr(products_extended_router, "is_upload_kind", lambda kind: kind == "manual")
-    monkeypatch.setattr(products_extended_router, "is_safe_filename", lambda filename: filename != "bad.webp")
-    monkeypatch.setattr(products_extended_router, "delete_upload_file", lambda kind, filename: deleted_uploads.append((kind, filename)) or True)
+    monkeypatch.setattr(
+        products_extended_router, "is_safe_filename", lambda filename: filename != "bad.webp"
+    )
+    monkeypatch.setattr(
+        products_extended_router,
+        "delete_upload_file",
+        lambda kind, filename: deleted_uploads.append((kind, filename)) or True,
+    )
 
-    assert products_extended_router._required_text("  texto  ") == "texto"  # noqa: SLF001
-    assert products_extended_router._required_text("   ") is None  # noqa: SLF001
-    assert products_extended_router._optional_text("  texto  ") == "texto"  # noqa: SLF001
-    assert products_extended_router._optional_text(123) is None  # noqa: SLF001
-    assert products_extended_router._optional_int("7") == 7  # noqa: SLF001
-    assert products_extended_router._optional_int("bad") is None  # noqa: SLF001
-    assert products_extended_router._optional_bool("true") is True  # noqa: SLF001
-    assert products_extended_router._optional_bool("off") is False  # noqa: SLF001
-    assert products_extended_router._optional_bool(None, default=True) is True  # noqa: SLF001
+    assert products_extended_router._required_text("  texto  ") == "texto"
+    assert products_extended_router._required_text("   ") is None
+    assert products_extended_router._optional_text("  texto  ") == "texto"
+    assert products_extended_router._optional_text(123) is None
+    assert products_extended_router._optional_int("7") == 7
+    assert products_extended_router._optional_int("bad") is None
+    assert products_extended_router._optional_bool("true") is True
+    assert products_extended_router._optional_bool("off") is False
+    assert products_extended_router._optional_bool(None, default=True) is True
 
-    delete_upload = products_extended_router._delete_upload_from_url  # noqa: SLF001
+    delete_upload = products_extended_router._delete_upload_from_url
     delete_upload("/uploads/manual/manual-9.webp")
     delete_upload("/uploads/manual/bad.webp")
     delete_upload("https://example.test/manual-10.webp")
@@ -814,10 +892,20 @@ def test_products_extended_helpers_cover_optional_parsing_and_upload_cleanup(mon
 
 @pytest.mark.asyncio
 async def test_products_extended_simple_routes_and_validation_branches(monkeypatch) -> None:
-    monkeypatch.setattr(products_extended_router, "_call_product_service", lambda db, func, *args, **kwargs: func(*args, **kwargs))
+    monkeypatch.setattr(
+        products_extended_router,
+        "_call_product_service",
+        lambda db, func, *args, **kwargs: func(*args, **kwargs),
+    )
     _patch_success(monkeypatch, "get_product_activity_availability", {"available": True})
-    _patch_success(monkeypatch, "update_product_activity", {"activity": {"id": "activity-1", "status": "done"}})
-    _patch_success(monkeypatch, "list_product_activity_pending_email_recipients", {"items": [{"userId": "user-1"}], "total": 1})
+    _patch_success(
+        monkeypatch, "update_product_activity", {"activity": {"id": "activity-1", "status": "done"}}
+    )
+    _patch_success(
+        monkeypatch,
+        "list_product_activity_pending_email_recipients",
+        {"items": [{"userId": "user-1"}], "total": 1},
+    )
     _patch_success(monkeypatch, "list_product_contacts", {"contacts": [{"id": "contact-1"}]})
     _patch_success(monkeypatch, "delete_product_contact_association", None)
     _patch_success(monkeypatch, "delete_product_dependency", None)
@@ -836,14 +924,21 @@ async def test_products_extended_simple_routes_and_validation_branches(monkeypat
 
     activity = _payload(
         await products_extended_router.put_activity(
-            {"id": "activity-1", "status": "done", "description": "Atividade", "intervention": "Ação"},
+            {
+                "id": "activity-1",
+                "status": "done",
+                "description": "Atividade",
+                "intervention": "Ação",
+            },
             SimpleNamespace(id="user-1"),
             object(),
         )
     )
     assert activity["data"]["id"] == "activity-1"
 
-    recipients = _payload(await products_extended_router.get_pending_email_recipients(object(), object()))
+    recipients = _payload(
+        await products_extended_router.get_pending_email_recipients(object(), object())
+    )
     assert recipients["data"]["total"] == 1
 
     contacts = _payload(
@@ -879,7 +974,9 @@ async def test_products_extended_routes_cover_service_error_branches(monkeypatch
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     connection = engine.connect()
     try:
-        assert products_extended_router._call_product_service(connection, lambda: {"ok": True}) == {"ok": True}  # noqa: SLF001
+        assert products_extended_router._call_product_service(connection, lambda: {"ok": True}) == {
+            "ok": True
+        }
     finally:
         connection.close()
         engine.dispose()
@@ -899,330 +996,439 @@ async def test_products_extended_routes_cover_service_error_branches(monkeypatch
         _pipelines_error_stub,
     )
 
-    assert _payload(
-        await products_extended_router.get_activity_availability(
-            productId="produto-alpha",
-            date="2026-03-06",
-            turn="6",
-            activityId=None,
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_activity_availability(
+                productId="produto-alpha",
+                date="2026-03-06",
+                turn="6",
+                activityId=None,
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.post_activity(
-            {
-                "productId": "produto-alpha",
-                "date": "2026-03-06",
-                "turn": "6",
-                "status": "done",
-                "description": "Atividade criada no turno",
-                "intervention": "Intervencao",
-            },
-            SimpleNamespace(id="user-1"),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.post_activity(
+                {
+                    "productId": "produto-alpha",
+                    "date": "2026-03-06",
+                    "turn": "6",
+                    "status": "done",
+                    "description": "Atividade criada no turno",
+                    "intervention": "Intervencao",
+                },
+                SimpleNamespace(id="user-1"),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.put_activity(
-            {
-                "id": "activity-1",
-                "status": "done",
-                "description": "Atividade",
-                "intervention": "Ação",
-            },
-            SimpleNamespace(id="user-1"),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.put_activity(
+                {
+                    "id": "activity-1",
+                    "status": "done",
+                    "description": "Atividade",
+                    "intervention": "Ação",
+                },
+                SimpleNamespace(id="user-1"),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(await products_extended_router.get_pending_email_recipients(object(), object()))["success"] is False
+    assert (
+        _payload(await products_extended_router.get_pending_email_recipients(object(), object()))[
+            "success"
+        ]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.post_pending_email(
-            {
-                "productId": "produto-alpha",
-                "date": "2026-03-06",
-                "turn": 6,
-                "status": "done",
-                "recipientUserIds": ["user-1"],
-                "message": "Mensagem",
-            },
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.post_pending_email(
+                {
+                    "productId": "produto-alpha",
+                    "date": "2026-03-06",
+                    "turn": 6,
+                    "status": "done",
+                    "recipientUserIds": ["user-1"],
+                    "message": "Mensagem",
+                },
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_availability_exceptions(
-            productId="produto-alpha",
-            from_date="2026-03-01",
-            to_date="2026-03-31",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_availability_exceptions(
+                productId="produto-alpha",
+                from_date="2026-03-01",
+                to_date="2026-03-31",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.post_availability_exception(
-            {
-                "productId": "produto-alpha",
-                "date": "2026-03-06",
-                "type": next(iter(products_extended_router.PRODUCT_AVAILABILITY_EXCEPTION_TYPES)),
-                "description": "Excecao criada",
-            },
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.post_availability_exception(
+                {
+                    "productId": "produto-alpha",
+                    "date": "2026-03-06",
+                    "type": next(
+                        iter(products_extended_router.PRODUCT_AVAILABILITY_EXCEPTION_TYPES)
+                    ),
+                    "description": "Excecao criada",
+                },
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.delete_availability_exception(
-            id="exception-1",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.delete_availability_exception(
+                id="exception-1",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_contacts(
-            productId="produto-alpha",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_contacts(
+                productId="produto-alpha",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.post_contacts(
-            {"productId": "produto-alpha", "contactIds": ["contact-1", "contact-2"]},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.post_contacts(
+                {"productId": "produto-alpha", "contactIds": ["contact-1", "contact-2"]},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.delete_contact(
-            {"associationId": "assoc-1"},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.delete_contact(
+                {"associationId": "assoc-1"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_dependencies(
-            productId="produto-alpha",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_dependencies(
+                productId="produto-alpha",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.post_dependency(
-            {
-                "productId": "produto-alpha",
-                "name": "Dependencia criada",
-                "icon": "icon-[lucide--database]",
-                "description": "Descricao",
-                "parentId": "parent-1",
-            },
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.post_dependency(
+                {
+                    "productId": "produto-alpha",
+                    "name": "Dependencia criada",
+                    "icon": "icon-[lucide--database]",
+                    "description": "Descricao",
+                    "parentId": "parent-1",
+                },
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.put_dependency(
-            {
-                "id": "dep-1",
-                "name": "Dependencia atualizada",
-                "icon": "icon-[lucide--database]",
-                "description": "Descricao atualizada",
-                "parentId": "parent-2",
-                "newPosition": "3",
-            },
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.put_dependency(
+                {
+                    "id": "dep-1",
+                    "name": "Dependencia atualizada",
+                    "icon": "icon-[lucide--database]",
+                    "description": "Descricao atualizada",
+                    "parentId": "parent-2",
+                    "newPosition": "3",
+                },
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.delete_dependency(
-            {"id": "dep-1"},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.delete_dependency(
+                {"id": "dep-1"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.reorder_dependencies(
-            {"productId": "produto-alpha", "items": [{"id": "dep-1", "parentId": None}]},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.reorder_dependencies(
+                {"productId": "produto-alpha", "items": [{"id": "dep-1", "parentId": None}]},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_manual(
-            productSlug="produto-alpha",
-            productId=None,
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_manual(
+                productSlug="produto-alpha",
+                productId=None,
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.put_manual(
-            {"productId": "produto-alpha", "description": "Manual atualizado"},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.put_manual(
+                {"productId": "produto-alpha", "description": "Manual atualizado"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_problems(
-            slug="produto-alpha",
-            page="2",
-            limit="10",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_problems(
+                slug="produto-alpha",
+                page="2",
+                limit="10",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.post_problem(
-            {
-                "productId": "produto-alpha",
-                "problemCategoryId": "cat-1",
-                "title": "Problema criado",
-                "description": "Descricao do problema criada com mais de vinte caracteres.",
-            },
-            SimpleNamespace(id="user-1"),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.post_problem(
+                {
+                    "productId": "produto-alpha",
+                    "problemCategoryId": "cat-1",
+                    "title": "Problema criado",
+                    "description": "Descricao do problema criada com mais de vinte caracteres.",
+                },
+                SimpleNamespace(id="user-1"),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.put_problem(
-            {
-                "id": "problem-1",
-                "problemCategoryId": "cat-1",
-                "title": "Problema atualizado",
-                "description": "Descricao do problema atualizada com mais de vinte caracteres.",
-            },
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.put_problem(
+                {
+                    "id": "problem-1",
+                    "problemCategoryId": "cat-1",
+                    "title": "Problema atualizado",
+                    "description": "Descricao do problema atualizada com mais de vinte caracteres.",
+                },
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.delete_problem(
-            {"id": "problem-1"},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.delete_problem(
+                {"id": "problem-1"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_problem_categories(
-            search="cat",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_problem_categories(
+                search="cat",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.post_problem_category(
-            {"name": "Categoria", "color": "#111111"},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.post_problem_category(
+                {"name": "Categoria", "color": "#111111"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.put_problem_category(
-            {"id": "cat-1", "name": "Categoria atualizada", "color": "#222222"},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.put_problem_category(
+                {"id": "cat-1", "name": "Categoria atualizada", "color": "#222222"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.delete_problem_category("cat-1", object(), object())
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.delete_problem_category("cat-1", object(), object())
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_problem_images(
-            problemId="problem-1",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_problem_images(
+                problemId="problem-1",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_solutions(
-            problemId="problem-1",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_solutions(
+                problemId="problem-1",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.post_solution(
-            {"problemId": "problem-1", "description": "Solucao criada"},
-            SimpleNamespace(id="user-1"),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.post_solution(
+                {"problemId": "problem-1", "description": "Solucao criada"},
+                SimpleNamespace(id="user-1"),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.put_solution(
-            {"id": "solution-1", "description": "Solucao atualizada", "removeImage": True},
-            SimpleNamespace(id="user-1"),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.put_solution(
+                {"id": "solution-1", "description": "Solucao atualizada", "removeImage": True},
+                SimpleNamespace(id="user-1"),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.delete_solution(
-            {"id": "solution-1"},
-            SimpleNamespace(id="user-1"),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.delete_solution(
+                {"id": "solution-1"},
+                SimpleNamespace(id="user-1"),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.count_solutions(
-            {"problemIds": ["problem-1"]},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.count_solutions(
+                {"problemIds": ["problem-1"]},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.solutions_summary(
-            productSlug="produto-alpha",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.solutions_summary(
+                productSlug="produto-alpha",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_solution_images(
-            solutionId="solution-1",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_solution_images(
+                solutionId="solution-1",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
-    assert _payload(
-        await products_extended_router.get_history(
-            productId="produto-alpha",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await products_extended_router.get_history(
+                productId="produto-alpha",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
 
     data_flow_error = _payload(
         await products_extended_router.get_data_flow(
@@ -1234,4 +1440,3 @@ async def test_products_extended_routes_cover_service_error_branches(monkeypatch
         )
     )
     assert data_flow_error["success"] is False
-

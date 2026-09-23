@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, asc, delete, desc, func, insert, or_, select, update
+from sqlalchemy import and_, asc, delete, desc, func, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Connection
 
@@ -15,18 +14,19 @@ from silo.auth.mail import send_plain_email
 from silo.date import format_date_br, parse_date
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
-from silo.domain.model_run_status import normalize_model_run_status
 from silo.domain.scheduling import (
     SHIFT_CODES,
     ProfessionalSchedule,
     ScheduleBlock,
     ScheduleException,
-    TimeSlot,
     WorkSchedule,
     check_slot_fit,
     get_shift_slot,
 )
-from silo.services.analytics_common import format_br_day_short, format_local_datetime_text, is_incident_status, normalize_shift_turns
+from silo.services.analytics_common import (
+    format_local_datetime_text,
+    normalize_shift_turns,
+)
 from silo.services.common import service_failure, service_success
 from silo.services.dataflow_portal import get_product_data_flow_pipelines_from_kafka_rest_sync
 from silo.services.embedding_write import (
@@ -34,8 +34,15 @@ from silo.services.embedding_write import (
     upsert_problem_embedding,
     upsert_solution_embedding,
 )
-from silo.services.legacy_utils import new_uuid, now_naive, optional_int, optional_str, normalize_whitespace
-from silo.storage.uploads import delete_upload_file, is_safe_filename, is_upload_kind, list_upload_files
+from silo.services.legacy_utils import (
+    new_uuid,
+    now_naive,
+)
+from silo.storage.uploads import (
+    delete_upload_file,
+    is_safe_filename,
+    is_upload_kind,
+)
 
 PRODUCT_AVAILABILITY_EXCEPTION_TYPES: tuple[str, ...] = ("holiday", "pause", "extra")
 PRODUCT_PRIORITY_VALUES: tuple[str, ...] = ("low", "normal", "high", "urgent")
@@ -61,7 +68,6 @@ def get_product_activity_availability(
     turn: int,
     activity_id: str | None = None,
 ) -> dict[str, object]:
-    product_table = legacy_tables["product"]
     activity_table = legacy_tables["product_activity"]
     availability_table = legacy_tables["product_availability_exception"]
 
@@ -88,8 +94,7 @@ def get_product_activity_availability(
     range_end = _date_to_datetime(date_value) + timedelta(days=7)
 
     activity_rows = _connection_select_rows(
-        select(activity_table.c.id, activity_table.c.date, activity_table.c.turn)
-        .where(
+        select(activity_table.c.id, activity_table.c.date, activity_table.c.turn).where(
             and_(
                 activity_table.c.product_id == product_id,
                 activity_table.c.date >= parse_date(date_value) if date_value else True,
@@ -145,7 +150,13 @@ def get_product_activity_availability(
         exceptions=exceptions,
     )
     fit_result = check_slot_fit(requested_slot, professional_schedule)
-    reason = "turn_not_allowed" if not requested_turn_allowed else "conflict" if fit_result.conflicts else "available"
+    reason = (
+        "turn_not_allowed"
+        if not requested_turn_allowed
+        else "conflict"
+        if fit_result.conflicts
+        else "available"
+    )
 
     return service_success(
         {
@@ -181,9 +192,9 @@ def list_product_availability_exceptions(
         conditions.append(availability_table.c.date <= parse_date(to_date))
 
     rows = _connection_select_rows(
-        select(availability_table).where(and_(*conditions)).order_by(
-            asc(availability_table.c.date), asc(availability_table.c.type)
-        )
+        select(availability_table)
+        .where(and_(*conditions))
+        .order_by(asc(availability_table.c.date), asc(availability_table.c.type))
     )
     items = [serialize_legacy_row(row) for row in rows]
     return service_success({"items": items})
@@ -249,7 +260,9 @@ def upsert_product_availability_exception(
 
 def delete_product_availability_exception(exception_id: str) -> dict[str, object]:
     availability_table = legacy_tables["product_availability_exception"]
-    existing = _connection_select_first(select(availability_table.c.id).where(availability_table.c.id == exception_id))
+    existing = _connection_select_first(
+        select(availability_table.c.id).where(availability_table.c.id == exception_id)
+    )
     if existing is None:
         return service_failure("Exceção não encontrada.", 404)
 
@@ -322,7 +335,9 @@ def list_product_activity_history(
         }
         history.append(item)
 
-    activity_row = _connection_select_first(select(activity_table).where(activity_table.c.id == current_activity["id"]))
+    activity_row = _connection_select_first(
+        select(activity_table).where(activity_table.c.id == current_activity["id"])
+    )
     return service_success({"task": serialize_legacy_row(activity_row), "history": history})
 
 
@@ -354,7 +369,12 @@ def send_product_activity_pending_email(
     user_table = legacy_tables["user"]
     recipients = _connection_select_rows(
         select(user_table.c.id, user_table.c.name, user_table.c.email)
-        .where(and_(user_table.c.id.in_(tuple(dict.fromkeys(recipient_user_ids))), user_table.c.is_active.is_(True)))
+        .where(
+            and_(
+                user_table.c.id.in_(tuple(dict.fromkeys(recipient_user_ids))),
+                user_table.c.is_active.is_(True),
+            )
+        )
         .order_by(asc(user_table.c.name))
     )
 
@@ -425,7 +445,11 @@ def upsert_product_activity(
         pg_insert(activity_table)
         .values(values)
         .on_conflict_do_update(
-            index_elements=[activity_table.c.product_id, activity_table.c.date, activity_table.c.turn],
+            index_elements=[
+                activity_table.c.product_id,
+                activity_table.c.date,
+                activity_table.c.turn,
+            ],
             set_={
                 "user_id": user_id,
                 "status": status,
@@ -508,8 +532,14 @@ def list_product_contacts(product_id: str) -> dict[str, object]:
             product_contact_table.c.id.label("association_id"),
             product_contact_table.c.created_at,
         )
-        .select_from(product_contact_table.join(contact_table, product_contact_table.c.contact_id == contact_table.c.id))
-        .where(and_(product_contact_table.c.product_id == product_id, contact_table.c.active.is_(True)))
+        .select_from(
+            product_contact_table.join(
+                contact_table, product_contact_table.c.contact_id == contact_table.c.id
+            )
+        )
+        .where(
+            and_(product_contact_table.c.product_id == product_id, contact_table.c.active.is_(True))
+        )
         .order_by(product_contact_table.c.created_at)
     )
     return service_success({"contacts": [serialize_legacy_row(row) for row in rows]})
@@ -522,7 +552,9 @@ def replace_product_contacts(*, product_id: str, contact_ids: list[str]) -> dict
         if contact_id not in unique_contact_ids:
             unique_contact_ids.append(contact_id)
 
-    _connection_execute(delete(product_contact_table).where(product_contact_table.c.product_id == product_id))
+    _connection_execute(
+        delete(product_contact_table).where(product_contact_table.c.product_id == product_id)
+    )
     if unique_contact_ids:
         _connection_execute(
             insert(product_contact_table),
@@ -542,11 +574,15 @@ def replace_product_contacts(*, product_id: str, contact_ids: list[str]) -> dict
 
 def delete_product_contact_association(association_id: str) -> dict[str, object]:
     product_contact_table = legacy_tables["product_contact"]
-    existing = _connection_select_first(select(product_contact_table.c.id).where(product_contact_table.c.id == association_id))
+    existing = _connection_select_first(
+        select(product_contact_table.c.id).where(product_contact_table.c.id == association_id)
+    )
     if existing is None:
         return service_failure("Associação não encontrada.", 404)
 
-    _connection_execute(delete(product_contact_table).where(product_contact_table.c.id == association_id))
+    _connection_execute(
+        delete(product_contact_table).where(product_contact_table.c.id == association_id)
+    )
     _commit()
     return service_success(None)
 
@@ -554,7 +590,9 @@ def delete_product_contact_association(association_id: str) -> dict[str, object]
 def list_product_dependencies(product_id: str) -> dict[str, object]:
     dependency_table = legacy_tables["product_dependency"]
     rows = _connection_select_rows(
-        select(dependency_table).where(dependency_table.c.product_id == product_id).order_by(dependency_table.c.sort_key)
+        select(dependency_table)
+        .where(dependency_table.c.product_id == product_id)
+        .order_by(dependency_table.c.sort_key)
     )
     serialized = [serialize_legacy_row(row) for row in rows]
     return service_success(_build_dependency_tree(serialized))
@@ -573,14 +611,24 @@ def create_product_dependency(
         select(dependency_table.c.id).where(
             and_(
                 dependency_table.c.product_id == product_id,
-                dependency_table.c.parent_id == parent_id if parent_id else dependency_table.c.parent_id.is_(None),
+                dependency_table.c.parent_id == parent_id
+                if parent_id
+                else dependency_table.c.parent_id.is_(None),
             )
         )
     )
     next_position = len(siblings)
-    parent_row = _connection_select_first(select(dependency_table).where(dependency_table.c.id == parent_id)) if parent_id else None
-    tree_path = _calculate_tree_path(parent_row.get("tree_path") if parent_row else None, next_position)
-    sort_key = _calculate_sort_key(parent_row.get("sort_key") if parent_row else None, next_position)
+    parent_row = (
+        _connection_select_first(select(dependency_table).where(dependency_table.c.id == parent_id))
+        if parent_id
+        else None
+    )
+    tree_path = _calculate_tree_path(
+        parent_row.get("tree_path") if parent_row else None, next_position
+    )
+    sort_key = _calculate_sort_key(
+        parent_row.get("sort_key") if parent_row else None, next_position
+    )
     tree_depth = _calculate_tree_depth(parent_row.get("tree_depth") if parent_row else None)
 
     row = {
@@ -596,7 +644,9 @@ def create_product_dependency(
         "created_at": now_naive(),
         "updated_at": now_naive(),
     }
-    created = _connection_execute_first(insert(dependency_table).values(row).returning(dependency_table))
+    created = _connection_execute_first(
+        insert(dependency_table).values(row).returning(dependency_table)
+    )
     if created is None:
         return service_failure("Erro ao criar dependência.", 500)
     _commit()
@@ -624,14 +674,29 @@ def update_product_dependency(
         "updated_at": now_naive(),
     }
     if new_position is not None:
-        parent_row = _connection_select_first(select(dependency_table).where(dependency_table.c.id == parent_id)) if parent_id else None
+        parent_row = (
+            _connection_select_first(
+                select(dependency_table).where(dependency_table.c.id == parent_id)
+            )
+            if parent_id
+            else None
+        )
         update_data["parent_id"] = parent_id
-        update_data["tree_path"] = _calculate_tree_path(parent_row.get("tree_path") if parent_row else None, new_position)
-        update_data["sort_key"] = _calculate_sort_key(parent_row.get("sort_key") if parent_row else None, new_position)
-        update_data["tree_depth"] = _calculate_tree_depth(parent_row.get("tree_depth") if parent_row else None)
+        update_data["tree_path"] = _calculate_tree_path(
+            parent_row.get("tree_path") if parent_row else None, new_position
+        )
+        update_data["sort_key"] = _calculate_sort_key(
+            parent_row.get("sort_key") if parent_row else None, new_position
+        )
+        update_data["tree_depth"] = _calculate_tree_depth(
+            parent_row.get("tree_depth") if parent_row else None
+        )
 
     updated = _connection_execute_first(
-        update(dependency_table).where(dependency_table.c.id == id).values(**update_data).returning(dependency_table)
+        update(dependency_table)
+        .where(dependency_table.c.id == id)
+        .values(**update_data)
+        .returning(dependency_table)
     )
     if updated is None:
         return service_failure("Dependência não encontrada.", 404)
@@ -641,13 +706,19 @@ def update_product_dependency(
 
 def delete_product_dependency(id: str) -> dict[str, object]:
     dependency_table = legacy_tables["product_dependency"]
-    existing = _connection_select_first(select(dependency_table.c.id).where(dependency_table.c.id == id))
+    existing = _connection_select_first(
+        select(dependency_table.c.id).where(dependency_table.c.id == id)
+    )
     if existing is None:
         return service_failure("Dependência não encontrada.", 404)
 
-    child = _connection_select_first(select(dependency_table.c.id).where(dependency_table.c.parent_id == id))
+    child = _connection_select_first(
+        select(dependency_table.c.id).where(dependency_table.c.parent_id == id)
+    )
     if child is not None:
-        return service_failure("Não é possível excluir uma dependência que possui itens filhos.", 400)
+        return service_failure(
+            "Não é possível excluir uma dependência que possui itens filhos.", 400
+        )
 
     _connection_execute(delete(dependency_table).where(dependency_table.c.id == id))
     _commit()
@@ -662,7 +733,9 @@ def reorder_product_dependencies(
     dependency_table = legacy_tables["product_dependency"]
     existing_ids = {
         str(row["id"])
-        for row in _connection_select_rows(select(dependency_table.c.id).where(dependency_table.c.product_id == product_id))
+        for row in _connection_select_rows(
+            select(dependency_table.c.id).where(dependency_table.c.product_id == product_id)
+        )
     }
     if any(str(item.get("id") or "") not in existing_ids for item in items):
         return service_failure("Alguns itens não pertencem a este produto", 400)
@@ -688,14 +761,20 @@ def reorder_product_dependencies(
     return service_success(None)
 
 
-def get_product_manual(*, product_slug: str | None = None, product_id: str | None = None) -> dict[str, object]:
+def get_product_manual(
+    *, product_slug: str | None = None, product_id: str | None = None
+) -> dict[str, object]:
     product_table = legacy_tables["product"]
     manual_table = legacy_tables["product_manual"]
 
     if product_slug:
         row = _connection_select_first(
             select(manual_table)
-            .select_from(product_table.outerjoin(manual_table, manual_table.c.product_id == product_table.c.id))
+            .select_from(
+                product_table.outerjoin(
+                    manual_table, manual_table.c.product_id == product_table.c.id
+                )
+            )
             .where(product_table.c.slug == product_slug)
             .limit(1)
         )
@@ -703,7 +782,9 @@ def get_product_manual(*, product_slug: str | None = None, product_id: str | Non
         return service_success({"manual": manual})
 
     if product_id:
-        row = _connection_select_first(select(manual_table).where(manual_table.c.product_id == product_id).limit(1))
+        row = _connection_select_first(
+            select(manual_table).where(manual_table.c.product_id == product_id).limit(1)
+        )
         manual = serialize_legacy_row(row) if row is not None and row["id"] is not None else None
         return service_success({"manual": manual})
 
@@ -714,10 +795,15 @@ def upsert_product_manual(*, product_id: str, description: str) -> dict[str, obj
     product_table = legacy_tables["product"]
     manual_table = legacy_tables["product_manual"]
 
-    if _connection_select_first(select(product_table.c.id).where(product_table.c.id == product_id)) is None:
+    if (
+        _connection_select_first(select(product_table.c.id).where(product_table.c.id == product_id))
+        is None
+    ):
         return service_failure("Produto não encontrado", 404)
 
-    existing = _connection_select_first(select(manual_table).where(manual_table.c.product_id == product_id).limit(1))
+    existing = _connection_select_first(
+        select(manual_table).where(manual_table.c.product_id == product_id).limit(1)
+    )
     if existing is not None:
         updated = _connection_execute_first(
             update(manual_table)
@@ -754,7 +840,9 @@ def list_product_problems(*, slug: str, page: int = 1, limit: int = 20) -> dict[
     category_table = legacy_tables["product_problem_category"]
     user_table = legacy_tables["user"]
 
-    product_row = _connection_select_first(select(product_table.c.id).where(product_table.c.slug == slug))
+    product_row = _connection_select_first(
+        select(product_table.c.id).where(product_table.c.slug == slug)
+    )
     if product_row is None:
         return service_failure("Produto não encontrado.", 404)
 
@@ -774,9 +862,9 @@ def list_product_problems(*, slug: str, page: int = 1, limit: int = 20) -> dict[
             user_table.c.name.label("user_name"),
         )
         .select_from(
-            problem_table.outerjoin(user_table, problem_table.c.user_id == user_table.c.id).outerjoin(
-                category_table, problem_table.c.problem_category_id == category_table.c.id
-            )
+            problem_table.outerjoin(
+                user_table, problem_table.c.user_id == user_table.c.id
+            ).outerjoin(category_table, problem_table.c.problem_category_id == category_table.c.id)
         )
         .where(problem_table.c.product_id == product_row["id"])
         .order_by(desc(problem_table.c.created_at), desc(problem_table.c.id))
@@ -797,7 +885,12 @@ def create_product_problem(
     category_table = legacy_tables["product_problem_category"]
     problem_table = legacy_tables["product_problem"]
 
-    if _connection_select_first(select(category_table.c.id).where(category_table.c.id == problem_category_id)) is None:
+    if (
+        _connection_select_first(
+            select(category_table.c.id).where(category_table.c.id == problem_category_id)
+        )
+        is None
+    ):
         return service_failure("Categoria não encontrada.", 400)
 
     problem_id = new_uuid()
@@ -860,7 +953,9 @@ def delete_product_problem(id: str) -> dict[str, object]:
     problem_image_rows = _connection_select_rows(
         select(problem_image_table.c.image).where(problem_image_table.c.product_problem_id == id)
     )
-    solution_rows = _connection_select_rows(select(solution_table.c.id).where(solution_table.c.product_problem_id == id))
+    solution_rows = _connection_select_rows(
+        select(solution_table.c.id).where(solution_table.c.product_problem_id == id)
+    )
     solution_ids = [str(row["id"]) for row in solution_rows]
     solution_image_rows: list[dict[str, object]] = []
     if solution_ids:
@@ -876,10 +971,22 @@ def delete_product_problem(id: str) -> dict[str, object]:
     _begin()
     try:
         if solution_ids:
-            _connection_execute(delete(solution_checked_table).where(solution_checked_table.c.product_solution_id.in_(tuple(solution_ids))))
-            _connection_execute(delete(solution_image_table).where(solution_image_table.c.product_solution_id.in_(tuple(solution_ids))))
-            _connection_execute(delete(solution_table).where(solution_table.c.product_problem_id == id))
-        _connection_execute(delete(problem_image_table).where(problem_image_table.c.product_problem_id == id))
+            _connection_execute(
+                delete(solution_checked_table).where(
+                    solution_checked_table.c.product_solution_id.in_(tuple(solution_ids))
+                )
+            )
+            _connection_execute(
+                delete(solution_image_table).where(
+                    solution_image_table.c.product_solution_id.in_(tuple(solution_ids))
+                )
+            )
+            _connection_execute(
+                delete(solution_table).where(solution_table.c.product_problem_id == id)
+            )
+        _connection_execute(
+            delete(problem_image_table).where(problem_image_table.c.product_problem_id == id)
+        )
         _connection_execute(delete(problem_table).where(problem_table.c.id == id))
         _commit()
     except Exception:
@@ -958,7 +1065,9 @@ def create_product_problem_category(*, name: str, color: str | None = None) -> d
     return service_success({"category": serialize_legacy_row(created)})
 
 
-def update_product_problem_category(*, id: str, name: str, color: str | None = None) -> dict[str, object]:
+def update_product_problem_category(
+    *, id: str, name: str, color: str | None = None
+) -> dict[str, object]:
     table = legacy_tables["product_problem_category"]
     existing = _connection_select_first(select(table).where(table.c.id == id))
     if existing is None:
@@ -1007,15 +1116,29 @@ def list_product_solutions(problem_id: str) -> dict[str, object]:
         return service_success({"items": []})
 
     solution_ids = [str(row["id"]) for row in solutions]
-    users = _connection_select_rows(select(user_table).where(user_table.c.id.in_(tuple({str(row["user_id"]) for row in solutions}))))
-    checked = _connection_select_rows(select(checked_table.c.product_solution_id).where(checked_table.c.product_solution_id.in_(tuple(solution_ids))))
+    users = _connection_select_rows(
+        select(user_table).where(
+            user_table.c.id.in_(tuple({str(row["user_id"]) for row in solutions}))
+        )
+    )
+    checked = _connection_select_rows(
+        select(checked_table.c.product_solution_id).where(
+            checked_table.c.product_solution_id.in_(tuple(solution_ids))
+        )
+    )
     checked_ids = {str(row["product_solution_id"]) for row in checked}
-    images = _connection_select_rows(select(image_table).where(image_table.c.product_solution_id.in_(tuple(solution_ids))))
+    images = _connection_select_rows(
+        select(image_table).where(image_table.c.product_solution_id.in_(tuple(solution_ids)))
+    )
 
     users_by_id = {str(row["id"]): row for row in users}
-    images_by_solution: dict[str, list[dict[str, object]]] = {solution_id: [] for solution_id in solution_ids}
+    images_by_solution: dict[str, list[dict[str, object]]] = {
+        solution_id: [] for solution_id in solution_ids
+    }
     for image_row in images:
-        images_by_solution.setdefault(str(image_row["product_solution_id"]), []).append(serialize_legacy_row(image_row))
+        images_by_solution.setdefault(str(image_row["product_solution_id"]), []).append(
+            serialize_legacy_row(image_row)
+        )
 
     items: list[dict[str, object]] = []
     for solution_row in solutions:
@@ -1153,12 +1276,20 @@ def delete_product_solution(*, user_id: str, id: str) -> dict[str, object]:
         all_ids = [id, *child_ids]
         if all_ids:
             image_rows = _connection_select_rows(
-                select(image_table.c.image).where(image_table.c.product_solution_id.in_(tuple(all_ids)))
+                select(image_table.c.image).where(
+                    image_table.c.product_solution_id.in_(tuple(all_ids))
+                )
             )
             removed_image_urls = [str(row["image"]) for row in image_rows if row.get("image")]
-            _connection_execute(delete(checked_table).where(checked_table.c.product_solution_id.in_(tuple(all_ids))))
-            _connection_execute(delete(image_table).where(image_table.c.product_solution_id.in_(tuple(all_ids))))
-            _connection_execute(delete(solution_table).where(solution_table.c.id.in_(tuple(all_ids))))
+            _connection_execute(
+                delete(checked_table).where(checked_table.c.product_solution_id.in_(tuple(all_ids)))
+            )
+            _connection_execute(
+                delete(image_table).where(image_table.c.product_solution_id.in_(tuple(all_ids)))
+            )
+            _connection_execute(
+                delete(solution_table).where(solution_table.c.id.in_(tuple(all_ids)))
+            )
         _commit()
     except Exception:
         _rollback()
@@ -1187,19 +1318,25 @@ def get_product_solutions_summary(product_slug: str) -> dict[str, object]:
     problem_table = legacy_tables["product_problem"]
     solution_table = legacy_tables["product_solution"]
 
-    product_row = _connection_select_first(select(product_table.c.id).where(product_table.c.slug == product_slug))
+    product_row = _connection_select_first(
+        select(product_table.c.id).where(product_table.c.slug == product_slug)
+    )
     if product_row is None:
         return service_success({"totalSolutions": 0, "lastUpdated": None})
 
     problems = _connection_select_rows(
-        select(problem_table.c.id, problem_table.c.updated_at).where(problem_table.c.product_id == product_row["id"])
+        select(problem_table.c.id, problem_table.c.updated_at).where(
+            problem_table.c.product_id == product_row["id"]
+        )
     )
     if not problems:
         return service_success({"totalSolutions": 0, "lastUpdated": None})
 
     problem_ids = [str(row["id"]) for row in problems]
     solutions = _connection_select_rows(
-        select(solution_table.c.product_problem_id, solution_table.c.updated_at).where(solution_table.c.product_problem_id.in_(tuple(problem_ids)))
+        select(solution_table.c.product_problem_id, solution_table.c.updated_at).where(
+            solution_table.c.product_problem_id.in_(tuple(problem_ids))
+        )
     )
 
     total_solutions = len(solutions)
@@ -1216,7 +1353,9 @@ def get_product_solutions_summary(product_slug: str) -> dict[str, object]:
     return service_success(
         {
             "totalSolutions": total_solutions,
-            "lastUpdated": format_local_datetime_text(last_updated) if last_updated is not None else None,
+            "lastUpdated": format_local_datetime_text(last_updated)
+            if last_updated is not None
+            else None,
         }
     )
 
@@ -1304,7 +1443,9 @@ def _record_product_activity_history(
 
 def _collect_solution_descendants(parent_id: str) -> list[str]:
     solution_table = legacy_tables["product_solution"]
-    direct_replies = _connection_select_rows(select(solution_table.c.id).where(solution_table.c.reply_id == parent_id))
+    direct_replies = _connection_select_rows(
+        select(solution_table.c.id).where(solution_table.c.reply_id == parent_id)
+    )
     all_ids: list[str] = []
     for row in direct_replies:
         reply_id = str(row["id"])
@@ -1313,7 +1454,9 @@ def _collect_solution_descendants(parent_id: str) -> list[str]:
     return all_ids
 
 
-def _build_dependency_tree(items: list[dict[str, object]], parent_id: str | None = None) -> list[dict[str, object]]:
+def _build_dependency_tree(
+    items: list[dict[str, object]], parent_id: str | None = None
+) -> list[dict[str, object]]:
     children = [item for item in items if item.get("parentId") == parent_id]
     result: list[dict[str, object]] = []
     for item in children:
@@ -1410,4 +1553,4 @@ def _fire_and_forget(coro: Any) -> None:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         return
-    loop.create_task(coro)
+    _task = loop.create_task(coro)

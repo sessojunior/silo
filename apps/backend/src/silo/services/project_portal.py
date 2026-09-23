@@ -86,9 +86,11 @@ def update_project(connection: Connection, payload: dict[str, object]):
 
     project_id = required["id"]
     project_table = legacy_tables["project"]
-    current = connection.execute(
-        select(project_table).where(project_table.c.id == project_id).limit(1)
-    ).mappings().first()
+    current = (
+        connection.execute(select(project_table).where(project_table.c.id == project_id).limit(1))
+        .mappings()
+        .first()
+    )
     if current is None:
         return service_failure("Projeto não encontrado.", 404)
 
@@ -132,8 +134,12 @@ def delete_project(connection: Connection, project_id: str):
     connection.commit()
     with connection.begin():
         if task_ids:
-            connection.execute(delete(task_history_table).where(task_history_table.c.task_id.in_(task_ids)))
-            connection.execute(delete(task_user_table).where(task_user_table.c.task_id.in_(task_ids)))
+            connection.execute(
+                delete(task_history_table).where(task_history_table.c.task_id.in_(task_ids))
+            )
+            connection.execute(
+                delete(task_user_table).where(task_user_table.c.task_id.in_(task_ids))
+            )
         connection.execute(delete(task_table).where(task_table.c.project_id == project_id))
         connection.execute(delete(activity_table).where(activity_table.c.project_id == project_id))
         connection.execute(delete(project_table).where(project_table.c.id == project_id))
@@ -151,11 +157,15 @@ def list_project_activities(connection: Connection, project_id: str):
     if project_exists is None:
         return service_failure("Projeto não encontrado.", 404)
 
-    rows = connection.execute(
-        select(activity_table)
-        .where(activity_table.c.project_id == project_id)
-        .order_by(activity_table.c.created_at.asc())
-    ).mappings().all()
+    rows = (
+        connection.execute(
+            select(activity_table)
+            .where(activity_table.c.project_id == project_id)
+            .order_by(activity_table.c.created_at.asc())
+        )
+        .mappings()
+        .all()
+    )
     activities = [serialize_legacy_row(row) for row in rows]
     return service_success({"activities": activities})
 
@@ -164,7 +174,12 @@ def create_project_activity(connection: Connection, project_id: str, payload: di
     project_table = legacy_tables["project"]
     activity_table = legacy_tables["project_activity"]
 
-    if connection.execute(select(project_table.c.id).where(project_table.c.id == project_id).limit(1)).first() is None:
+    if (
+        connection.execute(
+            select(project_table.c.id).where(project_table.c.id == project_id).limit(1)
+        ).first()
+        is None
+    ):
         return service_failure("Projeto não encontrado.", 404)
 
     required = _require_activity_payload(payload)
@@ -199,7 +214,12 @@ def update_project_activity(connection: Connection, project_id: str, payload: di
     project_table = legacy_tables["project"]
     activity_table = legacy_tables["project_activity"]
 
-    if connection.execute(select(project_table.c.id).where(project_table.c.id == project_id).limit(1)).first() is None:
+    if (
+        connection.execute(
+            select(project_table.c.id).where(project_table.c.id == project_id).limit(1)
+        ).first()
+        is None
+    ):
         return service_failure("Projeto não encontrado.", 404)
 
     required = _require_activity_payload(payload, update=True)
@@ -211,11 +231,17 @@ def update_project_activity(connection: Connection, project_id: str, payload: di
         return days_error
 
     activity_id = required["id"]
-    current = connection.execute(
-        select(activity_table).where(
-            and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
-        ).limit(1)
-    ).mappings().first()
+    current = (
+        connection.execute(
+            select(activity_table)
+            .where(
+                and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
+            )
+            .limit(1)
+        )
+        .mappings()
+        .first()
+    )
     if current is None:
         return service_failure("Atividade não encontrada.", 404)
 
@@ -246,7 +272,12 @@ def delete_project_activity(connection: Connection, project_id: str, activity_id
     activity_table = legacy_tables["project_activity"]
     project_table = legacy_tables["project"]
 
-    if connection.execute(select(project_table.c.id).where(project_table.c.id == project_id).limit(1)).first() is None:
+    if (
+        connection.execute(
+            select(project_table.c.id).where(project_table.c.id == project_id).limit(1)
+        ).first()
+        is None
+    ):
         return service_failure("Projeto não encontrado.", 404)
 
     deleted = connection.execute(
@@ -264,18 +295,32 @@ def list_project_activity_tasks(connection: Connection, project_id: str, activit
     activity_table = legacy_tables["project_activity"]
     task_table = legacy_tables["project_task"]
 
-    if connection.execute(
-        select(activity_table.c.id).where(
-            and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
-        ).limit(1)
-    ).first() is None:
+    if (
+        connection.execute(
+            select(activity_table.c.id)
+            .where(
+                and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
+            )
+            .limit(1)
+        ).first()
+        is None
+    ):
         return service_failure("Atividade não encontrada.", 404)
 
-    task_rows = connection.execute(
-        select(task_table)
-        .where(and_(task_table.c.project_id == project_id, task_table.c.project_activity_id == activity_id))
-        .order_by(asc(task_table.c.sort), asc(task_table.c.created_at))
-    ).mappings().all()
+    task_rows = (
+        connection.execute(
+            select(task_table)
+            .where(
+                and_(
+                    task_table.c.project_id == project_id,
+                    task_table.c.project_activity_id == activity_id,
+                )
+            )
+            .order_by(asc(task_table.c.sort), asc(task_table.c.created_at))
+        )
+        .mappings()
+        .all()
+    )
 
     task_ids = [str(row["id"]) for row in task_rows]
     user_map = _task_users_by_task_id(connection, task_ids)
@@ -305,11 +350,16 @@ def create_project_activity_task(
     task_table = legacy_tables["project_task"]
     history_table = legacy_tables["project_task_history"]
 
-    if connection.execute(
-        select(activity_table.c.id).where(
-            and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
-        ).limit(1)
-    ).first() is None:
+    if (
+        connection.execute(
+            select(activity_table.c.id)
+            .where(
+                and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
+            )
+            .limit(1)
+        ).first()
+        is None
+    ):
         return service_failure("Atividade não encontrada.", 404)
 
     required = _require_task_payload(payload, include_id=False)
@@ -387,11 +437,16 @@ def update_project_activity_task(
     task_table = legacy_tables["project_task"]
     history_table = legacy_tables["project_task_history"]
 
-    if connection.execute(
-        select(activity_table.c.id).where(
-            and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
-        ).limit(1)
-    ).first() is None:
+    if (
+        connection.execute(
+            select(activity_table.c.id)
+            .where(
+                and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
+            )
+            .limit(1)
+        ).first()
+        is None
+    ):
         return service_failure("Atividade não encontrada.", 404)
 
     required = _require_task_payload(payload, include_id=True)
@@ -401,17 +456,21 @@ def update_project_activity_task(
     if required["projectId"] != project_id or required["projectActivityId"] != activity_id:
         return service_failure("Dados da tarefa inválidos.", 400)
 
-    current = connection.execute(
-        select(task_table)
-        .where(
-            and_(
-                task_table.c.id == required["id"],
-                task_table.c.project_id == project_id,
-                task_table.c.project_activity_id == activity_id,
+    current = (
+        connection.execute(
+            select(task_table)
+            .where(
+                and_(
+                    task_table.c.id == required["id"],
+                    task_table.c.project_id == project_id,
+                    task_table.c.project_activity_id == activity_id,
+                )
             )
+            .limit(1)
         )
-        .limit(1)
-    ).mappings().first()
+        .mappings()
+        .first()
+    )
     if current is None:
         return service_failure("Tarefa não encontrada.", 404)
 
@@ -428,8 +487,10 @@ def update_project_activity_task(
         "status": next_status,
     }
 
-    next_sort = int(current["sort"]) if current_values["status"] == next_status else _get_next_task_sort(
-        connection, project_id, activity_id, next_status
+    next_sort = (
+        int(current["sort"])
+        if current_values["status"] == next_status
+        else _get_next_task_sort(connection, project_id, activity_id, next_status)
     )
     now = now_naive()
     row = {
@@ -496,15 +557,22 @@ def update_project_activity_task(
     return service_success({"task": task})
 
 
-def delete_project_activity_task(connection: Connection, project_id: str, activity_id: str, task_id: str):
+def delete_project_activity_task(
+    connection: Connection, project_id: str, activity_id: str, task_id: str
+):
     activity_table = legacy_tables["project_activity"]
     task_table = legacy_tables["project_task"]
 
-    if connection.execute(
-        select(activity_table.c.id).where(
-            and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
-        ).limit(1)
-    ).first() is None:
+    if (
+        connection.execute(
+            select(activity_table.c.id)
+            .where(
+                and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
+            )
+            .limit(1)
+        ).first()
+        is None
+    ):
         return service_failure("Atividade não encontrada.", 404)
 
     deleted = connection.execute(
@@ -535,19 +603,30 @@ def reorder_project_activity_tasks(
     task_table = legacy_tables["project_task"]
     history_table = legacy_tables["project_task_history"]
 
-    if connection.execute(
-        select(activity_table.c.id).where(
-            and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
-        ).limit(1)
-    ).first() is None:
+    if (
+        connection.execute(
+            select(activity_table.c.id)
+            .where(
+                and_(activity_table.c.id == activity_id, activity_table.c.project_id == project_id)
+            )
+            .limit(1)
+        ).first()
+        is None
+    ):
         return service_failure("Atividade não encontrada.", 404)
 
-    if not tasks_before_move or not tasks_after_move or len(tasks_before_move) != len(tasks_after_move):
+    if (
+        not tasks_before_move
+        or not tasks_after_move
+        or len(tasks_before_move) != len(tasks_after_move)
+    ):
         return service_failure("Dados de movimentação inválidos.", 400)
 
     normalized_before = [_normalize_position_item(item) for item in tasks_before_move]
     normalized_after = [_normalize_position_item(item) for item in tasks_after_move]
-    if any(item is None for item in normalized_before) or any(item is None for item in normalized_after):
+    if any(item is None for item in normalized_before) or any(
+        item is None for item in normalized_after
+    ):
         return service_failure("Dados de movimentação inválidos.", 400)
 
     before_map = {item["taskId"]: item for item in normalized_before if item is not None}
@@ -557,19 +636,39 @@ def reorder_project_activity_tasks(
     if before_map.keys() != after_map.keys():
         return service_failure("Dados de movimentação inválidos.", 400)
 
-    current_rows = connection.execute(
-        select(task_table)
-        .where(and_(task_table.c.project_id == project_id, task_table.c.project_activity_id == activity_id))
-        .order_by(asc(task_table.c.sort), asc(task_table.c.created_at))
-    ).mappings().all()
+    current_rows = (
+        connection.execute(
+            select(task_table)
+            .where(
+                and_(
+                    task_table.c.project_id == project_id,
+                    task_table.c.project_activity_id == activity_id,
+                )
+            )
+            .order_by(asc(task_table.c.sort), asc(task_table.c.created_at))
+        )
+        .mappings()
+        .all()
+    )
     current_map = {str(row["id"]): row for row in current_rows}
-    current_normalized = {task_id: {"taskId": task_id, "status": _normalize_task_status(row["status"]), "sort": int(row["sort"])} for task_id, row in current_map.items()}
+    current_normalized = {
+        task_id: {
+            "taskId": task_id,
+            "status": _normalize_task_status(row["status"]),
+            "sort": int(row["sort"]),
+        }
+        for task_id, row in current_map.items()
+    }
 
     if len(current_normalized) != len(before_map):
-                return _kanban_outdated(connection, current_rows)
+        return _kanban_outdated(connection, current_rows)
     for task_id, expected in before_map.items():
         current = current_normalized.get(task_id)
-        if current is None or current["status"] != expected["status"] or current["sort"] != int(expected["sort"]):
+        if (
+            current is None
+            or current["status"] != expected["status"]
+            or current["sort"] != int(expected["sort"])
+        ):
             return _kanban_outdated(connection, current_rows)
 
     now = now_naive()
@@ -585,7 +684,9 @@ def reorder_project_activity_tasks(
                         [_normalize_task_view(row) for row in current_rows]
                     )
 
-                if current_normalized_task["status"] == next_task["status"] and current_normalized_task["sort"] == int(next_task["sort"]):
+                if current_normalized_task["status"] == next_task[
+                    "status"
+                ] and current_normalized_task["sort"] == int(next_task["sort"]):
                     continue
 
                 updated_rows = connection.execute(
@@ -603,12 +704,23 @@ def reorder_project_activity_tasks(
                     .returning(task_table.c.id)
                 ).all()
                 if not updated_rows:
-                    fresh_rows = connection.execute(
-                        select(task_table)
-                        .where(and_(task_table.c.project_id == project_id, task_table.c.project_activity_id == activity_id))
-                        .order_by(asc(task_table.c.sort), asc(task_table.c.created_at))
-                    ).mappings().all()
-                    raise ProjectTaskReorderConflict([_normalize_task_view(row) for row in fresh_rows])
+                    fresh_rows = (
+                        connection.execute(
+                            select(task_table)
+                            .where(
+                                and_(
+                                    task_table.c.project_id == project_id,
+                                    task_table.c.project_activity_id == activity_id,
+                                )
+                            )
+                            .order_by(asc(task_table.c.sort), asc(task_table.c.created_at))
+                        )
+                        .mappings()
+                        .all()
+                    )
+                    raise ProjectTaskReorderConflict(
+                        [_normalize_task_view(row) for row in fresh_rows]
+                    )
 
                 connection.execute(
                     insert(history_table).values(
@@ -629,11 +741,20 @@ def reorder_project_activity_tasks(
     except ProjectTaskReorderConflict as conflict:
         _attach_task_users(connection, conflict.tasks)
         return service_failure("KANBAN_OUTDATED", 409, data={"tasks": conflict.tasks})
-    refreshed = connection.execute(
-        select(task_table)
-        .where(and_(task_table.c.project_id == project_id, task_table.c.project_activity_id == activity_id))
-        .order_by(asc(task_table.c.sort), asc(task_table.c.created_at))
-    ).mappings().all()
+    refreshed = (
+        connection.execute(
+            select(task_table)
+            .where(
+                and_(
+                    task_table.c.project_id == project_id,
+                    task_table.c.project_activity_id == activity_id,
+                )
+            )
+            .order_by(asc(task_table.c.sort), asc(task_table.c.created_at))
+        )
+        .mappings()
+        .all()
+    )
     tasks = [_normalize_task_view(row) for row in refreshed]
     _attach_task_users(connection, tasks)
     return service_success({"tasks": tasks})
@@ -644,29 +765,37 @@ def get_task_history(connection: Connection, task_id: str):
     history_table = legacy_tables["project_task_history"]
     user_table = legacy_tables["user"]
 
-    task = connection.execute(select(task_table).where(task_table.c.id == task_id).limit(1)).mappings().first()
+    task = (
+        connection.execute(select(task_table).where(task_table.c.id == task_id).limit(1))
+        .mappings()
+        .first()
+    )
     if task is None:
         return service_failure("Tarefa não encontrada.", 404)
 
-    history_rows = connection.execute(
-        select(
-            history_table.c.id,
-            history_table.c.action,
-            history_table.c.from_status,
-            history_table.c.to_status,
-            history_table.c.from_sort,
-            history_table.c.to_sort,
-            history_table.c.details,
-            history_table.c.created_at,
-            user_table.c.id.label("user_id"),
-            user_table.c.name,
-            user_table.c.email,
-            user_table.c.image,
+    history_rows = (
+        connection.execute(
+            select(
+                history_table.c.id,
+                history_table.c.action,
+                history_table.c.from_status,
+                history_table.c.to_status,
+                history_table.c.from_sort,
+                history_table.c.to_sort,
+                history_table.c.details,
+                history_table.c.created_at,
+                user_table.c.id.label("user_id"),
+                user_table.c.name,
+                user_table.c.email,
+                user_table.c.image,
+            )
+            .select_from(history_table.join(user_table, history_table.c.user_id == user_table.c.id))
+            .where(history_table.c.task_id == task_id)
+            .order_by(desc(history_table.c.created_at))
         )
-        .select_from(history_table.join(user_table, history_table.c.user_id == user_table.c.id))
-        .where(history_table.c.task_id == task_id)
-        .order_by(desc(history_table.c.created_at))
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     history = []
     for row in history_rows:
@@ -687,23 +816,31 @@ def get_task_users(connection: Connection, task_id: str):
     task_user_table = legacy_tables["project_task_user"]
     user_table = legacy_tables["user"]
 
-    task = connection.execute(select(task_table.c.id).where(task_table.c.id == task_id).limit(1)).first()
+    task = connection.execute(
+        select(task_table.c.id).where(task_table.c.id == task_id).limit(1)
+    ).first()
     if task is None:
         return service_failure("Tarefa não encontrada.", 404)
 
-    rows = connection.execute(
-        select(
-            task_user_table.c.user_id.label("id"),
-            task_user_table.c.role,
-            task_user_table.c.assigned_at,
-            user_table.c.name,
-            user_table.c.email,
-            user_table.c.image,
+    rows = (
+        connection.execute(
+            select(
+                task_user_table.c.user_id.label("id"),
+                task_user_table.c.role,
+                task_user_table.c.assigned_at,
+                user_table.c.name,
+                user_table.c.email,
+                user_table.c.image,
+            )
+            .select_from(
+                task_user_table.join(user_table, task_user_table.c.user_id == user_table.c.id)
+            )
+            .where(task_user_table.c.task_id == task_id)
+            .order_by(task_user_table.c.created_at.asc())
         )
-        .select_from(task_user_table.join(user_table, task_user_table.c.user_id == user_table.c.id))
-        .where(task_user_table.c.task_id == task_id)
-        .order_by(task_user_table.c.created_at.asc())
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     users = []
     for row in rows:
@@ -713,11 +850,15 @@ def get_task_users(connection: Connection, task_id: str):
     return service_success(users)
 
 
-def set_task_users(connection: Connection, task_id: str, user_ids: list[str], role: str = "assignee"):
+def set_task_users(
+    connection: Connection, task_id: str, user_ids: list[str], role: str = "assignee"
+):
     task_table = legacy_tables["project_task"]
     task_user_table = legacy_tables["project_task_user"]
 
-    task = connection.execute(select(task_table.c.id).where(task_table.c.id == task_id).limit(1)).first()
+    task = connection.execute(
+        select(task_table.c.id).where(task_table.c.id == task_id).limit(1)
+    ).first()
     if task is None:
         return service_failure("Tarefa não encontrada.", 404)
 
@@ -762,19 +903,25 @@ def _task_users_by_task_id(
     user_table = legacy_tables["user"]
     user_map: dict[str, list[dict[str, object]]] = {task_id: [] for task_id in task_ids}
     if task_ids:
-        user_rows = connection.execute(
-            select(
-                task_user_table.c.task_id,
-                user_table.c.id.label("user_id"),
-                user_table.c.name,
-                user_table.c.email,
-                user_table.c.image,
-                task_user_table.c.role,
+        user_rows = (
+            connection.execute(
+                select(
+                    task_user_table.c.task_id,
+                    user_table.c.id.label("user_id"),
+                    user_table.c.name,
+                    user_table.c.email,
+                    user_table.c.image,
+                    task_user_table.c.role,
+                )
+                .select_from(
+                    task_user_table.join(user_table, task_user_table.c.user_id == user_table.c.id)
+                )
+                .where(task_user_table.c.task_id.in_(task_ids))
+                .order_by(task_user_table.c.created_at.asc())
             )
-            .select_from(task_user_table.join(user_table, task_user_table.c.user_id == user_table.c.id))
-            .where(task_user_table.c.task_id.in_(task_ids))
-            .order_by(task_user_table.c.created_at.asc())
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         for row in user_rows:
             task_id = str(row["task_id"])
             user_map.setdefault(task_id, []).append(
@@ -851,13 +998,24 @@ def _read_task_values(row: dict[str, object]) -> dict[str, object]:
 
 def _detect_changed_fields(before: dict[str, object], after: dict[str, object]) -> list[str]:
     changed = []
-    for field in ("name", "description", "category", "estimatedDays", "startDate", "endDate", "priority", "status"):
+    for field in (
+        "name",
+        "description",
+        "category",
+        "estimatedDays",
+        "startDate",
+        "endDate",
+        "priority",
+        "status",
+    ):
         if before.get(field) != after.get(field):
             changed.append(field)
     return changed
 
 
-def _get_next_task_sort(connection: Connection, project_id: str, activity_id: str, status: str) -> int:
+def _get_next_task_sort(
+    connection: Connection, project_id: str, activity_id: str, status: str
+) -> int:
     task_table = legacy_tables["project_task"]
     row = connection.execute(
         select(task_table.c.sort)
@@ -1005,7 +1163,10 @@ def _require_task_payload(payload: dict[str, object], *, include_id: bool):
     description = _optional_str(payload.get("description"))
     priority = _optional_str(payload.get("priority"))
     status = _optional_str(payload.get("status"))
-    if any(value is None for value in (project_id, project_activity_id, name, description, priority, status)):
+    if any(
+        value is None
+        for value in (project_id, project_activity_id, name, description, priority, status)
+    ):
         return service_failure("Invalid input: expected string, received undefined", 400)
 
     required = {

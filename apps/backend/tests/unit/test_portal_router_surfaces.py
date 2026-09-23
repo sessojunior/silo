@@ -5,13 +5,13 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.responses import JSONResponse
-from sqlalchemy import Column, DateTime, JSON, MetaData, String, Table, create_engine, select
+from sqlalchemy import JSON, Column, DateTime, MetaData, String, Table, create_engine, select
 
+from silo.api.routers import contacts as contacts_router
 from silo.api.routers import dashboard as dashboard_router
+from silo.api.routers import groups as groups_router
 from silo.api.routers import help as help_router
 from silo.api.routers import product_flow as product_flow_router
-from silo.api.routers import contacts as contacts_router
-from silo.api.routers import groups as groups_router
 from silo.api.routers import projects as projects_router
 from silo.api.routers import tasks as tasks_router
 from silo.services.common import service_failure, service_success
@@ -54,10 +54,14 @@ def _help_table(metadata: MetaData) -> Table:
 @pytest.mark.asyncio
 async def test_contacts_and_groups_router_surfaces(monkeypatch) -> None:
     deleted_uploads: list[tuple[str, str]] = []
-    contact_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    _contact_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     group_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    monkeypatch.setattr(contacts_router, "_list_contacts", lambda *args, **kwargs: {"items": [{"id": "contact-1"}], "total": 1})
+    monkeypatch.setattr(
+        contacts_router,
+        "_list_contacts",
+        lambda *args, **kwargs: {"items": [{"id": "contact-1"}], "total": 1},
+    )
     monkeypatch.setattr(
         contacts_router,
         "_create_contact",
@@ -74,28 +78,47 @@ async def test_contacts_and_groups_router_surfaces(monkeypatch) -> None:
         lambda *args, **kwargs: service_success(None),
     )
     monkeypatch.setattr(contacts_router, "is_upload_kind", lambda kind: kind == "avatars")
-    monkeypatch.setattr(contacts_router, "is_safe_filename", lambda filename: filename != "bad.webp")
+    monkeypatch.setattr(
+        contacts_router, "is_safe_filename", lambda filename: filename != "bad.webp"
+    )
     monkeypatch.setattr(
         contacts_router,
         "delete_upload_file",
         lambda kind, filename: deleted_uploads.append((kind, filename)) or True,
     )
 
-    monkeypatch.setattr(groups_router, "_list_groups", lambda *args, **kwargs: {"items": [{"id": "group-1"}], "total": 1})
-    monkeypatch.setattr(groups_router, "_create_group", lambda *args, **kwargs: service_success({"id": "group-new"}))
-    monkeypatch.setattr(groups_router, "_update_group", lambda *args, **kwargs: service_success({"id": "group-1"}))
-    monkeypatch.setattr(groups_router, "_get_group_permissions", lambda *args, **kwargs: service_success({"permissions": {"products": ["view"]}}))
+    monkeypatch.setattr(
+        groups_router,
+        "_list_groups",
+        lambda *args, **kwargs: {"items": [{"id": "group-1"}], "total": 1},
+    )
+    monkeypatch.setattr(
+        groups_router, "_create_group", lambda *args, **kwargs: service_success({"id": "group-new"})
+    )
+    monkeypatch.setattr(
+        groups_router, "_update_group", lambda *args, **kwargs: service_success({"id": "group-1"})
+    )
+    monkeypatch.setattr(
+        groups_router,
+        "_get_group_permissions",
+        lambda *args, **kwargs: service_success({"permissions": {"products": ["view"]}}),
+    )
     monkeypatch.setattr(
         groups_router,
         "_update_group_permission",
-        lambda *args, **kwargs: service_success({"groupId": "group-1", "resource": "products", "action": "view", "enabled": True}, message="ok"),
+        lambda *args, **kwargs: service_success(
+            {"groupId": "group-1", "resource": "products", "action": "view", "enabled": True},
+            message="ok",
+        ),
     )
     monkeypatch.setattr(
         groups_router,
         "_remove_user_from_group",
         lambda *args, **kwargs: group_calls.append((args, kwargs)),
     )
-    monkeypatch.setattr(groups_router, "_delete_group", lambda *args, **kwargs: service_success(None))
+    monkeypatch.setattr(
+        groups_router, "_delete_group", lambda *args, **kwargs: service_success(None)
+    )
 
     contacts = _payload(
         await contacts_router.list_contacts(
@@ -159,11 +182,11 @@ async def test_contacts_and_groups_router_surfaces(monkeypatch) -> None:
     )
     assert contact_deleted["success"] is True
 
-    assert contacts_router._normalize_email(" ANA@Example.Test ") == "ana@example.test"  # noqa: SLF001
-    assert contacts_router._require_text("  texto  ", "field") == "texto"  # noqa: SLF001
-    assert contacts_router._optional_str("  texto  ") == "  texto  "  # noqa: SLF001
-    assert contacts_router._optional_str(123) is None  # noqa: SLF001
-    delete_upload = contacts_router._delete_upload_from_url  # noqa: SLF001
+    assert contacts_router._normalize_email(" ANA@Example.Test ") == "ana@example.test"
+    assert contacts_router._require_text("  texto  ", "field") == "texto"
+    assert contacts_router._optional_str("  texto  ") == "  texto  "
+    assert contacts_router._optional_str(123) is None
+    delete_upload = contacts_router._delete_upload_from_url
     delete_upload("/uploads/avatars/contact-1.webp")
     delete_upload("/uploads/avatars/bad.webp")
     delete_upload("/assets/contact-1.webp")
@@ -190,7 +213,12 @@ async def test_contacts_and_groups_router_surfaces(monkeypatch) -> None:
 
     group_updated = _payload(
         await groups_router.update_group(
-            {"id": "group-1", "name": "Grupo Atualizado", "description": "Descricao", "active": True},
+            {
+                "id": "group-1",
+                "name": "Grupo Atualizado",
+                "description": "Descricao",
+                "active": True,
+            },
             object(),
             object(),
         )
@@ -243,46 +271,94 @@ async def test_contacts_and_groups_router_surfaces(monkeypatch) -> None:
         )
     )
     assert removed_user["success"] is True
-    assert groups_router._require_text("  texto  ") == "  texto  "  # noqa: SLF001
-    assert groups_router._optional_str("  texto  ") == "  texto  "  # noqa: SLF001
-    assert groups_router._nullable_text("  texto  ") == "texto"  # noqa: SLF001
+    assert groups_router._require_text("  texto  ") == "  texto  "
+    assert groups_router._optional_str("  texto  ") == "  texto  "
+    assert groups_router._nullable_text("  texto  ") == "texto"
 
 
 @pytest.mark.asyncio
 async def test_projects_and_tasks_router_surfaces(monkeypatch) -> None:
-    project_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
-    task_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
-    task_user_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    _project_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    _task_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    _task_user_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    monkeypatch.setattr(projects_router, "list_projects", lambda *args, **kwargs: service_success({"items": [{"id": "project-1"}], "total": 1}))
-    monkeypatch.setattr(projects_router, "create_project", lambda *args, **kwargs: service_success({"id": "project-new"}))
-    monkeypatch.setattr(projects_router, "update_project", lambda *args, **kwargs: service_success({"id": "project-1"}))
-    monkeypatch.setattr(projects_router, "delete_project", lambda *args, **kwargs: service_success(None))
-    monkeypatch.setattr(projects_router, "list_project_activities", lambda *args, **kwargs: service_success({"activities": [{"id": "activity-1"}]}))
-    monkeypatch.setattr(projects_router, "create_project_activity", lambda *args, **kwargs: service_success({"activity": {"id": "activity-new"}}))
-    monkeypatch.setattr(projects_router, "update_project_activity", lambda *args, **kwargs: service_success({"activity": {"id": "activity-1"}}))
-    monkeypatch.setattr(projects_router, "delete_project_activity", lambda *args, **kwargs: service_success(None))
-    monkeypatch.setattr(projects_router, "list_project_activity_tasks", lambda *args, **kwargs: service_success({"tasks": [{"id": "task-1"}]}))
+    monkeypatch.setattr(
+        projects_router,
+        "list_projects",
+        lambda *args, **kwargs: service_success({"items": [{"id": "project-1"}], "total": 1}),
+    )
+    monkeypatch.setattr(
+        projects_router,
+        "create_project",
+        lambda *args, **kwargs: service_success({"id": "project-new"}),
+    )
+    monkeypatch.setattr(
+        projects_router,
+        "update_project",
+        lambda *args, **kwargs: service_success({"id": "project-1"}),
+    )
+    monkeypatch.setattr(
+        projects_router, "delete_project", lambda *args, **kwargs: service_success(None)
+    )
+    monkeypatch.setattr(
+        projects_router,
+        "list_project_activities",
+        lambda *args, **kwargs: service_success({"activities": [{"id": "activity-1"}]}),
+    )
+    monkeypatch.setattr(
+        projects_router,
+        "create_project_activity",
+        lambda *args, **kwargs: service_success({"activity": {"id": "activity-new"}}),
+    )
+    monkeypatch.setattr(
+        projects_router,
+        "update_project_activity",
+        lambda *args, **kwargs: service_success({"activity": {"id": "activity-1"}}),
+    )
+    monkeypatch.setattr(
+        projects_router, "delete_project_activity", lambda *args, **kwargs: service_success(None)
+    )
+    monkeypatch.setattr(
+        projects_router,
+        "list_project_activity_tasks",
+        lambda *args, **kwargs: service_success({"tasks": [{"id": "task-1"}]}),
+    )
     monkeypatch.setattr(
         projects_router,
         "create_project_activity_task",
-        lambda *args, **kwargs: service_success({"task": {"id": "task-new", "userId": args[3] if len(args) > 3 else None}}),
+        lambda *args, **kwargs: service_success(
+            {"task": {"id": "task-new", "userId": args[3] if len(args) > 3 else None}}
+        ),
     )
     monkeypatch.setattr(
         projects_router,
         "update_project_activity_task",
         lambda *args, **kwargs: service_success({"task": {"id": "task-1"}}),
     )
-    monkeypatch.setattr(projects_router, "delete_project_activity_task", lambda *args, **kwargs: service_success(None))
+    monkeypatch.setattr(
+        projects_router,
+        "delete_project_activity_task",
+        lambda *args, **kwargs: service_success(None),
+    )
     monkeypatch.setattr(
         projects_router,
         "reorder_project_activity_tasks",
         lambda *args, **kwargs: service_success({"tasks": [{"id": "task-1"}, {"id": "task-2"}]}),
     )
 
-    monkeypatch.setattr(tasks_router, "get_task_history", lambda *args, **kwargs: service_success({"history": [{"id": "history-1"}]}))
-    monkeypatch.setattr(tasks_router, "get_task_users", lambda *args, **kwargs: service_success({"users": [{"id": "user-1"}]}))
-    monkeypatch.setattr(tasks_router, "set_task_users", lambda *args, **kwargs: service_success(None))
+    monkeypatch.setattr(
+        tasks_router,
+        "get_task_history",
+        lambda *args, **kwargs: service_success({"history": [{"id": "history-1"}]}),
+    )
+    monkeypatch.setattr(
+        tasks_router,
+        "get_task_users",
+        lambda *args, **kwargs: service_success({"users": [{"id": "user-1"}]}),
+    )
+    monkeypatch.setattr(
+        tasks_router, "set_task_users", lambda *args, **kwargs: service_success(None)
+    )
 
     projects = _payload(
         await projects_router.get_projects(
@@ -354,12 +430,16 @@ async def test_projects_and_tasks_router_surfaces(monkeypatch) -> None:
     assert invalid_delete_activity["success"] is False
 
     activity_deleted = _payload(
-        await projects_router.delete_project_activity_route("project-1", "activity-1", object(), object())
+        await projects_router.delete_project_activity_route(
+            "project-1", "activity-1", object(), object()
+        )
     )
     assert activity_deleted["success"] is True
 
     tasks = _payload(
-        await projects_router.get_project_activity_tasks("project-1", "activity-1", object(), object())
+        await projects_router.get_project_activity_tasks(
+            "project-1", "activity-1", object(), object()
+        )
     )
     assert tasks["data"]["tasks"][0]["id"] == "task-1"
 
@@ -430,14 +510,10 @@ async def test_projects_and_tasks_router_surfaces(monkeypatch) -> None:
     assert moved["success"] is True
     assert moved["data"]["tasks"][0]["id"] == "task-1"
 
-    history = _payload(
-        await tasks_router.get_history("task-1", object(), object())
-    )
+    history = _payload(await tasks_router.get_history("task-1", object(), object()))
     assert history["data"]["history"][0]["id"] == "history-1"
 
-    users = _payload(
-        await tasks_router.get_users("task-1", object(), object())
-    )
+    users = _payload(await tasks_router.get_users("task-1", object(), object()))
     assert users["data"]["users"][0]["id"] == "user-1"
 
     invalid_task_users = _payload(
@@ -446,7 +522,9 @@ async def test_projects_and_tasks_router_surfaces(monkeypatch) -> None:
     assert invalid_task_users["success"] is False
 
     task_users = _payload(
-        await tasks_router.post_users("task-1", {"userIds": ["user-1", " "]}, SimpleNamespace(id="user-1"), object())
+        await tasks_router.post_users(
+            "task-1", {"userIds": ["user-1", " "]}, SimpleNamespace(id="user-1"), object()
+        )
     )
     assert task_users["success"] is True
 
@@ -523,89 +601,127 @@ async def test_projects_router_error_branches(monkeypatch) -> None:
         ),
     )
 
-    assert _payload(
-        await projects_router.get_projects(
-            search="alpha",
-            status="open",
-            priority="high",
-            _current_user=object(),
-            db=object(),
-        )
-    )["success"] is False
-    assert _payload(
-        await projects_router.post_project(
-            {"name": "Projeto Novo"},
-            object(),
-            object(),
-        )
-    )["success"] is False
-    assert _payload(
-        await projects_router.put_project(
-            {"id": "project-1", "name": "Projeto Atualizado"},
-            object(),
-            object(),
-        )
-    )["success"] is False
-    assert _payload(
-        await projects_router.delete_project_route("project-1", object(), object())
-    )["success"] is False
-    assert _payload(
-        await projects_router.get_project_activities("project-1", object(), object())
-    )["success"] is False
-    assert _payload(
-        await projects_router.post_project_activity(
-            "project-1",
-            {"name": "Activity"},
-            object(),
-            object(),
-        )
-    )["success"] is False
-    assert _payload(
-        await projects_router.put_project_activity(
-            "project-1",
-            {"id": "activity-1", "name": "Activity 1"},
-            object(),
-            object(),
-        )
-    )["success"] is False
-    assert _payload(
-        await projects_router.delete_project_activity_route(
-            "project-1",
-            "activity-1",
-            object(),
-            object(),
-        )
-    )["success"] is False
-    assert _payload(
-        await projects_router.get_project_activity_tasks("project-1", "activity-1", object(), object())
-    )["success"] is False
-    assert _payload(
-        await projects_router.post_project_activity_task(
-            "project-1",
-            "activity-1",
-            {"name": "Task"},
-            SimpleNamespace(id="user-1"),
-            object(),
-        )
-    )["success"] is False
-    assert _payload(
-        await projects_router.put_project_activity_task(
-            "project-1",
-            "activity-1",
-            {"id": "task-1", "name": "Task 1"},
-            SimpleNamespace(id="user-1"),
-            object(),
-        )
-    )["success"] is False
-    assert _payload(
-        await projects_router.delete_project_activity_task_route(
-            "project-1",
-            "activity-1",
-            {"id": "task-1"},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await projects_router.get_projects(
+                search="alpha",
+                status="open",
+                priority="high",
+                _current_user=object(),
+                db=object(),
+            )
+        )["success"]
+        is False
+    )
+    assert (
+        _payload(
+            await projects_router.post_project(
+                {"name": "Projeto Novo"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
+    assert (
+        _payload(
+            await projects_router.put_project(
+                {"id": "project-1", "name": "Projeto Atualizado"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
+    assert (
+        _payload(await projects_router.delete_project_route("project-1", object(), object()))[
+            "success"
+        ]
+        is False
+    )
+    assert (
+        _payload(await projects_router.get_project_activities("project-1", object(), object()))[
+            "success"
+        ]
+        is False
+    )
+    assert (
+        _payload(
+            await projects_router.post_project_activity(
+                "project-1",
+                {"name": "Activity"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
+    assert (
+        _payload(
+            await projects_router.put_project_activity(
+                "project-1",
+                {"id": "activity-1", "name": "Activity 1"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
+    assert (
+        _payload(
+            await projects_router.delete_project_activity_route(
+                "project-1",
+                "activity-1",
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
+    assert (
+        _payload(
+            await projects_router.get_project_activity_tasks(
+                "project-1", "activity-1", object(), object()
+            )
+        )["success"]
+        is False
+    )
+    assert (
+        _payload(
+            await projects_router.post_project_activity_task(
+                "project-1",
+                "activity-1",
+                {"name": "Task"},
+                SimpleNamespace(id="user-1"),
+                object(),
+            )
+        )["success"]
+        is False
+    )
+    assert (
+        _payload(
+            await projects_router.put_project_activity_task(
+                "project-1",
+                "activity-1",
+                {"id": "task-1", "name": "Task 1"},
+                SimpleNamespace(id="user-1"),
+                object(),
+            )
+        )["success"]
+        is False
+    )
+    assert (
+        _payload(
+            await projects_router.delete_project_activity_task_route(
+                "project-1",
+                "activity-1",
+                {"id": "task-1"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
     conflict = _payload(
         await projects_router.patch_project_activity_tasks(
@@ -735,8 +851,14 @@ async def test_product_flow_help_and_dashboard_router_surfaces(monkeypatch) -> N
             return None
 
         monkeypatch.setattr(help_router.asyncio, "create_task", _discard_task)
-        monkeypatch.setattr(help_router, "list_upload_files", lambda kind: [{"kind": kind, "filename": "help-1.webp"}])
-        monkeypatch.setattr(help_router, "is_safe_filename", lambda filename: filename != "bad.webp")
+        monkeypatch.setattr(
+            help_router,
+            "list_upload_files",
+            lambda kind: [{"kind": kind, "filename": "help-1.webp"}],
+        )
+        monkeypatch.setattr(
+            help_router, "is_safe_filename", lambda filename: filename != "bad.webp"
+        )
         monkeypatch.setattr(
             help_router,
             "delete_upload_file",
@@ -759,9 +881,9 @@ async def test_product_flow_help_and_dashboard_router_surfaces(monkeypatch) -> N
         ).scalar_one()
         assert updated_row == "new description"
 
-        assert help_router._extract_description({}) == ""  # noqa: SLF001
-        assert help_router._extract_description({"description": "texto"}) == "texto"  # noqa: SLF001
-        assert help_router._now_naive().tzinfo is None  # noqa: SLF001
+        assert help_router._extract_description({}) == ""
+        assert help_router._extract_description({"description": "texto"}) == "texto"
+        assert help_router._now_naive().tzinfo is None
 
         images = _payload(await help_router.list_help_images(object()))
         assert images["data"]["items"][0]["filename"] == "help-1.webp"
@@ -820,13 +942,18 @@ async def test_tasks_router_error_branches(monkeypatch) -> None:
         lambda *args, **kwargs: service_failure("boom", 500),
     )
 
-    assert _payload(await tasks_router.get_history("task-1", object(), object()))["success"] is False
+    assert (
+        _payload(await tasks_router.get_history("task-1", object(), object()))["success"] is False
+    )
     assert _payload(await tasks_router.get_users("task-1", object(), object()))["success"] is False
-    assert _payload(
-        await tasks_router.post_users(
-            "task-1",
-            {"userIds": ["user-1", "user-2"], "role": "assignee"},
-            SimpleNamespace(id="user-1"),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _payload(
+            await tasks_router.post_users(
+                "task-1",
+                {"userIds": ["user-1", "user-2"], "role": "assignee"},
+                SimpleNamespace(id="user-1"),
+                object(),
+            )
+        )["success"]
+        is False
+    )

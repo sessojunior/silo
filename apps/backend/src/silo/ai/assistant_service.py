@@ -6,12 +6,12 @@ import json
 import re
 import time
 import uuid
-from copy import deepcopy
 from collections import OrderedDict
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
+from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import UTC, timedelta
-from typing import Any, Callable, Literal, cast
+from typing import Any, Literal, cast
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
@@ -24,24 +24,24 @@ from silo.ai.assistant_contracts import (
     AiAssistantArtifactDto,
     AiAssistantCitationDto,
     AiAssistantCreateThreadResponseDto,
-    AiAssistantExamplesResponseDto,
     AiAssistantExampleDto,
+    AiAssistantExamplesResponseDto,
     AiAssistantGenerationDto,
     AiAssistantMessageRequestDto,
     AiAssistantMessageResponseDto,
     AiAssistantRuntimeStatusDto,
+    AiAssistantScope,
     AiAssistantThreadDetailResponseDto,
     AiAssistantThreadMessageDto,
-    AiAssistantThreadSummaryDto,
     AiAssistantThreadsResponseDto,
-    AiAssistantVisualizationChartDto,
+    AiAssistantThreadSummaryDto,
     AiAssistantVisualizationAudioDto,
+    AiAssistantVisualizationChartDto,
     AiAssistantVisualizationDto,
     AiAssistantVisualizationImageDto,
     AiAssistantVisualizationMermaidDto,
 )
 from silo.ai.assistant_registry import AgentRuntimeContext, AgentState
-from silo.ai.assistant_tool_catalog import execute_hybrid_tool, get_hybrid_tool_schemas
 from silo.ai.assistant_runtime import (
     VLLMEmbeddingRuntime,
     VLLMModelRuntime,
@@ -49,6 +49,7 @@ from silo.ai.assistant_runtime import (
     create_model_runtime,
     probe_ai_runtime,
 )
+from silo.ai.assistant_tool_catalog import execute_hybrid_tool, get_hybrid_tool_schemas
 from silo.ai.assistant_tools import (
     AI_METRIC_VERSION,
     AI_TOOL_CATALOG_VERSION,
@@ -61,14 +62,14 @@ from silo.ai.assistant_tools import (
     get_availability_report_data,
     get_executive_report_data,
     get_model_run_history,
+    get_problems_report_data,
     get_projects_report_data,
     get_projects_snapshot,
-    get_problems_report_data,
     list_model_interventions,
     list_model_runs,
     list_problematic_runs,
-    list_registered_products,
     list_registered_problems,
+    list_registered_products,
     normalize_text,
     render_summary_image,
     resolve_models,
@@ -80,8 +81,8 @@ from silo.ai.assistant_tools import (
     token_overlap_score,
 )
 from silo.ai.embeddings import cosine_similarity
-from silo.api.dependencies import CurrentUser
 from silo.ai.ports import ChatMessage
+from silo.api.dependencies import CurrentUser
 from silo.clock import SYSTEM_CLOCK
 from silo.config import Settings, load_settings
 from silo.db.models import legacy_tables
@@ -92,7 +93,7 @@ from silo.services.ai_artifacts import (
     AiArtifactRepository,
 )
 from silo.services.pdf_artifacts import PdfArtifact
-from silo.storage.uploads import get_upload_file_path, delete_upload_file
+from silo.storage.uploads import delete_upload_file, get_upload_file_path
 
 ASSISTANT_GRAPH_VERSION = "2026-07-23"
 ASSISTANT_PROMPT_VERSION = "2026-08-17"
@@ -108,7 +109,7 @@ ASSISTANT_SCOPE_POLICY = (
     "determinísticos quando necessário."
 )
 
-DEFAULT_ASSISTANT_EXAMPLES = (
+DEFAULT_ASSISTANT_EXAMPLES: tuple[AiAssistantExampleDto, ...] = (
     AiAssistantExampleDto(
         id="models",
         title="Modelos e rodadas",
@@ -273,7 +274,10 @@ _PRESENTATION_KEYWORDS: dict[str, tuple[str, ...]] = {
 }
 
 _REPORT_TYPE_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("availability", ("disponibilidade", "modelo", "rodada", "turno", "intervenção", "intervencao")),
+    (
+        "availability",
+        ("disponibilidade", "modelo", "rodada", "turno", "intervenção", "intervencao"),
+    ),
     ("problems", ("problema", "falha", "erro", "incidente", "solução", "solucao")),
     ("projects", ("projeto", "atividade", "task", "cronograma", "pendência", "pendencia")),
     ("executive", ("executivo", "geral", "resumo", "sumário", "sumario")),
@@ -301,9 +305,9 @@ class AssistantStreamEvent:
 
 @dataclass(frozen=True, slots=True)
 class AssistantPlan:
-    scope: str
+    scope: AiAssistantScope
     confidence: float
-    presentation_intent: Literal["chart", "image", "mermaid", "pdf", "text"]
+    presentation_intent: Literal["chart", "image", "mermaid", "pdf", "audio", "text"]
     date_range: dict[str, str]
     report_type: str | None
     required_sources: tuple[str, ...]
@@ -368,13 +372,19 @@ async def get_assistant_runtime_status(*, clock=SYSTEM_CLOCK) -> AiAssistantRunt
 
 def list_assistant_threads(connection: Connection, user_id: str) -> AiAssistantThreadsResponseDto:
     thread_table = legacy_tables["ai_assistant_thread"]
-    rows = connection.execute(
-        select(thread_table).where(thread_table.c.user_id == user_id).order_by(
-            thread_table.c.updated_at.desc(),
-            thread_table.c.last_message_at.desc(),
-            thread_table.c.created_at.desc(),
+    rows = (
+        connection.execute(
+            select(thread_table)
+            .where(thread_table.c.user_id == user_id)
+            .order_by(
+                thread_table.c.updated_at.desc(),
+                thread_table.c.last_message_at.desc(),
+                thread_table.c.created_at.desc(),
+            )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
     return AiAssistantThreadsResponseDto(
         threads=[_thread_summary_from_row(row) for row in rows],
     )
@@ -414,16 +424,20 @@ def get_assistant_thread_details(
         return None
 
     message_table = legacy_tables["ai_assistant_message"]
-    rows = connection.execute(
-        select(message_table)
-        .where(message_table.c.thread_id == thread_row["id"])
-        .order_by(
-            message_table.c.created_at.desc(),
-            case((message_table.c.sender_type == "user", 0), else_=1).desc(),
-            message_table.c.id.desc(),
+    rows = (
+        connection.execute(
+            select(message_table)
+            .where(message_table.c.thread_id == thread_row["id"])
+            .order_by(
+                message_table.c.created_at.desc(),
+                case((message_table.c.sender_type == "user", 0), else_=1).desc(),
+                message_table.c.id.desc(),
+            )
+            .limit(MAX_THREAD_MESSAGES)
         )
-        .limit(MAX_THREAD_MESSAGES)
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
     rows = list(reversed(rows))
     return AiAssistantThreadDetailResponseDto(
         thread=_thread_summary_from_row(thread_row),
@@ -443,18 +457,26 @@ def delete_assistant_message(
 
     message_table = legacy_tables["ai_assistant_message"]
     artifact_table = legacy_tables["ai_assistant_artifact"]
-    message_row = connection.execute(
-        select(message_table).where(
-            message_table.c.id == message_id,
-            message_table.c.thread_id == thread_id,
-        ).limit(1)
-    ).mappings().first()
+    message_row = (
+        connection.execute(
+            select(message_table)
+            .where(
+                message_table.c.id == message_id,
+                message_table.c.thread_id == thread_id,
+            )
+            .limit(1)
+        )
+        .mappings()
+        .first()
+    )
     if message_row is None:
         raise AssistantThreadNotFoundError("Mensagem não encontrada.")
 
-    artifact_rows = connection.execute(
-        select(artifact_table).where(artifact_table.c.message_id == message_id)
-    ).mappings().all()
+    artifact_rows = (
+        connection.execute(select(artifact_table).where(artifact_table.c.message_id == message_id))
+        .mappings()
+        .all()
+    )
     for artifact_row in artifact_rows:
         _delete_artifact_file_if_present(artifact_row)
 
@@ -480,14 +502,22 @@ def delete_assistant_thread(
     ).all()
     for message_row in message_rows:
         message_id = str(message_row[0])
-        artifact_rows = connection.execute(
-            select(artifact_table).where(artifact_table.c.message_id == message_id)
-        ).mappings().all()
+        artifact_rows = (
+            connection.execute(
+                select(artifact_table).where(artifact_table.c.message_id == message_id)
+            )
+            .mappings()
+            .all()
+        )
         for artifact_row in artifact_rows:
             _delete_artifact_file_if_present(artifact_row)
     connection.execute(delete(artifact_table).where(artifact_table.c.thread_id == thread_id))
     connection.execute(delete(message_table).where(message_table.c.thread_id == thread_id))
-    connection.execute(delete(legacy_tables["ai_assistant_thread"]).where(legacy_tables["ai_assistant_thread"].c.id == thread_id))
+    connection.execute(
+        delete(legacy_tables["ai_assistant_thread"]).where(
+            legacy_tables["ai_assistant_thread"].c.id == thread_id
+        )
+    )
     connection.commit()
 
 
@@ -531,7 +561,9 @@ async def stream_assistant_message(
 ) -> AsyncIterator[AssistantStreamEvent]:
     yield AssistantStreamEvent(
         event="thinking",
-        data={"content": "Estou consultando os dados autorizados do SILO e preparando a resposta com o modelo vLLM..."},
+        data={
+            "content": "Estou consultando os dados autorizados do SILO e preparando a resposta com o modelo vLLM..."
+        },
     )
     response = await send_assistant_message(
         connection,
@@ -619,7 +651,9 @@ def _initial_state(
     }
 
 
-def _build_runtime_context_from_state(state: AgentState, runtime: Runtime[AgentRuntimeContext]) -> AgentRuntimeContext:
+def _build_runtime_context_from_state(
+    state: AgentState, runtime: Runtime[AgentRuntimeContext]
+) -> AgentRuntimeContext:
     return runtime.context
 
 
@@ -726,7 +760,9 @@ def _optional_text(value: object | None) -> str | None:
     return None
 
 
-def _get_thread_or_create(connection: Connection, current_user: CurrentUser, thread_id: str | None) -> dict[str, Any]:
+def _get_thread_or_create(
+    connection: Connection, current_user: CurrentUser, thread_id: str | None
+) -> dict[str, Any]:
     if thread_id:
         thread_row = _load_thread_row(connection, current_user.id, thread_id)
         if thread_row is None:
@@ -752,31 +788,45 @@ def _get_thread_or_create(connection: Connection, current_user: CurrentUser, thr
 
 def _load_thread_row(connection: Connection, user_id: str, thread_id: str) -> dict[str, Any] | None:
     thread_table = legacy_tables["ai_assistant_thread"]
-    row = connection.execute(
-        select(thread_table).where(thread_table.c.id == thread_id, thread_table.c.user_id == user_id).limit(1)
-    ).mappings().first()
+    row = (
+        connection.execute(
+            select(thread_table)
+            .where(thread_table.c.id == thread_id, thread_table.c.user_id == user_id)
+            .limit(1)
+        )
+        .mappings()
+        .first()
+    )
     return dict(row) if row is not None else None
 
 
 def _load_thread_row_by_id(connection: Connection, thread_id: str) -> dict[str, Any] | None:
     thread_table = legacy_tables["ai_assistant_thread"]
-    row = connection.execute(select(thread_table).where(thread_table.c.id == thread_id).limit(1)).mappings().first()
+    row = (
+        connection.execute(select(thread_table).where(thread_table.c.id == thread_id).limit(1))
+        .mappings()
+        .first()
+    )
     return dict(row) if row is not None else None
 
 
 def _recalculate_thread_state(connection: Connection, thread_id: str) -> None:
     thread_table = legacy_tables["ai_assistant_thread"]
     message_table = legacy_tables["ai_assistant_message"]
-    rows = connection.execute(
-        select(message_table.c.content, message_table.c.created_at)
-        .where(message_table.c.thread_id == thread_id)
-        .order_by(
-            message_table.c.created_at.desc(),
-            case((message_table.c.sender_type == "user", 0), else_=1).desc(),
-            message_table.c.id.desc(),
+    rows = (
+        connection.execute(
+            select(message_table.c.content, message_table.c.created_at)
+            .where(message_table.c.thread_id == thread_id)
+            .order_by(
+                message_table.c.created_at.desc(),
+                case((message_table.c.sender_type == "user", 0), else_=1).desc(),
+                message_table.c.id.desc(),
+            )
+            .limit(1)
         )
-        .limit(1)
-    ).mappings().first()
+        .mappings()
+        .first()
+    )
     message_count = connection.execute(
         select(message_table.c.id).where(message_table.c.thread_id == thread_id)
     ).all()
@@ -815,9 +865,13 @@ def _prune_thread_messages(connection: Connection, thread_id: str) -> None:
 
     for row in rows[:excess]:
         message_id = str(row[0])
-        artifact_rows = connection.execute(
-            select(artifact_table).where(artifact_table.c.message_id == message_id)
-        ).mappings().all()
+        artifact_rows = (
+            connection.execute(
+                select(artifact_table).where(artifact_table.c.message_id == message_id)
+            )
+            .mappings()
+            .all()
+        )
         for artifact_row in artifact_rows:
             _delete_artifact_file_if_present(artifact_row)
         connection.execute(delete(artifact_table).where(artifact_table.c.message_id == message_id))
@@ -833,7 +887,9 @@ def _delete_artifact_file_if_present(artifact_row: dict[str, Any]) -> None:
 
 
 def _hash_json(payload: object) -> str:
-    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+    raw = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
+    )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -847,7 +903,9 @@ def _scope_candidates(question: str) -> list[tuple[str, float]]:
             if keyword in normalized:
                 score += 2.0
             else:
-                score += max(fuzzy_score(normalized, keyword), token_overlap_score(normalized, keyword))
+                score += max(
+                    fuzzy_score(normalized, keyword), token_overlap_score(normalized, keyword)
+                )
         if scope == "general":
             score += 0.1
         scores.append((scope, score))
@@ -943,7 +1001,9 @@ async def _detect_scope(question: str, runtime_context: AgentRuntimeContext) -> 
     return "general", 0.4
 
 
-async def _detect_scope_by_embedding(question: str, runtime_context: AgentRuntimeContext) -> str | None:
+async def _detect_scope_by_embedding(
+    question: str, runtime_context: AgentRuntimeContext
+) -> str | None:
     scope_profiles = {
         "models": "disponibilidade de modelos, rodadas, intervenções e execução operacional",
         "pending": "pendências, tarefas, gargalos, bloqueios e atrasos",
@@ -1001,7 +1061,16 @@ async def _detect_scope_by_model(
                     role="system",
                     content="Classifique a pergunta em um scope do SILO. Não use ferramentas e não responda o usuário.",
                 ),
-                ChatMessage(role="user", content=json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)),
+                ChatMessage(
+                    role="user",
+                    content=json.dumps(
+                        payload,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        default=str,
+                    ),
+                ),
             ]
         )
     except Exception:
@@ -1016,7 +1085,9 @@ async def _detect_scope_by_model(
     return scope
 
 
-def _detect_presentation_intent(question: str) -> Literal["chart", "image", "mermaid", "pdf", "audio", "text"]:
+def _detect_presentation_intent(
+    question: str,
+) -> Literal["chart", "image", "mermaid", "pdf", "audio", "text"]:
     normalized = normalize_text(question)
     if any(keyword in normalized for keyword in ("audio", "voz", "ouvir", "narracao")):
         return "audio"
@@ -1035,7 +1106,10 @@ def _detect_date_range(question: str) -> dict[str, str]:
         start = end = end_date - timedelta(days=1)
     elif "hoje" in normalized:
         start = end = end_date
-    elif any(token in normalized for token in ("7 dias", "ultimos 7 dias", "ultimas 7 dias", "semana passada")):
+    elif any(
+        token in normalized
+        for token in ("7 dias", "ultimos 7 dias", "ultimas 7 dias", "semana passada")
+    ):
         start = end_date - timedelta(days=6)
         end = end_date
     elif any(token in normalized for token in ("15 dias", "quinzena")):
@@ -1066,12 +1140,17 @@ def _select_report_type(question: str, scope: str) -> str:
     return "executive"
 
 
-async def _plan_from_question(question: str, runtime_context: AgentRuntimeContext, state: AgentState) -> AssistantPlan:
+async def _plan_from_question(
+    question: str, runtime_context: AgentRuntimeContext, state: AgentState
+) -> AssistantPlan:
     scope, confidence = await _detect_scope(question, runtime_context)
     presentation_intent = _detect_presentation_intent(question)
     date_range = _detect_date_range(question)
     report_type = _select_report_type(question, scope)
-    include_comparison = any(token in normalize_text(question) for token in ("compar", "antes", "depois", "delta", "variação", "variacao"))
+    include_comparison = any(
+        token in normalize_text(question)
+        for token in ("compar", "antes", "depois", "delta", "variação", "variacao")
+    )
     include_knowledge_search = scope in {"problems", "solutions", "general"}
     # Cada pergunta deve passar pelo vLLM para manter geração, metadados e
     # validação atuais; cache semântico não pode substituir uma chamada de IA.
@@ -1095,12 +1174,22 @@ def _required_sources_for_scope(scope: str) -> tuple[str, ...]:
     mapping = {
         "models": ("model_runs", "availability_report"),
         "pending": ("projects_snapshot", "projects_report"),
-        "reports": ("executive_report", "availability_report", "problems_report", "projects_report"),
+        "reports": (
+            "executive_report",
+            "availability_report",
+            "problems_report",
+            "projects_report",
+        ),
         "problems": ("problems_report", "problems_detail", "knowledge_search"),
         "solutions": ("problems_report", "problems_detail", "knowledge_search"),
         "projects": ("projects_snapshot", "projects_report"),
         "products": ("products_catalog",),
-        "general": ("executive_report", "availability_report", "problems_report", "projects_report"),
+        "general": (
+            "executive_report",
+            "availability_report",
+            "problems_report",
+            "projects_report",
+        ),
         "generate_pdf": ("report_pdf",),
     }
     return mapping.get(scope, ("executive_report",))
@@ -1119,7 +1208,9 @@ def _resolve_entities(question: str, scope: str, connection: Connection) -> dict
     return {}
 
 
-async def _node_guard_and_normalize(state: AgentState, runtime: Runtime[AgentRuntimeContext]) -> AgentState:
+async def _node_guard_and_normalize(
+    state: AgentState, runtime: Runtime[AgentRuntimeContext]
+) -> AgentState:
     question = _optional_text(state.get("question")) or ""
     normalized_question = question.strip()
     progress = list(state.get("progress", []))
@@ -1137,7 +1228,9 @@ async def _node_guard_and_normalize(state: AgentState, runtime: Runtime[AgentRun
         state["progress"] = progress
         return state
 
-    thread_row = _get_thread_or_create(runtime.context.connection, runtime.context.current_user, state.get("thread_id"))
+    thread_row = _get_thread_or_create(
+        runtime.context.connection, runtime.context.current_user, state.get("thread_id")
+    )
     state["thread_id"] = str(thread_row["id"])
     state["history_messages"] = _load_recent_history(runtime.context.connection, state["thread_id"])
     state["conversation_memory"] = _build_conversation_memory(state["history_messages"])
@@ -1148,7 +1241,9 @@ async def _node_guard_and_normalize(state: AgentState, runtime: Runtime[AgentRun
     return state
 
 
-async def _node_classify_and_plan(state: AgentState, runtime: Runtime[AgentRuntimeContext]) -> AgentState:
+async def _node_classify_and_plan(
+    state: AgentState, runtime: Runtime[AgentRuntimeContext]
+) -> AgentState:
     progress = list(state.get("progress", []))
     progress.append("classify_and_plan")
     if state.get("final_response"):
@@ -1231,12 +1326,16 @@ async def _node_claim_pdf_idempotency_if_needed(
     if isinstance(claim, dict):
         if str(claim.get("status")) == AI_ARTIFACT_READY:
             state["artifact_result"] = {"status": "attached_hit", "artifact": claim}
-            state["final_response"] = _load_persisted_response_from_artifact(runtime.context.connection, claim, state)
+            state["final_response"] = _load_persisted_response_from_artifact(
+                runtime.context.connection, claim, state
+            )
             return state
         if str(claim.get("status")) == AI_ARTIFACT_PENDING:
             state["artifact_result"] = {"status": "conflict", "artifact": claim}
             state["refusal_reason"] = "Já existe uma geração de PDF em andamento para este pedido."
-            state["final_response"] = _build_response_from_state(state, runtime.context, refusal=True)
+            state["final_response"] = _build_response_from_state(
+                state, runtime.context, refusal=True
+            )
             return state
         state["artifact_result"] = {"status": "existing", "artifact": claim}
         return state
@@ -1266,7 +1365,9 @@ async def _node_load_persisted_result(
     if artifact_row is None:
         state["final_response"] = _build_response_from_state(state, runtime.context, refusal=True)
         return state
-    state["final_response"] = _load_persisted_response_from_artifact(runtime.context.connection, artifact_row, state)
+    state["final_response"] = _load_persisted_response_from_artifact(
+        runtime.context.connection, artifact_row, state
+    )
     return state
 
 
@@ -1322,7 +1423,9 @@ async def _node_semantic_cache_if_text_only(
     return state
 
 
-async def _node_resolve_entities(state: AgentState, runtime: Runtime[AgentRuntimeContext]) -> AgentState:
+async def _node_resolve_entities(
+    state: AgentState, runtime: Runtime[AgentRuntimeContext]
+) -> AgentState:
     progress = list(state.get("progress", []))
     progress.append("resolve_entities")
     state["progress"] = progress
@@ -1333,11 +1436,15 @@ async def _node_resolve_entities(state: AgentState, runtime: Runtime[AgentRuntim
     clarification = _build_clarification_from_entities(entities, state["scope"] or "general")
     if clarification is not None:
         state["clarification"] = clarification
-        state["final_response"] = _build_response_from_state(state, runtime.context, clarification=True)
+        state["final_response"] = _build_response_from_state(
+            state, runtime.context, clarification=True
+        )
     return state
 
 
-async def _node_build_refusal(state: AgentState, runtime: Runtime[AgentRuntimeContext]) -> AgentState:
+async def _node_build_refusal(
+    state: AgentState, runtime: Runtime[AgentRuntimeContext]
+) -> AgentState:
     progress = list(state.get("progress", []))
     progress.append("build_refusal")
     state["progress"] = progress
@@ -1345,7 +1452,9 @@ async def _node_build_refusal(state: AgentState, runtime: Runtime[AgentRuntimeCo
     return state
 
 
-async def _node_build_clarification(state: AgentState, runtime: Runtime[AgentRuntimeContext]) -> AgentState:
+async def _node_build_clarification(
+    state: AgentState, runtime: Runtime[AgentRuntimeContext]
+) -> AgentState:
     progress = list(state.get("progress", []))
     progress.append("build_clarification")
     state["progress"] = progress
@@ -1366,7 +1475,9 @@ async def _node_execute_required_data_tools(
         return state
 
     if not runtime.context.has_reports_permission:
-        state.setdefault("errors", []).append("reports:view é obrigatório para executar tools determinísticas do assistente.")
+        state.setdefault("errors", []).append(
+            "reports:view é obrigatório para executar tools determinísticas do assistente."
+        )
         state["final_response"] = _build_response_from_state(state, runtime.context, refusal=True)
         return state
 
@@ -1486,14 +1597,23 @@ async def _node_execute_required_data_tools(
                     ),
                 ],
             )
-            problem_category_matches = ((state.get("entities") or {}).get("problemCategories") or {}).get("matches") or []
+            problem_category_matches = (
+                (state.get("entities") or {}).get("problemCategories") or {}
+            ).get("matches") or []
             if problem_category_matches:
                 category_id = str(problem_category_matches[0]["id"])
                 await _run_required_tool_batch(
                     runtime.context,
                     results,
                     state,
-                    [("problemCategory", lambda connection, category_id=category_id: resolve_problem_categories(connection, category_id))],
+                    [
+                        (
+                            "problemCategory",
+                            lambda connection, category_id=category_id: resolve_problem_categories(
+                                connection, category_id
+                            ),
+                        )
+                    ],
                 )
         elif scope == "solutions":
             await _run_required_tool_batch(
@@ -1518,7 +1638,12 @@ async def _node_execute_required_data_tools(
                             end_date=date_range["end"],
                         ),
                     ),
-                    ("knowledgeSearch", lambda connection: search_silo_knowledge(connection, query=str(state["question"]), limit=5)),
+                    (
+                        "knowledgeSearch",
+                        lambda connection: search_silo_knowledge(
+                            connection, query=str(state["question"]), limit=5
+                        ),
+                    ),
                 ],
             )
         elif scope == "projects":
@@ -1555,8 +1680,18 @@ async def _node_execute_required_data_tools(
                 results,
                 state,
                 [
-                    ("executiveReport", lambda connection: get_executive_report_data(connection, {"start": date_range["start"], "end": date_range["end"]})),
-                    ("availabilityReport", lambda connection: get_availability_report_data(connection, {"start": date_range["start"], "end": date_range["end"]})),
+                    (
+                        "executiveReport",
+                        lambda connection: get_executive_report_data(
+                            connection, {"start": date_range["start"], "end": date_range["end"]}
+                        ),
+                    ),
+                    (
+                        "availabilityReport",
+                        lambda connection: get_availability_report_data(
+                            connection, {"start": date_range["start"], "end": date_range["end"]}
+                        ),
+                    ),
                 ],
             )
             await _run_required_tool_batch(
@@ -1564,8 +1699,18 @@ async def _node_execute_required_data_tools(
                 results,
                 state,
                 [
-                    ("problemsReport", lambda connection: get_problems_report_data(connection, {"start": date_range["start"], "end": date_range["end"]})),
-                    ("projectsReport", lambda connection: get_projects_report_data(connection, {"start": date_range["start"], "end": date_range["end"]})),
+                    (
+                        "problemsReport",
+                        lambda connection: get_problems_report_data(
+                            connection, {"start": date_range["start"], "end": date_range["end"]}
+                        ),
+                    ),
+                    (
+                        "projectsReport",
+                        lambda connection: get_projects_report_data(
+                            connection, {"start": date_range["start"], "end": date_range["end"]}
+                        ),
+                    ),
                 ],
             )
         else:
@@ -1574,8 +1719,18 @@ async def _node_execute_required_data_tools(
                 results,
                 state,
                 [
-                    ("executiveReport", lambda connection: get_executive_report_data(connection, {"start": date_range["start"], "end": date_range["end"]})),
-                    ("availabilityReport", lambda connection: get_availability_report_data(connection, {"start": date_range["start"], "end": date_range["end"]})),
+                    (
+                        "executiveReport",
+                        lambda connection: get_executive_report_data(
+                            connection, {"start": date_range["start"], "end": date_range["end"]}
+                        ),
+                    ),
+                    (
+                        "availabilityReport",
+                        lambda connection: get_availability_report_data(
+                            connection, {"start": date_range["start"], "end": date_range["end"]}
+                        ),
+                    ),
                 ],
             )
             await _run_required_tool_batch(
@@ -1583,8 +1738,18 @@ async def _node_execute_required_data_tools(
                 results,
                 state,
                 [
-                    ("problemsReport", lambda connection: get_problems_report_data(connection, {"start": date_range["start"], "end": date_range["end"]})),
-                    ("projectsReport", lambda connection: get_projects_report_data(connection, {"start": date_range["start"], "end": date_range["end"]})),
+                    (
+                        "problemsReport",
+                        lambda connection: get_problems_report_data(
+                            connection, {"start": date_range["start"], "end": date_range["end"]}
+                        ),
+                    ),
+                    (
+                        "projectsReport",
+                        lambda connection: get_projects_report_data(
+                            connection, {"start": date_range["start"], "end": date_range["end"]}
+                        ),
+                    ),
                 ],
             )
     except Exception as exc:
@@ -1607,7 +1772,9 @@ async def _run_required_tool_batch(
         batch = tool_specs[index : index + 2]
         task_results = await asyncio.gather(
             *[
-                _run_required_tool(state, runtime_context, tool_name, callback, timeout_seconds=timeout_seconds)
+                _run_required_tool(
+                    state, runtime_context, tool_name, callback, timeout_seconds=timeout_seconds
+                )
                 for tool_name, callback in batch
             ]
         )
@@ -1615,7 +1782,9 @@ async def _run_required_tool_batch(
             if tool_name is None:
                 continue
             if result is None:
-                state.setdefault("errors", []).append(f"Tool obrigatória sem resultado: {tool_name}.")
+                state.setdefault("errors", []).append(
+                    f"Tool obrigatória sem resultado: {tool_name}."
+                )
                 continue
             results[tool_name] = result
 
@@ -1640,13 +1809,23 @@ async def _run_required_tool(
     started_at = time.perf_counter()
     try:
         result = await asyncio.wait_for(_invoke(), timeout=timeout_seconds)
-    except asyncio.TimeoutError:
-        _record_observability_event(state, "tool", tool_name, int((time.perf_counter() - started_at) * 1000), status="timeout")
+    except TimeoutError:
+        _record_observability_event(
+            state,
+            "tool",
+            tool_name,
+            int((time.perf_counter() - started_at) * 1000),
+            status="timeout",
+        )
         return tool_name, None
     except Exception:
-        _record_observability_event(state, "tool", tool_name, int((time.perf_counter() - started_at) * 1000), status="error")
+        _record_observability_event(
+            state, "tool", tool_name, int((time.perf_counter() - started_at) * 1000), status="error"
+        )
         return tool_name, None
-    _record_observability_event(state, "tool", tool_name, int((time.perf_counter() - started_at) * 1000), status="success")
+    _record_observability_event(
+        state, "tool", tool_name, int((time.perf_counter() - started_at) * 1000), status="success"
+    )
     return tool_name, result
 
 
@@ -1680,7 +1859,9 @@ async def _node_agent_decide(
 
     prompt = _build_hybrid_tool_prompt(state, runtime.context, scope)
     messages: list[Any] = [
-        SystemMessage(content="Você é o orquestrador híbrido do SILO. Use somente ferramentas de leitura e nunca produza a resposta final aqui."),
+        SystemMessage(
+            content="Você é o orquestrador híbrido do SILO. Use somente ferramentas de leitura e nunca produza a resposta final aqui."
+        ),
         HumanMessage(content=prompt),
     ]
 
@@ -1801,7 +1982,9 @@ async def _node_presentation_router(
         elif intent == "audio":
             visualization = _build_audio_visualization(scope, state)
         elif intent == "pdf":
-            artifact_result, visualization = await _build_pdf_artifact(runtime.context, state, results)
+            artifact_result, visualization = await _build_pdf_artifact(
+                runtime.context, state, results
+            )
     except Exception as exc:
         state.setdefault("errors", []).append(str(exc))
 
@@ -1816,7 +1999,9 @@ async def _node_presentation_router(
     return state
 
 
-async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntimeContext]) -> AgentState:
+async def _node_synthesize_once(
+    state: AgentState, runtime: Runtime[AgentRuntimeContext]
+) -> AgentState:
     progress = list(state.get("progress", []))
     progress.append("synthesize_once")
     state["progress"] = progress
@@ -1845,7 +2030,9 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
     prompt_size_bytes = len(prompt.encode("utf-8"))
     try:
         if prompt_size_bytes > 12_000:
-            state.setdefault("errors", []).append("Prompt de síntese excedeu o orçamento de 12.000 bytes.")
+            state.setdefault("errors", []).append(
+                "Prompt de síntese excedeu o orçamento de 12.000 bytes."
+            )
             generation_error_message = "A solicitação excedeu o limite de contexto do modelo vLLM."
         else:
             messages = [
@@ -1860,7 +2047,9 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
             ]
             if hasattr(runtime.context.model_runtime, "complete_with_metadata"):
                 model_started_at = time.perf_counter()
-                response, telemetry = await runtime.context.model_runtime.complete_with_metadata(messages)
+                response, telemetry = await runtime.context.model_runtime.complete_with_metadata(
+                    messages
+                )
                 _record_observability_event(
                     state,
                     "model",
@@ -1870,18 +2059,28 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
                 prompt_eval_count = telemetry.prompt_eval_count
                 generated_tokens = telemetry.output_token_count
                 if telemetry.output_token_count is not None and telemetry.output_token_count > 256:
-                    state.setdefault("errors", []).append("Síntese ultrapassou o limite de tokens de saída.")
+                    state.setdefault("errors", []).append(
+                        "Síntese ultrapassou o limite de tokens de saída."
+                    )
                     generation_error_message = "O modelo vLLM excedeu o limite de tokens de saída."
                 else:
                     parsed = _parse_structured_synthesis_response(response.content)
-                    candidate_answer = _optional_text(parsed.get("answer")) if isinstance(parsed, dict) else None
-                    if candidate_answer and _synthesis_answer_is_safe(candidate_answer, str(state.get("response_base") or "")):
+                    candidate_answer = (
+                        _optional_text(parsed.get("answer")) if isinstance(parsed, dict) else None
+                    )
+                    if candidate_answer and _synthesis_answer_is_safe(
+                        candidate_answer, str(state.get("response_base") or "")
+                    ):
                         answer = candidate_answer
-                        if isinstance(parsed, dict) and isinstance(parsed.get("contextSummary"), str):
+                        if isinstance(parsed, dict) and isinstance(
+                            parsed.get("contextSummary"), str
+                        ):
                             state["synthesis_context_summary"] = str(parsed["contextSummary"])
                         generation_status = "success"
                     else:
-                        generation_error_message = "O modelo vLLM respondeu em formato inválido ou fora do contexto."
+                        generation_error_message = (
+                            "O modelo vLLM respondeu em formato inválido ou fora do contexto."
+                        )
             else:
                 model_started_at = time.perf_counter()
                 response = await runtime.context.model_runtime.complete(messages)
@@ -1892,17 +2091,25 @@ async def _node_synthesize_once(state: AgentState, runtime: Runtime[AgentRuntime
                     int((time.perf_counter() - model_started_at) * 1000),
                 )
                 parsed = _parse_structured_synthesis_response(response.content)
-                candidate_answer = _optional_text(parsed.get("answer")) if isinstance(parsed, dict) else None
-                if candidate_answer and _synthesis_answer_is_safe(candidate_answer, str(state.get("response_base") or "")):
+                candidate_answer = (
+                    _optional_text(parsed.get("answer")) if isinstance(parsed, dict) else None
+                )
+                if candidate_answer and _synthesis_answer_is_safe(
+                    candidate_answer, str(state.get("response_base") or "")
+                ):
                     answer = candidate_answer
                     if isinstance(parsed, dict) and isinstance(parsed.get("contextSummary"), str):
                         state["synthesis_context_summary"] = str(parsed["contextSummary"])
                     generation_status = "success"
                 else:
-                    generation_error_message = "O modelo vLLM respondeu em formato inválido ou fora do contexto."
+                    generation_error_message = (
+                        "O modelo vLLM respondeu em formato inválido ou fora do contexto."
+                    )
     except Exception as exc:
         state.setdefault("errors", []).append(str(exc))
-        generation_error_message = "Não foi possível acessar o modelo vLLM neste momento. Aguarde e tente novamente."
+        generation_error_message = (
+            "Não foi possível acessar o modelo vLLM neste momento. Aguarde e tente novamente."
+        )
     if generation_status == "error" and not answer:
         answer = generation_error_message
     latency_ms = int((time.perf_counter() - started_at) * 1000)
@@ -1935,7 +2142,9 @@ async def _node_validate_output_citations_and_artifacts(
     if not final_response["citations"] and not final_response.get("refusalReason"):
         final_response["citations"] = [
             citation.model_dump(mode="json")
-            for citation in _default_citations_for_scope(str(state.get("scope") or "general"), state)
+            for citation in _default_citations_for_scope(
+                str(state.get("scope") or "general"), state
+            )
         ]
     state["final_response"] = final_response
     return state
@@ -1989,10 +2198,16 @@ def _build_response_from_state(
     if refusal and not answer:
         answer = str(state.get("refusal_reason") or "Não posso responder esta solicitação.")
     if clarification and not answer:
-        clarification_text = str(state.get("clarification") or "Preciso de mais detalhes para continuar.")
+        clarification_text = str(
+            state.get("clarification") or "Preciso de mais detalhes para continuar."
+        )
         answer = clarification_text
 
-    thread_summary = _current_thread_summary(runtime_context.connection, runtime_context.current_user.id, str(state.get("thread_id") or ""))
+    thread_summary = _current_thread_summary(
+        runtime_context.connection,
+        runtime_context.current_user.id,
+        str(state.get("thread_id") or ""),
+    )
     final_response = AiAssistantMessageResponseDto(
         thread_id=str(state.get("thread_id") or ""),
         thread=thread_summary,
@@ -2002,12 +2217,21 @@ def _build_response_from_state(
         refusal_reason=str(state.get("refusal_reason")) if refusal else None,
         answer=answer,
         thinking=_humanize_progress(state.get("progress", [])),
-        suggested_questions=list(state.get("suggested_questions") or _suggested_questions_for_scope(scope)),
-        citations=[AiAssistantCitationDto.model_validate(item) if isinstance(item, dict) else item for item in state.get("citations", [])],
+        suggested_questions=list(
+            state.get("suggested_questions") or _suggested_questions_for_scope(scope)
+        ),
+        citations=[
+            AiAssistantCitationDto.model_validate(item) if isinstance(item, dict) else item
+            for item in state.get("citations", [])
+        ],
         visualization=_current_visualization(state),
         artifacts=_current_artifacts(state),
-        generation=AiAssistantGenerationDto.model_validate(state["generation"]) if state.get("generation") else None,
-        context_summary=str(state.get("synthesis_context_summary") or _build_context_summary(state)),
+        generation=AiAssistantGenerationDto.model_validate(state["generation"])
+        if state.get("generation")
+        else None,
+        context_summary=str(
+            state.get("synthesis_context_summary") or _build_context_summary(state)
+        ),
     )
     return final_response.model_dump(mode="json")
 
@@ -2147,11 +2371,7 @@ def _sanitize_observability_events(events: object) -> list[dict[str, Any]]:
         if not isinstance(event, dict):
             continue
         sanitized.append(
-            {
-                key: event[key]
-                for key in ("name", "durationMs", "status")
-                if key in event
-            }
+            {key: event[key] for key in ("name", "durationMs", "status") if key in event}
         )
     return sanitized
 
@@ -2178,7 +2398,10 @@ def _canonical_trajectory(state: AgentState) -> list[str]:
     if presentation_phase and presentation_phase not in trajectory:
         trajectory.append(presentation_phase)
 
-    if state.get("artifact_intent", {}).get("kind") == "pdf" and "generate_report_pdf" not in trajectory:
+    if (
+        state.get("artifact_intent", {}).get("kind") == "pdf"
+        and "generate_report_pdf" not in trajectory
+    ):
         trajectory.append("generate_report_pdf")
 
     trajectory.extend(["build_grounded_response", "synthesize_answer", "verify_response"])
@@ -2243,7 +2466,11 @@ def _graph_budget_exhausted(state: AgentState) -> bool:
     deadline_epoch_ms_value = state.get("deadline_epoch_ms")
     if remaining_steps_value is not None and int(remaining_steps_value) <= 0:
         return True
-    if deadline_epoch_ms_value is not None and int(deadline_epoch_ms_value) > 0 and _current_epoch_ms() >= int(deadline_epoch_ms_value):
+    if (
+        deadline_epoch_ms_value is not None
+        and int(deadline_epoch_ms_value) > 0
+        and _current_epoch_ms() >= int(deadline_epoch_ms_value)
+    ):
         return True
     return False
 
@@ -2276,7 +2503,9 @@ def _combined_tool_results(state: AgentState) -> dict[str, Any]:
     return combined
 
 
-def _build_hybrid_tool_prompt(state: AgentState, runtime_context: AgentRuntimeContext, scope: str) -> str:
+def _build_hybrid_tool_prompt(
+    state: AgentState, runtime_context: AgentRuntimeContext, scope: str
+) -> str:
     payload = {
         "question": state.get("question"),
         "scope": scope,
@@ -2288,7 +2517,9 @@ def _build_hybrid_tool_prompt(state: AgentState, runtime_context: AgentRuntimeCo
         "graphVersion": runtime_context.graph_version,
         "promptVersion": runtime_context.prompt_version,
     }
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+    return json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
+    )
 
 
 def _extract_tool_calls(message: Any) -> list[dict[str, Any]]:
@@ -2356,13 +2587,19 @@ def _parse_model_scope_response(content: str) -> dict[str, Any] | None:
 
 def _compact_tool_result(result: Any) -> str:
     try:
-        payload = json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+        payload = json.dumps(
+            result, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
+        )
     except TypeError:
-        payload = json.dumps({"value": str(result)}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        payload = json.dumps(
+            {"value": str(result)}, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
     return payload[:4_000]
 
 
-def _current_thread_summary(connection: Connection, user_id: str, thread_id: str) -> AiAssistantThreadSummaryDto | None:
+def _current_thread_summary(
+    connection: Connection, user_id: str, thread_id: str
+) -> AiAssistantThreadSummaryDto | None:
     if not thread_id:
         return None
     row = _load_thread_row(connection, user_id, thread_id)
@@ -2513,14 +2750,23 @@ def _format_models_answer(summary: dict[str, Any], results: dict[str, Any], peri
     total_runs = summary.get("totalRuns") or 0
     incident_runs = summary.get("incidentRuns") or 0
     top_products = summary.get("topProducts") or []
-    lines = [f"No período {period}, os modelos tiveram {total_runs} rodadas e disponibilidade média de {availability}%.", f"Foram identificadas {incident_runs} rodadas problemáticas."]
+    lines = [
+        f"No período {period}, os modelos tiveram {total_runs} rodadas e disponibilidade média de {availability}%.",
+        f"Foram identificadas {incident_runs} rodadas problemáticas.",
+    ]
     if top_products:
-        names = ", ".join(str(item.get("productName") or item.get("name") or item.get("productSlug") or "") for item in top_products[:3] if item)
+        names = ", ".join(
+            str(item.get("productName") or item.get("name") or item.get("productSlug") or "")
+            for item in top_products[:3]
+            if item
+        )
         if names:
             lines.append(f"Principais itens de atenção: {names}.")
     history = results.get("modelHistory")
     if isinstance(history, dict) and history.get("history"):
-        lines.append("Há histórico de intervenções registrado para o modelo mais relevante identificado.")
+        lines.append(
+            "Há histórico de intervenções registrado para o modelo mais relevante identificado."
+        )
     return " ".join(lines)
 
 
@@ -2541,8 +2787,14 @@ def _format_problems_answer(results: dict[str, Any], period: str) -> str:
     total_problems = summary.get("totalProblems") or 0
     avg_resolution = summary.get("avgResolutionHours") or 0
     top = summary.get("problemsByCategory") or summary.get("topProblems") or []
-    names = ", ".join(str(item.get("name") or item.get("categoryName") or item.get("title") or "") for item in list(top)[:3] if item)
-    parts = [f"No período {period}, foram registrados {total_problems} problemas, com tempo médio de resolução de {avg_resolution}h."]
+    names = ", ".join(
+        str(item.get("name") or item.get("categoryName") or item.get("title") or "")
+        for item in list(top)[:3]
+        if item
+    )
+    parts = [
+        f"No período {period}, foram registrados {total_problems} problemas, com tempo médio de resolução de {avg_resolution}h."
+    ]
     if names:
         parts.append(f"As categorias mais presentes foram {names}.")
     if results.get("knowledgeSearch"):
@@ -2594,7 +2846,9 @@ def _format_reports_answer(results: dict[str, Any], period: str) -> str:
     availability = results.get("availabilityReport") or {}
     problems = results.get("problemsReport") or {}
     projects = results.get("projectsReport") or {}
-    availability_value = availability.get("avgAvailability") or availability.get("avgAvailabilityPct") or 0
+    availability_value = (
+        availability.get("avgAvailability") or availability.get("avgAvailabilityPct") or 0
+    )
     return (
         f"O resumo executivo do período {period} indica {executive.get('summary', {}).get('totalProducts', 0)} produtos monitorados, "
         f"disponibilidade média de {availability_value}%, "
@@ -2604,7 +2858,11 @@ def _format_reports_answer(results: dict[str, Any], period: str) -> str:
 
 def _format_pdf_answer(state: AgentState, period: str) -> str:
     artifact = state.get("artifact_result") or {}
-    report_type = str(artifact.get("reportType") or state.get("artifact_intent", {}).get("reportType") or "executive")
+    report_type = str(
+        artifact.get("reportType")
+        or state.get("artifact_intent", {}).get("reportType")
+        or "executive"
+    )
     return f"Relatório em PDF de {report_type} preparado para o período {period}."
 
 
@@ -2620,27 +2878,43 @@ def _format_general_answer(results: dict[str, Any], period: str) -> str:
     )
 
 
-def _build_chart_visualization(scope: str, state: AgentState, results: dict[str, Any]) -> AiAssistantVisualizationDto:
+def _build_chart_visualization(
+    scope: str, state: AgentState, results: dict[str, Any]
+) -> AiAssistantVisualizationDto:
     date_range = dict(state.get("ranges") or {})
     title = f"Visão de {scope}"
     if scope == "models":
         summary = results.get("modelSummary") or {}
         top = summary.get("topProducts") or []
         dataset = {
-            "categories": [str(item.get("productName") or item.get("productSlug") or item.get("name") or "") for item in top[:5]],
+            "categories": [
+                str(item.get("productName") or item.get("productSlug") or item.get("name") or "")
+                for item in top[:5]
+            ],
             "series": [
                 {
                     "name": "Incidentes",
-                    "values": [float(item.get("incidentRuns") or item.get("incident_runs") or 0) for item in top[:5]],
+                    "values": [
+                        float(item.get("incidentRuns") or item.get("incident_runs") or 0)
+                        for item in top[:5]
+                    ],
                 }
             ],
         }
-        chart = build_chart_spec(template_id="models_overview", dataset=dataset, chart_type="bar", title=title, subtitle=f"{date_range.get('start')} a {date_range.get('end')}")
+        chart = build_chart_spec(
+            template_id="models_overview",
+            dataset=dataset,
+            chart_type="bar",
+            title=title,
+            subtitle=f"{date_range.get('start')} a {date_range.get('end')}",
+        )
     elif scope == "projects":
         snapshot = results.get("projectsSnapshot") or {}
         projects = snapshot.get("projects") or []
         dataset = {
-            "categories": [str(item.get("name") or item.get("title") or "") for item in projects[:5]],
+            "categories": [
+                str(item.get("name") or item.get("title") or "") for item in projects[:5]
+            ],
             "series": [
                 {
                     "name": "Progresso",
@@ -2648,38 +2922,69 @@ def _build_chart_visualization(scope: str, state: AgentState, results: dict[str,
                 }
             ],
         }
-        chart = build_chart_spec(template_id="projects_overview", dataset=dataset, chart_type="bar", title=title, subtitle=f"{date_range.get('start')} a {date_range.get('end')}")
+        chart = build_chart_spec(
+            template_id="projects_overview",
+            dataset=dataset,
+            chart_type="bar",
+            title=title,
+            subtitle=f"{date_range.get('start')} a {date_range.get('end')}",
+        )
     elif scope in {"problems", "solutions"}:
         summary = results.get("problemSummary") or {}
         categories = summary.get("problemsByCategory") or summary.get("categories") or []
         dataset = {
-            "categories": [str(item.get("name") or item.get("categoryName") or "") for item in categories[:5]],
+            "categories": [
+                str(item.get("name") or item.get("categoryName") or "") for item in categories[:5]
+            ],
             "series": [
                 {
                     "name": "Problemas",
-                    "values": [float(item.get("problemsCount") or item.get("count") or 0) for item in categories[:5]],
+                    "values": [
+                        float(item.get("problemsCount") or item.get("count") or 0)
+                        for item in categories[:5]
+                    ],
                 }
             ],
         }
-        chart = build_chart_spec(template_id="problems_overview", dataset=dataset, chart_type="bar", title=title, subtitle=f"{date_range.get('start')} a {date_range.get('end')}")
+        chart = build_chart_spec(
+            template_id="problems_overview",
+            dataset=dataset,
+            chart_type="bar",
+            title=title,
+            subtitle=f"{date_range.get('start')} a {date_range.get('end')}",
+        )
     else:
         summary = results.get("executiveReport") or {}
         products = (summary.get("topProducts") or [])[:5]
         dataset = {
             "products": [
                 {
-                    "name": str(item.get("name") or item.get("productName") or item.get("productSlug") or ""),
-                    "availabilityPercentage": float(item.get("availabilityPercentage") or item.get("availabilityPct") or 0),
+                    "name": str(
+                        item.get("name") or item.get("productName") or item.get("productSlug") or ""
+                    ),
+                    "availabilityPercentage": float(
+                        item.get("availabilityPercentage") or item.get("availabilityPct") or 0
+                    ),
                 }
                 for item in products
             ]
         }
-        chart = build_chart_spec(template_id="executive_overview", dataset=dataset, chart_type="bar", title=title, subtitle=f"{date_range.get('start')} a {date_range.get('end')}")
+        chart = build_chart_spec(
+            template_id="executive_overview",
+            dataset=dataset,
+            chart_type="bar",
+            title=title,
+            subtitle=f"{date_range.get('start')} a {date_range.get('end')}",
+        )
     return AiAssistantVisualizationChartDto.model_validate(chart)
 
 
-def _build_image_visualization(scope: str, state: AgentState, results: dict[str, Any]) -> AiAssistantVisualizationDto:
-    period = f"{state.get('ranges', {}).get('start', '')} a {state.get('ranges', {}).get('end', '')}"
+def _build_image_visualization(
+    scope: str, state: AgentState, results: dict[str, Any]
+) -> AiAssistantVisualizationDto:
+    period = (
+        f"{state.get('ranges', {}).get('start', '')} a {state.get('ranges', {}).get('end', '')}"
+    )
     lines = [f"Escopo: {scope}", f"Período: {period}"]
     if scope == "models":
         lines.append(f"Rodadas: {results.get('modelSummary', {}).get('totalRuns', 0)}")
@@ -2693,9 +2998,16 @@ def _build_image_visualization(scope: str, state: AgentState, results: dict[str,
     return AiAssistantVisualizationImageDto.model_validate(image)
 
 
-def _build_mermaid_visualization(scope: str, state: AgentState, results: dict[str, Any]) -> AiAssistantVisualizationDto:
+def _build_mermaid_visualization(
+    scope: str, state: AgentState, results: dict[str, Any]
+) -> AiAssistantVisualizationDto:
     title = f"Fluxo de {scope}"
-    dataset = results.get("projectsSnapshot") or results.get("problemSummary") or results.get("executiveReport") or {}
+    dataset = (
+        results.get("projectsSnapshot")
+        or results.get("problemSummary")
+        or results.get("executiveReport")
+        or {}
+    )
     template_id = "project_flow" if scope in {"projects", "pending"} else "problem_flow"
     diagram = build_mermaid_diagram(template_id=template_id, dataset=dataset, title=title)
     return AiAssistantVisualizationMermaidDto.model_validate(diagram)
@@ -2721,9 +3033,13 @@ async def _build_pdf_artifact(
     if artifact_state.get("status") != "claimed":
         return None, None
     report_type = str(artifact_state.get("reportType") or "executive")
-    period = f"{state.get('ranges', {}).get('start', '')} a {state.get('ranges', {}).get('end', '')}"
+    period = (
+        f"{state.get('ranges', {}).get('start', '')} a {state.get('ranges', {}).get('end', '')}"
+    )
     data = _select_report_data_for_pdf(report_type, results, state)
-    pdf = generate_report_pdf(runtime_context.connection, report_type=report_type, data=data, period_label=period)
+    pdf = generate_report_pdf(
+        runtime_context.connection, report_type=report_type, data=data, period_label=period
+    )
     artifact_dict = {
         "kind": "pdf",
         "url": pdf["url"],
@@ -2747,7 +3063,9 @@ async def _build_pdf_artifact(
     return artifact_dict, visualization
 
 
-def _select_report_data_for_pdf(report_type: str, results: dict[str, Any], state: AgentState) -> dict[str, Any]:
+def _select_report_data_for_pdf(
+    report_type: str, results: dict[str, Any], state: AgentState
+) -> dict[str, Any]:
     if report_type == "availability":
         return results.get("availabilityReport") or results.get("modelSummary") or {}
     if report_type == "problems":
@@ -2827,7 +3145,9 @@ def _build_synthesis_prompt(state: AgentState) -> str:
             "answer deve ser uma frase completa em português com pelo menos 8 palavras; nunca responda apenas com um número ou palavra isolada.",
         ],
     }
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+    return json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
+    )
 
 
 def _parse_structured_synthesis_response(content: str) -> dict[str, Any] | None:
@@ -2861,7 +3181,9 @@ def _synthesis_answer_is_safe(candidate_answer: str, base_answer: str) -> bool:
     return candidate_numbers.issubset(base_numbers)
 
 
-def _semantic_cache_key(state: AgentState, runtime_context: AgentRuntimeContext, plan: AssistantPlan) -> str:
+def _semantic_cache_key(
+    state: AgentState, runtime_context: AgentRuntimeContext, plan: AssistantPlan
+) -> str:
     payload = {
         "userId": runtime_context.current_user.id,
         "question": normalize_text(str(state.get("question") or "")),
@@ -2920,33 +3242,45 @@ def _load_persisted_response_from_artifact(
 ) -> dict[str, Any]:
     artifact_id = _optional_text(artifact_row.get("id"))
     if artifact_id is None and _optional_text(artifact_row.get("messageId")) is None:
-        return _build_response_from_state(state, _build_runtime_context_from_cache(connection, state), refusal=True)
+        return _build_response_from_state(
+            state, _build_runtime_context_from_cache(connection, state), refusal=True
+        )
 
     message_row = None
     if artifact_row.get("messageId"):
-        message_row = connection.execute(
-            select(legacy_tables["ai_assistant_message"]).where(
-                legacy_tables["ai_assistant_message"].c.id == artifact_row["messageId"]
-            ).limit(1)
-        ).mappings().first()
+        message_row = (
+            connection.execute(
+                select(legacy_tables["ai_assistant_message"])
+                .where(legacy_tables["ai_assistant_message"].c.id == artifact_row["messageId"])
+                .limit(1)
+            )
+            .mappings()
+            .first()
+        )
     if message_row is None:
-        return _build_response_from_state(state, _build_runtime_context_from_cache(connection, state), refusal=True)
+        return _build_response_from_state(
+            state, _build_runtime_context_from_cache(connection, state), refusal=True
+        )
 
     payload = serialize_legacy_row(message_row)
     metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
     visualization = metadata.get("visualization") if isinstance(metadata, dict) else None
-    artifacts = [
-        {
-            "kind": "pdf",
-            "url": str(artifact_row.get("url") or ""),
-            "filename": str(artifact_row.get("filename") or ""),
-            "title": f"Relatório {artifact_row.get('reportType') or 'pdf'}",
-            "mimeType": "application/pdf",
-            "reportType": str(artifact_row.get("reportType") or ""),
-            "checksum": artifact_row.get("file_sha256"),
-            "byteSize": artifact_row.get("byte_size"),
-        }
-    ] if artifact_row.get("url") else []
+    artifacts = (
+        [
+            {
+                "kind": "pdf",
+                "url": str(artifact_row.get("url") or ""),
+                "filename": str(artifact_row.get("filename") or ""),
+                "title": f"Relatório {artifact_row.get('reportType') or 'pdf'}",
+                "mimeType": "application/pdf",
+                "reportType": str(artifact_row.get("reportType") or ""),
+                "checksum": artifact_row.get("file_sha256"),
+                "byteSize": artifact_row.get("byte_size"),
+            }
+        ]
+        if artifact_row.get("url")
+        else []
+    )
     response = AiAssistantMessageResponseDto(
         thread_id=str(state.get("thread_id") or artifact_row.get("thread_id") or ""),
         thread=None,
@@ -2957,21 +3291,43 @@ def _load_persisted_response_from_artifact(
         answer=str(metadata.get("answer") or payload.get("content") or ""),
         thinking=_optional_text(metadata.get("thinking")),
         suggested_questions=list(metadata.get("suggestedQuestions") or []),
-        citations=[AiAssistantCitationDto.model_validate(item) for item in metadata.get("citations") or [] if isinstance(item, dict)],
-        visualization=_validate_visualization_payload(visualization) if isinstance(visualization, dict) else None,
-        artifacts=[AiAssistantArtifactDto.model_validate(item) for item in artifacts if isinstance(item, dict)] if artifacts else None,
-        generation=AiAssistantGenerationDto.model_validate(metadata["generation"]) if isinstance(metadata, dict) and isinstance(metadata.get("generation"), dict) else None,
+        citations=[
+            AiAssistantCitationDto.model_validate(item)
+            for item in metadata.get("citations") or []
+            if isinstance(item, dict)
+        ],
+        visualization=_validate_visualization_payload(visualization)
+        if isinstance(visualization, dict)
+        else None,
+        artifacts=[
+            AiAssistantArtifactDto.model_validate(item)
+            for item in artifacts
+            if isinstance(item, dict)
+        ]
+        if artifacts
+        else None,
+        generation=AiAssistantGenerationDto.model_validate(metadata["generation"])
+        if isinstance(metadata, dict) and isinstance(metadata.get("generation"), dict)
+        else None,
         context_summary=str(metadata.get("contextSummary") or ""),
     )
-    thread_summary = _current_thread_summary(connection, str(artifact_row.get("user_id") or ""), str(artifact_row.get("thread_id") or state.get("thread_id") or ""))
-    return response.model_dump(mode="json") | {"thread": thread_summary.model_dump(mode="json") if thread_summary else None}
+    thread_summary = _current_thread_summary(
+        connection,
+        str(artifact_row.get("user_id") or ""),
+        str(artifact_row.get("thread_id") or state.get("thread_id") or ""),
+    )
+    return response.model_dump(mode="json") | {
+        "thread": thread_summary.model_dump(mode="json") if thread_summary else None
+    }
 
 
-def _build_runtime_context_from_cache(connection: Connection, state: AgentState) -> AgentRuntimeContext:
+def _build_runtime_context_from_cache(
+    connection: Connection, state: AgentState
+) -> AgentRuntimeContext:
     settings = load_settings()
     return AgentRuntimeContext(
         connection=connection,
-        current_user=CurrentUser(id=str(""), email=None, name=None, is_active=True),
+        current_user=CurrentUser(id="", email=None, name=None, is_active=True),
         request_id=str(state.get("request_id") or uuid.uuid4()),
         run_id=str(state.get("run_id") or uuid.uuid4()),
         settings=settings,
@@ -2982,7 +3338,9 @@ def _build_runtime_context_from_cache(connection: Connection, state: AgentState)
     )
 
 
-def _persist_user_and_assistant_messages(runtime_context: AgentRuntimeContext, state: AgentState) -> None:
+def _persist_user_and_assistant_messages(
+    runtime_context: AgentRuntimeContext, state: AgentState
+) -> None:
     thread_id = str(state.get("thread_id") or "")
     if not thread_id:
         return
@@ -2999,7 +3357,9 @@ def _persist_user_and_assistant_messages(runtime_context: AgentRuntimeContext, s
         "thread_id": thread_id,
         "sender_type": "user",
         "sender_user_id": runtime_context.current_user.id,
-        "sender_name": runtime_context.current_user.name or runtime_context.current_user.email or "Usuário",
+        "sender_name": runtime_context.current_user.name
+        or runtime_context.current_user.email
+        or "Usuário",
         "provider": None,
         "model": None,
         "generation_status": None,
@@ -3020,10 +3380,14 @@ def _persist_user_and_assistant_messages(runtime_context: AgentRuntimeContext, s
         "sender_name": "Assistente de IA",
         "provider": "vllm",
         "model": runtime_context.settings.vllm.model,
-        "generation_status": str((assistant_response.get("generation") or {}).get("status") or "fallback"),
+        "generation_status": str(
+            (assistant_response.get("generation") or {}).get("status") or "fallback"
+        ),
         "latency_ms": int((assistant_response.get("generation") or {}).get("latencyMs") or 0),
         "error_message": None,
-        "content": str(assistant_response.get("answer") or assistant_response.get("messageContent") or ""),
+        "content": str(
+            assistant_response.get("answer") or assistant_response.get("messageContent") or ""
+        ),
         "metadata": {
             "scope": assistant_response.get("scope"),
             "answer": assistant_response.get("answer"),
@@ -3089,7 +3453,9 @@ def _thread_title_from_question(question: str) -> str:
     return title[:57].rstrip() + "..."
 
 
-def _attach_artifact_if_needed(runtime_context: AgentRuntimeContext, state: AgentState, message_id: str) -> None:
+def _attach_artifact_if_needed(
+    runtime_context: AgentRuntimeContext, state: AgentState, message_id: str
+) -> None:
     artifact_result = state.get("artifact_result") or {}
     if not isinstance(artifact_result, dict):
         return
@@ -3100,7 +3466,9 @@ def _attach_artifact_if_needed(runtime_context: AgentRuntimeContext, state: Agen
         idempotency_hash=str(artifact_result.get("idempotencyHash") or ""),
         owner_token=str(artifact_result.get("ownerToken") or ""),
         artifact=PdfArtifact(
-            file_path=get_upload_file_path("reports", str((artifact_result.get("artifact") or {}).get("filename") or "")),
+            file_path=get_upload_file_path(
+                "reports", str((artifact_result.get("artifact") or {}).get("filename") or "")
+            ),
             filename=str((artifact_result.get("artifact") or {}).get("filename") or ""),
             url=str((artifact_result.get("artifact") or {}).get("url") or ""),
             byte_size=int((artifact_result.get("artifact") or {}).get("byteSize") or 0),
@@ -3148,17 +3516,20 @@ def _finalize_pdf_artifact(runtime_context: AgentRuntimeContext, state: AgentSta
 
 def _build_clarification_from_entities(entities: dict[str, Any], scope: str) -> str | None:
     if scope == "models":
-        matches = ((entities.get("models") or {}).get("matches") or [])
+        matches = (entities.get("models") or {}).get("matches") or []
         if len(matches) > 1:
-            names = ", ".join(str(match.get("name") or match.get("slug") or match.get("id")) for match in matches[:3])
+            names = ", ".join(
+                str(match.get("name") or match.get("slug") or match.get("id"))
+                for match in matches[:3]
+            )
             return f"Encontrei mais de um modelo possível: {names}. Qual devo usar?"
     if scope == "projects":
-        matches = ((entities.get("projects") or {}).get("matches") or [])
+        matches = (entities.get("projects") or {}).get("matches") or []
         if len(matches) > 1:
             names = ", ".join(str(match.get("name") or match.get("id")) for match in matches[:3])
             return f"Encontrei mais de um projeto possível: {names}. Qual devo usar?"
     if scope in {"problems", "solutions", "generate_pdf"}:
-        matches = ((entities.get("problemCategories") or {}).get("matches") or [])
+        matches = (entities.get("problemCategories") or {}).get("matches") or []
         if len(matches) > 1:
             names = ", ".join(str(match.get("name") or match.get("id")) for match in matches[:3])
             return f"Encontrei mais de uma categoria possível: {names}. Qual devo usar?"
@@ -3167,13 +3538,20 @@ def _build_clarification_from_entities(entities: dict[str, Any], scope: str) -> 
 
 def _load_recent_history(connection: Connection, thread_id: str) -> list[dict[str, str]]:
     message_table = legacy_tables["ai_assistant_message"]
-    rows = connection.execute(
-        select(message_table).where(message_table.c.thread_id == thread_id).order_by(
-            message_table.c.created_at.asc(),
-            case((message_table.c.sender_type == "user", 0), else_=1).asc(),
-            message_table.c.id.asc(),
-        ).limit(12)
-    ).mappings().all()
+    rows = (
+        connection.execute(
+            select(message_table)
+            .where(message_table.c.thread_id == thread_id)
+            .order_by(
+                message_table.c.created_at.asc(),
+                case((message_table.c.sender_type == "user", 0), else_=1).asc(),
+                message_table.c.id.asc(),
+            )
+            .limit(12)
+        )
+        .mappings()
+        .all()
+    )
     return [
         {
             "role": str(row["sender_type"]),
@@ -3213,7 +3591,10 @@ async def _graph_plan_router(state: AgentState) -> str:
 
 
 async def _graph_claim_router(state: AgentState) -> str:
-    if state.get("final_response") and state.get("artifact_result", {}).get("status") == "attached_hit":
+    if (
+        state.get("final_response")
+        and state.get("artifact_result", {}).get("status") == "attached_hit"
+    ):
         return "load_persisted_result"
     return "semantic_cache_if_text_only"
 
@@ -3260,24 +3641,58 @@ async def _graph_after_persist_router(state: AgentState) -> str:
 
 def _build_graph():
     graph = StateGraph(AgentState, context_schema=AgentRuntimeContext)
-    graph.add_node("guard_and_normalize", _observed_node("guard_and_normalize", _node_guard_and_normalize))
-    graph.add_node("classify_and_plan", _observed_node("classify_and_plan", _node_classify_and_plan))
-    graph.add_node("claim_pdf_idempotency_if_needed", _observed_node("claim_pdf_idempotency_if_needed", _node_claim_pdf_idempotency_if_needed))
-    graph.add_node("load_persisted_result", _observed_node("load_persisted_result", _node_load_persisted_result))
-    graph.add_node("semantic_cache_if_text_only", _observed_node("semantic_cache_if_text_only", _node_semantic_cache_if_text_only))
+    graph.add_node(
+        "guard_and_normalize", _observed_node("guard_and_normalize", _node_guard_and_normalize)
+    )
+    graph.add_node(
+        "classify_and_plan", _observed_node("classify_and_plan", _node_classify_and_plan)
+    )
+    graph.add_node(
+        "claim_pdf_idempotency_if_needed",
+        _observed_node("claim_pdf_idempotency_if_needed", _node_claim_pdf_idempotency_if_needed),
+    )
+    graph.add_node(
+        "load_persisted_result",
+        _observed_node("load_persisted_result", _node_load_persisted_result),
+    )
+    graph.add_node(
+        "semantic_cache_if_text_only",
+        _observed_node("semantic_cache_if_text_only", _node_semantic_cache_if_text_only),
+    )
     graph.add_node("resolve_entities", _observed_node("resolve_entities", _node_resolve_entities))
     graph.add_node("build_refusal", _observed_node("build_refusal", _node_build_refusal))
-    graph.add_node("build_clarification", _observed_node("build_clarification", _node_build_clarification))
-    graph.add_node("execute_required_data_tools", _observed_node("execute_required_data_tools", _node_execute_required_data_tools))
+    graph.add_node(
+        "build_clarification", _observed_node("build_clarification", _node_build_clarification)
+    )
+    graph.add_node(
+        "execute_required_data_tools",
+        _observed_node("execute_required_data_tools", _node_execute_required_data_tools),
+    )
     graph.add_node("agent_decide", _observed_node("agent_decide", _node_agent_decide))
-    graph.add_node("analyze_and_register_datasets", _observed_node("analyze_and_register_datasets", _node_analyze_and_register_datasets))
-    graph.add_node("presentation_router", _observed_node("presentation_router", _node_presentation_router))
+    graph.add_node(
+        "analyze_and_register_datasets",
+        _observed_node("analyze_and_register_datasets", _node_analyze_and_register_datasets),
+    )
+    graph.add_node(
+        "presentation_router", _observed_node("presentation_router", _node_presentation_router)
+    )
     graph.add_node("synthesize_once", _observed_node("synthesize_once", _node_synthesize_once))
-    graph.add_node("validate_output_citations_and_artifacts", _observed_node("validate_output_citations_and_artifacts", _node_validate_output_citations_and_artifacts))
-    graph.add_node("persist_transaction", _observed_node("persist_transaction", _node_persist_transaction))
+    graph.add_node(
+        "validate_output_citations_and_artifacts",
+        _observed_node(
+            "validate_output_citations_and_artifacts", _node_validate_output_citations_and_artifacts
+        ),
+    )
+    graph.add_node(
+        "persist_transaction", _observed_node("persist_transaction", _node_persist_transaction)
+    )
     graph.add_node("emit_result", _observed_node("emit_result", _node_emit_result))
     graph.add_edge(START, "guard_and_normalize")
-    graph.add_conditional_edges("guard_and_normalize", _graph_guard_router, {"classify_and_plan": "classify_and_plan", "emit_result": "emit_result"})
+    graph.add_conditional_edges(
+        "guard_and_normalize",
+        _graph_guard_router,
+        {"classify_and_plan": "classify_and_plan", "emit_result": "emit_result"},
+    )
     graph.add_conditional_edges(
         "classify_and_plan",
         _graph_plan_router,
@@ -3315,15 +3730,47 @@ def _build_graph():
             "execute_required_data_tools": "execute_required_data_tools",
         },
     )
-    graph.add_conditional_edges("build_refusal", lambda state: "validate_output_citations_and_artifacts", {"validate_output_citations_and_artifacts": "validate_output_citations_and_artifacts"})
-    graph.add_conditional_edges("build_clarification", lambda state: "persist_transaction", {"persist_transaction": "persist_transaction"})
-    graph.add_conditional_edges("execute_required_data_tools", _graph_after_execute_router, {"agent_decide": "agent_decide"})
-    graph.add_conditional_edges("agent_decide", _graph_after_agent_router, {"analyze_and_register_datasets": "analyze_and_register_datasets"})
-    graph.add_conditional_edges("analyze_and_register_datasets", _graph_after_analyze_router, {"presentation_router": "presentation_router"})
-    graph.add_conditional_edges("presentation_router", _graph_after_presentation_router, {"synthesize_once": "synthesize_once"})
-    graph.add_conditional_edges("synthesize_once", _graph_after_synthesis_router, {"validate_output_citations_and_artifacts": "validate_output_citations_and_artifacts"})
-    graph.add_conditional_edges("validate_output_citations_and_artifacts", _graph_after_validate_router, {"persist_transaction": "persist_transaction"})
-    graph.add_conditional_edges("persist_transaction", _graph_after_persist_router, {"emit_result": "emit_result"})
+    graph.add_conditional_edges(
+        "build_refusal",
+        lambda state: "validate_output_citations_and_artifacts",
+        {"validate_output_citations_and_artifacts": "validate_output_citations_and_artifacts"},
+    )
+    graph.add_conditional_edges(
+        "build_clarification",
+        lambda state: "persist_transaction",
+        {"persist_transaction": "persist_transaction"},
+    )
+    graph.add_conditional_edges(
+        "execute_required_data_tools", _graph_after_execute_router, {"agent_decide": "agent_decide"}
+    )
+    graph.add_conditional_edges(
+        "agent_decide",
+        _graph_after_agent_router,
+        {"analyze_and_register_datasets": "analyze_and_register_datasets"},
+    )
+    graph.add_conditional_edges(
+        "analyze_and_register_datasets",
+        _graph_after_analyze_router,
+        {"presentation_router": "presentation_router"},
+    )
+    graph.add_conditional_edges(
+        "presentation_router",
+        _graph_after_presentation_router,
+        {"synthesize_once": "synthesize_once"},
+    )
+    graph.add_conditional_edges(
+        "synthesize_once",
+        _graph_after_synthesis_router,
+        {"validate_output_citations_and_artifacts": "validate_output_citations_and_artifacts"},
+    )
+    graph.add_conditional_edges(
+        "validate_output_citations_and_artifacts",
+        _graph_after_validate_router,
+        {"persist_transaction": "persist_transaction"},
+    )
+    graph.add_conditional_edges(
+        "persist_transaction", _graph_after_persist_router, {"emit_result": "emit_result"}
+    )
     graph.add_edge("emit_result", END)
     return graph.compile(name="silo-assistant-graph")
 

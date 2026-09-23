@@ -7,7 +7,7 @@ import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk
 
 from silo.ai import assistant_runtime
-from silo.ai.ports import ChatMessage, RuntimeMode
+from silo.ai.ports import ChatMessage
 from silo.config import (
     GoogleSettings,
     KafkaSettings,
@@ -15,7 +15,6 @@ from silo.config import (
     SmtpSettings,
     VLLMSettings,
 )
-
 
 # ── Fake ChatOpenAI ──────────────────────────────────────────────────────────
 

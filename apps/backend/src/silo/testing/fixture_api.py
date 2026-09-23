@@ -9,10 +9,10 @@ import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from PIL import Image, ImageDraw
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -206,7 +206,9 @@ def _strip_lucide_icon_class(icon: str | None) -> str:
     return icon
 
 
-def _group_user_count(groups: list[dict[str, Any]], users_by_email: dict[str, "AuthUserRecord"]) -> int:
+def _group_user_count(
+    groups: list[dict[str, Any]], users_by_email: dict[str, AuthUserRecord]
+) -> int:
     count = 0
     group_ids = {group["id"] for group in groups}
     for user in users_by_email.values():
@@ -471,7 +473,7 @@ class FixtureState:
         self.google_tokens: dict[str, str] = {}
         self.next_signup_is_admin = True
 
-        self.products = [
+        self.products: list[dict[str, Any]] = [
             {
                 "id": PRODUCT_ID,
                 "name": "Produto Alfa",
@@ -597,7 +599,7 @@ class FixtureState:
                 "updatedAt": _iso(_utc_now() - timedelta(hours=6)),
             },
         ]
-        self.problem_images = {
+        self.problem_images: dict[str, list[dict[str, Any]]] = {
             "problem-1": [
                 {
                     "id": "problem-image-1",
@@ -615,7 +617,7 @@ class FixtureState:
                 }
             ],
         }
-        self.problem_solutions = {
+        self.problem_solutions: dict[str, list[dict[str, Any]]] = {
             "problem-1": [
                 {
                     "id": "solution-1",
@@ -623,7 +625,11 @@ class FixtureState:
                     "date": _iso(_utc_now() - timedelta(days=1)),
                     "description": "Reinicialização controlada do serviço.",
                     "verified": True,
-                    "user": {"id": ADMIN_USER_ID, "name": "Fixture Admin", "image": "/uploads/avatars/admin.png"},
+                    "user": {
+                        "id": ADMIN_USER_ID,
+                        "name": "Fixture Admin",
+                        "image": "/uploads/avatars/admin.png",
+                    },
                     "image": None,
                     "images": [
                         {
@@ -640,7 +646,11 @@ class FixtureState:
                     "date": _iso(_utc_now() - timedelta(hours=12)),
                     "description": "Ajuste adicional de timeout.",
                     "verified": False,
-                    "user": {"id": REGULAR_USER_ID, "name": "Fixture Viewer", "image": "/uploads/avatars/viewer.png"},
+                    "user": {
+                        "id": REGULAR_USER_ID,
+                        "name": "Fixture Viewer",
+                        "image": "/uploads/avatars/viewer.png",
+                    },
                     "image": {
                         "image": "/uploads/solutions/solution-2.png",
                         "description": "Imagem da resposta",
@@ -656,14 +666,18 @@ class FixtureState:
                     "date": _iso(_utc_now() - timedelta(days=1, hours=3)),
                     "description": "Redução de taxa de ingestão.",
                     "verified": True,
-                    "user": {"id": ASSISTANT_USER_ID, "name": "Assistant User", "image": "/uploads/avatars/assistant.png"},
+                    "user": {
+                        "id": ASSISTANT_USER_ID,
+                        "name": "Assistant User",
+                        "image": "/uploads/avatars/assistant.png",
+                    },
                     "image": None,
                     "images": [],
                     "isMine": False,
                 }
             ],
         }
-        self.solution_images = {
+        self.solution_images: dict[str, list[dict[str, Any]]] = {
             "solution-1": [
                 {
                     "id": "solution-image-1",
@@ -678,7 +692,7 @@ class FixtureState:
             {"id": "category-1", "name": "rede externa", "color": "#8b5cf6", "isSystem": False},
             {"id": "category-2", "name": "erro no software", "color": "#ef4444", "isSystem": False},
         ]
-        self.projects = [
+        self.projects: list[dict[str, Any]] = [
             {
                 "id": PROJECT_ID,
                 "name": "Projeto Atlas",
@@ -734,7 +748,7 @@ class FixtureState:
                 ],
             },
         ]
-        self.project_activities = {
+        self.project_activities: dict[str, list[dict[str, Any]]] = {
             PROJECT_ID: [
                 {
                     "id": ACTIVITY_ID,
@@ -782,7 +796,7 @@ class FixtureState:
                 }
             ],
         }
-        self.project_tasks = {
+        self.project_tasks: dict[str, dict[str, list[dict[str, Any]]]] = {
             ACTIVITY_ID: {
                 "todo": [
                     {
@@ -912,7 +926,7 @@ class FixtureState:
                 "updatedAt": _iso(_utc_now() - timedelta(hours=9)),
             },
         ]
-        self.groups = [
+        self.groups: list[dict[str, Any]] = [
             {
                 "id": GROUP_OPERATIONS_ID,
                 "name": "Operações",
@@ -940,7 +954,7 @@ class FixtureState:
                 "updatedAt": _iso(_utc_now() - timedelta(days=1)),
             },
         ]
-        self.chat_users = [
+        self.chat_users: list[dict[str, Any]] = [
             {
                 "id": ADMIN_USER_ID,
                 "name": "Fixture Admin",
@@ -966,7 +980,7 @@ class FixtureState:
                 "lastMessageAt": _iso(_utc_now() - timedelta(hours=1)),
             },
         ]
-        self.chat_groups = [
+        self.chat_groups: list[dict[str, Any]] = [
             {
                 "id": CHAT_THREAD_GROUP_ID,
                 "name": "Operações",
@@ -1119,7 +1133,9 @@ class FixtureState:
         return {
             "summary": {
                 "totalProjects": len(self.projects),
-                "totalActivities": sum(len(self.project_activities.get(project["id"], [])) for project in self.projects),
+                "totalActivities": sum(
+                    len(self.project_activities.get(project["id"], [])) for project in self.projects
+                ),
                 "avgProgress": 48,
             },
             "projectsWithProgress": [
@@ -1136,7 +1152,10 @@ class FixtureState:
                 for project in self.projects
             ],
             "mostActiveProjects": [
-                {"projectId": project["id"], "activityCount": len(self.project_activities.get(project["id"], []))}
+                {
+                    "projectId": project["id"],
+                    "activityCount": len(self.project_activities.get(project["id"], [])),
+                }
                 for project in self.projects
             ],
             "tasksByStatus": {
@@ -1175,7 +1194,9 @@ class FixtureState:
                 }
                 for product in self.products
             ],
-            "topProblems": self.reports["problems"]["topProblems"] if hasattr(self, "reports") else [],
+            "topProblems": self.reports["problems"]["topProblems"]
+            if hasattr(self, "reports")
+            else [],
             "projectsWithProgress": self._build_projects_report()["projectsWithProgress"],
             "mostActiveProjects": self._build_projects_report()["mostActiveProjects"],
             "tasksByStatus": {"todo": 4, "in_progress": 2, "blocked": 1, "review": 1, "done": 6},
@@ -1185,11 +1206,23 @@ class FixtureState:
     def _build_monitoring_data(self) -> dict[str, Any]:
         return {
             "picturePages": [
-                {"id": "picture-page-1", "title": "Mapa do produto", "description": "Página de figuras"},
-                {"id": "picture-page-2", "title": "Resumo visual", "description": "Imagem do resumo"},
+                {
+                    "id": "picture-page-1",
+                    "title": "Mapa do produto",
+                    "description": "Página de figuras",
+                },
+                {
+                    "id": "picture-page-2",
+                    "title": "Resumo visual",
+                    "description": "Imagem do resumo",
+                },
             ],
             "radarGroups": [
-                {"id": "radar-group-1", "name": "Grupo principal", "description": "Grupo dos radares"}
+                {
+                    "id": "radar-group-1",
+                    "name": "Grupo principal",
+                    "description": "Grupo dos radares",
+                }
             ],
             "radars": [
                 {"id": "radar-1", "name": "Radar 1", "score": 92, "status": "healthy"},
@@ -1244,11 +1277,17 @@ class FixtureState:
         )
 
     def list_assistant_threads(self, user_id: str) -> list[dict[str, Any]]:
-        threads = [thread for thread in self.assistant_threads.values() if thread.user_id == user_id]
-        threads.sort(key=lambda item: (item.updated_at, item.last_message_at, item.created_at), reverse=True)
+        threads = [
+            thread for thread in self.assistant_threads.values() if thread.user_id == user_id
+        ]
+        threads.sort(
+            key=lambda item: (item.updated_at, item.last_message_at, item.created_at), reverse=True
+        )
         return [thread.to_summary() for thread in threads]
 
-    def get_assistant_thread(self, user_id: str, thread_id: str) -> tuple[AssistantThreadRecord | None, list[dict[str, Any]]]:
+    def get_assistant_thread(
+        self, user_id: str, thread_id: str
+    ) -> tuple[AssistantThreadRecord | None, list[dict[str, Any]]]:
         thread = self.assistant_threads.get(thread_id)
         if thread is None or thread.user_id != user_id:
             return None, []
@@ -1264,15 +1303,22 @@ class FixtureState:
         if "falha de artefato" in normalized or "artifact failure" in normalized:
             return {
                 "threadId": thread_id,
-                "thread": self.assistant_threads.get(thread_id).to_summary() if thread_id in self.assistant_threads else None,
+                "thread": self.assistant_threads[thread_id].to_summary()
+                if thread_id in self.assistant_threads
+                else None,
                 "messageContent": "Não foi possível gerar o arquivo desta vez, mas o texto da resposta foi preservado.",
                 "scope": "reports",
                 "isInScope": True,
                 "refusalReason": None,
                 "answer": "Não foi possível gerar o arquivo desta vez, mas o texto da resposta foi preservado.",
                 "thinking": "Validando o fluxo de artefatos.",
-                "suggestedQuestions": ["Quer que eu tente novamente?", "Deseja exportar outro relatório?"],
-                "citations": [{"label": "Fluxo de fallback", "detail": "Artifact generation guard"}],
+                "suggestedQuestions": [
+                    "Quer que eu tente novamente?",
+                    "Deseja exportar outro relatório?",
+                ],
+                "citations": [
+                    {"label": "Fluxo de fallback", "detail": "Artifact generation guard"}
+                ],
                 "visualization": None,
                 "artifacts": [],
                 "generation": {
@@ -1293,10 +1339,19 @@ class FixtureState:
         if "image-resumo" in normalized or "resumo visual" in normalized or "imagem" in normalized:
             return self._assistant_response_image(thread_id, prompt)
 
-        if "chart+pdf" in normalized or "chart e pdf" in normalized or ("chart" in normalized and "pdf" in normalized):
+        if (
+            "chart+pdf" in normalized
+            or "chart e pdf" in normalized
+            or ("chart" in normalized and "pdf" in normalized)
+        ):
             return self._assistant_response_chart_pdf(thread_id, prompt)
 
-        if "pdf sozinho" in normalized or "pdf node" in normalized or "node" in normalized or "legado" in normalized:
+        if (
+            "pdf sozinho" in normalized
+            or "pdf node" in normalized
+            or "node" in normalized
+            or "legado" in normalized
+        ):
             return self._assistant_response_legacy_pdf(thread_id, prompt)
 
         if "pdf python" in normalized or "python" in normalized or "novo pdf" in normalized:
@@ -1313,7 +1368,9 @@ class FixtureState:
             return self._thread_summary_from_question(thread_id, prompt).to_summary()
         return thread.to_summary()
 
-    def _assistant_base_payload(self, thread_id: str, prompt: str, scope: str = "reports") -> dict[str, Any]:
+    def _assistant_base_payload(
+        self, thread_id: str, prompt: str, scope: str = "reports"
+    ) -> dict[str, Any]:
         return {
             "threadId": thread_id,
             "thread": self._assistant_thread_summary(thread_id, prompt),
@@ -1423,7 +1480,9 @@ class FixtureState:
 
     def _assistant_response_chart_pdf(self, thread_id: str, prompt: str) -> dict[str, Any]:
         payload = self._assistant_response_chart(thread_id, prompt)
-        pdf = self._build_pdf_asset("Chart + PDF assistant report", ["Fluxo combinado com gráfico e PDF."])
+        pdf = self._build_pdf_asset(
+            "Chart + PDF assistant report", ["Fluxo combinado com gráfico e PDF."]
+        )
         payload["artifacts"] = [
             {
                 "kind": "pdf",
@@ -1440,7 +1499,9 @@ class FixtureState:
         payload["messageContent"] = payload["answer"]
         return payload
 
-    def _assistant_thread_for_prompt(self, prompt: str, thread_id: str | None) -> AssistantThreadRecord:
+    def _assistant_thread_for_prompt(
+        self, prompt: str, thread_id: str | None
+    ) -> AssistantThreadRecord:
         if thread_id:
             existing = self.assistant_threads.get(thread_id)
             if existing is not None:
@@ -1460,7 +1521,9 @@ class FixtureState:
         self.assistant_messages.setdefault(new_thread_id, [])
         return thread
 
-    def append_assistant_exchange(self, prompt: str, thread_id: str | None, response_payload: dict[str, Any]) -> dict[str, Any]:
+    def append_assistant_exchange(
+        self, prompt: str, thread_id: str | None, response_payload: dict[str, Any]
+    ) -> dict[str, Any]:
         thread = self._assistant_thread_for_prompt(prompt, thread_id)
         now = _utc_now()
         user_message = AssistantMessageRecord(
@@ -1500,12 +1563,14 @@ class FixtureState:
         self.assistant_threads[thread.id] = thread
         return response_payload | {"thread": thread.to_summary()}
 
-    def build_assistant_stream_payload(self, prompt: str, thread_id: str | None, key: str | None) -> dict[str, Any]:
+    def build_assistant_stream_payload(
+        self, prompt: str, thread_id: str | None, key: str | None
+    ) -> dict[str, Any]:
         effective_thread = self._assistant_thread_for_prompt(prompt, thread_id)
         if key and key in self.assistant_idempotency:
             cached = self.assistant_idempotency[key]
             if cached.get("threadId") == effective_thread.id and cached.get("content") == prompt:
-                return cached["response"]
+                return cast(dict[str, Any], cached["response"])
 
         response = self.assistant_response_for_prompt(prompt, effective_thread.id)
         final_response = self.append_assistant_exchange(prompt, effective_thread.id, response)
@@ -1518,7 +1583,9 @@ class FixtureState:
         return final_response
 
     def list_products(self, *, available_only: bool = False) -> list[dict[str, Any]]:
-        products = [product for product in self.products if (product["available"] or not available_only)]
+        products = [
+            product for product in self.products if (product["available"] or not available_only)
+        ]
         return products
 
     def get_product_by_slug(self, slug: str) -> dict[str, Any] | None:
@@ -1542,9 +1609,13 @@ class FixtureState:
         return list(self.project_activities.get(project_id, []))
 
     def get_project_tasks(self, activity_id: str) -> dict[str, list[dict[str, Any]]]:
-        return self.project_tasks.get(activity_id, {"todo": [], "progress": [], "blocked": [], "review": [], "done": []})
+        return self.project_tasks.get(
+            activity_id, {"todo": [], "progress": [], "blocked": [], "review": [], "done": []}
+        )
 
-    def get_chat_messages(self, kind: Literal["group", "user"], target_id: str) -> list[ChatMessageRecord]:
+    def get_chat_messages(
+        self, kind: Literal["group", "user"], target_id: str
+    ) -> list[ChatMessageRecord]:
         return list(self.chat_messages.get(self._chat_key(kind, target_id), []))
 
     def set_chat_message_read(self, message_id: str) -> bool:
@@ -1558,7 +1629,9 @@ class FixtureState:
     def delete_chat_message(self, message_id: str) -> bool:
         for key, messages in self.chat_messages.items():
             if any(message.id == message_id for message in messages):
-                self.chat_messages[key] = [message for message in messages if message.id != message_id]
+                self.chat_messages[key] = [
+                    message for message in messages if message.id != message_id
+                ]
                 return True
         return False
 
@@ -1636,7 +1709,9 @@ def _build_chat_sidebar_payload(user: AuthUserRecord) -> dict[str, Any]:
             {
                 **chat_user,
                 "lastMessage": latest.content if latest else chat_user.get("lastMessage"),
-                "lastMessageAt": _iso(latest.created_at) if latest else chat_user.get("lastMessageAt"),
+                "lastMessageAt": _iso(latest.created_at)
+                if latest
+                else chat_user.get("lastMessageAt"),
                 "unreadCount": 0,
             }
         )
@@ -1651,12 +1726,20 @@ def _build_upload_response(kind: str, filename: str) -> Response:
             pdf_bytes = _make_pdf_bytes("Legacy Node PDF", ["PDF legado do fluxo Node."])
         else:
             pdf_bytes = _make_pdf_bytes("SILO PDF", ["PDF usado para relatórios e assistente."])
-        return Response(content=pdf_bytes, media_type="application/pdf", headers={"Cache-Control": "public, max-age=31536000, immutable"})
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        )
 
     png_bytes = state.png_bytes
     if kind == "avatars":
         png_bytes = state.png_bytes
-    return Response(content=png_bytes, media_type=_content_type_for_filename(filename), headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    return Response(
+        content=png_bytes,
+        media_type=_content_type_for_filename(filename),
+        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+    )
 
 
 app = FastAPI(title=APP_TITLE)
@@ -1717,6 +1800,9 @@ async def chat_ws(websocket: WebSocket) -> None:
 
 @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 async def api_router(path: str, request: Request) -> Response:
+    items: list[dict[str, Any]]
+    payload: dict[str, Any]
+    problem_id: str | None
     api_path = _normalize_api_path(f"/api/{path}")
     method = request.method.upper()
     user = _current_user_from_request(request)
@@ -1730,7 +1816,11 @@ async def api_router(path: str, request: Request) -> Response:
     if api_path == "/api/auth/get-session" and method == "GET":
         if user is None:
             return _error("Usuário não autenticado.", status=401)
-        token = request.cookies.get("silo_session") or request.cookies.get("better-auth.session_token") or request.cookies.get("__Secure-better-auth.session_token")
+        token = (
+            request.cookies.get("silo_session")
+            or request.cookies.get("better-auth.session_token")
+            or request.cookies.get("__Secure-better-auth.session_token")
+        )
         session_payload = {
             "session": {
                 "id": f"session-{user.id}",
@@ -1777,14 +1867,19 @@ async def api_router(path: str, request: Request) -> Response:
             return _error("Usuário ou senha inválidos.", status=401, field="password")
         token = state.create_session(record)
         response = _success({"signedIn": True}, message="Login realizado com sucesso!")
-        response.set_cookie("silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000)
+        response.set_cookie(
+            "silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000
+        )
         return response
 
     if api_path == "/api/auth/login-email/send-otp" and method == "POST":
         payload = body if isinstance(body, dict) else {}
         email = str(payload.get("email") or "").strip().lower()
         state.pending_codes[("login-email", email)] = DEFAULT_LOGIN_EMAIL_CODE
-        return _success({"step": 2, "email": email, "cooldownSeconds": 15}, message="Código enviado para seu e-mail.")
+        return _success(
+            {"step": 2, "email": email, "cooldownSeconds": 15},
+            message="Código enviado para seu e-mail.",
+        )
 
     if api_path == "/api/auth/login-email/verify-otp" and method == "POST":
         payload = body if isinstance(body, dict) else {}
@@ -1797,7 +1892,9 @@ async def api_router(path: str, request: Request) -> Response:
             return _error("Usuário não encontrado.", status=404, field="email")
         token = state.create_session(record)
         response = _success({"signedIn": True}, message="Login realizado com sucesso!")
-        response.set_cookie("silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000)
+        response.set_cookie(
+            "silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000
+        )
         return response
 
     if api_path == "/api/auth/sign-up/email" and method == "POST":
@@ -1807,13 +1904,20 @@ async def api_router(path: str, request: Request) -> Response:
         password = str(payload.get("password") or "")
         state.pending_codes[("sign-up", email)] = DEFAULT_EMAIL_VERIFICATION_CODE
         state.sign_up_payloads[email] = {"name": name, "password": password}
-        return _success({"step": 2, "email": email, "cooldownSeconds": 15}, message="Conta criada com sucesso. Verifique seu e-mail.", status=201)
+        return _success(
+            {"step": 2, "email": email, "cooldownSeconds": 15},
+            message="Conta criada com sucesso. Verifique seu e-mail.",
+            status=201,
+        )
 
     if api_path == "/api/auth/sign-up/email/send-otp" and method == "POST":
         payload = body if isinstance(body, dict) else {}
         email = str(payload.get("email") or "").strip().lower()
         state.pending_codes[("sign-up", email)] = DEFAULT_EMAIL_VERIFICATION_CODE
-        return _success({"step": 2, "email": email, "cooldownSeconds": 15}, message="Código enviado para seu e-mail.")
+        return _success(
+            {"step": 2, "email": email, "cooldownSeconds": 15},
+            message="Código enviado para seu e-mail.",
+        )
 
     if api_path == "/api/auth/sign-up/email/verify-otp" and method == "POST":
         payload = body if isinstance(body, dict) else {}
@@ -1853,15 +1957,22 @@ async def api_router(path: str, request: Request) -> Response:
         state.users_by_email[email] = record
         state.users_by_id[record.id] = record
         token = state.create_session(record)
-        response = _success({"success": True, "signedIn": True}, message="Conta verificada com sucesso.")
-        response.set_cookie("silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000)
+        response = _success(
+            {"success": True, "signedIn": True}, message="Conta verificada com sucesso."
+        )
+        response.set_cookie(
+            "silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000
+        )
         return response
 
     if api_path == "/api/auth/forget-password" and method == "POST":
         payload = body if isinstance(body, dict) else {}
         email = str(payload.get("email") or "").strip().lower()
         state.pending_codes[("forget-password", email)] = DEFAULT_FORGET_PASSWORD_CODE
-        return _success({"step": 2, "email": email, "cooldownSeconds": 15}, message="Código enviado para seu e-mail.")
+        return _success(
+            {"step": 2, "email": email, "cooldownSeconds": 15},
+            message="Código enviado para seu e-mail.",
+        )
 
     if api_path == "/api/auth/forget-password/verify-otp" and method == "POST":
         payload = body if isinstance(body, dict) else {}
@@ -1879,13 +1990,17 @@ async def api_router(path: str, request: Request) -> Response:
         record = state.users_by_email.get(email)
         if record is None:
             return _error("Usuário não encontrado.", status=404, field="email")
-        expected_code = state.pending_codes.get(("forget-password", email)) or state.pending_codes.get(("sign-up", email))
+        expected_code = state.pending_codes.get(
+            ("forget-password", email)
+        ) or state.pending_codes.get(("sign-up", email))
         if expected_code != code:
             return _error("Código inválido.", status=400, field="code")
         record.password = password or record.password
         token = state.create_session(record)
         response = _success({"signedIn": True}, message="Senha definida com sucesso.")
-        response.set_cookie("silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000)
+        response.set_cookie(
+            "silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000
+        )
         return response
 
     if api_path == "/api/auth/sign-out" and method == "POST":
@@ -1898,8 +2013,12 @@ async def api_router(path: str, request: Request) -> Response:
         from_page = request.query_params.get("from") or "login"
         record = state.users_by_email["admin@inpe.br"]
         token = state.create_session(record)
-        response = JSONResponse({"success": True, "ok": True, "url": "/admin/dashboard", "from": from_page})
-        response.set_cookie("silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000)
+        response = JSONResponse(
+            {"success": True, "ok": True, "url": "/admin/dashboard", "from": from_page}
+        )
+        response.set_cookie(
+            "silo_session", token, httponly=True, samesite="lax", path="/", max_age=31536000
+        )
         return response
 
     if api_path == "/api/admin/users" and method == "GET":
@@ -1921,21 +2040,32 @@ async def api_router(path: str, request: Request) -> Response:
                 "groupId": user.groups[0].get("id") if user.groups else None,
                 "groupName": user.groups[0].get("name") if user.groups else None,
                 "groupIcon": _strip_lucide_icon_class(
-                    groups_by_id.get(user.groups[0].get("id") if user.groups else "", {}).get("icon")
+                    groups_by_id.get(user.groups[0].get("id") if user.groups else "", {}).get(
+                        "icon"
+                    )
                 )
                 if user.groups
                 else None,
-                "groupColor": groups_by_id.get(user.groups[0].get("id") if user.groups else "", {}).get("color")
+                "groupColor": groups_by_id.get(
+                    user.groups[0].get("id") if user.groups else "", {}
+                ).get("color")
                 if user.groups
                 else None,
                 "groups": [
                     {
                         "groupId": str(group_ref.get("id") or ""),
-                        "groupName": str(groups_by_id.get(str(group_ref.get("id") or ""), {}).get("name") or group_ref.get("name") or "Grupo"),
+                        "groupName": str(
+                            groups_by_id.get(str(group_ref.get("id") or ""), {}).get("name")
+                            or group_ref.get("name")
+                            or "Grupo"
+                        ),
                         "groupIcon": _strip_lucide_icon_class(
                             groups_by_id.get(str(group_ref.get("id") or ""), {}).get("icon")
                         ),
-                        "groupColor": str(groups_by_id.get(str(group_ref.get("id") or ""), {}).get("color") or "#6b7280"),
+                        "groupColor": str(
+                            groups_by_id.get(str(group_ref.get("id") or ""), {}).get("color")
+                            or "#6b7280"
+                        ),
                     }
                     for group_ref in user.groups
                     if str(group_ref.get("id") or "")
@@ -1966,8 +2096,18 @@ async def api_router(path: str, request: Request) -> Response:
             return _require_admin(request)  # type: ignore[return-value]
         group_id = request.query_params.get("groupId")
         permissions = [
-            {"id": "perm-1", "groupId": group_id or "group-1", "resource": "products", "action": "view"},
-            {"id": "perm-2", "groupId": group_id or "group-1", "resource": "projects", "action": "manage"},
+            {
+                "id": "perm-1",
+                "groupId": group_id or "group-1",
+                "resource": "products",
+                "action": "view",
+            },
+            {
+                "id": "perm-2",
+                "groupId": group_id or "group-1",
+                "resource": "projects",
+                "action": "manage",
+            },
         ]
         return _success({"items": permissions, "total": len(permissions)})
 
@@ -1998,11 +2138,17 @@ async def api_router(path: str, request: Request) -> Response:
             items = [item for item in items if item["available"]]
         if slug:
             product = state.get_product_by_slug(slug)
-            payload = {"products": [product] if product else [], "items": [product] if product else []}
+            payload = {
+                "products": [product] if product else [],
+                "items": [product] if product else [],
+            }
             return _success(payload)
         if product_id:
             product = state.get_product_by_id(product_id)
-            payload = {"products": [product] if product else [], "items": [product] if product else []}
+            payload = {
+                "products": [product] if product else [],
+                "items": [product] if product else [],
+            }
             return _success(payload)
         if project_id:
             payload = {"items": items, "products": items, "total": len(items), "page": page or "1"}
@@ -2017,11 +2163,15 @@ async def api_router(path: str, request: Request) -> Response:
             items = [item for item in items if item["available"]]
         if slug:
             product = state.get_product_by_slug(slug)
-            return _success({"items": [product] if product else [], "products": [product] if product else []})
+            return _success(
+                {"items": [product] if product else [], "products": [product] if product else []}
+            )
         return _success({"items": items, "products": items, "total": len(items)})
 
     if api_path == "/api/admin/products/dependencies" and method == "GET":
-        return _success({"dependencies": state.product_dependencies, "items": state.product_dependencies})
+        return _success(
+            {"dependencies": state.product_dependencies, "items": state.product_dependencies}
+        )
 
     if api_path == "/api/admin/products/contacts" and method == "GET":
         return _success({"contacts": state.product_contacts, "items": state.product_contacts})
@@ -2089,7 +2239,10 @@ async def api_router(path: str, request: Request) -> Response:
         project_id = api_path.split("/")[4]
         return _success({"activities": state.get_project_activities(project_id)})
 
-    if re.fullmatch(r"/api/admin/projects/[^/]+/activities/[^/]+/tasks", api_path) and method == "GET":
+    if (
+        re.fullmatch(r"/api/admin/projects/[^/]+/activities/[^/]+/tasks", api_path)
+        and method == "GET"
+    ):
         if isinstance(_require_admin(request), JSONResponse):
             return _require_admin(request)  # type: ignore[return-value]
         parts = api_path.split("/")
@@ -2162,13 +2315,25 @@ async def api_router(path: str, request: Request) -> Response:
         )
 
     if api_path == "/api/admin/monitoring/picture-pages" and method == "GET":
-        return _success({"items": state.monitoring["picturePages"], "total": len(state.monitoring["picturePages"])})
+        return _success(
+            {
+                "items": state.monitoring["picturePages"],
+                "total": len(state.monitoring["picturePages"]),
+            }
+        )
 
     if api_path == "/api/admin/monitoring/radar-groups" and method == "GET":
-        return _success({"items": state.monitoring["radarGroups"], "total": len(state.monitoring["radarGroups"])})
+        return _success(
+            {
+                "items": state.monitoring["radarGroups"],
+                "total": len(state.monitoring["radarGroups"]),
+            }
+        )
 
     if api_path == "/api/admin/monitoring/radars" and method == "GET":
-        return _success({"items": state.monitoring["radars"], "total": len(state.monitoring["radars"])})
+        return _success(
+            {"items": state.monitoring["radars"], "total": len(state.monitoring["radars"])}
+        )
 
     if api_path == "/api/admin/monitoring/products" and method == "POST":
         monitoring_products = []
@@ -2202,7 +2367,9 @@ async def api_router(path: str, request: Request) -> Response:
                 }
             )
 
-        return _success({"referenceDate": _utc_now().date().isoformat(), "products": monitoring_products})
+        return _success(
+            {"referenceDate": _utc_now().date().isoformat(), "products": monitoring_products}
+        )
 
     if api_path == "/api/admin/reports/availability" and method == "GET":
         return _success(state.reports["availability"])
@@ -2216,7 +2383,10 @@ async def api_router(path: str, request: Request) -> Response:
     if api_path == "/api/admin/reports/executive" and method == "GET":
         return _success(state.reports["executive"])
 
-    if re.fullmatch(r"/api/admin/reports/(availability|problems|projects|executive)/pdf", api_path) and method == "POST":
+    if (
+        re.fullmatch(r"/api/admin/reports/(availability|problems|projects|executive)/pdf", api_path)
+        and method == "POST"
+    ):
         report_type = api_path.split("/")[4]
         pdf_name = {
             "availability": "availability-report.pdf",
@@ -2250,7 +2420,14 @@ async def api_router(path: str, request: Request) -> Response:
         else:
             return _success({"messages": [], "hasMore": False})
         messages = state.get_chat_messages(target_kind, target_id)
-        return _success({"messages": _filter_chat_messages(messages, before=before, after=after, limit=limit, order=order), "hasMore": False})
+        return _success(
+            {
+                "messages": _filter_chat_messages(
+                    messages, before=before, after=after, limit=limit, order=order
+                ),
+                "hasMore": False,
+            }
+        )
 
     if api_path == "/api/admin/chat/messages/count" and method == "GET":
         if isinstance(_require_admin(request), JSONResponse):
@@ -2269,8 +2446,12 @@ async def api_router(path: str, request: Request) -> Response:
         user_id = request.query_params.get("userId")
         target_kind = "group" if group_id else "user"
         target_id = group_id or user_id or ""
-        messages = [message.to_dto() for message in state.get_chat_messages(target_kind, target_id) if message.read_at is None]
-        return _success({"messages": messages})
+        unread_messages = [
+            message.to_dto()
+            for message in state.get_chat_messages(target_kind, target_id)
+            if message.read_at is None
+        ]
+        return _success({"messages": unread_messages})
 
     if api_path == "/api/admin/chat/messages" and method == "POST":
         if isinstance(_require_admin(request), JSONResponse):
@@ -2363,7 +2544,7 @@ async def api_router(path: str, request: Request) -> Response:
             return _require_admin(request)  # type: ignore[return-value]
         payload = body if isinstance(body, dict) else {}
         title = str(payload.get("title") or "Nova conversa")
-        thread = AssistantThreadRecord(
+        created_thread = AssistantThreadRecord(
             id=str(uuid.uuid4()),
             user_id=ADMIN_USER_ID,
             title=title,
@@ -2373,18 +2554,18 @@ async def api_router(path: str, request: Request) -> Response:
             created_at=_utc_now(),
             updated_at=_utc_now(),
         )
-        state.assistant_threads[thread.id] = thread
-        state.assistant_messages.setdefault(thread.id, [])
-        return _success({"thread": thread.to_summary()})
+        state.assistant_threads[created_thread.id] = created_thread
+        state.assistant_messages.setdefault(created_thread.id, [])
+        return _success({"thread": created_thread.to_summary()})
 
     if re.fullmatch(r"/api/admin/ai-assistant/threads/[^/]+", api_path) and method == "GET":
         if isinstance(_require_admin(request), JSONResponse):
             return _require_admin(request)  # type: ignore[return-value]
         thread_id = api_path.split("/")[5]
-        thread, messages = state.get_assistant_thread(ADMIN_USER_ID, thread_id)
+        thread, assistant_message_dtos = state.get_assistant_thread(ADMIN_USER_ID, thread_id)
         if thread is None:
             return _error("Conversa não encontrada.", status=404)
-        return _success({"thread": thread.to_summary(), "messages": messages})
+        return _success({"thread": thread.to_summary(), "messages": assistant_message_dtos})
 
     if re.fullmatch(r"/api/admin/ai-assistant/threads/[^/]+", api_path) and method == "DELETE":
         if isinstance(_require_admin(request), JSONResponse):
@@ -2394,13 +2575,18 @@ async def api_router(path: str, request: Request) -> Response:
         state.assistant_messages.pop(thread_id, None)
         return _success({"deleted": True})
 
-    if re.fullmatch(r"/api/admin/ai-assistant/threads/[^/]+/messages/[^/]+", api_path) and method == "DELETE":
+    if (
+        re.fullmatch(r"/api/admin/ai-assistant/threads/[^/]+/messages/[^/]+", api_path)
+        and method == "DELETE"
+    ):
         if isinstance(_require_admin(request), JSONResponse):
             return _require_admin(request)  # type: ignore[return-value]
         thread_id = api_path.split("/")[5]
         message_id = api_path.split("/")[7]
-        messages = state.assistant_messages.get(thread_id, [])
-        state.assistant_messages[thread_id] = [message for message in messages if message.id != message_id]
+        assistant_messages = state.assistant_messages.get(thread_id, [])
+        state.assistant_messages[thread_id] = [
+            message for message in assistant_messages if message.id != message_id
+        ]
         thread = state.assistant_threads.get(thread_id)
         if thread is not None:
             thread.message_count = len(state.assistant_messages.get(thread_id, []))
@@ -2419,21 +2605,28 @@ async def api_router(path: str, request: Request) -> Response:
             }
         )
 
-    if api_path == "/api/admin/ai-assistant/messages/stream" or api_path == "/api/ai-assistant/messages/stream":
+    if (
+        api_path == "/api/admin/ai-assistant/messages/stream"
+        or api_path == "/api/ai-assistant/messages/stream"
+    ):
         if isinstance(_require_admin(request), JSONResponse):
             return _require_admin(request)  # type: ignore[return-value]
         payload = body if isinstance(body, dict) else {}
         prompt = str(payload.get("content") or "").strip()
-        thread_id = str(payload.get("threadId") or "") or None
+        stream_thread_id = str(payload.get("threadId") or "") or None
         request_key = request.headers.get("x-idempotency-key")
         if request_key and request_key in state.assistant_idempotency:
             cached = state.assistant_idempotency[request_key]
-            if cached.get("content") == prompt and cached.get("threadId") == thread_id:
+            if cached.get("content") == prompt and cached.get("threadId") == stream_thread_id:
                 response_payload = cached["response"]
             else:
-                response_payload = state.build_assistant_stream_payload(prompt, thread_id, request_key)
+                response_payload = state.build_assistant_stream_payload(
+                    prompt, stream_thread_id, request_key
+                )
         else:
-            response_payload = state.build_assistant_stream_payload(prompt, thread_id, request_key)
+            response_payload = state.build_assistant_stream_payload(
+                prompt, stream_thread_id, request_key
+            )
 
         async def stream() -> AsyncIterator[bytes]:
             if "legacy" in prompt.lower() or "node" in prompt.lower():
@@ -2453,16 +2646,14 @@ async def api_router(path: str, request: Request) -> Response:
                     "contextSummary": response_payload.get("contextSummary", ""),
                     "thread": response_payload.get("thread"),
                 }
-                yield b"event: connected\ndata: {\"status\":\"processing\"}\n\n"
-                yield f"event: data\ndata: {json.dumps(legacy_payload, ensure_ascii=False)}\n\n".encode("utf-8")
+                yield b'event: connected\ndata: {"status":"processing"}\n\n'
+                yield f"event: data\ndata: {json.dumps(legacy_payload, ensure_ascii=False)}\n\n".encode()
                 yield b"event: complete\ndata: {}\n\n"
                 return
 
-            yield b"event: connected\ndata: {\"status\":\"processing\"}\n\n"
-            yield "event: thinking\ndata: {\"content\":\"Processando solicitação\"}\n\n".encode(
-                "utf-8"
-            )
-            yield f"event: result\ndata: {json.dumps(response_payload, ensure_ascii=False)}\n\n".encode("utf-8")
+            yield b'event: connected\ndata: {"status":"processing"}\n\n'
+            yield 'event: thinking\ndata: {"content":"Processando solicitação"}\n\n'.encode()
+            yield f"event: result\ndata: {json.dumps(response_payload, ensure_ascii=False)}\n\n".encode()
 
         return StreamingResponse(
             stream(),
@@ -2484,7 +2675,9 @@ async def api_router(path: str, request: Request) -> Response:
         return _build_upload_response(kind, filename)
 
     if api_path.startswith("/api/upload/") and method == "POST":
-        return _success({"url": "/uploads/manual/uploaded.png", "filename": "uploaded.png"}, status=201)
+        return _success(
+            {"url": "/uploads/manual/uploaded.png", "filename": "uploaded.png"}, status=201
+        )
 
     if api_path == "/api/admin/users/preferences" and method == "GET":
         if user is None:
@@ -2496,7 +2689,10 @@ async def api_router(path: str, request: Request) -> Response:
             return _error("Usuário não autenticado.", status=401)
         return _success(user.profile_payload())
 
-    if api_path in {"/api/admin/users/profile-image", "/api/users/profile-image"} and method == "POST":
+    if (
+        api_path in {"/api/admin/users/profile-image", "/api/users/profile-image"}
+        and method == "POST"
+    ):
         current_user = _require_session(request)
         if isinstance(current_user, JSONResponse):
             return current_user
@@ -2514,7 +2710,10 @@ async def api_router(path: str, request: Request) -> Response:
         current_user.image = image_url
         return _success({"imageUrl": image_url}, message="Imagem alterada com sucesso!")
 
-    if api_path in {"/api/admin/users/profile-image", "/api/users/profile-image"} and method == "DELETE":
+    if (
+        api_path in {"/api/admin/users/profile-image", "/api/users/profile-image"}
+        and method == "DELETE"
+    ):
         current_user = _require_session(request)
         if isinstance(current_user, JSONResponse):
             return current_user
@@ -2522,7 +2721,10 @@ async def api_router(path: str, request: Request) -> Response:
         current_user.image = "/images/profile.png"
         return _success({"imageUrl": current_user.image}, message="Imagem removida com sucesso!")
 
-    if api_path in {"/api/admin/users/profile-image/update", "/api/users/profile-image/update"} and method in {"POST", "PUT"}:
+    if api_path in {
+        "/api/admin/users/profile-image/update",
+        "/api/users/profile-image/update",
+    } and method in {"POST", "PUT"}:
         current_user = _require_session(request)
         if isinstance(current_user, JSONResponse):
             return current_user

@@ -5,10 +5,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import CurrentUser, get_db, require_permission
-from silo.api.responses import build_success_payload, json_error_response
+from silo.api.responses import ApiResponse, build_success_payload, json_error_response
 from silo.services.common import is_service_error, service_error_response, service_failure
 from silo.services.project_portal import (
-    PROJECT_TASK_STATUSES,
     create_project,
     create_project_activity,
     create_project_activity_task,
@@ -36,7 +35,7 @@ async def get_projects(
     priority: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("projects", "view")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = list_projects(db, search=search, status=status, priority=priority)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao listar projetos.")
@@ -51,7 +50,7 @@ async def post_project(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("projects", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = create_project(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao criar projeto.")
@@ -69,7 +68,7 @@ async def put_project(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("projects", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = update_project(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar projeto.")
@@ -84,7 +83,7 @@ async def delete_project_route(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("projects", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     if not id:
         return json_error_response(400, "ID do projeto é obrigatório.")
 
@@ -99,7 +98,7 @@ async def delete_project_route(
 @router.get("/images")
 async def list_project_images(
     _current_user: object = Depends(require_permission("projects", "view")),
-):
+) -> ApiResponse:
     items = list_upload_files("projects")
     return build_success_payload({"items": items})
 
@@ -108,7 +107,7 @@ async def list_project_images(
 async def delete_project_image(
     filename: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("projects", "manage")),
-):
+) -> ApiResponse:
     if not filename or not is_safe_filename(filename):
         return service_error_response(
             service_failure("Nome de arquivo inválido", 400),
@@ -124,7 +123,7 @@ async def get_project_activities(
     projectId: str,
     _current_user: object = Depends(require_permission("projectActivities", "view")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = list_project_activities(db, projectId)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao listar atividades.")
@@ -147,7 +146,7 @@ async def post_project_activity(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("projectActivities", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = create_project_activity(db, projectId, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao criar atividade.")
@@ -172,7 +171,7 @@ async def put_project_activity(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("projectActivities", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = update_project_activity(db, projectId, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar atividade.")
@@ -196,7 +195,7 @@ async def delete_project_activity_route(
     activityId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("projectActivities", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     if not activityId:
         return json_error_response(400, "ID da atividade é obrigatório.")
 
@@ -214,7 +213,7 @@ async def get_project_activity_tasks(
     activityId: str,
     _current_user: object = Depends(require_permission("projectTasks", "view")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = list_project_activity_tasks(db, projectId, activityId)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao listar tarefas da atividade.")
@@ -230,7 +229,7 @@ async def post_project_activity_task(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_permission("projectTasks", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = create_project_activity_task(db, projectId, activityId, current_user.id, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao criar tarefa.")
@@ -256,7 +255,7 @@ async def put_project_activity_task(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_permission("projectTasks", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     result = update_project_activity_task(db, projectId, activityId, current_user.id, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar tarefa.")
@@ -281,7 +280,7 @@ async def delete_project_activity_task_route(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("projectTasks", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     task_id = _optional_str(payload.get("id"))
     if not task_id:
         return json_error_response(400, "ID é obrigatório.")
@@ -301,13 +300,15 @@ async def patch_project_activity_tasks(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_permission("projectTasks", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     before = payload.get("tasksBeforeMove")
     after = payload.get("tasksAfterMove")
     if not isinstance(before, list) or not isinstance(after, list):
         return json_error_response(400, "Dados de movimentação inválidos.")
 
-    result = reorder_project_activity_tasks(db, projectId, activityId, current_user.id, before, after)
+    result = reorder_project_activity_tasks(
+        db, projectId, activityId, current_user.id, before, after
+    )
     if is_service_error(result):
         status = int(result.get("status") or 400)
         if status == 409:

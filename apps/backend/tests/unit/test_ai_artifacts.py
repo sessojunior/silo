@@ -130,9 +130,7 @@ def test_ai_artifact_reconciler_repairs_pending_file(
             now=now,
         )
         row = (
-            connection.execute(
-                artifact_table.select().where(artifact_table.c.id == "artifact-1")
-            )
+            connection.execute(artifact_table.select().where(artifact_table.c.id == "artifact-1"))
             .mappings()
             .first()
         )
@@ -245,13 +243,15 @@ def test_ai_artifact_repository_covers_listing_update_delete_and_retake_paths() 
         pending_row = pending[0]
         ready_row = ready[0]
 
-        assert repository._can_retake_lease(pending_row, now) is True  # noqa: SLF001
-        assert repository._can_retake_lease(ready_row, now) is False  # noqa: SLF001
-        assert repository._can_retake_lease({"status": "ready", "lease_expires_at": now}, now) is False  # noqa: SLF001
+        assert repository._can_retake_lease(pending_row, now) is True
+        assert repository._can_retake_lease(ready_row, now) is False
+        assert (
+            repository._can_retake_lease({"status": "ready", "lease_expires_at": now}, now) is False
+        )
         assert build_ai_artifact_filename("executive", "hash-pending").startswith("ai-executive-")
         assert build_ai_artifact_url("ready.pdf") == "/api/upload/serve/reports/ready.pdf"
 
-        retaken = repository._retake_lease(  # noqa: SLF001
+        retaken = repository._retake_lease(
             artifact_id="pending-1",
             owner_token="owner-4",
             lease_expires_at=now + timedelta(minutes=10),
@@ -259,7 +259,7 @@ def test_ai_artifact_repository_covers_listing_update_delete_and_retake_paths() 
         assert retaken is not None
         assert retaken["owner_token"] == "owner-4"
 
-        marked_failed = repository.mark_failed(  # noqa: SLF001
+        marked_failed = repository.mark_failed(
             idempotency_hash="hash-pending",
             owner_token="owner-4",
             error_message="boom",
@@ -268,7 +268,7 @@ def test_ai_artifact_repository_covers_listing_update_delete_and_retake_paths() 
         assert marked_failed["status"] == "failed"
         assert marked_failed["error_message"] == "boom"
 
-        updated = repository.update_from_file(  # noqa: SLF001
+        updated = repository.update_from_file(
             artifact_id="ready-1",
             owner_token="owner-2",
             filename="ready-updated.pdf",
@@ -315,11 +315,11 @@ def test_worker_artifact_reconciler_covers_pending_ready_failed_and_dry_run_bran
     ready_verified = _write_file("ready-match.pdf", b"ready verified")
     ready_mismatch = _write_file("ready-mismatch.pdf", b"ready mismatch")
     ready_dry_mismatch = _write_file("ready-dry-mismatch.pdf", b"ready dry mismatch")
-    failed_old = _write_file("failed-old.pdf", b"failed old")
+    _failed_old = _write_file("failed-old.pdf", b"failed old")
 
-    ready_verified_meta = worker_ai_artifacts._read_file_meta(ready_verified)  # noqa: SLF001
-    _ready_mismatch_meta = worker_ai_artifacts._read_file_meta(ready_mismatch)  # noqa: SLF001
-    _ready_dry_mismatch_meta = worker_ai_artifacts._read_file_meta(ready_dry_mismatch)  # noqa: SLF001
+    ready_verified_meta = worker_ai_artifacts._read_file_meta(ready_verified)
+    _ready_mismatch_meta = worker_ai_artifacts._read_file_meta(ready_mismatch)
+    _ready_dry_mismatch_meta = worker_ai_artifacts._read_file_meta(ready_dry_mismatch)
 
     class _FakeRepository:
         def __init__(
@@ -535,7 +535,9 @@ def test_worker_artifact_reconciler_covers_pending_ready_failed_and_dry_run_bran
     assert summary["errors"] == 1
     assert any(call[0] == "mark_ready" for call in repo_holder["repo"].calls)
     assert any(call[0] == "update_from_file" for call in repo_holder["repo"].calls)
-    assert any(call == ("delete_artifact", "ready-missing-old") for call in repo_holder["repo"].calls)
+    assert any(
+        call == ("delete_artifact", "ready-missing-old") for call in repo_holder["repo"].calls
+    )
     assert any(call == ("delete_artifact", "failed-old") for call in repo_holder["repo"].calls)
     assert pending_existing.exists()
     assert pending_fallback.exists()
@@ -571,7 +573,9 @@ def test_worker_artifact_reconciler_covers_pending_ready_failed_and_dry_run_bran
         update_from_file_result=None,
     )
 
-    summary_dry_run = reconcile_ai_artifacts(SimpleNamespace(), dry_run=True, retention_hours=24, now=now)
+    summary_dry_run = reconcile_ai_artifacts(
+        SimpleNamespace(), dry_run=True, retention_hours=24, now=now
+    )
     assert summary_dry_run["pending_expired_failed"] == 1
     assert summary_dry_run["pending_repaired_ready"] == 1
     assert summary_dry_run["ready_repaired"] == 1
@@ -579,7 +583,9 @@ def test_worker_artifact_reconciler_covers_pending_ready_failed_and_dry_run_bran
     assert pending_dry_file.exists()
 
 
-def test_worker_main_and_reconciliation_lock_paths(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_worker_main_and_reconciliation_lock_paths(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     class _LockResult:
         def __init__(self, value: bool) -> None:
             self.value = value
@@ -594,13 +600,13 @@ def test_worker_main_and_reconciliation_lock_paths(monkeypatch: pytest.MonkeyPat
             self.execute_calls: list[tuple[str, dict[str, object] | None]] = []
             self.commit_calls = 0
 
-        def __enter__(self) -> "_LockConnection":
+        def __enter__(self) -> _LockConnection:
             return self
 
         def __exit__(self, exc_type, exc, tb) -> bool:
             return False
 
-        def execute(self, statement, params=None):  # noqa: ANN001
+        def execute(self, statement, params=None):
             self.execute_calls.append((str(statement), params))
             if "pg_try_advisory_lock" in str(statement):
                 return _LockResult(self.acquired)
@@ -610,18 +616,20 @@ def test_worker_main_and_reconciliation_lock_paths(monkeypatch: pytest.MonkeyPat
             self.commit_calls += 1
 
     sqlite_connection = _LockConnection("sqlite")
-    with worker_ai_artifacts._reconciliation_lock(sqlite_connection):  # noqa: SLF001
+    with worker_ai_artifacts._reconciliation_lock(sqlite_connection):
         pass
     assert sqlite_connection.execute_calls == []
 
     postgres_connection = _LockConnection("postgresql", acquired=True)
-    with worker_ai_artifacts._reconciliation_lock(postgres_connection):  # noqa: SLF001
+    with worker_ai_artifacts._reconciliation_lock(postgres_connection):
         pass
     assert any("pg_try_advisory_lock" in call[0] for call in postgres_connection.execute_calls)
     assert any("pg_advisory_unlock" in call[0] for call in postgres_connection.execute_calls)
 
     with pytest.raises(RuntimeError):
-        with worker_ai_artifacts._reconciliation_lock(_LockConnection("postgresql", acquired=False)):  # noqa: SLF001
+        with worker_ai_artifacts._reconciliation_lock(
+            _LockConnection("postgresql", acquired=False)
+        ):
             pass
 
     class _FakeEngine:
@@ -636,10 +644,33 @@ def test_worker_main_and_reconciliation_lock_paths(monkeypatch: pytest.MonkeyPat
             self.dispose_calls += 1
 
     fake_engine = _FakeEngine(sqlite_connection)
-    monkeypatch.setattr(worker_ai_artifacts, "load_settings", lambda: SimpleNamespace(database_url=SimpleNamespace(get_secret_value=lambda: "sqlite:///db.sqlite")))
-    monkeypatch.setattr(worker_ai_artifacts, "sqlalchemy_database_url", lambda url: f"converted:{url}")
-    monkeypatch.setattr(worker_ai_artifacts, "create_engine", lambda url, pool_pre_ping=True: fake_engine)
-    monkeypatch.setattr(worker_ai_artifacts, "reconcile_ai_artifacts", lambda connection, **kwargs: {"scanned": 1, "pending_expired_failed": 0, "pending_repaired_ready": 0, "ready_verified": 0, "ready_repaired": 0, "ready_pruned": 0, "failed_pruned": 0, "errors": 0})
+    monkeypatch.setattr(
+        worker_ai_artifacts,
+        "load_settings",
+        lambda: SimpleNamespace(
+            database_url=SimpleNamespace(get_secret_value=lambda: "sqlite:///db.sqlite")
+        ),
+    )
+    monkeypatch.setattr(
+        worker_ai_artifacts, "sqlalchemy_database_url", lambda url: f"converted:{url}"
+    )
+    monkeypatch.setattr(
+        worker_ai_artifacts, "create_engine", lambda url, pool_pre_ping=True: fake_engine
+    )
+    monkeypatch.setattr(
+        worker_ai_artifacts,
+        "reconcile_ai_artifacts",
+        lambda connection, **kwargs: {
+            "scanned": 1,
+            "pending_expired_failed": 0,
+            "pending_repaired_ready": 0,
+            "ready_verified": 0,
+            "ready_repaired": 0,
+            "ready_pruned": 0,
+            "failed_pruned": 0,
+            "errors": 0,
+        },
+    )
 
     exit_code = worker_ai_artifacts.main([])
     output = json.loads(capsys.readouterr().out)

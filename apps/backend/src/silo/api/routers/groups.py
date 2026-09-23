@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
-from sqlalchemy import and_, delete, desc, func, insert, not_, select, update
+from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.engine import Connection
 
-from silo.api.dependencies import get_db, require_permission, require_admin
+from silo.api.dependencies import get_db, require_admin, require_permission
 from silo.api.responses import build_success_payload
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row

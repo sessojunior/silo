@@ -150,9 +150,7 @@ def _build_cyclonedx_bom(
     lock_path: Path,
 ) -> dict[str, Any]:
     components = [
-        _serialize_component(packages[name])
-        for name in sorted(package_names)
-        if name in packages
+        _serialize_component(packages[name]) for name in sorted(package_names) if name in packages
     ]
     return {
         "bomFormat": "CycloneDX",

@@ -166,9 +166,13 @@ def _build_chat_integration_app(
         return None
 
     monkeypatch.setattr(chat_service, "legacy_tables", tables.as_mapping())
-    monkeypatch.setattr(chat_service, "get_chat_access_state", lambda _db, _user_id: allow_all_access)
+    monkeypatch.setattr(
+        chat_service, "get_chat_access_state", lambda _db, _user_id: allow_all_access
+    )
     monkeypatch.setattr(chat_service, "legacy_local_now", lambda: FIXED_NOW)
-    monkeypatch.setattr(chat_module, "get_chat_access_state", lambda _db, _user_id: allow_all_access)
+    monkeypatch.setattr(
+        chat_module, "get_chat_access_state", lambda _db, _user_id: allow_all_access
+    )
     monkeypatch.setattr(chat_module, "_websocket_authorized", lambda _db, _token, _user_id: True)
     monkeypatch.setattr(chat_module, "_authenticate_websocket", _authenticate_websocket_override)
     monkeypatch.setattr(chat_module, "legacy_local_now", lambda: FIXED_NOW)
@@ -272,21 +276,35 @@ def test_chat_phase10_end_to_end_flow_with_two_tabs_and_receipts(
 
                     sidebar_partial = _get_payload(client, "/api/chat/sidebar", user_id=PARTIAL_ID)
                     assert sidebar_partial["totalUnread"] == 0
-                    assert _get_presence_row(_get_payload(client, "/api/chat/presence", user_id=PARTIAL_ID), ADMIN_ID)[
-                        "status"
-                    ] == "visible"
+                    assert (
+                        _get_presence_row(
+                            _get_payload(client, "/api/chat/presence", user_id=PARTIAL_ID), ADMIN_ID
+                        )["status"]
+                        == "visible"
+                    )
 
-                sidebar_after_first_tab_close = _get_payload(client, "/api/chat/sidebar", user_id=PARTIAL_ID)
+                sidebar_after_first_tab_close = _get_payload(
+                    client, "/api/chat/sidebar", user_id=PARTIAL_ID
+                )
                 assert sidebar_after_first_tab_close["totalUnread"] == 0
-                presence_after_first_tab_close = _get_payload(client, "/api/chat/presence", user_id=PARTIAL_ID)
-                assert _get_presence_row(presence_after_first_tab_close, ADMIN_ID)["status"] == "visible"
+                presence_after_first_tab_close = _get_payload(
+                    client, "/api/chat/presence", user_id=PARTIAL_ID
+                )
+                assert (
+                    _get_presence_row(presence_after_first_tab_close, ADMIN_ID)["status"]
+                    == "visible"
+                )
 
             partial_admin_offline = _assert_event(partial_ws, "chat.presence.updated")
             assert partial_admin_offline["data"]["userId"] == ADMIN_ID
             assert partial_admin_offline["data"]["status"] == "invisible"
 
-            presence_after_admin_b_close = _get_payload(client, "/api/chat/presence", user_id=PARTIAL_ID)
-            assert _get_presence_row(presence_after_admin_b_close, ADMIN_ID)["status"] == "invisible"
+            presence_after_admin_b_close = _get_payload(
+                client, "/api/chat/presence", user_id=PARTIAL_ID
+            )
+            assert (
+                _get_presence_row(presence_after_admin_b_close, ADMIN_ID)["status"] == "invisible"
+            )
 
             group_message = _post_message(
                 client,
@@ -298,13 +316,19 @@ def test_chat_phase10_end_to_end_flow_with_two_tabs_and_receipts(
             assert partial_group_event["data"]["message"]["id"] == group_message["id"]
             assert partial_group_event["data"]["message"]["receiverGroupId"] == GROUP_ID
 
-            sidebar_after_group_message = _get_payload(client, "/api/chat/sidebar", user_id=PARTIAL_ID)
+            sidebar_after_group_message = _get_payload(
+                client, "/api/chat/sidebar", user_id=PARTIAL_ID
+            )
             assert sidebar_after_group_message["totalUnread"] == 1
 
-            group_messages = _get_payload(client, f"/api/chat/messages?groupId={GROUP_ID}", user_id=PARTIAL_ID)
+            group_messages = _get_payload(
+                client, f"/api/chat/messages?groupId={GROUP_ID}", user_id=PARTIAL_ID
+            )
             assert group_messages["count"] == 1
 
-            unread_after_group_message = _get_payload(client, "/api/chat/unread-messages", user_id=PARTIAL_ID)
+            unread_after_group_message = _get_payload(
+                client, "/api/chat/unread-messages", user_id=PARTIAL_ID
+            )
             assert unread_after_group_message["count"] == 1
 
             private_message = _post_message(
@@ -317,13 +341,19 @@ def test_chat_phase10_end_to_end_flow_with_two_tabs_and_receipts(
             assert partial_private_event["data"]["message"]["id"] == private_message["id"]
             assert partial_private_event["data"]["message"]["receiverUserId"] == PARTIAL_ID
 
-            sidebar_after_private_message = _get_payload(client, "/api/chat/sidebar", user_id=PARTIAL_ID)
+            sidebar_after_private_message = _get_payload(
+                client, "/api/chat/sidebar", user_id=PARTIAL_ID
+            )
             assert sidebar_after_private_message["totalUnread"] == 2
 
-            private_messages = _get_payload(client, f"/api/chat/messages?userId={ADMIN_ID}", user_id=PARTIAL_ID)
+            private_messages = _get_payload(
+                client, f"/api/chat/messages?userId={ADMIN_ID}", user_id=PARTIAL_ID
+            )
             assert private_messages["count"] == 1
 
-            unread_after_private_message = _get_payload(client, "/api/chat/unread-messages", user_id=PARTIAL_ID)
+            unread_after_private_message = _get_payload(
+                client, "/api/chat/unread-messages", user_id=PARTIAL_ID
+            )
             assert unread_after_private_message["count"] == 3
 
             read_group = client.post(
@@ -349,7 +379,9 @@ def test_chat_phase10_end_to_end_flow_with_two_tabs_and_receipts(
             private_read_event = _assert_event(partial_ws, "chat.message.read")
             assert private_read_event["data"]["messageId"] == private_message["id"]
 
-            sidebar_after_private_read = _get_payload(client, "/api/chat/sidebar", user_id=PARTIAL_ID)
+            sidebar_after_private_read = _get_payload(
+                client, "/api/chat/sidebar", user_id=PARTIAL_ID
+            )
             assert sidebar_after_private_read["totalUnread"] == 0
 
             delete_group = client.delete(
@@ -361,10 +393,14 @@ def test_chat_phase10_end_to_end_flow_with_two_tabs_and_receipts(
             deleted_event = _assert_event(partial_ws, "chat.message.deleted")
             assert deleted_event["data"]["messageId"] == group_message["id"]
 
-            deleted_group_messages = _get_payload(client, f"/api/chat/messages?groupId={GROUP_ID}", user_id=PARTIAL_ID)
+            deleted_group_messages = _get_payload(
+                client, f"/api/chat/messages?groupId={GROUP_ID}", user_id=PARTIAL_ID
+            )
             assert deleted_group_messages["count"] == 0
 
-            unread_after_delete = _get_payload(client, "/api/chat/unread-messages", user_id=PARTIAL_ID)
+            unread_after_delete = _get_payload(
+                client, "/api/chat/unread-messages", user_id=PARTIAL_ID
+            )
             assert unread_after_delete["count"] == 0
 
             sidebar_after_delete = _get_payload(client, "/api/chat/sidebar", user_id=PARTIAL_ID)
@@ -411,9 +447,9 @@ def test_chat_phase10_soak_repeated_connect_disconnect_keeps_hub_and_pool_empty(
     app, engine, _tables = _build_chat_integration_app(monkeypatch, tmp_path)
 
     with TestClient(app) as client:
-        user_headers = _headers(ADMIN_ID)
+        _user_headers = _headers(ADMIN_ID)
 
-        for index in range(25):
+        for _index in range(25):
             with client.websocket_connect(
                 "/api/chat/ws", headers=_websocket_headers(ADMIN_ID)
             ) as websocket:

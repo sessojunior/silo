@@ -49,18 +49,12 @@ def test_load_worker_settings_and_helper_branches(tmp_path: Path) -> None:
     assert settings.health_state_path == tmp_path / "worker-health.json"
 
     assert worker_config.resolve_topics_to_subscribe(settings) == ("model.status",)
-    assert (
-        worker_config.resolve_topics_to_subscribe(
-            replace(settings, kafka_topic=""), cli_topic=" monitoring.status "
-        )
-        == ("monitoring.status",)
-    )
-    assert (
-        worker_config.resolve_topics_to_subscribe(
-            replace(settings, kafka_topic="", kafka_topics=("model.status", "monitoring.status"))
-        )
-        == ("model.status", "monitoring.status")
-    )
+    assert worker_config.resolve_topics_to_subscribe(
+        replace(settings, kafka_topic=""), cli_topic=" monitoring.status "
+    ) == ("monitoring.status",)
+    assert worker_config.resolve_topics_to_subscribe(
+        replace(settings, kafka_topic="", kafka_topics=("model.status", "monitoring.status"))
+    ) == ("model.status", "monitoring.status")
     assert worker_config.resolve_group_id("group-base", ("topic-a",)) == "group-base-topic-a"
     assert worker_config.resolve_group_id("group-base", ("topic-a", "topic-b")) == "group-base"
 
@@ -72,9 +66,11 @@ def test_load_worker_settings_and_helper_branches(tmp_path: Path) -> None:
     assert validation_settings.health_state_path.name == "worker-health-qa.json"
     assert validation_settings.kafka_rest.rest_proxy_url == settings.kafka_rest.rest_proxy_url
 
-    assert worker_config._split_csv("a, b, , c") == ("a", "b", "c")  # noqa: SLF001
-    assert worker_config._first_non_empty({"a": " ", "b": "value"}, ("a", "b"), "fallback") == "value"  # noqa: SLF001
-    assert worker_config._require_http_url("http://example.test/") == "http://example.test"  # noqa: SLF001
+    assert worker_config._split_csv("a, b, , c") == ("a", "b", "c")
+    assert (
+        worker_config._first_non_empty({"a": " ", "b": "value"}, ("a", "b"), "fallback") == "value"
+    )
+    assert worker_config._require_http_url("http://example.test/") == "http://example.test"
 
 
 @pytest.mark.parametrize(
@@ -117,10 +113,11 @@ def test_load_worker_settings_and_helper_branches(tmp_path: Path) -> None:
         ),
     ],
 )
-def test_load_worker_settings_rejects_invalid_env_values(tmp_path: Path, env: dict[str, str], match: str) -> None:
+def test_load_worker_settings_rejects_invalid_env_values(
+    tmp_path: Path, env: dict[str, str], match: str
+) -> None:
     base_env = _base_env(tmp_path)
     base_env.update(env)
 
     with pytest.raises(RuntimeError, match=match):
         worker_config.load_worker_settings(base_env)
-

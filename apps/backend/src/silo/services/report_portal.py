@@ -2,32 +2,33 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from datetime import date, datetime, timedelta
-from pathlib import Path
 from typing import Any
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
-from sqlalchemy import and_, desc, select
+from sqlalchemy import and_, select
 from sqlalchemy.engine import Connection
 
-from silo.date import format_date, format_date_br, get_days_ago, get_today
+from silo.date import format_date, get_days_ago, get_today
 from silo.db.models import legacy_tables
 from silo.domain.model_run_status import PROBLEM_STATUSES
 from silo.services.analytics_common import (
     ANALYTICS_TIMEZONE,
     build_analytics_meta,
-    format_local_datetime_text,
 )
-from silo.services.common import service_failure, service_success
-from silo.services.legacy_utils import normalize_turn_list, optional_str
-from silo.services.pdf_artifacts import PdfArtifactStore, PdfArtifactTooLargeError, PdfRenderer
+from silo.services.legacy_utils import optional_str
+from silo.services.pdf_artifacts import (
+    PdfArtifactStore,
+    PdfArtifactTooLargeError,
+    PdfRenderer,
+)
 from silo.storage.uploads import list_upload_files
 
 NO_INCIDENTS_CATEGORY_ID = "no-incidents"
 PROBLEM_INCIDENT_STATUSES = tuple(sorted(PROBLEM_STATUSES))
+__all__ = ["PdfArtifactTooLargeError", "UnsupportedReportFilterError"]
 
 
 class UnsupportedReportFilterError(ValueError):
@@ -99,11 +100,17 @@ def get_projects_report_meta(date_range: dict[str, str]) -> dict[str, object]:
     )
 
 
-def get_availability_report(connection: Connection, date_range: dict[str, str]) -> dict[str, object]:
+def get_availability_report(
+    connection: Connection, date_range: dict[str, str]
+) -> dict[str, object]:
     product_table = legacy_tables["product"]
     activity_table = legacy_tables["product_activity"]
 
-    products = connection.execute(select(product_table).order_by(product_table.c.name.asc())).mappings().all()
+    products = (
+        connection.execute(select(product_table).order_by(product_table.c.name.asc()))
+        .mappings()
+        .all()
+    )
     if not products:
         return {
             "totalProducts": 0,
@@ -114,10 +121,15 @@ def get_availability_report(connection: Connection, date_range: dict[str, str]) 
 
     start = parse_date_only(date_range["start"])
     end = parse_date_only(date_range["end"])
-    all_activities = connection.execute(
-        select(activity_table)
-        .where(and_(activity_table.c.date >= start, activity_table.c.date <= end))
-    ).mappings().all()
+    all_activities = (
+        connection.execute(
+            select(activity_table).where(
+                and_(activity_table.c.date >= start, activity_table.c.date <= end)
+            )
+        )
+        .mappings()
+        .all()
+    )
 
     activities_by_product: dict[str, list[dict[str, object]]] = {}
     for activity in all_activities:
@@ -129,7 +141,9 @@ def get_availability_report(connection: Connection, date_range: dict[str, str]) 
         total_activities = len(activities)
         completed_activities = sum(1 for row in activities if row["status"] == "completed")
         active_activities = sum(1 for row in activities if row["status"] == "in_progress")
-        failed_activities = sum(1 for row in activities if str(row["status"]) in PROBLEM_INCIDENT_STATUSES)
+        failed_activities = sum(
+            1 for row in activities if str(row["status"]) in PROBLEM_INCIDENT_STATUSES
+        )
         interventions_count = sum(1 for row in activities if _has_text(row.get("intervention")))
         availability_percentage = None
         status = "no_data"
@@ -149,13 +163,21 @@ def get_availability_report(connection: Connection, date_range: dict[str, str]) 
         latest_intervention_text = None
         if intervention_rows:
             latest = max(intervention_rows, key=lambda row: row["updated_at"])
-            latest_intervention_at = latest["date"].isoformat() if isinstance(latest["date"], date) else str(latest["date"])
+            latest_intervention_at = (
+                latest["date"].isoformat()
+                if isinstance(latest["date"], date)
+                else str(latest["date"])
+            )
             latest_intervention_text = latest.get("intervention")
 
         last_activity_date = None
         if activities:
             latest_activity = max(activities, key=lambda row: row["date"])
-            last_activity_date = latest_activity["date"].isoformat() if isinstance(latest_activity["date"], date) else str(latest_activity["date"])
+            last_activity_date = (
+                latest_activity["date"].isoformat()
+                if isinstance(latest_activity["date"], date)
+                else str(latest_activity["date"])
+            )
 
         item = {
             "id": str(product["id"]),
@@ -178,7 +200,8 @@ def get_availability_report(connection: Connection, date_range: dict[str, str]) 
 
     total_products = len(products_with_availability)
     products_with_data = [
-        product for product in products_with_availability
+        product
+        for product in products_with_availability
         if product["availabilityPercentage"] is not None
     ]
     avg_availability = (
@@ -190,7 +213,9 @@ def get_availability_report(connection: Connection, date_range: dict[str, str]) 
         if products_with_data
         else None
     )
-    total_interventions = sum(int(product["interventionsCount"]) for product in products_with_availability)
+    total_interventions = sum(
+        int(product["interventionsCount"]) for product in products_with_availability
+    )
 
     return {
         "totalProducts": total_products,
@@ -211,14 +236,14 @@ def get_problems_report(
     solution_table = legacy_tables["product_solution"]
     solution_checked_table = legacy_tables["product_solution_checked"]
     product_table = legacy_tables["product"]
-    user_table = legacy_tables["user"]
 
     start = parse_date_only(date_range["start"])
     end = parse_date_only(date_range["end"])
 
     problem_filters = [
         problem_table.c.created_at >= datetime.combine(start, datetime.min.time()),
-        problem_table.c.created_at <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+        problem_table.c.created_at
+        <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
         problem_table.c.problem_category_id != NO_INCIDENTS_CATEGORY_ID,
     ]
     if product_id:
@@ -226,28 +251,38 @@ def get_problems_report(
     if problem_category:
         problem_filters.append(problem_table.c.problem_category_id == problem_category)
 
-    problems = connection.execute(
-        select(
-            problem_table.c.id,
-            problem_table.c.product_id,
-            problem_table.c.user_id,
-            problem_table.c.title,
-            problem_table.c.description,
-            problem_table.c.created_at,
-            problem_table.c.updated_at,
-            problem_table.c.problem_category_id,
+    problems = (
+        connection.execute(
+            select(
+                problem_table.c.id,
+                problem_table.c.product_id,
+                problem_table.c.user_id,
+                problem_table.c.title,
+                problem_table.c.description,
+                problem_table.c.created_at,
+                problem_table.c.updated_at,
+                problem_table.c.problem_category_id,
+            )
+            .where(and_(*problem_filters))
+            .order_by(problem_table.c.created_at.asc(), problem_table.c.id.asc())
         )
-        .where(and_(*problem_filters))
-        .order_by(problem_table.c.created_at.asc(), problem_table.c.id.asc())
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
-    categories = connection.execute(
-        select(category_table.c.id, category_table.c.name, category_table.c.color)
-        .where(category_table.c.id != NO_INCIDENTS_CATEGORY_ID)
-        .order_by(category_table.c.name.asc())
-    ).mappings().all()
+    categories = (
+        connection.execute(
+            select(category_table.c.id, category_table.c.name, category_table.c.color)
+            .where(category_table.c.id != NO_INCIDENTS_CATEGORY_ID)
+            .order_by(category_table.c.name.asc())
+        )
+        .mappings()
+        .all()
+    )
 
-    solutions_by_problem = _group_solutions(connection, [str(row["id"]) for row in problems], solution_table)
+    solutions_by_problem = _group_solutions(
+        connection, [str(row["id"]) for row in problems], solution_table
+    )
     solution_ids = [
         str(solution["id"])
         for grouped_solutions in solutions_by_problem.values()
@@ -256,8 +291,7 @@ def get_problems_report(
     checked_solution_ids = {
         str(row[0])
         for row in connection.execute(
-            select(solution_checked_table.c.product_solution_id)
-            .where(
+            select(solution_checked_table.c.product_solution_id).where(
                 solution_checked_table.c.product_solution_id.in_(tuple(solution_ids))
                 if solution_ids
                 else False
@@ -267,7 +301,11 @@ def get_problems_report(
 
     problems_by_category: list[dict[str, object]] = []
     for category in categories:
-        category_problems = [problem for problem in problems if str(problem["problem_category_id"]) == str(category["id"])]
+        category_problems = [
+            problem
+            for problem in problems
+            if str(problem["problem_category_id"]) == str(category["id"])
+        ]
         if not category_problems:
             continue
         resolution_hours = _average_resolution_hours(category_problems, solutions_by_problem)
@@ -282,11 +320,19 @@ def get_problems_report(
         )
 
     products_by_problem: list[dict[str, object]] = []
-    product_rows = connection.execute(
-        select(product_table.c.id, product_table.c.name, product_table.c.slug).order_by(product_table.c.name.asc())
-    ).mappings().all()
+    product_rows = (
+        connection.execute(
+            select(product_table.c.id, product_table.c.name, product_table.c.slug).order_by(
+                product_table.c.name.asc()
+            )
+        )
+        .mappings()
+        .all()
+    )
     for product in product_rows:
-        product_problems = [problem for problem in problems if str(problem["product_id"]) == str(product["id"])]
+        product_problems = [
+            problem for problem in problems if str(problem["product_id"]) == str(product["id"])
+        ]
         if not product_problems:
             continue
         resolved_count = 0
@@ -302,15 +348,20 @@ def get_problems_report(
                 "slug": product["slug"],
                 "problemsCount": len(product_problems),
                 "resolvedCount": resolved_count,
-                "resolutionRate": round((resolved_count / len(product_problems)) * 100) if product_problems else 0,
+                "resolutionRate": round((resolved_count / len(product_problems)) * 100)
+                if product_problems
+                else 0,
             }
         )
 
     total_problems = len(problems)
-    total_solutions = sum(len(solutions_by_problem.get(problem_id, [])) for problem_id in solutions_by_problem)
+    total_solutions = sum(
+        len(solutions_by_problem.get(problem_id, [])) for problem_id in solutions_by_problem
+    )
     avg_resolution_hours = (
         round(
-            sum(item["avgResolutionHours"] for item in problems_by_category) / len(problems_by_category),
+            sum(item["avgResolutionHours"] for item in problems_by_category)
+            / len(problems_by_category),
             1,
         )
         if problems_by_category
@@ -325,14 +376,26 @@ def get_problems_report(
         top_problem_lookup = {str(problem["id"]): problem for problem in problems}
         for problem_id_value in top_problem_ids:
             problem = top_problem_lookup[problem_id_value]
-            product_info = next((row for row in product_rows if str(row["id"]) == str(problem["product_id"])), None)
-            category_info = next((row for row in categories if str(row["id"]) == str(problem["problem_category_id"])), None)
+            product_info = next(
+                (row for row in product_rows if str(row["id"]) == str(problem["product_id"])), None
+            )
+            category_info = next(
+                (
+                    row
+                    for row in categories
+                    if str(row["id"]) == str(problem["problem_category_id"])
+                ),
+                None,
+            )
             solution_rows = solutions_by_problem.get(problem_id_value, [])
-            earliest_solution = min(solution_rows, key=lambda row: row["created_at"]) if solution_rows else None
+            earliest_solution = (
+                min(solution_rows, key=lambda row: row["created_at"]) if solution_rows else None
+            )
             avg_problem_hours = None
             if earliest_solution is not None and isinstance(problem["created_at"], datetime):
                 avg_problem_hours = round(
-                    (earliest_solution["created_at"] - problem["created_at"]).total_seconds() / 3_600,
+                    (earliest_solution["created_at"] - problem["created_at"]).total_seconds()
+                    / 3_600,
                     1,
                 )
             top_problems.append(
@@ -353,7 +416,8 @@ def get_problems_report(
                     "reportedBy": _user_name(connection, str(problem["user_id"])) or "Usuário",
                     "userInfo": {
                         "name": _user_name(connection, str(problem["user_id"])) or "Usuário",
-                        "image": _user_image(connection, str(problem["user_id"])) or "/images/profile.png",
+                        "image": _user_image(connection, str(problem["user_id"]))
+                        or "/images/profile.png",
                     },
                     "solutionsCount": len(solution_rows),
                     "avgResolutionHours": avg_problem_hours,
@@ -398,49 +462,86 @@ def get_executive_report(
     start = parse_date_only(date_range["start"])
     end = parse_date_only(date_range["end"])
 
-    products = connection.execute(
-        select(product_table.c.id, product_table.c.name, product_table.c.available, product_table.c.priority)
-        .order_by(product_table.c.name.asc())
-    ).mappings().all()
+    products = (
+        connection.execute(
+            select(
+                product_table.c.id,
+                product_table.c.name,
+                product_table.c.available,
+                product_table.c.priority,
+            ).order_by(product_table.c.name.asc())
+        )
+        .mappings()
+        .all()
+    )
 
     problem_filters = [
         problem_table.c.created_at >= datetime.combine(start, datetime.min.time()),
-        problem_table.c.created_at <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+        problem_table.c.created_at
+        <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
     ]
     if product_id:
         problem_filters.append(problem_table.c.product_id == product_id)
 
-    problems = connection.execute(
-        select(problem_table.c.id, problem_table.c.product_id, problem_table.c.created_at)
-        .where(and_(*problem_filters))
-    ).mappings().all()
-    problem_ids = [str(row["id"]) for row in problems]
-
-    solutions = connection.execute(
-        select(solution_table.c.id, solution_table.c.product_problem_id, solution_table.c.created_at)
-        .where(
-            and_(
-                solution_table.c.created_at >= datetime.combine(start, datetime.min.time()),
-                solution_table.c.created_at <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+    problems = (
+        connection.execute(
+            select(
+                problem_table.c.id, problem_table.c.product_id, problem_table.c.created_at
+            ).where(and_(*problem_filters))
+        )
+        .mappings()
+        .all()
+    )
+    solutions = (
+        connection.execute(
+            select(
+                solution_table.c.id,
+                solution_table.c.product_problem_id,
+                solution_table.c.created_at,
+            ).where(
+                and_(
+                    solution_table.c.created_at >= datetime.combine(start, datetime.min.time()),
+                    solution_table.c.created_at
+                    <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+                )
             )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
-    users = connection.execute(select(user_table.c.id).where(user_table.c.is_active.is_(True))).all()
+    users = connection.execute(
+        select(user_table.c.id).where(user_table.c.is_active.is_(True))
+    ).all()
     groups = connection.execute(select(group_table.c.id)).all()
-    projects = connection.execute(select(project_table.c.id, project_table.c.status, project_table.c.priority)).mappings().all()
-    activities = connection.execute(select(activity_table.c.id, activity_table.c.status)).mappings().all()
+    projects = (
+        connection.execute(
+            select(project_table.c.id, project_table.c.status, project_table.c.priority)
+        )
+        .mappings()
+        .all()
+    )
+    activities = (
+        connection.execute(select(activity_table.c.id, activity_table.c.status)).mappings().all()
+    )
     tasks = connection.execute(select(task_table.c.id, task_table.c.status)).mappings().all()
 
     # Disponibilidade média do período (mesma semântica do relatório de disponibilidade):
     # produtos sem atividades no período não entram na média; sem dados, valor nulo.
-    period_activities = connection.execute(
-        select(activity_table.c.product_id, activity_table.c.status)
-        .where(and_(activity_table.c.date >= start, activity_table.c.date <= end))
-    ).mappings().all()
+    period_activities = (
+        connection.execute(
+            select(activity_table.c.product_id, activity_table.c.status).where(
+                and_(activity_table.c.date >= start, activity_table.c.date <= end)
+            )
+        )
+        .mappings()
+        .all()
+    )
     availability_by_product: dict[str, dict[str, int]] = {}
     for row in period_activities:
-        bucket = availability_by_product.setdefault(str(row["product_id"]), {"total": 0, "completed": 0})
+        bucket = availability_by_product.setdefault(
+            str(row["product_id"]), {"total": 0, "completed": 0}
+        )
         bucket["total"] += 1
         if row["status"] == "completed":
             bucket["completed"] += 1
@@ -463,13 +564,15 @@ def get_executive_report(
 
     recent_cutoff = parse_date_only(get_days_ago(7))
     previous_cutoff = parse_date_only(get_days_ago(14))
-    recent_problems = sum(1 for problem in problems if problem["created_at"].date() >= recent_cutoff)
-    previous_problems = sum(
-        1
-        for problem in problems
-        if previous_cutoff <= problem["created_at"].date() < recent_cutoff
+    recent_problems = sum(
+        1 for problem in problems if problem["created_at"].date() >= recent_cutoff
     )
-    recent_solutions = sum(1 for solution in solutions if solution["created_at"].date() >= recent_cutoff)
+    previous_problems = sum(
+        1 for problem in problems if previous_cutoff <= problem["created_at"].date() < recent_cutoff
+    )
+    recent_solutions = sum(
+        1 for solution in solutions if solution["created_at"].date() >= recent_cutoff
+    )
     previous_solutions = sum(
         1
         for solution in solutions
@@ -478,11 +581,20 @@ def get_executive_report(
 
     product_metrics = []
     for product in products:
-        product_problems = [problem for problem in problems if str(problem["product_id"]) == str(product["id"])]
+        product_problems = [
+            problem for problem in problems if str(problem["product_id"]) == str(product["id"])
+        ]
         product_solution_count = sum(
-            1 for solution in solutions if any(str(problem["id"]) == str(solution["product_problem_id"]) for problem in product_problems)
+            1
+            for solution in solutions
+            if any(
+                str(problem["id"]) == str(solution["product_problem_id"])
+                for problem in product_problems
+            )
         )
-        activity_bucket = availability_by_product.get(str(product["id"]), {"total": 0, "completed": 0})
+        activity_bucket = availability_by_product.get(
+            str(product["id"]), {"total": 0, "completed": 0}
+        )
         product_availability = (
             round((activity_bucket["completed"] / activity_bucket["total"]) * 100, 1)
             if activity_bucket["total"] > 0
@@ -530,12 +642,16 @@ def get_executive_report(
             "problems": {
                 "current": recent_problems,
                 "previous": previous_problems,
-                "change": 0 if previous_problems == 0 else ((recent_problems - previous_problems) / previous_problems) * 100,
+                "change": 0
+                if previous_problems == 0
+                else ((recent_problems - previous_problems) / previous_problems) * 100,
             },
             "solutions": {
                 "current": recent_solutions,
                 "previous": previous_solutions,
-                "change": 0 if previous_solutions == 0 else ((recent_solutions - previous_solutions) / previous_solutions) * 100,
+                "change": 0
+                if previous_solutions == 0
+                else ((recent_solutions - previous_solutions) / previous_solutions) * 100,
             },
         },
         "productMetrics": product_metrics,
@@ -554,67 +670,86 @@ def get_projects_report(connection: Connection, date_range: dict[str, str]) -> d
     start = parse_date_only(date_range["start"])
     end = parse_date_only(date_range["end"])
 
-    projects_in_period = connection.execute(
-        select(
-            project_table.c.id,
-            project_table.c.name,
-            project_table.c.description,
-            project_table.c.status,
-            project_table.c.priority,
-            project_table.c.start_date,
-            project_table.c.end_date,
-            project_table.c.created_at,
-        )
-        .where(
-            and_(
-                project_table.c.created_at >= datetime.combine(start, datetime.min.time()),
-                project_table.c.created_at <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+    projects_in_period = (
+        connection.execute(
+            select(
+                project_table.c.id,
+                project_table.c.name,
+                project_table.c.description,
+                project_table.c.status,
+                project_table.c.priority,
+                project_table.c.start_date,
+                project_table.c.end_date,
+                project_table.c.created_at,
             )
-        )
-        .order_by(project_table.c.created_at.asc(), project_table.c.id.asc())
-    ).mappings().all()
-
-    activities_in_period = connection.execute(
-        select(
-            activity_table.c.id,
-            activity_table.c.project_id,
-            activity_table.c.name,
-            activity_table.c.status,
-            activity_table.c.created_at,
-        )
-        .where(
-            and_(
-                activity_table.c.created_at >= datetime.combine(start, datetime.min.time()),
-                activity_table.c.created_at <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+            .where(
+                and_(
+                    project_table.c.created_at >= datetime.combine(start, datetime.min.time()),
+                    project_table.c.created_at
+                    <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+                )
             )
+            .order_by(project_table.c.created_at.asc(), project_table.c.id.asc())
         )
-        .order_by(activity_table.c.created_at.asc(), activity_table.c.id.asc())
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
-    tasks_in_period = connection.execute(
-        select(
-            task_table.c.id,
-            task_table.c.project_id,
-            task_table.c.project_activity_id,
-            task_table.c.name,
-            task_table.c.status,
-            task_table.c.priority,
-            task_table.c.created_at,
-        )
-        .where(
-            and_(
-                task_table.c.created_at >= datetime.combine(start, datetime.min.time()),
-                task_table.c.created_at <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+    activities_in_period = (
+        connection.execute(
+            select(
+                activity_table.c.id,
+                activity_table.c.project_id,
+                activity_table.c.name,
+                activity_table.c.status,
+                activity_table.c.created_at,
             )
+            .where(
+                and_(
+                    activity_table.c.created_at >= datetime.combine(start, datetime.min.time()),
+                    activity_table.c.created_at
+                    <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+                )
+            )
+            .order_by(activity_table.c.created_at.asc(), activity_table.c.id.asc())
         )
-        .order_by(task_table.c.created_at.asc(), task_table.c.id.asc())
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
-    active_users = connection.execute(
-        select(user_table.c.id, user_table.c.name, user_table.c.email)
-        .where(user_table.c.is_active.is_(True))
-        .order_by(user_table.c.name.asc(), user_table.c.id.asc())
-    ).mappings().all()
+    tasks_in_period = (
+        connection.execute(
+            select(
+                task_table.c.id,
+                task_table.c.project_id,
+                task_table.c.project_activity_id,
+                task_table.c.name,
+                task_table.c.status,
+                task_table.c.priority,
+                task_table.c.created_at,
+            )
+            .where(
+                and_(
+                    task_table.c.created_at >= datetime.combine(start, datetime.min.time()),
+                    task_table.c.created_at
+                    <= datetime.combine(end, datetime.max.time().replace(microsecond=0)),
+                )
+            )
+            .order_by(task_table.c.created_at.asc(), task_table.c.id.asc())
+        )
+        .mappings()
+        .all()
+    )
+
+    active_users = (
+        connection.execute(
+            select(user_table.c.id, user_table.c.name, user_table.c.email)
+            .where(user_table.c.is_active.is_(True))
+            .order_by(user_table.c.name.asc(), user_table.c.id.asc())
+        )
+        .mappings()
+        .all()
+    )
 
     tasks_by_status = _count_by(tasks_in_period, "status")
     projects_by_status = _count_by(projects_in_period, "status")
@@ -622,7 +757,9 @@ def get_projects_report(connection: Connection, date_range: dict[str, str]) -> d
 
     project_activity_counts: dict[str, int] = {}
     for activity in activities_in_period:
-        project_activity_counts[str(activity["project_id"])] = project_activity_counts.get(str(activity["project_id"]), 0) + 1
+        project_activity_counts[str(activity["project_id"])] = (
+            project_activity_counts.get(str(activity["project_id"]), 0) + 1
+        )
 
     most_active_projects = sorted(
         project_activity_counts.items(),
@@ -631,23 +768,38 @@ def get_projects_report(connection: Connection, date_range: dict[str, str]) -> d
     most_active_projects = [
         {
             "projectId": project_id,
-            "name": next((project["name"] for project in projects_in_period if str(project["id"]) == project_id), "?"),
+            "name": next(
+                (
+                    project["name"]
+                    for project in projects_in_period
+                    if str(project["id"]) == project_id
+                ),
+                "?",
+            ),
             "activityCount": count,
         }
         for project_id, count in most_active_projects
     ]
 
-    project_users = connection.execute(
-        select(
-            task_table.c.project_id,
-            task_user_table.c.user_id,
-            user_table.c.name.label("user_name"),
-            user_table.c.email.label("user_email"),
+    project_users = (
+        connection.execute(
+            select(
+                task_table.c.project_id,
+                task_user_table.c.user_id,
+                user_table.c.name.label("user_name"),
+                user_table.c.email.label("user_email"),
+            )
+            .select_from(
+                task_user_table.join(task_table, task_user_table.c.task_id == task_table.c.id).join(
+                    user_table, task_user_table.c.user_id == user_table.c.id
+                )
+            )
+            .where(user_table.c.is_active.is_(True))
+            .order_by(task_table.c.project_id.asc(), user_table.c.name.asc(), user_table.c.id.asc())
         )
-        .select_from(task_user_table.join(task_table, task_user_table.c.task_id == task_table.c.id).join(user_table, task_user_table.c.user_id == user_table.c.id))
-        .where(user_table.c.is_active.is_(True))
-        .order_by(task_table.c.project_id.asc(), user_table.c.name.asc(), user_table.c.id.asc())
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     users_by_project: dict[str, dict[str, dict[str, object]]] = {}
     for row in project_users:
@@ -696,7 +848,14 @@ def get_projects_report(connection: Connection, date_range: dict[str, str]) -> d
             }
         )
 
-    avg_progress = round(sum(project["progress"] for project in projects_with_progress) / len(projects_with_progress)) if projects_with_progress else 0
+    avg_progress = (
+        round(
+            sum(project["progress"] for project in projects_with_progress)
+            / len(projects_with_progress)
+        )
+        if projects_with_progress
+        else 0
+    )
     completed_projects = sum(1 for project in projects_with_progress if project["progress"] == 100)
 
     summary = {
@@ -723,7 +882,11 @@ def get_projects_report(connection: Connection, date_range: dict[str, str]) -> d
 
 
 def list_report_files() -> list[dict[str, object]]:
-    return [item for item in list_upload_files("reports") if str(item.get("filename") or "").endswith(".pdf")]
+    return [
+        item
+        for item in list_upload_files("reports")
+        if str(item.get("filename") or "").endswith(".pdf")
+    ]
 
 
 def generate_pdf(
@@ -756,12 +919,18 @@ def generate_pdf(
 def _build_availability_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
     story.append(Paragraph("Visão Geral", styles["SiloSection"]))
     avg_availability = data.get("avgAvailability")
-    avg_availability_label = f"{avg_availability}%" if isinstance(avg_availability, (int, float)) else "Sem dados"
-    story.append(_kv_table([
-        ("Total de produtos", str(data.get("totalProducts", 0))),
-        ("Disponibilidade média", avg_availability_label),
-        ("Total de intervenções", str(data.get("totalInterventions", 0))),
-    ]))
+    avg_availability_label = (
+        f"{avg_availability}%" if isinstance(avg_availability, (int, float)) else "Sem dados"
+    )
+    story.append(
+        _kv_table(
+            [
+                ("Total de produtos", str(data.get("totalProducts", 0))),
+                ("Disponibilidade média", avg_availability_label),
+                ("Total de intervenções", str(data.get("totalInterventions", 0))),
+            ]
+        )
+    )
     story.append(Spacer(1, 6))
 
     rows = [
@@ -769,14 +938,18 @@ def _build_availability_pdf(story: list[Any], data: dict[str, Any], styles) -> N
     ]
     for product in data.get("products", []):
         availability = product.get("availabilityPercentage")
-        availability_label = f"{availability}%" if isinstance(availability, (int, float)) else "Sem dados"
-        rows.append([
-            str(product.get("name") or "-"),
-            availability_label,
-            str(product.get("totalActivities", 0)),
-            str(product.get("completedActivities", 0)),
-            _status_pt(str(product.get("status") or "")),
-        ])
+        availability_label = (
+            f"{availability}%" if isinstance(availability, (int, float)) else "Sem dados"
+        )
+        rows.append(
+            [
+                str(product.get("name") or "-"),
+                availability_label,
+                str(product.get("totalActivities", 0)),
+                str(product.get("completedActivities", 0)),
+                _status_pt(str(product.get("status") or "")),
+            ]
+        )
     story.append(_zebra_table(rows))
 
 
@@ -784,22 +957,33 @@ def _build_problems_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
     story.append(Paragraph("Visão Geral", styles["SiloSection"]))
     summary = data.get("summary", {})
     avg_resolution = data.get("avgResolutionHours", summary.get("averageResolutionHours"))
-    avg_resolution_label = f"{avg_resolution} horas" if isinstance(avg_resolution, (int, float)) else "Sem dados"
-    story.append(_kv_table([
-        ("Total de problemas", str(data.get("totalProblems", summary.get("totalProblems", 0)))),
-        ("Tempo médio de resolução", avg_resolution_label),
-    ]))
+    avg_resolution_label = (
+        f"{avg_resolution} horas" if isinstance(avg_resolution, (int, float)) else "Sem dados"
+    )
+    story.append(
+        _kv_table(
+            [
+                (
+                    "Total de problemas",
+                    str(data.get("totalProblems", summary.get("totalProblems", 0))),
+                ),
+                ("Tempo médio de resolução", avg_resolution_label),
+            ]
+        )
+    )
     story.append(Spacer(1, 6))
 
     categories = data.get("problemsByCategory", data.get("categories", []))
     if categories:
         rows = [["Categoria", "Quantidade", "Média de resolução (h)"]]
         for category in categories:
-            rows.append([
-                str(category.get("name") or "-"),
-                str(category.get("problemsCount", 0)),
-                str(category.get("avgResolutionHours", 0)),
-            ])
+            rows.append(
+                [
+                    str(category.get("name") or "-"),
+                    str(category.get("problemsCount", 0)),
+                    str(category.get("avgResolutionHours", 0)),
+                ]
+            )
         story.append(Paragraph("Problemas por Categoria", styles["SiloSection"]))
         story.append(_zebra_table(rows))
 
@@ -809,12 +993,18 @@ def _build_problems_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
         story.append(Paragraph("Principais Problemas", styles["SiloSection"]))
         rows = [["Título", "Produto", "Categoria", "Soluções"]]
         for problem in top_problems:
-            rows.append([
-                str(problem.get("title") or "-"),
-                str((problem.get("product") or {}).get("name") or "-"),
-                str(problem.get("categoryName") or (problem.get("category") or {}).get("name") or "-"),
-                str(problem.get("solutionsCount", 0)),
-            ])
+            rows.append(
+                [
+                    str(problem.get("title") or "-"),
+                    str((problem.get("product") or {}).get("name") or "-"),
+                    str(
+                        problem.get("categoryName")
+                        or (problem.get("category") or {}).get("name")
+                        or "-"
+                    ),
+                    str(problem.get("solutionsCount", 0)),
+                ]
+            )
         story.append(_zebra_table(rows))
 
 
@@ -822,24 +1012,30 @@ def _build_executive_pdf(story: list[Any], data: dict[str, Any], styles) -> None
     summary = data.get("summary", {})
     trends = data.get("trends", {})
     story.append(Paragraph("Indicadores", styles["SiloSection"]))
-    story.append(_kv_table([
-        ("Produtos", str(summary.get("totalProducts", 0))),
-        ("Problemas", str(summary.get("totalProblems", 0))),
-        ("Projetos ativos", str(summary.get("activeProjects", 0))),
-        ("Tarefas concluídas", str(summary.get("completedTasks", 0))),
-    ]))
+    story.append(
+        _kv_table(
+            [
+                ("Produtos", str(summary.get("totalProducts", 0))),
+                ("Problemas", str(summary.get("totalProblems", 0))),
+                ("Projetos ativos", str(summary.get("activeProjects", 0))),
+                ("Tarefas concluídas", str(summary.get("completedTasks", 0))),
+            ]
+        )
+    )
     story.append(Spacer(1, 6))
 
     story.append(Paragraph("Tendências (7 dias)", styles["SiloSection"]))
     rows = [["Tipo", "Atual", "Anterior", "Variação"]]
     for key in ("problems", "solutions"):
         item = trends.get(key, {})
-        rows.append([
-            key.title(),
-            str(item.get("current", 0)),
-            str(item.get("previous", 0)),
-            f"{item.get('change', 0)}%",
-        ])
+        rows.append(
+            [
+                key.title(),
+                str(item.get("current", 0)),
+                str(item.get("previous", 0)),
+                f"{item.get('change', 0)}%",
+            ]
+        )
     story.append(_zebra_table(rows))
 
     product_metrics = data.get("productMetrics", [])
@@ -848,25 +1044,34 @@ def _build_executive_pdf(story: list[Any], data: dict[str, Any], styles) -> None
         story.append(Paragraph("Métricas por Produto", styles["SiloSection"]))
         rows = [["Produto", "Prioridade", "Problemas", "Soluções", "Disponível"]]
         for product in product_metrics:
-            rows.append([
-                str(product.get("name") or "-"),
-                _status_pt(str(product.get("priority") or "")),
-                str(product.get("totalProblems", 0)),
-                str(product.get("totalSolutions", 0)),
-                "Sim" if product.get("available") else "Não",
-            ])
+            rows.append(
+                [
+                    str(product.get("name") or "-"),
+                    _status_pt(str(product.get("priority") or "")),
+                    str(product.get("totalProblems", 0)),
+                    str(product.get("totalSolutions", 0)),
+                    "Sim" if product.get("available") else "Não",
+                ]
+            )
         story.append(_zebra_table(rows))
 
 
 def _build_projects_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
     summary = data.get("summary", {})
     story.append(Paragraph("Visão Geral", styles["SiloSection"]))
-    story.append(_kv_table([
-        ("Total de projetos", str(summary.get("totalProjects", 0))),
-        ("Total de atividades", str(summary.get("totalActivities", 0))),
-        ("Total de tarefas", str(summary.get("totalTasks", 0))),
-        ("Progresso médio", f"{summary.get('avgProgress', summary.get('averageProgress', 0))}%"),
-    ]))
+    story.append(
+        _kv_table(
+            [
+                ("Total de projetos", str(summary.get("totalProjects", 0))),
+                ("Total de atividades", str(summary.get("totalActivities", 0))),
+                ("Total de tarefas", str(summary.get("totalTasks", 0))),
+                (
+                    "Progresso médio",
+                    f"{summary.get('avgProgress', summary.get('averageProgress', 0))}%",
+                ),
+            ]
+        )
+    )
 
     if data.get("projectsByStatus"):
         story.append(Spacer(1, 6))
@@ -890,11 +1095,13 @@ def _build_projects_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
         story.append(Paragraph("Progresso por Projeto", styles["SiloSection"]))
         rows = [["Projeto", "Progresso", "Situação"]]
         for project in projects:
-            rows.append([
-                str(project.get("name") or "-"),
-                f"{project.get('progress', 0)}%",
-                _status_pt(str(project.get("status") or "")),
-            ])
+            rows.append(
+                [
+                    str(project.get("name") or "-"),
+                    f"{project.get('progress', 0)}%",
+                    _status_pt(str(project.get("status") or "")),
+                ]
+            )
         story.append(_zebra_table(rows))
 
 
@@ -917,7 +1124,12 @@ _PDF_ARTIFACT_STORE = PdfArtifactStore()
 
 
 def _kv_table(rows: list[tuple[str, str]]):
-    data = [[Paragraph(f"<b>{key}:</b> {value}", getSampleStyleSheet()["BodyText"]) for key, value in rows]]
+    data = [
+        [
+            Paragraph(f"<b>{key}:</b> {value}", getSampleStyleSheet()["BodyText"])
+            for key, value in rows
+        ]
+    ]
     table = Table(data, colWidths=[85 * mm] * len(rows))
     table.setStyle(
         TableStyle(
@@ -994,11 +1206,15 @@ def _group_solutions(
 ) -> dict[str, list[dict[str, object]]]:
     if not problem_ids:
         return {}
-    rows = connection.execute(
-        select(solution_table)
-        .where(solution_table.c.product_problem_id.in_(tuple(problem_ids)))
-        .order_by(solution_table.c.created_at.asc(), solution_table.c.id.asc())
-    ).mappings().all()
+    rows = (
+        connection.execute(
+            select(solution_table)
+            .where(solution_table.c.product_problem_id.in_(tuple(problem_ids)))
+            .order_by(solution_table.c.created_at.asc(), solution_table.c.id.asc())
+        )
+        .mappings()
+        .all()
+    )
     grouped: dict[str, list[dict[str, object]]] = {}
     for row in rows:
         grouped.setdefault(str(row["product_problem_id"]), []).append(row)
@@ -1026,13 +1242,17 @@ def _average_resolution_hours(
 
 def _user_name(connection: Connection, user_id: str) -> str | None:
     user_table = legacy_tables["user"]
-    row = connection.execute(select(user_table.c.name).where(user_table.c.id == user_id).limit(1)).first()
+    row = connection.execute(
+        select(user_table.c.name).where(user_table.c.id == user_id).limit(1)
+    ).first()
     return str(row[0]) if row is not None else None
 
 
 def _user_image(connection: Connection, user_id: str) -> str | None:
     user_table = legacy_tables["user"]
-    row = connection.execute(select(user_table.c.image).where(user_table.c.id == user_id).limit(1)).first()
+    row = connection.execute(
+        select(user_table.c.image).where(user_table.c.id == user_id).limit(1)
+    ).first()
     return str(row[0]) if row is not None else None
 
 

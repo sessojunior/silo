@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 LEGACY_OPERATIONAL_TIMEZONE = "America/Sao_Paulo"
@@ -52,16 +53,12 @@ def serialize_legacy_value(value: object) -> object:
         return str(value)
     if isinstance(value, Mapping):
         return {
-            snake_to_camel(str(key)): serialize_legacy_value(item)
-            for key, item in value.items()
+            snake_to_camel(str(key)): serialize_legacy_value(item) for key, item in value.items()
         }
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         return [serialize_legacy_value(item) for item in value]
     return value
 
 
-def serialize_legacy_row(row: Mapping[str, object]) -> dict[str, object]:
-    return {
-        snake_to_camel(str(key)): serialize_legacy_value(value)
-        for key, value in row.items()
-    }
+def serialize_legacy_row(row: Mapping[Any, object]) -> dict[str, object]:
+    return {snake_to_camel(str(key)): serialize_legacy_value(value) for key, value in row.items()}

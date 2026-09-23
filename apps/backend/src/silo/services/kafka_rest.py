@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import httpx
-import secrets
 
 JSON_V2 = "application/vnd.kafka.v2+json"
 JSON_RECORDS = "application/vnd.kafka.json.v2+json"
@@ -75,9 +75,15 @@ class KafkaRestClient:
         )
         data = _json_object(response)
         instance_id = str(data.get("instance_id") or data.get("instanceId") or name)
-        base_uri = str(data.get("base_uri") or data.get("baseUri") or f"/consumers/{group_id}/instances/{instance_id}")
+        base_uri = str(
+            data.get("base_uri")
+            or data.get("baseUri")
+            or f"/consumers/{group_id}/instances/{instance_id}"
+        )
         absolute_base_uri = _absolute_url(base_url, base_uri)
-        return RestConsumerInstance(group_id=group_id, instance_id=instance_id, base_uri=absolute_base_uri)
+        return RestConsumerInstance(
+            group_id=group_id, instance_id=instance_id, base_uri=absolute_base_uri
+        )
 
     async def subscribe_rest(self, instance: RestConsumerInstance, topics: list[str]) -> None:
         await self._request(
@@ -87,7 +93,9 @@ class KafkaRestClient:
             json={"topics": topics},
         )
 
-    async def fetch_records_rest(self, instance: RestConsumerInstance, timeout_ms: int = 10_000) -> list[dict[str, Any]]:
+    async def fetch_records_rest(
+        self, instance: RestConsumerInstance, timeout_ms: int = 10_000
+    ) -> list[dict[str, Any]]:
         response = await self._request(
             "GET",
             f"{instance.base_uri}/records?timeout={timeout_ms}",
@@ -112,7 +120,9 @@ class KafkaRestClient:
             )
         return records
 
-    async def commit_offsets_rest(self, instance: RestConsumerInstance, offsets: list[dict[str, Any]]) -> None:
+    async def commit_offsets_rest(
+        self, instance: RestConsumerInstance, offsets: list[dict[str, Any]]
+    ) -> None:
         await self._request(
             "POST",
             f"{instance.base_uri}/offsets",

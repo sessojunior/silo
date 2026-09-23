@@ -29,7 +29,7 @@ default:
       - .npm/
   before_script:
     - npm config set cache "$CI_PROJECT_DIR/.npm" --global
-    - cd apps/frontend && npm ci --prefer-offline --no-audit && cd "$CI_PROJECT_DIR"
+    - npm ci --include=dev --legacy-peer-deps --prefer-offline --no-audit
 
 validate:node:
   stage: validate
@@ -76,7 +76,7 @@ security:scan:
   before_script:
     - apk add --no-cache nodejs npm
     - npm config set cache "$CI_PROJECT_DIR/.npm" --global
-    - cd apps/frontend && npm ci --prefer-offline --no-audit && cd "$CI_PROJECT_DIR"
+    - npm ci --include=dev --legacy-peer-deps --prefer-offline --no-audit
     - uv --version
   script:
     - node scripts/security/check-node-audit.mjs

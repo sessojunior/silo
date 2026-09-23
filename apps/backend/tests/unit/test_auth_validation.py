@@ -6,13 +6,13 @@ from pathlib import Path
 import pytest
 
 from silo.auth.validation import (
-    AuthInputError,
     ALLOWED_DOMAIN_ERROR,
     EMAIL_ERROR,
     NAME_ERROR,
     OTP_CODE_ERROR,
     PLAIN_PASSWORD_ERROR,
     STRONG_PASSWORD_ERROR,
+    AuthInputError,
     _camel_to_snake_bool,
     _expected_boolean_message,
     _expected_string_message,
@@ -87,7 +87,9 @@ def test_auth_validation_helpers_cover_messages_and_boolean_branches() -> None:
     assert _expected_boolean_message("string") == "Invalid input: expected boolean, received string"
     assert _public_field_to_python_key("autoSignIn") == "auto_sign_in"
     assert _public_field_to_python_key("email") == "email"
-    assert _camel_to_snake_bool({"autoSignIn": True, "email": "x"}, "autoSignIn", "auto_sign_in") == {
+    assert _camel_to_snake_bool(
+        {"autoSignIn": True, "email": "x"}, "autoSignIn", "auto_sign_in"
+    ) == {
         "auto_sign_in": True,
         "email": "x",
     }

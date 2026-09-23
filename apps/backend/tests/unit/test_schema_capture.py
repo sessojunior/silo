@@ -118,7 +118,11 @@ def test_schema_capture_metadata_roundtrip_covers_json_safety_and_fingerprints(
         "aware_datetime": datetime(2026, 7, 23, 12, 0, tzinfo=UTC),
         "naive_datetime": datetime(2026, 7, 23, 12, 0),
         "date_value": date(2026, 7, 23),
-        "list_value": [1, Decimal("4.56"), {"nested": UUID("87654321-4321-6789-4321-678987654321")}],
+        "list_value": [
+            1,
+            Decimal("4.56"),
+            {"nested": UUID("87654321-4321-6789-4321-678987654321")},
+        ],
         "tuple_value": ("a", "b"),
         "mapping_value": {"nested": Decimal("7.89")},
         "custom_value": object(),
@@ -258,13 +262,14 @@ def test_schema_capture_metadata_roundtrip_covers_json_safety_and_fingerprints(
 
 
 def test_schema_capture_database_url_environment_lookup_prefers_values_in_order() -> None:
-    assert schema_capture._database_url_from_environment(  # noqa: SLF001
-        {"DATABASE_URL": "postgresql://dev"}
-    ) == "postgresql://dev"
-    assert schema_capture._utc_now_iso().endswith("Z")  # noqa: SLF001
+    assert (
+        schema_capture._database_url_from_environment({"DATABASE_URL": "postgresql://dev"})
+        == "postgresql://dev"
+    )
+    assert schema_capture._utc_now_iso().endswith("Z")
 
     with pytest.raises(RuntimeError, match="DATABASE_URL ausente"):
-        schema_capture._database_url_from_environment({})  # noqa: SLF001
+        schema_capture._database_url_from_environment({})
 
 
 def test_schema_capture_runs_against_local_database_when_configured() -> None:
@@ -312,7 +317,10 @@ def test_schema_capture_main_uses_environment_database_url(
 
     output = capsys.readouterr().out
     assert captured["database_url"] == "postgresql://user:pass@db/silo"
-    assert '"fingerprintSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' in output
+    assert (
+        '"fingerprintSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"'
+        in output
+    )
 
 
 class _FakeResult:

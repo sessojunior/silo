@@ -6,6 +6,7 @@ from fastapi import Body, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
+from silo.api import handlers as api_handlers
 from silo.api.errors import (
     ConflictError,
     ForbiddenError,
@@ -14,9 +15,13 @@ from silo.api.errors import (
     RateLimitedError,
     UnauthenticatedError,
 )
-from silo.api import handlers as api_handlers
 from silo.api.handlers import register_exception_handlers
-from silo.services.common import is_service_error, service_error_response, service_failure, service_success
+from silo.services.common import (
+    is_service_error,
+    service_error_response,
+    service_failure,
+    service_success,
+)
 
 
 class ValidationPayload(BaseModel):
@@ -145,16 +150,31 @@ def test_http_exception_and_internal_error_handlers_are_normalized() -> None:
 
 
 def test_api_handler_and_common_helpers_cover_remaining_branches() -> None:
-    assert api_handlers._coerce_api_error(RuntimeError("boom")).status_code == 500  # noqa: SLF001
-    assert api_handlers._coerce_request_validation_error(RuntimeError("boom")).status_code == 400  # noqa: SLF001
-    assert api_handlers._coerce_http_exception(RuntimeError("boom")).status_code == 500  # noqa: SLF001
-    assert api_handlers._coerce_http_exception(HTTPException(status_code=400, detail="")).error == "Dados inválidos."  # noqa: SLF001
-    assert api_handlers._coerce_http_exception(HTTPException(status_code=401, detail="")).error == "Usuário não autenticado."  # noqa: SLF001
-    assert api_handlers._coerce_http_exception(HTTPException(status_code=409, detail="")).error == "Conflito ao processar requisição."  # noqa: SLF001
-    assert api_handlers._coerce_http_exception(HTTPException(status_code=503, detail="")).error == "Serviço temporariamente indisponível."  # noqa: SLF001
-    assert api_handlers._coerce_http_exception(HTTPException(status_code=418, detail="")).error == "Requisição inválida."  # noqa: SLF001
-    assert api_handlers._field_from_validation_errors([]) is None  # noqa: SLF001
-    assert api_handlers._field_from_validation_errors([{"loc": "bad"}]) is None  # noqa: SLF001
+    assert api_handlers._coerce_api_error(RuntimeError("boom")).status_code == 500
+    assert api_handlers._coerce_request_validation_error(RuntimeError("boom")).status_code == 400
+    assert api_handlers._coerce_http_exception(RuntimeError("boom")).status_code == 500
+    assert (
+        api_handlers._coerce_http_exception(HTTPException(status_code=400, detail="")).error
+        == "Dados inválidos."
+    )
+    assert (
+        api_handlers._coerce_http_exception(HTTPException(status_code=401, detail="")).error
+        == "Usuário não autenticado."
+    )
+    assert (
+        api_handlers._coerce_http_exception(HTTPException(status_code=409, detail="")).error
+        == "Conflito ao processar requisição."
+    )
+    assert (
+        api_handlers._coerce_http_exception(HTTPException(status_code=503, detail="")).error
+        == "Serviço temporariamente indisponível."
+    )
+    assert (
+        api_handlers._coerce_http_exception(HTTPException(status_code=418, detail="")).error
+        == "Requisição inválida."
+    )
+    assert api_handlers._field_from_validation_errors([]) is None
+    assert api_handlers._field_from_validation_errors([{"loc": "bad"}]) is None
 
     assert service_success({"id": "item-1"}) == {"ok": True, "data": {"id": "item-1"}}
     assert service_success({"id": "item-1"}, message="ok") == {

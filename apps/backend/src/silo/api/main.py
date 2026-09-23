@@ -38,8 +38,8 @@ from silo.api.routers.tasks import router as tasks_router
 from silo.api.routers.upload import router as upload_router
 from silo.api.routers.users import router as users_router
 from silo.clock import SYSTEM_CLOCK, ensure_utc
-from silo.domain.model_run_status import validate_model_run_status_semantics_contract
 from silo.config import Settings, SettingsLoadError, SiloEnvironment, load_settings
+from silo.domain.model_run_status import validate_model_run_status_semantics_contract
 from silo.realtime.chat import ChatRealtimeHub
 
 APP_TITLE = "SILO API"

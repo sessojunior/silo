@@ -61,7 +61,9 @@ async def test_embedding_write_covers_success_paths(monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.asyncio
-async def test_embedding_write_swallow_errors_without_raising(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_embedding_write_swallow_errors_without_raising(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async def fake_generate_embedding(_text: str) -> tuple[float, ...]:
         raise RuntimeError("boom")
 
@@ -78,4 +80,3 @@ async def test_embedding_write_swallow_errors_without_raising(monkeypatch: pytes
     await embedding_write.upsert_solution_embedding("solution-1", "Descricao")
     await embedding_write.upsert_help_embedding("Descricao")
     await embedding_write.upsert_manual_chunks("manual-1", "product-1", "# Manual")
-

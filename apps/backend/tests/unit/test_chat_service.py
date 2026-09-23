@@ -4,10 +4,19 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import Boolean, Column, DateTime, MetaData, String, Table, create_engine, insert, select
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    insert,
+    select,
+)
 
 from silo.services import chat_service
-
 
 FIXED_NOW = datetime(2026, 7, 23, 12, 0, 0)
 
@@ -61,10 +70,34 @@ def _seed_chat_data(connection, tables: dict[str, Table]) -> None:  # type: igno
     connection.execute(
         insert(tables["user"]),
         [
-            {"id": "user-1", "name": "User One", "email": "user1@example.test", "image": None, "is_active": True},
-            {"id": "user-2", "name": "User Two", "email": "user2@example.test", "image": None, "is_active": True},
-            {"id": "user-3", "name": "User Three", "email": "user3@example.test", "image": None, "is_active": True},
-            {"id": "user-4", "name": "User Four", "email": "user4@example.test", "image": None, "is_active": False},
+            {
+                "id": "user-1",
+                "name": "User One",
+                "email": "user1@example.test",
+                "image": None,
+                "is_active": True,
+            },
+            {
+                "id": "user-2",
+                "name": "User Two",
+                "email": "user2@example.test",
+                "image": None,
+                "is_active": True,
+            },
+            {
+                "id": "user-3",
+                "name": "User Three",
+                "email": "user3@example.test",
+                "image": None,
+                "is_active": True,
+            },
+            {
+                "id": "user-4",
+                "name": "User Four",
+                "email": "user4@example.test",
+                "image": None,
+                "is_active": False,
+            },
         ],
     )
     connection.execute(
@@ -261,14 +294,18 @@ def chat_db(tmp_path, monkeypatch):
         engine.dispose()
 
 
-def test_chat_service_listing_presence_sidebar_and_timestamp_helpers(chat_db, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_chat_service_listing_presence_sidebar_and_timestamp_helpers(
+    chat_db, monkeypatch: pytest.MonkeyPatch
+) -> None:
     connection, tables = chat_db
     del tables
 
     with pytest.raises(chat_service.ChatServiceError):
         chat_service.list_messages(connection, "user-1", None, None)
 
-    group_offset = chat_service.list_messages(connection, "user-1", "group-1", None, limit=1, page=2)
+    group_offset = chat_service.list_messages(
+        connection, "user-1", "group-1", None, limit=1, page=2
+    )
     assert group_offset["count"] == 1
     assert group_offset["messages"][0]["id"] == "group-unread-1"
 
@@ -345,12 +382,20 @@ def test_chat_service_listing_presence_sidebar_and_timestamp_helpers(chat_db, mo
     assert [row["id"] for row in sidebar["users"]] == ["user-2", "user-1", "user-3"]
     assert sidebar["users"][0]["presence_status"] == chat_service.CHAT_PRESENCE_VISIBLE
 
-    assert chat_service.update_presence(connection, "user-4", chat_service.CHAT_PRESENCE_VISIBLE)["status"] == chat_service.CHAT_PRESENCE_VISIBLE
-    assert chat_service.update_presence(
-        connection,
-        "user-4",
-        chat_service.CHAT_PRESENCE_INVISIBLE,
-    )["status"] == chat_service.CHAT_PRESENCE_INVISIBLE
+    assert (
+        chat_service.update_presence(connection, "user-4", chat_service.CHAT_PRESENCE_VISIBLE)[
+            "status"
+        ]
+        == chat_service.CHAT_PRESENCE_VISIBLE
+    )
+    assert (
+        chat_service.update_presence(
+            connection,
+            "user-4",
+            chat_service.CHAT_PRESENCE_INVISIBLE,
+        )["status"]
+        == chat_service.CHAT_PRESENCE_INVISIBLE
+    )
     with pytest.raises(chat_service.ChatServiceError):
         chat_service.update_presence(connection, "user-4", "away")
 
@@ -373,11 +418,20 @@ def test_chat_service_listing_presence_sidebar_and_timestamp_helpers(chat_db, mo
     presence_rows = chat_service.get_presence_all(connection)
     assert {row["user_id"] for row in presence_rows} >= {"user-1", "user-2", "user-3"}
 
-    assert chat_service.get_chat_status_response("user-1", "user1@example.test", "enabled")["status"] == "enabled"
+    assert (
+        chat_service.get_chat_status_response("user-1", "user1@example.test", "enabled")["status"]
+        == "enabled"
+    )
     assert chat_service.get_now_timestamp(datetime(2026, 7, 23, 1, 2, 3)) == "7/23/2026, 1:02:03 AM"
-    assert chat_service.get_now_timestamp(datetime(2026, 7, 23, 13, 2, 3)) == "7/23/2026, 1:02:03 PM"
-    assert chat_service._parse_legacy_timestamp("2026-07-23T12:00:00Z") == datetime(2026, 7, 23, 9, 0)
-    assert chat_service._parse_legacy_timestamp("2026-07-23T12:00:00") == datetime(2026, 7, 23, 12, 0)
+    assert (
+        chat_service.get_now_timestamp(datetime(2026, 7, 23, 13, 2, 3)) == "7/23/2026, 1:02:03 PM"
+    )
+    assert chat_service._parse_legacy_timestamp("2026-07-23T12:00:00Z") == datetime(
+        2026, 7, 23, 9, 0
+    )
+    assert chat_service._parse_legacy_timestamp("2026-07-23T12:00:00") == datetime(
+        2026, 7, 23, 12, 0
+    )
     sort_key = chat_service._sort_last_message_at(datetime(2026, 7, 23, 12, 0))
     assert sort_key[0] == 0
     assert sort_key[1] < 0
@@ -403,7 +457,9 @@ def test_chat_service_listing_presence_sidebar_and_timestamp_helpers(chat_db, mo
         )
 
 
-def test_chat_service_create_message_validation_and_success(chat_db, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_chat_service_create_message_validation_and_success(
+    chat_db, monkeypatch: pytest.MonkeyPatch
+) -> None:
     connection, tables = chat_db
 
     message_ids = iter(["message-created-1", "message-created-2"])
@@ -412,9 +468,16 @@ def test_chat_service_create_message_validation_and_success(chat_db, monkeypatch
     with pytest.raises(chat_service.ChatServiceError):
         chat_service.create_message(connection, "user-1", "   ", receiver_group_id="group-1")
     with pytest.raises(chat_service.ChatServiceError):
-        chat_service.create_message(connection, "user-1", "X" * (chat_service.CHAT_MESSAGE_MAX_LENGTH + 1), receiver_group_id="group-1")
+        chat_service.create_message(
+            connection,
+            "user-1",
+            "X" * (chat_service.CHAT_MESSAGE_MAX_LENGTH + 1),
+            receiver_group_id="group-1",
+        )
     with pytest.raises(chat_service.ChatServiceError):
-        chat_service.create_message(connection, "user-1", "Olá", receiver_group_id="group-1", receiver_user_id="user-2")
+        chat_service.create_message(
+            connection, "user-1", "Olá", receiver_group_id="group-1", receiver_user_id="user-2"
+        )
     with pytest.raises(chat_service.ChatServiceError):
         chat_service.create_message(connection, "user-1", "Olá")
     with pytest.raises(chat_service.ChatServiceError):
@@ -472,7 +535,9 @@ def test_chat_service_read_and_delete_flows_cover_error_and_update_branches(chat
         chat_service.CHAT_CONVERSATION_TARGET_GROUP,
     )
     assert group_batch["updated_count"] == 1
-    group_marked_after_batch = chat_service.mark_message_as_read(connection, "user-1", "group-unread-1")
+    group_marked_after_batch = chat_service.mark_message_as_read(
+        connection, "user-1", "group-unread-1"
+    )
     assert group_marked_after_batch["updated_count"] == 0
 
     with pytest.raises(chat_service.ChatServiceError):

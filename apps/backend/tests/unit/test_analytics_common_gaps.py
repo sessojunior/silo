@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from silo.services.analytics_common import (
     _parse_datetime_like,
@@ -15,7 +15,7 @@ from silo.services.analytics_common import (
 
 class TestParseDatetimeLike:
     def test_parses_datetime(self) -> None:
-        dt = datetime(2026, 7, 15, 12, 0, 0, tzinfo=timezone.utc)
+        dt = datetime(2026, 7, 15, 12, 0, 0, tzinfo=UTC)
         assert _parse_datetime_like(dt) == dt
 
     def test_parses_date_converts_to_datetime(self) -> None:

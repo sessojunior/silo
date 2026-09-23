@@ -102,9 +102,7 @@ async def test_monitoring_routes_cover_validation_and_success_paths(monkeypatch)
     pages = await monitoring_router.get_picture_pages(object(), object())
     assert pages["data"]["items"][0]["id"] == "page-1"
 
-    pages_failure = _payload(
-        await monitoring_router.get_picture_pages(object(), object())
-    )
+    pages_failure = _payload(await monitoring_router.get_picture_pages(object(), object()))
     assert pages_failure["success"] is True
 
     invalid_picture_page = _payload(
@@ -151,7 +149,9 @@ async def test_monitoring_routes_cover_validation_and_success_paths(monkeypatch)
     assert updated_picture_page["success"] is True
     assert page_calls
 
-    deleted_picture_page = await monitoring_router.delete_picture_page_route("page-1", object(), object())
+    deleted_picture_page = await monitoring_router.delete_picture_page_route(
+        "page-1", object(), object()
+    )
     assert deleted_picture_page["success"] is True
 
     missing_picture_page = _payload(
@@ -186,7 +186,9 @@ async def test_monitoring_routes_cover_validation_and_success_paths(monkeypatch)
     )
     assert picture_link["success"] is True
 
-    missing_link_delete = _payload(await monitoring_router.delete_picture_link_route(None, object(), object()))
+    missing_link_delete = _payload(
+        await monitoring_router.delete_picture_link_route(None, object(), object())
+    )
     assert missing_link_delete["success"] is False
     deleted_link = await monitoring_router.delete_picture_link_route("link-1", object(), object())
     assert deleted_link["success"] is True
@@ -217,7 +219,9 @@ async def test_monitoring_routes_cover_validation_and_success_paths(monkeypatch)
         await monitoring_router.delete_radar_group_route(None, object(), object())
     )
     assert radar_group_delete_missing["success"] is False
-    radar_group_delete = await monitoring_router.delete_radar_group_route("group-1", object(), object())
+    radar_group_delete = await monitoring_router.delete_radar_group_route(
+        "group-1", object(), object()
+    )
     assert radar_group_delete["success"] is True
 
     radars = await monitoring_router.get_radars(object(), object())
@@ -252,7 +256,9 @@ async def test_monitoring_routes_cover_validation_and_success_paths(monkeypatch)
     )
     assert radar["success"] is True
 
-    radar_delete_missing = _payload(await monitoring_router.delete_radar_route(None, object(), object()))
+    radar_delete_missing = _payload(
+        await monitoring_router.delete_radar_route(None, object(), object())
+    )
     assert radar_delete_missing["success"] is False
     radar_delete = await monitoring_router.delete_radar_route("radar-1", object(), object())
     assert radar_delete["success"] is True
@@ -267,7 +273,9 @@ async def test_monitoring_routes_cover_validation_and_success_paths(monkeypatch)
     assert monitoring_products["data"]["referenceDate"] == "2026-03-06"
     assert monitoring_products["data"]["count"] == 1
 
-    monitoring_products_no_list = await monitoring_router.monitoring_products({}, SimpleNamespace(id="user-1"))
+    monitoring_products_no_list = await monitoring_router.monitoring_products(
+        {}, SimpleNamespace(id="user-1")
+    )
     assert monitoring_products_no_list["data"]["count"] == 0
 
     monkeypatch.setattr(
@@ -290,19 +298,21 @@ async def test_monitoring_routes_cover_error_and_helper_branches(monkeypatch) ->
 
     monkeypatch.setattr(monitoring_router, "new_uuid", lambda: "uuid-new")
 
-    assert monitoring_router._required_text("  texto  ") == "texto"  # noqa: SLF001
-    assert monitoring_router._required_text("   ") is None  # noqa: SLF001
-    assert monitoring_router._optional_text("  texto  ") == "texto"  # noqa: SLF001
-    assert monitoring_router._optional_text(123) is None  # noqa: SLF001
-    assert monitoring_router._optional_int("7") == 7  # noqa: SLF001
-    assert monitoring_router._optional_int(True) is None  # noqa: SLF001
-    assert monitoring_router._optional_bool("on") is True  # noqa: SLF001
-    assert monitoring_router._optional_bool("off") is False  # noqa: SLF001
-    assert monitoring_router._optional_bool(None, default=True) is True  # noqa: SLF001
+    assert monitoring_router._required_text("  texto  ") == "texto"
+    assert monitoring_router._required_text("   ") is None
+    assert monitoring_router._optional_text("  texto  ") == "texto"
+    assert monitoring_router._optional_text(123) is None
+    assert monitoring_router._optional_int("7") == 7
+    assert monitoring_router._optional_int(True) is None
+    assert monitoring_router._optional_bool("on") is True
+    assert monitoring_router._optional_bool("off") is False
+    assert monitoring_router._optional_bool(None, default=True) is True
 
-    invalid_page = monitoring_router._validate_picture_page_payload({"name": "Página 1"}, require_id=True)  # noqa: SLF001
+    invalid_page = monitoring_router._validate_picture_page_payload(
+        {"name": "Página 1"}, require_id=True
+    )
     assert isinstance(invalid_page, JSONResponse)
-    valid_page = monitoring_router._validate_picture_page_payload(  # noqa: SLF001
+    valid_page = monitoring_router._validate_picture_page_payload(
         {
             "id": "page-1",
             "slug": "page-1",
@@ -315,9 +325,9 @@ async def test_monitoring_routes_cover_error_and_helper_branches(monkeypatch) ->
     )
     assert valid_page["id"] == "page-1"
 
-    invalid_link = monitoring_router._validate_picture_link_payload({"pageId": "page-1"})  # noqa: SLF001
+    invalid_link = monitoring_router._validate_picture_link_payload({"pageId": "page-1"})
     assert isinstance(invalid_link, JSONResponse)
-    valid_link = monitoring_router._validate_picture_link_payload(  # noqa: SLF001
+    valid_link = monitoring_router._validate_picture_link_payload(
         {
             "id": "link-1",
             "pageId": "page-1",
@@ -328,16 +338,16 @@ async def test_monitoring_routes_cover_error_and_helper_branches(monkeypatch) ->
     )
     assert valid_link["name"] == "link-1"
 
-    invalid_group = monitoring_router._validate_radar_group_payload({"slug": "group-1"})  # noqa: SLF001
+    invalid_group = monitoring_router._validate_radar_group_payload({"slug": "group-1"})
     assert isinstance(invalid_group, JSONResponse)
-    valid_group = monitoring_router._validate_radar_group_payload(  # noqa: SLF001
+    valid_group = monitoring_router._validate_radar_group_payload(
         {"id": "group-1", "slug": "group-1", "name": "Grupo 1", "sortOrder": "7"}
     )
     assert valid_group["sortOrder"] == 7
 
-    invalid_radar = monitoring_router._validate_radar_payload({"slug": "radar-1"})  # noqa: SLF001
+    invalid_radar = monitoring_router._validate_radar_payload({"slug": "radar-1"})
     assert isinstance(invalid_radar, JSONResponse)
-    valid_radar = monitoring_router._validate_radar_payload(  # noqa: SLF001
+    valid_radar = monitoring_router._validate_radar_payload(
         {
             "id": "radar-1",
             "slug": "radar-1",
@@ -360,72 +370,91 @@ async def test_monitoring_routes_cover_error_and_helper_branches(monkeypatch) ->
         "create_picture_page",
         lambda _db, _payload: (_ for _ in ()).throw(RuntimeError("boom")),
     )
-    assert _body(
-        await monitoring_router.post_picture_page(
-            {
-                "slug": "page-2",
-                "name": "Página 2",
-                "url": "https://example.test/page-2",
-                "checkMode": "page",
-                "status": "ok",
-            },
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _body(
+            await monitoring_router.post_picture_page(
+                {
+                    "slug": "page-2",
+                    "name": "Página 2",
+                    "url": "https://example.test/page-2",
+                    "checkMode": "page",
+                    "status": "ok",
+                },
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
     monkeypatch.setattr(
         monitoring_router,
         "upsert_picture_page",
         lambda _db, _payload: (_ for _ in ()).throw(LookupError("Página não encontrada.")),
     )
-    assert _body(
-        await monitoring_router.put_picture_page(
-            {
-                "id": "page-2",
-                "slug": "page-2",
-                "name": "Página 2",
-                "url": "https://example.test/page-2",
-                "checkMode": "items",
-                "status": "delayed",
-            },
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _body(
+            await monitoring_router.put_picture_page(
+                {
+                    "id": "page-2",
+                    "slug": "page-2",
+                    "name": "Página 2",
+                    "url": "https://example.test/page-2",
+                    "checkMode": "items",
+                    "status": "delayed",
+                },
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
     monkeypatch.setattr(
         monitoring_router,
         "delete_picture_page",
         lambda _db, _id: (_ for _ in ()).throw(RuntimeError("boom")),
     )
-    assert _body(await monitoring_router.delete_picture_page_route("page-1", object(), object()))["success"] is False
+    assert (
+        _body(await monitoring_router.delete_picture_page_route("page-1", object(), object()))[
+            "success"
+        ]
+        is False
+    )
 
     monkeypatch.setattr(
         monitoring_router,
         "upsert_picture_link",
         lambda _db, _payload: (_ for _ in ()).throw(ValueError("Link inválido.")),
     )
-    assert _body(
-        await monitoring_router.put_picture_link(
-            {
-                "id": "link-2",
-                "pageId": "page-1",
-                "slug": "link-2",
-                "url": "https://example.test/link-2",
-                "status": "ok",
-            },
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _body(
+            await monitoring_router.put_picture_link(
+                {
+                    "id": "link-2",
+                    "pageId": "page-1",
+                    "slug": "link-2",
+                    "url": "https://example.test/link-2",
+                    "status": "ok",
+                },
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
     monkeypatch.setattr(
         monitoring_router,
         "delete_picture_link",
         lambda _db, _id: (_ for _ in ()).throw(RuntimeError("boom")),
     )
-    assert _body(await monitoring_router.delete_picture_link_route("link-1", object(), object()))["success"] is False
+    assert (
+        _body(await monitoring_router.delete_picture_link_route("link-1", object(), object()))[
+            "success"
+        ]
+        is False
+    )
 
     monkeypatch.setattr(
         monitoring_router,
@@ -439,20 +468,28 @@ async def test_monitoring_routes_cover_error_and_helper_branches(monkeypatch) ->
         "upsert_radar_group",
         lambda _db, _payload: (_ for _ in ()).throw(RuntimeError("boom")),
     )
-    assert _body(
-        await monitoring_router.post_radar_group(
-            {"slug": "group-2", "name": "Grupo 2"},
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _body(
+            await monitoring_router.post_radar_group(
+                {"slug": "group-2", "name": "Grupo 2"},
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
     monkeypatch.setattr(
         monitoring_router,
         "delete_radar_group",
         lambda _db, _id: (_ for _ in ()).throw(LookupError("Grupo não encontrado.")),
     )
-    assert _body(await monitoring_router.delete_radar_group_route("group-1", object(), object()))["success"] is False
+    assert (
+        _body(await monitoring_router.delete_radar_group_route("group-1", object(), object()))[
+            "success"
+        ]
+        is False
+    )
 
     monkeypatch.setattr(
         monitoring_router,
@@ -466,22 +503,28 @@ async def test_monitoring_routes_cover_error_and_helper_branches(monkeypatch) ->
         "upsert_radar",
         lambda _db, _payload: (_ for _ in ()).throw(ValueError("Radar inválido.")),
     )
-    assert _body(
-        await monitoring_router.put_radar(
-            {
-                "id": "radar-2",
-                "slug": "radar-2",
-                "groupId": "group-1",
-                "name": "Radar 2",
-            },
-            object(),
-            object(),
-        )
-    )["success"] is False
+    assert (
+        _body(
+            await monitoring_router.put_radar(
+                {
+                    "id": "radar-2",
+                    "slug": "radar-2",
+                    "groupId": "group-1",
+                    "name": "Radar 2",
+                },
+                object(),
+                object(),
+            )
+        )["success"]
+        is False
+    )
 
     monkeypatch.setattr(
         monitoring_router,
         "delete_radar",
         lambda _db, _id: (_ for _ in ()).throw(RuntimeError("boom")),
     )
-    assert _body(await monitoring_router.delete_radar_route("radar-1", object(), object()))["success"] is False
+    assert (
+        _body(await monitoring_router.delete_radar_route("radar-1", object(), object()))["success"]
+        is False
+    )

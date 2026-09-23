@@ -5,18 +5,17 @@ import hashlib
 import json
 import re
 import uuid
-from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, MutableMapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any, Generic, Literal, TypedDict, TypeVar
 
 from sqlalchemy.engine import Connection
 
 from silo.ai.assistant_contracts import AiAssistantScope
 from silo.ai.ports import ChatModelRuntime, EmbeddingPort
-from silo.clock import Clock, SYSTEM_CLOCK
-from silo.config import Settings
 from silo.api.dependencies import CurrentUser
+from silo.clock import SYSTEM_CLOCK, Clock
+from silo.config import Settings
 
 T = TypeVar("T")
 
@@ -41,7 +40,9 @@ class ToolResult(Generic[T]):
     citations: tuple[str, ...] = ()
 
     @classmethod
-    def success(cls, value: T, *, warnings: Sequence[str] = (), citations: Sequence[str] = ()) -> ToolResult[T]:
+    def success(
+        cls, value: T, *, warnings: Sequence[str] = (), citations: Sequence[str] = ()
+    ) -> ToolResult[T]:
         return cls(ok=True, value=value, warnings=tuple(warnings), citations=tuple(citations))
 
     @classmethod

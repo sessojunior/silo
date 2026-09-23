@@ -97,6 +97,7 @@ async def test_upload_router_covers_multipart_errors_and_success(
         "parse_multipart_form",
         _return_form_with_upload,
     )
+
     async def _read_too_large(*args: object, **kwargs: object) -> bytes | None:
         del args, kwargs
         return None
@@ -111,7 +112,9 @@ async def test_upload_router_covers_multipart_errors_and_success(
     assert "Arquivo muito grande" in _payload(too_large)["error"]
 
     monkeypatch.setattr(upload_router, "read_upload_bytes", _noop_read_upload_bytes)
-    monkeypatch.setattr(upload_router, "store_buffer_as_webp", lambda *_args, **_kwargs: {"error": "boom"})
+    monkeypatch.setattr(
+        upload_router, "store_buffer_as_webp", lambda *_args, **_kwargs: {"error": "boom"}
+    )
     storage_error = await upload_router.upload_file(
         kind="avatars",
         request=request,
@@ -147,13 +150,19 @@ async def test_upload_router_serve_and_delete_routes_cover_success_and_not_found
     file_path.write_bytes(b"data")
 
     monkeypatch.setattr(upload_router, "is_upload_kind", lambda kind: kind == "avatars")
-    monkeypatch.setattr(upload_router, "is_safe_filename", lambda filename: filename == "avatar.webp")
+    monkeypatch.setattr(
+        upload_router, "is_safe_filename", lambda filename: filename == "avatar.webp"
+    )
     monkeypatch.setattr(
         upload_router,
         "resolve_upload_path",
-        lambda kind, filename: file_path if (kind, filename) == ("avatars", "avatar.webp") else None,
+        lambda kind, filename: (
+            file_path if (kind, filename) == ("avatars", "avatar.webp") else None
+        ),
     )
-    monkeypatch.setattr(upload_router, "get_content_type_from_filename", lambda _filename: "image/webp")
+    monkeypatch.setattr(
+        upload_router, "get_content_type_from_filename", lambda _filename: "image/webp"
+    )
     monkeypatch.setattr(upload_router, "delete_upload_file", lambda *_args, **_kwargs: True)
 
     served = await upload_router.serve_upload(
@@ -167,7 +176,9 @@ async def test_upload_router_serve_and_delete_routes_cover_success_and_not_found
     monkeypatch.setattr(
         upload_router,
         "resolve_upload_path",
-        lambda kind, filename: missing_path if (kind, filename) == ("avatars", "missing.webp") else None,
+        lambda kind, filename: (
+            missing_path if (kind, filename) == ("avatars", "missing.webp") else None
+        ),
     )
     served_missing = await upload_router.serve_upload(
         kind="avatars",
@@ -180,9 +191,11 @@ async def test_upload_router_serve_and_delete_routes_cover_success_and_not_found
     monkeypatch.setattr(
         upload_router,
         "resolve_upload_path",
-        lambda kind, filename: file_path
-        if (kind, filename) == ("avatars", "avatar.webp")
-        else (missing_path if (kind, filename) == ("avatars", "missing.webp") else None),
+        lambda kind, filename: (
+            file_path
+            if (kind, filename) == ("avatars", "avatar.webp")
+            else (missing_path if (kind, filename) == ("avatars", "missing.webp") else None)
+        ),
     )
 
     deleted = await upload_router.delete_upload(

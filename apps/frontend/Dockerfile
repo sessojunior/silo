@@ -10,7 +10,12 @@ COPY packages/engine/package.json packages/engine/
 COPY packages/engine/src/ packages/engine/src/
 COPY packages/config/package.json packages/config/
 COPY packages/config/ packages/config/
-RUN npm ci --legacy-peer-deps --install-strategy=nested
+# Keep npm's hoisted layout so platform-specific optional packages (including
+# Tailwind's native oxide binding) are installed where the build can resolve them.
+RUN npm ci --legacy-peer-deps --include=optional
+# The lockfile was generated on Windows and therefore records only the Windows
+# Tailwind optional binary. Install Alpine's musl binary explicitly for Docker.
+RUN npm install --no-save --legacy-peer-deps @tailwindcss/oxide-linux-x64-musl@4.3.3
 
 # ─── Build ───────────────────────────────────────────────────────────────────
 FROM deps AS builder

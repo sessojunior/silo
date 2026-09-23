@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass
 
 import pytest
@@ -51,10 +50,13 @@ def test_check_database_ready_sync_accepts_expected_heads(monkeypatch: pytest.Mo
     engine = _FakeEngine([(EXPECTED_ALEMBIC_HEADS[0],)])
     monkeypatch.setattr(db_health, "create_engine", lambda *args, **kwargs: engine)
 
-    db_health._check_database_ready_sync("postgresql://example.test/silo")  # noqa: SLF001
+    db_health._check_database_ready_sync("postgresql://example.test/silo")
 
     assert engine.disposed is True
-    assert any("select version_num from alembic_version" in statement.lower() for statement in engine.connection.statements)
+    assert any(
+        "select version_num from alembic_version" in statement.lower()
+        for statement in engine.connection.statements
+    )
 
 
 def test_check_database_ready_sync_rejects_schema_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -62,7 +64,7 @@ def test_check_database_ready_sync_rejects_schema_mismatch(monkeypatch: pytest.M
     monkeypatch.setattr(db_health, "create_engine", lambda *args, **kwargs: engine)
 
     with pytest.raises(RuntimeError, match="schema is not at expected Alembic head"):
-        db_health._check_database_ready_sync("postgresql://example.test/silo")  # noqa: SLF001
+        db_health._check_database_ready_sync("postgresql://example.test/silo")
 
     assert engine.disposed is True
 
@@ -79,4 +81,3 @@ async def test_check_database_ready_wraps_sync_helper(monkeypatch: pytest.Monkey
     await db_health.check_database_ready("postgresql://example.test/silo")
 
     assert recorded == [("_check_database_ready_sync", "postgresql://example.test/silo")]
-

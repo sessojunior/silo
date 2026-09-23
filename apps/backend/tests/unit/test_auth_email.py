@@ -177,7 +177,7 @@ def test_smtp_otp_sender_covers_starttls_and_ssl_branches(
     )
     template = render_otp_email(otp="123456", purpose=OtpPurpose.SIGN_IN)
 
-    email_module._send_smtp(  # noqa: SLF001
+    email_module._send_smtp(
         settings=smtp_settings,
         recipient="recipient@example.test",
         template=template,
@@ -187,9 +187,9 @@ def test_smtp_otp_sender_covers_starttls_and_ssl_branches(
     assert smtp_instances[0].login_args == ("sender@example.test", "smtp-secret")
     assert smtp_instances[0].messages
     assert smtp_instances[0].messages[0]["To"] == "recipient@example.test"
-    assert email_module._should_starttls(smtp_settings) is True  # noqa: SLF001
+    assert email_module._should_starttls(smtp_settings) is True
     assert (
-        email_module._should_starttls(  # noqa: SLF001
+        email_module._should_starttls(
             _build_settings(
                 SMTP_HOST="localhost",
                 SMTP_PORT="587",
@@ -199,7 +199,7 @@ def test_smtp_otp_sender_covers_starttls_and_ssl_branches(
         is False
     )
     assert (
-        email_module._should_starttls(  # noqa: SLF001
+        email_module._should_starttls(
             _build_settings(
                 SMTP_HOST="smtp.example.com",
                 SMTP_PORT="465",
@@ -221,7 +221,7 @@ def test_smtp_otp_sender_covers_starttls_and_ssl_branches(
         GOOGLE_CLIENT_ID="google-client-id",
         GOOGLE_CLIENT_SECRET="google-client-secret",
     )
-    email_module._send_smtp(  # noqa: SLF001
+    email_module._send_smtp(
         settings=secure_settings,
         recipient="secure@example.test",
         template=template,

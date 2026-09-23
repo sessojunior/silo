@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime
-from typing import Any
+from typing import Any, TypedDict
 
-from sqlalchemy import and_, delete, desc, insert, or_, select, update
-from sqlalchemy.engine import Connection
+from sqlalchemy import delete, insert, select, update
+from sqlalchemy.engine import Connection, RowMapping
 
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
 from silo.domain.model_run_status import normalize_model_run_status
 from silo.domain.scheduling import SHIFT_CODES
-from silo.services.legacy_utils import new_uuid, normalize_turn_list, optional_str, now_naive
+from silo.services.legacy_utils import normalize_turn_list, now_naive, optional_str
 
 SEED_MONITORING_PRODUCTS: tuple[dict[str, Any], ...] = (
     {
@@ -71,6 +72,15 @@ SEED_MONITORING_PRODUCTS: tuple[dict[str, Any], ...] = (
     },
 )
 
+
+class MonitoringProduct(TypedDict):
+    id: str
+    slug: str
+    name: str
+    description: str | None
+    turns: list[str]
+
+
 ALLOWED_PICTURE_CHECK_MODES = {"page", "items"}
 ALLOWED_PICTURE_STATUSES = {"ok", "delayed", "offline", "undefined"}
 ALLOWED_RADAR_STATUSES = {"ok", "delayed", "undefined", "off"}
@@ -91,10 +101,16 @@ def list_picture_pages(connection: Connection) -> list[dict[str, object]]:
     page_table = legacy_tables["picture_page"]
     link_table = legacy_tables["picture_link"]
 
-    pages = connection.execute(select(page_table).order_by(page_table.c.name.asc())).mappings().all()
-    links = connection.execute(
-        select(link_table).order_by(link_table.c.page_id.asc(), link_table.c.created_at.asc())
-    ).mappings().all()
+    pages = (
+        connection.execute(select(page_table).order_by(page_table.c.name.asc())).mappings().all()
+    )
+    links = (
+        connection.execute(
+            select(link_table).order_by(link_table.c.page_id.asc(), link_table.c.created_at.asc())
+        )
+        .mappings()
+        .all()
+    )
 
     links_by_page: dict[str, list[dict[str, object]]] = defaultdict(list)
     for link in links:
@@ -149,9 +165,7 @@ def create_picture_page(connection: Connection, data: dict[str, object]) -> dict
     if existing is None:
         connection.execute(insert(page_table).values(row))
     else:
-        connection.execute(
-            update(page_table).where(page_table.c.id == page_id).values(**row)
-        )
+        connection.execute(update(page_table).where(page_table.c.id == page_id).values(**row))
     connection.commit()
     return {"id": page_id}
 
@@ -163,9 +177,11 @@ def upsert_picture_page(connection: Connection, data: dict[str, object]) -> None
         raise ValueError("ID é obrigatório.")
 
     payload = _normalize_picture_page_payload(data, preserve_status=True)
-    existing = connection.execute(
-        select(page_table).where(page_table.c.id == page_id).limit(1)
-    ).mappings().first()
+    existing = (
+        connection.execute(select(page_table).where(page_table.c.id == page_id).limit(1))
+        .mappings()
+        .first()
+    )
     if existing is None:
         connection.execute(
             insert(page_table).values(
@@ -237,9 +253,7 @@ def upsert_picture_link(connection: Connection, data: dict[str, object]) -> None
     if existing is None:
         connection.execute(insert(link_table).values(row))
     else:
-        connection.execute(
-            update(link_table).where(link_table.c.id == link_id).values(**row)
-        )
+        connection.execute(update(link_table).where(link_table.c.id == link_id).values(**row))
     connection.commit()
 
 
@@ -251,9 +265,11 @@ def delete_picture_link(connection: Connection, link_id: str) -> None:
 
 def list_radar_groups(connection: Connection) -> list[dict[str, object]]:
     table = legacy_tables["radar_group"]
-    rows = connection.execute(
-        select(table).order_by(table.c.sort_order.asc(), table.c.name.asc())
-    ).mappings().all()
+    rows = (
+        connection.execute(select(table).order_by(table.c.sort_order.asc(), table.c.name.asc()))
+        .mappings()
+        .all()
+    )
     return [serialize_legacy_row(row) for row in rows]
 
 
@@ -298,9 +314,11 @@ def delete_radar_group(connection: Connection, group_id: str) -> None:
 
 def list_radars(connection: Connection) -> list[dict[str, object]]:
     table = legacy_tables["radar"]
-    rows = connection.execute(
-        select(table).order_by(table.c.group_id.asc(), table.c.name.asc())
-    ).mappings().all()
+    rows = (
+        connection.execute(select(table).order_by(table.c.group_id.asc(), table.c.name.asc()))
+        .mappings()
+        .all()
+    )
     result: list[dict[str, object]] = []
     for row in rows:
         serialized = serialize_legacy_row(row)
@@ -348,9 +366,7 @@ def upsert_radar(connection: Connection, data: dict[str, object]) -> None:
     if existing is None:
         connection.execute(insert(table).values(row))
     else:
-        connection.execute(
-            update(table).where(table.c.id == radar_id).values(**row)
-        )
+        connection.execute(update(table).where(table.c.id == radar_id).values(**row))
     connection.commit()
 
 
@@ -377,13 +393,19 @@ def get_monitoring_products(
     }
 
     if active_by_slug:
-        products = connection.execute(
-            select(product_table).where(product_table.c.slug.in_(tuple(active_by_slug.keys())))
-        ).mappings().all()
+        products = (
+            connection.execute(
+                select(product_table).where(product_table.c.slug.in_(tuple(active_by_slug.keys())))
+            )
+            .mappings()
+            .all()
+        )
     else:
-        products = connection.execute(
-            select(product_table).where(product_table.c.available.is_(True))
-        ).mappings().all()
+        products = (
+            connection.execute(select(product_table).where(product_table.c.available.is_(True)))
+            .mappings()
+            .all()
+        )
 
     if not products:
         return {
@@ -391,32 +413,36 @@ def get_monitoring_products(
             "products": _build_seed_monitoring_products(active_by_slug),
         }
 
-    selected_products = []
+    selected_products: list[MonitoringProduct] = []
     for product_row in products:
         slug = str(product_row["slug"])
         selected_products.append(
-                {
-                    "id": str(product_row["id"]),
-                    "slug": slug,
-                    "name": active_by_slug.get(slug, {}).get("name", str(product_row["name"])),
-                    "description": optional_str(product_row.get("description")),
-                    "turns": normalize_turn_list(product_row.get("turns"), SHIFT_CODES),
-                }
-            )
+            {
+                "id": str(product_row["id"]),
+                "slug": slug,
+                "name": active_by_slug.get(slug, {}).get("name", str(product_row["name"])),
+                "description": optional_str(product_row.get("description")),
+                "turns": normalize_turn_list(product_row.get("turns"), SHIFT_CODES),
+            }
+        )
 
     product_ids = [item["id"] for item in selected_products]
-    activity_rows = []
+    activity_rows: Sequence[RowMapping] = []
     if product_ids:
-        activity_rows = connection.execute(
-            select(activity_table)
-            .where(activity_table.c.product_id.in_(tuple(product_ids)))
-            .order_by(
-                activity_table.c.product_id.asc(),
-                activity_table.c.date.asc(),
-                activity_table.c.turn.asc(),
-                activity_table.c.created_at.asc(),
+        activity_rows = (
+            connection.execute(
+                select(activity_table)
+                .where(activity_table.c.product_id.in_(tuple(product_ids)))
+                .order_by(
+                    activity_table.c.product_id.asc(),
+                    activity_table.c.date.asc(),
+                    activity_table.c.turn.asc(),
+                    activity_table.c.created_at.asc(),
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
 
     reference_date = _latest_activity_date(activity_rows) or _today_text()
     activity_by_product_turn: dict[tuple[str, str], dict[str, object]] = {}
@@ -458,7 +484,9 @@ def get_monitoring_products(
     return {"referenceDate": reference_date, "products": output_products}
 
 
-def _build_seed_monitoring_products(active_by_slug: dict[str, dict[str, str]]) -> list[dict[str, object]]:
+def _build_seed_monitoring_products(
+    active_by_slug: dict[str, dict[str, str]],
+) -> list[dict[str, object]]:
     matched: list[dict[str, object]] = []
     for seed in SEED_MONITORING_PRODUCTS:
         product_id = str(seed["productId"])
@@ -489,7 +517,7 @@ def _build_seed_monitoring_products(active_by_slug: dict[str, dict[str, str]]) -
     if matched:
         return matched
 
-    fallback = []
+    fallback: list[dict[str, object]] = []
     for slug, item in active_by_slug.items():
         fallback.append(
             {
@@ -514,8 +542,10 @@ def _normalize_picture_page_payload(
     *,
     preserve_status: bool = False,
 ) -> dict[str, object]:
-    status = _normalize_picture_status(data.get("status"), default="ok" if not preserve_status else None)
-    payload = {
+    status = _normalize_picture_status(
+        data.get("status"), default="ok" if not preserve_status else None
+    )
+    payload: dict[str, object] = {
         "slug": _required_text(data.get("slug")) or "",
         "name": _required_text(data.get("name")) or "",
         "url": _required_text(data.get("url")) or "",
@@ -572,7 +602,7 @@ def _status_progress(status: str) -> int:
     return STATUS_PROGRESS.get(status, 0)
 
 
-def _latest_activity_date(rows: list[dict[str, object]]) -> str | None:
+def _latest_activity_date(rows: Sequence[Mapping[object, object]]) -> str | None:
     latest: date | None = None
     for row in rows:
         row_date = row.get("date")

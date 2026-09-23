@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.formparsers import MultiPartException
 
 from silo.api.dependencies import get_current_user, require_admin, require_upload_access
-from silo.api.responses import build_success_payload, json_error_response
+from silo.api.responses import ApiResponse, build_success_payload, json_error_response
 from silo.api.upload_io import (
     is_multipart_content_type,
     parse_multipart_form,
@@ -41,7 +41,7 @@ async def upload_file(
     kind: str,
     request: Request,
     _current_user: object = Depends(get_current_user),
-):
+) -> ApiResponse:
     normalized_kind = _normalize_kind(kind)
     if not is_upload_kind(normalized_kind):
         return json_error_response(400, f"Tipo de upload inválido: {normalized_kind}")
@@ -86,7 +86,7 @@ async def serve_upload(
     kind: str,
     filename: str,
     _current_user: object = Depends(require_upload_access),
-):
+) -> ApiResponse:
     normalized_kind = _normalize_kind(kind)
     if not is_upload_kind(normalized_kind) or not is_safe_filename(filename):
         return json_error_response(404, "Arquivo não encontrado.")
@@ -108,7 +108,7 @@ async def delete_upload(
     kind: str,
     filename: str,
     _current_user: object = Depends(require_admin),
-):
+) -> ApiResponse:
     normalized_kind = _normalize_kind(kind)
     if not is_upload_kind(normalized_kind) or not is_safe_filename(filename):
         return json_error_response(404, "Arquivo não encontrado.")

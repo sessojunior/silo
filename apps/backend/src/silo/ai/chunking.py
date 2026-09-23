@@ -105,7 +105,9 @@ def split_paragraphs(text: str) -> list[str]:
 
 
 def chunk_by_sentences(text: str, start_index: int) -> list[TextChunk]:
-    sentences = [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", text) if sentence.strip()]
+    sentences = [
+        sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", text) if sentence.strip()
+    ]
     chunks: list[TextChunk] = []
     current_chunk = ""
     chunk_idx = start_index

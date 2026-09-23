@@ -2,15 +2,28 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from itertools import count
 
 import pytest
-from sqlalchemy import Boolean, Column, Date, DateTime, Integer, JSON, MetaData, String, Table, UniqueConstraint, create_engine, insert, select
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    UniqueConstraint,
+    create_engine,
+    insert,
+    select,
+)
 
 from silo.db.models import TABLE_COLUMN_SPECS
 from silo.services import product_portal
-
 
 FIXED_NOW = datetime(2026, 8, 3, 12, 0, 0)
 
@@ -390,11 +403,11 @@ def _success_data(result: dict[str, object]) -> dict[str, object]:
     ],
 )
 def test_product_portal_date_helper(value, expected) -> None:
-    assert product_portal._date_to_datetime(value) == expected  # noqa: SLF001
+    assert product_portal._date_to_datetime(value) == expected
 
 
 def test_product_portal_activity_availability_and_history_paths(product_portal_connection) -> None:
-    connection, ids, tables, sent_emails = product_portal_connection
+    connection, ids, _tables, sent_emails = product_portal_connection
 
     available = _success_data(
         _call(
@@ -553,8 +566,13 @@ def test_product_portal_activity_availability_and_history_paths(product_portal_c
     )
     assert missing_update["ok"] is False
 
-    pending_recipients = _success_data(_call(connection, product_portal.list_product_activity_pending_email_recipients))
-    assert [item["id"] for item in pending_recipients["items"]] == [ids.user_active_1, ids.user_active_2]
+    pending_recipients = _success_data(
+        _call(connection, product_portal.list_product_activity_pending_email_recipients)
+    )
+    assert [item["id"] for item in pending_recipients["items"]] == [
+        ids.user_active_1,
+        ids.user_active_2,
+    ]
 
     sent_email_result = _success_data(
         _call(
@@ -672,7 +690,9 @@ def test_product_portal_activity_availability_and_history_paths(product_portal_c
     )
     assert delete_exception is None
 
-    missing_delete_exception = _call(connection, product_portal.delete_product_availability_exception, "missing")
+    missing_delete_exception = _call(
+        connection, product_portal.delete_product_availability_exception, "missing"
+    )
     assert missing_delete_exception["ok"] is False
 
 
@@ -697,14 +717,24 @@ def test_product_portal_contacts_dependencies_and_manual_paths(product_portal_co
     ).all()
     assert [row[0] for row in product_contact_rows] == [ids.contact_1, ids.contact_2]
 
-    missing_association = _call(connection, product_portal.delete_product_contact_association, "missing")
+    missing_association = _call(
+        connection, product_portal.delete_product_contact_association, "missing"
+    )
     assert missing_association["ok"] is False
 
-    association_row = connection.execute(
-        select(tables["product_contact"].c.id).where(tables["product_contact"].c.contact_id == ids.contact_2)
-    ).mappings().first()
+    association_row = (
+        connection.execute(
+            select(tables["product_contact"].c.id).where(
+                tables["product_contact"].c.contact_id == ids.contact_2
+            )
+        )
+        .mappings()
+        .first()
+    )
     assert association_row is not None
-    _success_data(_call(connection, product_portal.delete_product_contact_association, association_row["id"]))
+    _success_data(
+        _call(connection, product_portal.delete_product_contact_association, association_row["id"])
+    )
     remaining_contact_rows = connection.execute(
         select(tables["product_contact"].c.contact_id).where(
             tables["product_contact"].c.product_id == ids.product_1
@@ -712,13 +742,13 @@ def test_product_portal_contacts_dependencies_and_manual_paths(product_portal_co
     ).all()
     assert [row[0] for row in remaining_contact_rows] == [ids.contact_1]
 
-    assert product_portal._calculate_tree_path(None, 0) == "/0"  # noqa: SLF001
-    assert product_portal._calculate_tree_path("/0", 1) == "/0/1"  # noqa: SLF001
-    assert product_portal._calculate_sort_key(None, 2) == "002"  # noqa: SLF001
-    assert product_portal._calculate_sort_key("001", 2) == "001.002"  # noqa: SLF001
-    assert product_portal._calculate_tree_depth(None) == 0  # noqa: SLF001
-    assert product_portal._calculate_tree_depth(2) == 3  # noqa: SLF001
-    dependency_tree = product_portal._build_dependency_tree(  # noqa: SLF001
+    assert product_portal._calculate_tree_path(None, 0) == "/0"
+    assert product_portal._calculate_tree_path("/0", 1) == "/0/1"
+    assert product_portal._calculate_sort_key(None, 2) == "002"
+    assert product_portal._calculate_sort_key("001", 2) == "001.002"
+    assert product_portal._calculate_tree_depth(None) == 0
+    assert product_portal._calculate_tree_depth(2) == 3
+    dependency_tree = product_portal._build_dependency_tree(
         [
             {"id": "root", "parentId": None},
             {"id": "child", "parentId": "root"},
@@ -760,7 +790,9 @@ def test_product_portal_contacts_dependencies_and_manual_paths(product_portal_co
     assert root_2["treePath"] == "/1"
     assert child_1["treePath"] == "/0/0"
 
-    dependency_tree = _success_data(_call(connection, product_portal.list_product_dependencies, ids.product_1))
+    dependency_tree = _success_data(
+        _call(connection, product_portal.list_product_dependencies, ids.product_1)
+    )
     assert len(dependency_tree) == 2
     assert len(dependency_tree[0]["children"]) == 1
 
@@ -828,11 +860,15 @@ def test_product_portal_contacts_dependencies_and_manual_paths(product_portal_co
             ],
         )
     )
-    reordered_root = connection.execute(
-        select(tables["product_dependency"].c.tree_path, tables["product_dependency"].c.sort_key).where(
-            tables["product_dependency"].c.id == root_2["id"]
+    reordered_root = (
+        connection.execute(
+            select(
+                tables["product_dependency"].c.tree_path, tables["product_dependency"].c.sort_key
+            ).where(tables["product_dependency"].c.id == root_2["id"])
         )
-    ).mappings().first()
+        .mappings()
+        .first()
+    )
     assert reordered_root == {"tree_path": "/0", "sort_key": "000"}
 
     missing_manual = _call(connection, product_portal.get_product_manual)
@@ -863,7 +899,9 @@ def test_product_portal_contacts_dependencies_and_manual_paths(product_portal_co
     )["manual"]
     assert updated_manual["description"] == "Manual atualizado"
 
-    manual_by_id = _success_data(_call(connection, product_portal.get_product_manual, product_id=ids.product_1))
+    manual_by_id = _success_data(
+        _call(connection, product_portal.get_product_manual, product_id=ids.product_1)
+    )
     assert manual_by_id["manual"]["description"] == "Manual atualizado"
 
     missing_manual_product = _call(
@@ -898,7 +936,9 @@ def test_product_portal_contacts_dependencies_and_manual_paths(product_portal_co
 def test_product_portal_problems_categories_and_images_paths(product_portal_connection) -> None:
     connection, ids, tables, _sent_emails = product_portal_connection
 
-    missing_product = _call(connection, product_portal.list_product_problems, slug="missing-product")
+    missing_product = _call(
+        connection, product_portal.list_product_problems, slug="missing-product"
+    )
     assert missing_product["ok"] is False
 
     invalid_problem = _call(
@@ -935,17 +975,23 @@ def test_product_portal_problems_categories_and_images_paths(product_portal_conn
         )
     )
 
-    problem_rows = connection.execute(
-        select(tables["product_problem"].c.id, tables["product_problem"].c.title).where(
-            tables["product_problem"].c.product_id == ids.product_1
+    problem_rows = (
+        connection.execute(
+            select(tables["product_problem"].c.id, tables["product_problem"].c.title).where(
+                tables["product_problem"].c.product_id == ids.product_1
+            )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
     assert {row["title"] for row in problem_rows} == {"Problema Alpha", "Problema Beta"}
     problem_alpha_id = next(row["id"] for row in problem_rows if row["title"] == "Problema Alpha")
-    problem_beta_id = next(row["id"] for row in problem_rows if row["title"] == "Problema Beta")
+    _problem_beta_id = next(row["id"] for row in problem_rows if row["title"] == "Problema Beta")
 
     problems = _success_data(
-        _call(connection, product_portal.list_product_problems, slug="produto-alpha", page=1, limit=10)
+        _call(
+            connection, product_portal.list_product_problems, slug="produto-alpha", page=1, limit=10
+        )
     )
     assert {item["title"] for item in problems["items"]} == {"Problema Alpha", "Problema Beta"}
 
@@ -970,13 +1016,17 @@ def test_product_portal_problems_categories_and_images_paths(product_portal_conn
         )
     )
     assert updated_problem is None
-    updated_problem_row = connection.execute(
-        select(
-            tables["product_problem"].c.title,
-            tables["product_problem"].c.description,
-            tables["product_problem"].c.problem_category_id,
-        ).where(tables["product_problem"].c.id == problem_alpha_id)
-    ).mappings().first()
+    updated_problem_row = (
+        connection.execute(
+            select(
+                tables["product_problem"].c.title,
+                tables["product_problem"].c.description,
+                tables["product_problem"].c.problem_category_id,
+            ).where(tables["product_problem"].c.id == problem_alpha_id)
+        )
+        .mappings()
+        .first()
+    )
     assert updated_problem_row == {
         "title": "Problema Alpha Atualizado",
         "description": "Descricao Alpha Atualizada",
@@ -992,13 +1042,19 @@ def test_product_portal_problems_categories_and_images_paths(product_portal_conn
             description="Imagem alpha",
         )
     )["image"]
-    images = _success_data(_call(connection, product_portal.list_product_problem_images, problem_alpha_id))
+    images = _success_data(
+        _call(connection, product_portal.list_product_problem_images, problem_alpha_id)
+    )
     assert [item["id"] for item in images["items"]] == [problem_image["id"]]
 
-    missing_problem_image = _call(connection, product_portal.delete_product_problem_image, "missing")
+    missing_problem_image = _call(
+        connection, product_portal.delete_product_problem_image, "missing"
+    )
     assert missing_problem_image["ok"] is False
 
-    _success_data(_call(connection, product_portal.delete_product_problem_image, problem_image["id"]))
+    _success_data(
+        _call(connection, product_portal.delete_product_problem_image, problem_image["id"])
+    )
     assert (
         connection.execute(
             select(tables["product_problem_image"].c.id).where(
@@ -1051,9 +1107,13 @@ def test_product_portal_problems_categories_and_images_paths(product_portal_conn
     )
     assert updated_category is None
 
-    missing_category_delete = _call(connection, product_portal.delete_product_problem_category, "missing")
+    missing_category_delete = _call(
+        connection, product_portal.delete_product_problem_category, "missing"
+    )
     assert missing_category_delete["ok"] is False
-    _success_data(_call(connection, product_portal.delete_product_problem_category, created_category["id"]))
+    _success_data(
+        _call(connection, product_portal.delete_product_problem_category, created_category["id"])
+    )
 
 
 def test_product_portal_solutions_and_summary_paths(product_portal_connection) -> None:
@@ -1093,16 +1153,22 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
         )
     )
 
-    problem_rows = connection.execute(
-        select(tables["product_problem"].c.id, tables["product_problem"].c.title).where(
-            tables["product_problem"].c.product_id == ids.product_1
+    problem_rows = (
+        connection.execute(
+            select(tables["product_problem"].c.id, tables["product_problem"].c.title).where(
+                tables["product_problem"].c.product_id == ids.product_1
+            )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
     problem_alpha_id = next(row["id"] for row in problem_rows if row["title"] == "Problema Alpha")
     problem_beta_id = next(row["id"] for row in problem_rows if row["title"] == "Problema Beta")
     problem_gamma_id = next(row["id"] for row in problem_rows if row["title"] == "Problema Gamma")
 
-    no_solutions = _success_data(_call(connection, product_portal.list_product_solutions, problem_gamma_id))
+    no_solutions = _success_data(
+        _call(connection, product_portal.list_product_solutions, problem_gamma_id)
+    )
     assert no_solutions["items"] == []
 
     _success_data(
@@ -1138,7 +1204,9 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
                         tables["product_solution"].c.product_problem_id == problem_beta_id,
                         tables["product_solution"].c.reply_id.is_(None),
                     )
-                ).mappings().all()
+                )
+                .mappings()
+                .all()
                 if True
             ),
         )
@@ -1157,7 +1225,9 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
                         tables["product_solution"].c.product_problem_id == problem_beta_id,
                         tables["product_solution"].c.reply_id.is_not(None),
                     )
-                ).mappings().all()
+                )
+                .mappings()
+                .all()
                 if True
             ),
         )
@@ -1186,26 +1256,44 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
                         tables["product_solution"].c.product_problem_id == problem_gamma_id,
                         tables["product_solution"].c.reply_id.is_(None),
                     )
-                ).mappings().all()
+                )
+                .mappings()
+                .all()
                 if True
             ),
         )
     )
 
-    solution_rows = connection.execute(
-        select(
-            tables["product_solution"].c.id,
-            tables["product_solution"].c.product_problem_id,
-            tables["product_solution"].c.description,
-            tables["product_solution"].c.reply_id,
+    solution_rows = (
+        connection.execute(
+            select(
+                tables["product_solution"].c.id,
+                tables["product_solution"].c.product_problem_id,
+                tables["product_solution"].c.description,
+                tables["product_solution"].c.reply_id,
+            )
         )
-    ).mappings().all()
-    alpha_solution_id = next(row["id"] for row in solution_rows if row["description"] == "Resposta Alpha")
-    beta_root_id = next(row["id"] for row in solution_rows if row["description"] == "Resposta Beta Root")
-    beta_child_id = next(row["id"] for row in solution_rows if row["description"] == "Resposta Beta Child")
-    beta_grandchild_id = next(row["id"] for row in solution_rows if row["description"] == "Resposta Beta Grandchild")
-    gamma_root_id = next(row["id"] for row in solution_rows if row["description"] == "Resposta Gamma Root")
-    gamma_child_id = next(row["id"] for row in solution_rows if row["description"] == "Resposta Gamma Child")
+        .mappings()
+        .all()
+    )
+    alpha_solution_id = next(
+        row["id"] for row in solution_rows if row["description"] == "Resposta Alpha"
+    )
+    beta_root_id = next(
+        row["id"] for row in solution_rows if row["description"] == "Resposta Beta Root"
+    )
+    beta_child_id = next(
+        row["id"] for row in solution_rows if row["description"] == "Resposta Beta Child"
+    )
+    beta_grandchild_id = next(
+        row["id"] for row in solution_rows if row["description"] == "Resposta Beta Grandchild"
+    )
+    _gamma_root_id = next(
+        row["id"] for row in solution_rows if row["description"] == "Resposta Gamma Root"
+    )
+    _gamma_child_id = next(
+        row["id"] for row in solution_rows if row["description"] == "Resposta Gamma Child"
+    )
 
     connection.execute(
         insert(tables["product_solution_checked"]),
@@ -1241,9 +1329,13 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
     )
     assert len(alpha_images_after_create["items"]) == 2
 
-    missing_solution_image = _call(connection, product_portal.delete_product_solution_image, "missing")
+    missing_solution_image = _call(
+        connection, product_portal.delete_product_solution_image, "missing"
+    )
     assert missing_solution_image["ok"] is False
-    _success_data(_call(connection, product_portal.delete_product_solution_image, extra_image["id"]))
+    _success_data(
+        _call(connection, product_portal.delete_product_solution_image, extra_image["id"])
+    )
 
     alpha_update_denied = _call(
         connection,
@@ -1293,7 +1385,9 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
     )
     assert alpha_images_after_remove["items"] == []
 
-    beta_solution_map = _success_data(_call(connection, product_portal.list_product_solutions, problem_beta_id))
+    beta_solution_map = _success_data(
+        _call(connection, product_portal.list_product_solutions, problem_beta_id)
+    )
     beta_solutions = {item["id"]: item for item in beta_solution_map["items"]}
     assert beta_solutions[beta_root_id]["verified"] is True
     assert beta_solutions[beta_child_id]["replyId"] == beta_root_id
@@ -1315,20 +1409,38 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
     assert solution_counts[problem_beta_id] == 3
     assert solution_counts[problem_gamma_id] == 2
 
-    summary = _success_data(_call(connection, product_portal.get_product_solutions_summary, "produto-alpha"))
+    summary = _success_data(
+        _call(connection, product_portal.get_product_solutions_summary, "produto-alpha")
+    )
     assert summary["totalSolutions"] == 6
     assert summary["lastUpdated"] is not None
 
-    empty_summary = _success_data(_call(connection, product_portal.get_product_solutions_summary, "produto-beta"))
+    empty_summary = _success_data(
+        _call(connection, product_portal.get_product_solutions_summary, "produto-beta")
+    )
     assert empty_summary == {"totalSolutions": 0, "lastUpdated": None}
 
-    missing_solution_delete = _call(connection, product_portal.delete_product_solution, user_id=ids.user_active_1, id="missing")
+    missing_solution_delete = _call(
+        connection, product_portal.delete_product_solution, user_id=ids.user_active_1, id="missing"
+    )
     assert missing_solution_delete["ok"] is False
 
-    delete_denied = _call(connection, product_portal.delete_product_solution, user_id=ids.user_inactive, id=beta_root_id)
+    delete_denied = _call(
+        connection,
+        product_portal.delete_product_solution,
+        user_id=ids.user_inactive,
+        id=beta_root_id,
+    )
     assert delete_denied["ok"] is False
 
-    _success_data(_call(connection, product_portal.delete_product_solution, user_id=ids.user_active_1, id=beta_root_id))
+    _success_data(
+        _call(
+            connection,
+            product_portal.delete_product_solution,
+            user_id=ids.user_active_1,
+            id=beta_root_id,
+        )
+    )
     remaining_beta_solutions = connection.execute(
         select(tables["product_solution"].c.id).where(
             tables["product_solution"].c.product_problem_id == problem_beta_id
@@ -1362,13 +1474,17 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
                         tables["product_solution"].c.product_problem_id == problem_gamma_id,
                         tables["product_solution"].c.reply_id.is_(None),
                     )
-                ).mappings().all()
+                )
+                .mappings()
+                .all()
                 if True
             ),
         )
     )
 
-    gamma_delete = _success_data(_call(connection, product_portal.delete_product_problem, problem_gamma_id))
+    gamma_delete = _success_data(
+        _call(connection, product_portal.delete_product_problem, problem_gamma_id)
+    )
     assert gamma_delete is None
     remaining_gamma_solutions = connection.execute(
         select(tables["product_solution"].c.id).where(

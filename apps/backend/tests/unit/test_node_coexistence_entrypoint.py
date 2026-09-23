@@ -26,6 +26,9 @@ def test_final_compose_uses_python_targets_and_no_longer_exposes_node_skip_flags
 
     assert "target: api" in compose
     assert "target: worker" in compose
-    assert "command: [\"uvicorn\", \"silo.api.main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"4000\"]" in compose
+    assert (
+        'command: ["uvicorn", "silo.api.main:app", "--host", "0.0.0.0", "--port", "4000"]'
+        in compose
+    )
     assert "SKIP_DB_SYNC" not in compose
     assert "SKIP_DB_SEED" not in compose

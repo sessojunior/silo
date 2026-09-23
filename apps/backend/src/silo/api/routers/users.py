@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import hmac
 import logging
@@ -10,7 +9,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import and_, delete, func, insert, or_, select, update
+from sqlalchemy import and_, delete, insert, or_, select, update
 from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import (
@@ -31,15 +30,15 @@ from silo.api.upload_io import (
     read_upload_bytes,
     select_upload_from_form,
 )
-from silo.auth.email import OtpPurpose, SmtpOtpEmailSender
+from silo.auth.email import SmtpOtpEmailSender
 from silo.auth.mail import send_plain_email
 from silo.auth.password import hash_legacy_bcrypt
 from silo.auth.service import AuthService
 from silo.auth.validation import (
     AuthInputError,
+    ensure_allowed_email_domain,
     validate_email,
     validate_strong_password,
-    ensure_allowed_email_domain,
 )
 from silo.clock import SYSTEM_CLOCK
 from silo.config import load_settings
@@ -712,7 +711,6 @@ def _get_current_user_profile(db: Connection, user_id: str) -> dict[str, object]
     user_table = legacy_tables["user"]
     profile_table = legacy_tables["user_profile"]
     account_table = legacy_tables["account"]
-    google_account_table = legacy_tables["account"]
 
     user_row = (
         db.execute(
@@ -981,7 +979,7 @@ def _email_change_digest(user_id: str, email: str, salt: str, code: str) -> str:
     secret = load_settings().session_secret.get_secret_value()
     if not secret:
         raise RuntimeError("SESSION_SECRET is required for email verification")
-    material = f"{user_id}:{email}:{salt}:{code}".encode("utf-8")
+    material = f"{user_id}:{email}:{salt}:{code}".encode()
     return hmac.new(secret.encode("utf-8"), material, hashlib.sha256).hexdigest()
 
 

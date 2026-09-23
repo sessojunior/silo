@@ -331,7 +331,9 @@ def test_ai_assistant_message_routes_return_json_and_sse(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_ai_assistant_message_stream_emits_heartbeats_while_service_is_slow(monkeypatch) -> None:
+async def test_ai_assistant_message_stream_emits_heartbeats_while_service_is_slow(
+    monkeypatch,
+) -> None:
     response_model = _assistant_response()
 
     async def slow_stream(*_args, **_kwargs):
@@ -402,7 +404,13 @@ def _json_response_body(response):
 @pytest.mark.asyncio
 async def test_ai_assistant_routes_cover_error_paths_and_helper_branches(monkeypatch) -> None:
     class _FakeRequest:
-        def __init__(self, body: object | None = None, *, request_id: str | None = None, raise_json: bool = False) -> None:
+        def __init__(
+            self,
+            body: object | None = None,
+            *,
+            request_id: str | None = None,
+            raise_json: bool = False,
+        ) -> None:
             self.state = SimpleNamespace(request_id=request_id)
             self._body = body
             self._raise_json = raise_json
@@ -417,14 +425,19 @@ async def test_ai_assistant_routes_cover_error_paths_and_helper_branches(monkeyp
             return False
 
     explicit_request = _FakeRequest(request_id="req-123")
-    assert ai_assistant_router._request_request_id(explicit_request) == "req-123"  # noqa: SLF001
+    assert ai_assistant_router._request_request_id(explicit_request) == "req-123"
 
     generated_request = _FakeRequest()
-    monkeypatch.setattr(ai_assistant_router, "uuid4", lambda: "11111111-1111-1111-1111-111111111111")
-    assert ai_assistant_router._request_request_id(generated_request) == "11111111-1111-1111-1111-111111111111"  # noqa: SLF001
-    assert ai_assistant_router._heartbeat_event() == ": heartbeat\n\n"  # noqa: SLF001
-    assert "event: result" in ai_assistant_router._stream_event("result", {"ok": True})  # noqa: SLF001
-    invalid_response = ai_assistant_router._invalid_request_response("content")  # noqa: SLF001
+    monkeypatch.setattr(
+        ai_assistant_router, "uuid4", lambda: "11111111-1111-1111-1111-111111111111"
+    )
+    assert (
+        ai_assistant_router._request_request_id(generated_request)
+        == "11111111-1111-1111-1111-111111111111"
+    )
+    assert ai_assistant_router._heartbeat_event() == ": heartbeat\n\n"
+    assert "event: result" in ai_assistant_router._stream_event("result", {"ok": True})
+    invalid_response = ai_assistant_router._invalid_request_response("content")
     assert invalid_response.status_code == 400
     assert _json_response_body(invalid_response)["field"] == "content"
 
@@ -433,14 +446,20 @@ async def test_ai_assistant_routes_cover_error_paths_and_helper_branches(monkeyp
         "create_assistant_thread",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
     )
-    thread_error = await ai_assistant_router.post_thread(_FakeRequest({"title": "  Título  "}), _admin_user(), object())
+    thread_error = await ai_assistant_router.post_thread(
+        _FakeRequest({"title": "  Título  "}), _admin_user(), object()
+    )
     assert thread_error.status_code == 500
 
-    monkeypatch.setattr(ai_assistant_router, "get_assistant_thread_details", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        ai_assistant_router, "get_assistant_thread_details", lambda *_args, **_kwargs: None
+    )
     missing_thread = await ai_assistant_router.get_thread("missing-thread", _admin_user(), object())
     assert missing_thread.status_code == 404
 
-    invalid_message = await ai_assistant_router.post_message(_FakeRequest({}), _admin_user(), object())
+    invalid_message = await ai_assistant_router.post_message(
+        _FakeRequest({}), _admin_user(), object()
+    )
     assert invalid_message.status_code == 400
 
     monkeypatch.setattr(
@@ -483,7 +502,9 @@ async def test_ai_assistant_routes_cover_error_paths_and_helper_branches(monkeyp
     )
     assert generic_message_error.status_code == 500
 
-    invalid_stream = await ai_assistant_router.post_message_stream(_FakeRequest({}), _admin_user(), object())
+    invalid_stream = await ai_assistant_router.post_message_stream(
+        _FakeRequest({}), _admin_user(), object()
+    )
     assert invalid_stream.status_code == 400
 
     async def _thread_not_found_stream(*_args, **_kwargs):
@@ -515,7 +536,9 @@ async def test_ai_assistant_routes_cover_error_paths_and_helper_branches(monkeyp
     )
     generic_stream_chunks: list[str] = []
     async for chunk in generic_stream.body_iterator:
-        generic_stream_chunks.append(chunk.decode("utf-8") if isinstance(chunk, bytes) else str(chunk))
+        generic_stream_chunks.append(
+            chunk.decode("utf-8") if isinstance(chunk, bytes) else str(chunk)
+        )
     assert "event: error" in "".join(generic_stream_chunks)
 
     monkeypatch.setattr(

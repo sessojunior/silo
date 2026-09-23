@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import hmac
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy import select
 from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import get_db
-from silo.api.responses import json_error_response
+from silo.api.responses import ApiResponse, json_error_response
 from silo.config import load_settings
 from silo.db.models import legacy_tables
 
@@ -20,7 +20,7 @@ async def receive_product_flow(
     payload: dict[str, object],
     x_api_key: str | None = Header(default=None, alias="x-api-key"),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     settings = load_settings()
     expected_key = settings.product_flow_api_key.get_secret_value()
     if (

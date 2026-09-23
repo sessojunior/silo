@@ -145,9 +145,7 @@ def build_validation_settings(
 def _select_database_url(environ: Mapping[str, str]) -> str:
     database_url = _first_non_empty(environ, ("DATABASE_URL",))
     if not database_url:
-        raise RuntimeError(
-            "DATABASE_URL ausente. Configure a variavel DATABASE_URL."
-        )
+        raise RuntimeError("DATABASE_URL ausente. Configure a variavel DATABASE_URL.")
     return database_url
 
 

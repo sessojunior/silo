@@ -231,7 +231,7 @@ export default function DependencyManagementOffcanvas({
 
         {/* Estado vazio */}
         {!loadingManagement && dependencies.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
             <span className="icon-[lucide--layers] mb-4 text-4xl text-zinc-400" />
             <h4 className="text-lg font-medium text-zinc-600 dark:text-zinc-300">
               Nenhuma dependência encontrada

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Final
 
-from sqlalchemy import text
+from sqlalchemy import TextClause, text
 
 from silo.ai.assistant_runtime import create_embedding_runtime
 from silo.ai.ports import EmbeddingPort
@@ -45,10 +45,10 @@ def cosine_similarity(left: list[float], right: list[float]) -> float:
         norm_left += left_value * left_value
         norm_right += right_value * right_value
 
-    magnitude = (norm_left ** 0.5) * (norm_right ** 0.5)
+    magnitude = (norm_left**0.5) * (norm_right**0.5)
     if magnitude == 0:
         return 0.0
-    return dot / magnitude
+    return float(dot / magnitude)
 
 
 def to_vector_literal(embedding: tuple[float, ...] | list[float]) -> str:
@@ -61,13 +61,11 @@ def update_embedding_sql(
     column_name: str,
     row_id: str,
     embedding: tuple[float, ...] | list[float],
-) -> object:
+) -> TextClause:
     safe_table_name = _validate_identifier(table_name)
     safe_column_name = _validate_identifier(column_name)
     statement = text(
-        f"UPDATE {safe_table_name} "
-        f"SET {safe_column_name} = :embedding "
-        f"WHERE id = :row_id"
+        f"UPDATE {safe_table_name} SET {safe_column_name} = :embedding WHERE id = :row_id"
     )
     return statement.bindparams(row_id=row_id, embedding=list(embedding))
 

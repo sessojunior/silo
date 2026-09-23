@@ -5,9 +5,8 @@ import asyncio
 import json
 import sys
 from dataclasses import asdict, dataclass
-from typing import Any
 
-from sqlalchemy import delete, insert, select, update, create_engine
+from sqlalchemy import create_engine, delete, insert, select
 from sqlalchemy.engine import Connection
 
 from silo.ai.assistant_runtime import probe_ai_runtime
@@ -263,9 +262,7 @@ async def _backfill_help(
 ) -> tuple[int, int]:
     help_table = legacy_tables["help"]
     row = (
-        connection.execute(
-            select(help_table).where(help_table.c.id == "system-help").limit(1)
-        )
+        connection.execute(select(help_table).where(help_table.c.id == "system-help").limit(1))
         .mappings()
         .first()
     )
@@ -295,7 +292,9 @@ async def _backfill_help(
 
 def _validate_embedding_vector(embedding: tuple[float, ...]) -> None:
     if len(embedding) != 768:
-        raise RuntimeError(f"Embedding inválido: esperado 768 dimensões, recebido {len(embedding)}.")
+        raise RuntimeError(
+            f"Embedding inválido: esperado 768 dimensões, recebido {len(embedding)}."
+        )
     for value in embedding:
         if value != value or value in (float("inf"), float("-inf")):
             raise RuntimeError("Embedding contém NaN ou Infinity.")
@@ -304,8 +303,12 @@ def _validate_embedding_vector(embedding: tuple[float, ...]) -> None:
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Backfill idempotente de embeddings do SILO.")
     parser.add_argument("--database-url", default="", help="URL PostgreSQL opcional.")
-    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE, help="Tamanho do lote.")
-    parser.add_argument("--sleep-ms", type=int, default=0, help="Pausa entre lotes para rate limit.")
+    parser.add_argument(
+        "--batch-size", type=int, default=DEFAULT_BATCH_SIZE, help="Tamanho do lote."
+    )
+    parser.add_argument(
+        "--sleep-ms", type=int, default=0, help="Pausa entre lotes para rate limit."
+    )
     parser.add_argument("--limit", type=int, default=None, help="Limite máximo por tabela.")
     parser.add_argument("--resume-after-id", default=None, help="Retomar a partir do ID informado.")
     parser.add_argument("--dry-run", action="store_true", help="Validar sem gravar nada.")

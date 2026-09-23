@@ -53,6 +53,7 @@ dev = [
     "respx==0.23.1",
     "ruff==0.15.22",
     "testcontainers==4.14.2",
+    "types-reportlab>=4.5.1.20260827",
 ]
 
 [tool.ruff]
@@ -62,6 +63,14 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "RUF"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI inspects these immutable dependency/parameter descriptors as defaults.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "silo.api.dependencies.require_permission",
+]
 
 [tool.mypy]
 python_version = "3.13"

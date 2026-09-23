@@ -6,20 +6,16 @@ import json
 import math
 import re
 import unicodedata
-from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta
 from difflib import SequenceMatcher
 from typing import Any
 from urllib.parse import quote
 
-from sqlalchemy import and_, asc, case, desc, func, or_, select
+from sqlalchemy import and_, case, desc, func, or_, select
 from sqlalchemy.engine import Connection
 
-from silo.ai.assistant_contracts import AiAssistantVisualizationChartDto
-from silo.ai.assistant_registry import DatasetManifest, DatasetRegistry
 from silo.ai.embeddings import cosine_similarity, generate_embedding
-from silo.ai.ports import RuntimeMode
 from silo.clock import SYSTEM_CLOCK
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
@@ -29,14 +25,7 @@ from silo.domain.model_run_status import (
     PROBLEM_STATUSES,
     SUCCESS_STATUSES,
     classify_model_run_status,
-    normalize_model_run_status,
 )
-from silo.services.dashboard_portal import (
-    get_dashboard_problems_causes,
-    get_dashboard_problems_solutions,
-    get_dashboard_summary,
-)
-from silo.services.project_portal import list_projects as list_projects_portal
 from silo.services.report_portal import (
     get_availability_report,
     get_executive_report,
@@ -71,7 +60,9 @@ def normalize_text(value: str) -> str:
 
 
 def token_overlap_score(query: str, target: str) -> float:
-    query_tokens = {token for token in re.split(r"[^a-z0-9]+", normalize_text(query)) if len(token) > 2}
+    query_tokens = {
+        token for token in re.split(r"[^a-z0-9]+", normalize_text(query)) if len(token) > 2
+    }
     if not query_tokens:
         return 0.0
 
@@ -121,17 +112,22 @@ def _period_from_query(query: dict[str, object | None]) -> dict[str, str]:
 
 def _select_first_product_rows(connection: Connection) -> list[dict[str, Any]]:
     table = legacy_tables["product"]
-    return list(connection.execute(select(table).order_by(table.c.name.asc())).mappings().all())
+    return [
+        dict(row)
+        for row in connection.execute(select(table).order_by(table.c.name.asc())).mappings().all()
+    ]
 
 
-def _select_products_by_ids(connection: Connection, product_ids: Sequence[str]) -> list[dict[str, Any]]:
+def _select_products_by_ids(
+    connection: Connection, product_ids: Sequence[str]
+) -> list[dict[str, Any]]:
     if not product_ids:
         return []
     table = legacy_tables["product"]
-    rows = connection.execute(
-        select(table).where(table.c.id.in_(tuple(product_ids)))
-    ).mappings().all()
-    return list(rows)
+    rows = (
+        connection.execute(select(table).where(table.c.id.in_(tuple(product_ids)))).mappings().all()
+    )
+    return [dict(row) for row in rows]
 
 
 def list_registered_products(connection: Connection) -> dict[str, Any]:
@@ -181,14 +177,38 @@ def resolve_models(connection: Connection, query: str) -> dict[str, Any]:
         elif query_norm and query_norm == normalize_text(name):
             score = 0.97
         else:
-            score = max(fuzzy_score(query, candidate_text), token_overlap_score(query, candidate_text))
+            score = max(
+                fuzzy_score(query, candidate_text), token_overlap_score(query, candidate_text)
+            )
 
         if score >= 0.95:
-            exact_matches.append({"id": candidate["id"], "slug": candidate.get("slug"), "name": candidate.get("name"), "score": score})
+            exact_matches.append(
+                {
+                    "id": candidate["id"],
+                    "slug": candidate.get("slug"),
+                    "name": candidate.get("name"),
+                    "score": score,
+                }
+            )
         elif named_overlap > 0 or named_fuzzy >= 0.6:
-            fuzzy_matches.append((score, {"id": candidate["id"], "slug": candidate.get("slug"), "name": candidate.get("name"), "score": score}))
+            fuzzy_matches.append(
+                (
+                    score,
+                    {
+                        "id": candidate["id"],
+                        "slug": candidate.get("slug"),
+                        "name": candidate.get("name"),
+                        "score": score,
+                    },
+                )
+            )
 
-    matches = exact_matches or [match for _, match in sorted(fuzzy_matches, key=lambda item: (-item[0], normalize_text(str(item[1]["name"]))))[:5]]
+    matches = exact_matches or [
+        match
+        for _, match in sorted(
+            fuzzy_matches, key=lambda item: (-item[0], normalize_text(str(item[1]["name"])))
+        )[:5]
+    ]
     return {
         "query": query,
         "ambiguous": len(matches) > 1 and not exact_matches,
@@ -206,7 +226,9 @@ def resolve_projects(connection: Connection, query: str) -> dict[str, Any]:
         candidate = serialize_legacy_row(row)
         name = str(candidate.get("name") or "")
         candidate_text = " ".join(
-            part for part in (name, candidate.get("shortDescription"), candidate.get("description")) if isinstance(part, str)
+            part
+            for part in (name, candidate.get("shortDescription"), candidate.get("description"))
+            if isinstance(part, str)
         )
         # Mesma regra dos modelos: so gera match quando a pergunta cita o projeto.
         named_overlap = token_overlap_score(query, name)
@@ -215,40 +237,88 @@ def resolve_projects(connection: Connection, query: str) -> dict[str, Any]:
         if query_norm and query_norm == normalize_text(str(candidate.get("id") or "")):
             score = 1.0
         else:
-            score = max(fuzzy_score(query, candidate_text), token_overlap_score(query, candidate_text))
+            score = max(
+                fuzzy_score(query, candidate_text), token_overlap_score(query, candidate_text)
+            )
         if score >= 0.95:
-            matches.append((score, {"id": candidate["id"], "name": candidate.get("name"), "score": score}))
+            matches.append(
+                (score, {"id": candidate["id"], "name": candidate.get("name"), "score": score})
+            )
         elif named_overlap > 0 or named_fuzzy >= 0.6:
-            matches.append((score, {"id": candidate["id"], "name": candidate.get("name"), "score": score}))
+            matches.append(
+                (score, {"id": candidate["id"], "name": candidate.get("name"), "score": score})
+            )
 
-    ordered = [match for _, match in sorted(matches, key=lambda item: (-item[0], normalize_text(str(item[1]["name"]))))[:5]]
+    ordered = [
+        match
+        for _, match in sorted(
+            matches, key=lambda item: (-item[0], normalize_text(str(item[1]["name"])))
+        )[:5]
+    ]
     return {"query": query, "ambiguous": len(ordered) > 1, "matches": ordered}
 
 
 def resolve_problem_categories(connection: Connection, query: str | None = None) -> dict[str, Any]:
     table = legacy_tables["product_problem_category"]
-    rows = connection.execute(
-        select(table).where(table.c.id != "no-incidents").order_by(table.c.sort_order.asc(), table.c.name.asc())
-    ).mappings().all()
+    rows = (
+        connection.execute(
+            select(table)
+            .where(table.c.id != "no-incidents")
+            .order_by(table.c.sort_order.asc(), table.c.name.asc())
+        )
+        .mappings()
+        .all()
+    )
     query_value = normalize_text(query or "")
     matches: list[tuple[float, dict[str, Any]]] = []
 
     for row in rows:
         candidate = serialize_legacy_row(row)
-        candidate_text = " ".join(part for part in (candidate.get("name"), candidate.get("id")) if isinstance(part, str))
+        candidate_text = " ".join(
+            part for part in (candidate.get("name"), candidate.get("id")) if isinstance(part, str)
+        )
         # Mesma regra: so gera match quando a pergunta cita a categoria.
         named_overlap = token_overlap_score(query_value, candidate_text)
         named_fuzzy = fuzzy_score(query_value, candidate_text)
-        score = 1.0 if query_value and query_value == normalize_text(str(candidate.get("id") or "")) else max(
-            fuzzy_score(query_value, candidate_text),
-            token_overlap_score(query_value, candidate_text),
+        score = (
+            1.0
+            if query_value and query_value == normalize_text(str(candidate.get("id") or ""))
+            else max(
+                fuzzy_score(query_value, candidate_text),
+                token_overlap_score(query_value, candidate_text),
+            )
         )
         if score >= 0.95:
-            matches.append((score, {"id": candidate["id"], "name": candidate.get("name"), "color": candidate.get("color"), "score": score}))
+            matches.append(
+                (
+                    score,
+                    {
+                        "id": candidate["id"],
+                        "name": candidate.get("name"),
+                        "color": candidate.get("color"),
+                        "score": score,
+                    },
+                )
+            )
         elif named_overlap > 0 or named_fuzzy >= 0.6:
-            matches.append((score, {"id": candidate["id"], "name": candidate.get("name"), "color": candidate.get("color"), "score": score}))
+            matches.append(
+                (
+                    score,
+                    {
+                        "id": candidate["id"],
+                        "name": candidate.get("name"),
+                        "color": candidate.get("color"),
+                        "score": score,
+                    },
+                )
+            )
 
-    ordered = [match for _, match in sorted(matches, key=lambda item: (-item[0], normalize_text(str(item[1]["name"]))))[:5]]
+    ordered = [
+        match
+        for _, match in sorted(
+            matches, key=lambda item: (-item[0], normalize_text(str(item[1]["name"])))
+        )[:5]
+    ]
     return {"query": query, "ambiguous": len(ordered) > 1, "matches": ordered}
 
 
@@ -285,7 +355,10 @@ def list_model_runs(
                         activity_table.c.date == cursor_date,
                         or_(
                             activity_table.c.turn < cursor_turn,
-                            and_(activity_table.c.turn == cursor_turn, activity_table.c.id < cursor_id),
+                            and_(
+                                activity_table.c.turn == cursor_turn,
+                                activity_table.c.id < cursor_id,
+                            ),
                         ),
                     ),
                 )
@@ -293,25 +366,35 @@ def list_model_runs(
         except ValueError:
             pass
 
-    rows = connection.execute(
-        select(
-            activity_table.c.id,
-            activity_table.c.product_id,
-            activity_table.c.date,
-            activity_table.c.turn,
-            activity_table.c.status,
-            activity_table.c.intervention,
-            activity_table.c.description,
-            activity_table.c.created_at,
-            activity_table.c.updated_at,
-            product_table.c.name.label("product_name"),
-            product_table.c.slug.label("product_slug"),
+    rows = (
+        connection.execute(
+            select(
+                activity_table.c.id,
+                activity_table.c.product_id,
+                activity_table.c.date,
+                activity_table.c.turn,
+                activity_table.c.status,
+                activity_table.c.intervention,
+                activity_table.c.description,
+                activity_table.c.created_at,
+                activity_table.c.updated_at,
+                product_table.c.name.label("product_name"),
+                product_table.c.slug.label("product_slug"),
+            )
+            .select_from(
+                activity_table.join(
+                    product_table, product_table.c.id == activity_table.c.product_id
+                )
+            )
+            .where(and_(*filters))
+            .order_by(
+                desc(activity_table.c.date), desc(activity_table.c.turn), desc(activity_table.c.id)
+            )
+            .limit(limit + 1)
         )
-        .select_from(activity_table.join(product_table, product_table.c.id == activity_table.c.product_id))
-        .where(and_(*filters))
-        .order_by(desc(activity_table.c.date), desc(activity_table.c.turn), desc(activity_table.c.id))
-        .limit(limit + 1)
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     items: list[dict[str, Any]] = []
     for row in rows[:limit]:
@@ -341,7 +424,9 @@ def list_model_runs(
     if len(rows) > limit:
         last_row = rows[limit - 1]
         last_date = last_row["date"]
-        last_date_text = last_date.isoformat() if hasattr(last_date, "isoformat") else str(last_date)
+        last_date_text = (
+            last_date.isoformat() if hasattr(last_date, "isoformat") else str(last_date)
+        )
         next_cursor = f"{last_date_text}|{last_row['turn']}|{last_row['id']}"
 
     return {
@@ -376,35 +461,74 @@ def summarize_model_runs(
     semantics_problem = activity_table.c.status.in_(tuple(PROBLEM_STATUSES))
     semantics_success = activity_table.c.status.in_(tuple(SUCCESS_STATUSES))
 
-    totals_row = connection.execute(
-        select(
-            func.count(activity_table.c.id).label("total_runs"),
-            func.coalesce(func.sum(case((semantics_executed, 1), else_=0)), 0).label("executed_runs"),
-            func.coalesce(func.sum(case((semantics_pending, 1), else_=0)), 0).label("not_executed_runs"),
-            func.coalesce(func.sum(case((semantics_problem, 1), else_=0)), 0).label("incident_runs"),
-            func.coalesce(func.sum(case((semantics_success, 1), else_=0)), 0).label("success_runs"),
+    totals_row: dict[str, Any] = dict(
+        connection.execute(
+            select(
+                func.count(activity_table.c.id).label("total_runs"),
+                func.coalesce(func.sum(case((semantics_executed, 1), else_=0)), 0).label(
+                    "executed_runs"
+                ),
+                func.coalesce(func.sum(case((semantics_pending, 1), else_=0)), 0).label(
+                    "not_executed_runs"
+                ),
+                func.coalesce(func.sum(case((semantics_problem, 1), else_=0)), 0).label(
+                    "incident_runs"
+                ),
+                func.coalesce(func.sum(case((semantics_success, 1), else_=0)), 0).label(
+                    "success_runs"
+                ),
+            )
+            .select_from(activity_table)
+            .where(and_(*filters))
         )
-        .select_from(activity_table)
-        .where(and_(*filters))
-    ).mappings().first() or {}
+        .mappings()
+        .first()
+        or {}
+    )
 
-    product_rows = connection.execute(
-        select(
-            activity_table.c.product_id.label("product_id"),
-            product_table.c.name.label("product_name"),
-            product_table.c.slug.label("product_slug"),
-            func.count(activity_table.c.id).label("total_runs"),
-            func.coalesce(func.sum(case((semantics_executed, 1), else_=0)), 0).label("executed_runs"),
-            func.coalesce(func.sum(case((semantics_pending, 1), else_=0)), 0).label("not_executed_runs"),
-            func.coalesce(func.sum(case((semantics_problem, 1), else_=0)), 0).label("incident_runs"),
-            func.coalesce(func.sum(case((semantics_success, 1), else_=0)), 0).label("success_runs"),
+    product_rows = (
+        connection.execute(
+            select(
+                activity_table.c.product_id.label("product_id"),
+                product_table.c.name.label("product_name"),
+                product_table.c.slug.label("product_slug"),
+                func.count(activity_table.c.id).label("total_runs"),
+                func.coalesce(func.sum(case((semantics_executed, 1), else_=0)), 0).label(
+                    "executed_runs"
+                ),
+                func.coalesce(func.sum(case((semantics_pending, 1), else_=0)), 0).label(
+                    "not_executed_runs"
+                ),
+                func.coalesce(func.sum(case((semantics_problem, 1), else_=0)), 0).label(
+                    "incident_runs"
+                ),
+                func.coalesce(func.sum(case((semantics_success, 1), else_=0)), 0).label(
+                    "success_runs"
+                ),
+            )
+            .select_from(
+                activity_table.join(
+                    product_table, product_table.c.id == activity_table.c.product_id
+                )
+            )
+            .where(and_(*filters))
+            .group_by(
+                activity_table.c.product_id,
+                product_table.c.id,
+                product_table.c.name,
+                product_table.c.slug,
+            )
+            .order_by(
+                desc("incident_runs"),
+                desc("executed_runs"),
+                product_table.c.name.asc(),
+                product_table.c.id.asc(),
+            )
+            .limit(5)
         )
-        .select_from(activity_table.join(product_table, product_table.c.id == activity_table.c.product_id))
-        .where(and_(*filters))
-        .group_by(activity_table.c.product_id, product_table.c.id, product_table.c.name, product_table.c.slug)
-        .order_by(desc("incident_runs"), desc("executed_runs"), product_table.c.name.asc(), product_table.c.id.asc())
-        .limit(5)
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     total_runs = int(totals_row.get("total_runs") or 0)
     executed_runs = int(totals_row.get("executed_runs") or 0)
@@ -488,11 +612,20 @@ def get_model_run_history(
     history_table = legacy_tables["product_activity_history"]
     user_table = legacy_tables["user"]
 
-    product_row = connection.execute(
-        select(product_table.c.id, product_table.c.name, product_table.c.slug).where(
-            or_(product_table.c.id == product_id_or_slug, product_table.c.slug == product_id_or_slug)
-        ).limit(1)
-    ).mappings().first()
+    product_row = (
+        connection.execute(
+            select(product_table.c.id, product_table.c.name, product_table.c.slug)
+            .where(
+                or_(
+                    product_table.c.id == product_id_or_slug,
+                    product_table.c.slug == product_id_or_slug,
+                )
+            )
+            .limit(1)
+        )
+        .mappings()
+        .first()
+    )
     if product_row is None:
         return {"product": None, "history": []}
 
@@ -501,7 +634,11 @@ def get_model_run_history(
         for row in connection.execute(
             select(activity_table.c.id)
             .where(activity_table.c.product_id == product_row["id"])
-            .order_by(activity_table.c.date.desc(), activity_table.c.turn.desc(), activity_table.c.id.desc())
+            .order_by(
+                activity_table.c.date.desc(),
+                activity_table.c.turn.desc(),
+                activity_table.c.id.desc(),
+            )
         ).all()
     ]
     if not activity_ids:
@@ -510,21 +647,25 @@ def get_model_run_history(
             "history": [],
         }
 
-    rows = connection.execute(
-        select(
-            history_table.c.id,
-            history_table.c.product_activity_id,
-            history_table.c.action,
-            history_table.c.from_status,
-            history_table.c.to_status,
-            history_table.c.details,
-            history_table.c.created_at,
-            user_table.c.name.label("user_name"),
+    rows = (
+        connection.execute(
+            select(
+                history_table.c.id,
+                history_table.c.product_activity_id,
+                history_table.c.action,
+                history_table.c.from_status,
+                history_table.c.to_status,
+                history_table.c.details,
+                history_table.c.created_at,
+                user_table.c.name.label("user_name"),
+            )
+            .select_from(history_table.join(user_table, user_table.c.id == history_table.c.user_id))
+            .where(history_table.c.product_activity_id.in_(tuple(activity_ids)))
+            .order_by(desc(history_table.c.created_at), desc(history_table.c.id))
         )
-        .select_from(history_table.join(user_table, user_table.c.id == history_table.c.user_id))
-        .where(history_table.c.product_activity_id.in_(tuple(activity_ids)))
-        .order_by(desc(history_table.c.created_at), desc(history_table.c.id))
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     history = []
     for row in rows:
@@ -555,23 +696,33 @@ def list_model_interventions(
     if product_ids:
         filters.append(activity_table.c.product_id.in_(tuple(product_ids)))
 
-    rows = connection.execute(
-        select(
-            activity_table.c.id,
-            activity_table.c.product_id,
-            activity_table.c.date,
-            activity_table.c.turn,
-            activity_table.c.status,
-            activity_table.c.intervention,
-            activity_table.c.created_at,
-            product_table.c.name.label("product_name"),
-            product_table.c.slug.label("product_slug"),
+    rows = (
+        connection.execute(
+            select(
+                activity_table.c.id,
+                activity_table.c.product_id,
+                activity_table.c.date,
+                activity_table.c.turn,
+                activity_table.c.status,
+                activity_table.c.intervention,
+                activity_table.c.created_at,
+                product_table.c.name.label("product_name"),
+                product_table.c.slug.label("product_slug"),
+            )
+            .select_from(
+                activity_table.join(
+                    product_table, product_table.c.id == activity_table.c.product_id
+                )
+            )
+            .where(and_(*filters))
+            .order_by(
+                desc(activity_table.c.date), desc(activity_table.c.turn), desc(activity_table.c.id)
+            )
+            .limit(limit)
         )
-        .select_from(activity_table.join(product_table, product_table.c.id == activity_table.c.product_id))
-        .where(and_(*filters))
-        .order_by(desc(activity_table.c.date), desc(activity_table.c.turn), desc(activity_table.c.id))
-        .limit(limit)
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
     items = []
     for row in rows:
         item = serialize_legacy_row(row)
@@ -615,11 +766,11 @@ def list_registered_problems(
     problem_table = legacy_tables["product_problem"]
     product_table = legacy_tables["product"]
     category_table = legacy_tables["product_problem_category"]
-    solution_table = legacy_tables["product_solution"]
     start_bound, end_bound = _date_range_bounds(start_date, end_date)
     filters = [
         problem_table.c.created_at >= datetime.combine(start_bound, datetime.min.time()),
-        problem_table.c.created_at <= datetime.combine(end_bound, datetime.max.time().replace(microsecond=0)),
+        problem_table.c.created_at
+        <= datetime.combine(end_bound, datetime.max.time().replace(microsecond=0)),
         problem_table.c.problem_category_id != "no-incidents",
     ]
     if product_id:
@@ -627,30 +778,34 @@ def list_registered_problems(
     if problem_category_id:
         filters.append(problem_table.c.problem_category_id == problem_category_id)
 
-    rows = connection.execute(
-        select(
-            problem_table.c.id,
-            problem_table.c.product_id,
-            problem_table.c.user_id,
-            problem_table.c.title,
-            problem_table.c.description,
-            problem_table.c.created_at,
-            problem_table.c.updated_at,
-            problem_table.c.problem_category_id,
-            product_table.c.name.label("product_name"),
-            product_table.c.slug.label("product_slug"),
-            category_table.c.name.label("category_name"),
-            category_table.c.color.label("category_color"),
-        )
-        .select_from(
-            problem_table.join(product_table, product_table.c.id == problem_table.c.product_id).join(
-                category_table, category_table.c.id == problem_table.c.problem_category_id
+    rows = (
+        connection.execute(
+            select(
+                problem_table.c.id,
+                problem_table.c.product_id,
+                problem_table.c.user_id,
+                problem_table.c.title,
+                problem_table.c.description,
+                problem_table.c.created_at,
+                problem_table.c.updated_at,
+                problem_table.c.problem_category_id,
+                product_table.c.name.label("product_name"),
+                product_table.c.slug.label("product_slug"),
+                category_table.c.name.label("category_name"),
+                category_table.c.color.label("category_color"),
             )
+            .select_from(
+                problem_table.join(
+                    product_table, product_table.c.id == problem_table.c.product_id
+                ).join(category_table, category_table.c.id == problem_table.c.problem_category_id)
+            )
+            .where(and_(*filters))
+            .order_by(desc(problem_table.c.created_at), desc(problem_table.c.id))
+            .limit(limit)
         )
-        .where(and_(*filters))
-        .order_by(desc(problem_table.c.created_at), desc(problem_table.c.id))
-        .limit(limit)
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     problem_ids = [str(row["id"]) for row in rows]
     solution_counts = _count_solutions_by_problem(connection, problem_ids)
@@ -667,7 +822,10 @@ def list_registered_problems(
             }
         )
         items.append(item)
-    return {"items": items, "range": {"start": start_bound.isoformat(), "end": end_bound.isoformat()}}
+    return {
+        "items": items,
+        "range": {"start": start_bound.isoformat(), "end": end_bound.isoformat()},
+    }
 
 
 def get_registered_problem_details(connection: Connection, *, problem_id: str) -> dict[str, Any]:
@@ -678,45 +836,55 @@ def get_registered_problem_details(connection: Connection, *, problem_id: str) -
     checked_table = legacy_tables["product_solution_checked"]
     user_table = legacy_tables["user"]
 
-    row = connection.execute(
-        select(
-            problem_table,
-            product_table.c.name.label("product_name"),
-            product_table.c.slug.label("product_slug"),
-            category_table.c.name.label("category_name"),
-            category_table.c.color.label("category_color"),
-        )
-        .select_from(
-            problem_table.join(product_table, product_table.c.id == problem_table.c.product_id).join(
-                category_table, category_table.c.id == problem_table.c.problem_category_id
+    row = (
+        connection.execute(
+            select(
+                problem_table,
+                product_table.c.name.label("product_name"),
+                product_table.c.slug.label("product_slug"),
+                category_table.c.name.label("category_name"),
+                category_table.c.color.label("category_color"),
             )
+            .select_from(
+                problem_table.join(
+                    product_table, product_table.c.id == problem_table.c.product_id
+                ).join(category_table, category_table.c.id == problem_table.c.problem_category_id)
+            )
+            .where(problem_table.c.id == problem_id)
+            .limit(1)
         )
-        .where(problem_table.c.id == problem_id)
-        .limit(1)
-    ).mappings().first()
+        .mappings()
+        .first()
+    )
     if row is None:
         return {"problem": None, "solutions": []}
 
-    solutions = connection.execute(
-        select(
-            solution_table.c.id,
-            solution_table.c.user_id,
-            solution_table.c.description,
-            solution_table.c.reply_id,
-            solution_table.c.created_at,
-            user_table.c.name.label("user_name"),
+    solutions = (
+        connection.execute(
+            select(
+                solution_table.c.id,
+                solution_table.c.user_id,
+                solution_table.c.description,
+                solution_table.c.reply_id,
+                solution_table.c.created_at,
+                user_table.c.name.label("user_name"),
+            )
+            .select_from(
+                solution_table.join(user_table, user_table.c.id == solution_table.c.user_id)
+            )
+            .where(solution_table.c.product_problem_id == problem_id)
+            .order_by(desc(solution_table.c.created_at), desc(solution_table.c.id))
         )
-        .select_from(solution_table.join(user_table, user_table.c.id == solution_table.c.user_id))
-        .where(solution_table.c.product_problem_id == problem_id)
-        .order_by(desc(solution_table.c.created_at), desc(solution_table.c.id))
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     solution_ids = [str(solution["id"]) for solution in solutions]
     checked_ids = {
         str(item[0])
         for item in connection.execute(
             select(checked_table.c.product_solution_id).where(
-                checked_table.c.product_solution_id.in_(tuple(solution_ids)) if solution_ids else False
+                checked_table.c.product_solution_id.in_(tuple(solution_ids))
             )
         ).all()
     }
@@ -797,18 +965,44 @@ def get_projects_snapshot(
     task_table = legacy_tables["project_task"]
     activity_table = legacy_tables["project_activity"]
 
-    projects = connection.execute(
-        select(project_table.c.id, project_table.c.name, project_table.c.status, project_table.c.priority, project_table.c.created_at)
-        .order_by(project_table.c.name.asc(), project_table.c.id.asc())
-    ).mappings().all()
-    tasks = connection.execute(
-        select(task_table.c.id, task_table.c.project_id, task_table.c.status, task_table.c.priority, task_table.c.sort)
-        .order_by(task_table.c.sort.asc(), task_table.c.id.asc())
-    ).mappings().all()
-    activities = connection.execute(
-        select(activity_table.c.id, activity_table.c.project_id, activity_table.c.status, activity_table.c.created_at)
-        .order_by(activity_table.c.created_at.desc(), activity_table.c.id.desc())
-    ).mappings().all()
+    projects = (
+        connection.execute(
+            select(
+                project_table.c.id,
+                project_table.c.name,
+                project_table.c.status,
+                project_table.c.priority,
+                project_table.c.created_at,
+            ).order_by(project_table.c.name.asc(), project_table.c.id.asc())
+        )
+        .mappings()
+        .all()
+    )
+    tasks = (
+        connection.execute(
+            select(
+                task_table.c.id,
+                task_table.c.project_id,
+                task_table.c.status,
+                task_table.c.priority,
+                task_table.c.sort,
+            ).order_by(task_table.c.sort.asc(), task_table.c.id.asc())
+        )
+        .mappings()
+        .all()
+    )
+    activities = (
+        connection.execute(
+            select(
+                activity_table.c.id,
+                activity_table.c.project_id,
+                activity_table.c.status,
+                activity_table.c.created_at,
+            ).order_by(activity_table.c.created_at.desc(), activity_table.c.id.desc())
+        )
+        .mappings()
+        .all()
+    )
 
     tasks_by_project: dict[str, list[dict[str, Any]]] = {}
     for task in tasks:
@@ -846,7 +1040,9 @@ def _get_report_date_range(query: dict[str, object | None]) -> dict[str, str]:
     return _period_from_query(query)
 
 
-def get_availability_report_data(connection: Connection, query: dict[str, object | None]) -> dict[str, Any]:
+def get_availability_report_data(
+    connection: Connection, query: dict[str, object | None]
+) -> dict[str, Any]:
     return get_availability_report(connection, _get_report_date_range(query))
 
 
@@ -859,7 +1055,8 @@ def get_problems_report_data(
         connection,
         period,
         _optional_text(query.get("productId")),
-        _optional_text(query.get("problemCategory")) or _optional_text(query.get("problem_category")),
+        _optional_text(query.get("problemCategory"))
+        or _optional_text(query.get("problem_category")),
     )
 
 
@@ -876,7 +1073,9 @@ def get_executive_report_data(
     )
 
 
-def get_projects_report_data(connection: Connection, query: dict[str, object | None]) -> dict[str, Any]:
+def get_projects_report_data(
+    connection: Connection, query: dict[str, object | None]
+) -> dict[str, Any]:
     return get_projects_report(connection, _get_report_date_range(query))
 
 
@@ -925,17 +1124,25 @@ def search_silo_knowledge(
             )
         )
 
-    for row in connection.execute(
-        select(
-            problem_table.c.id,
-            problem_table.c.title,
-            problem_table.c.description,
-            product_table.c.name.label("product_name"),
-            problem_table.c.created_at,
-            problem_table.c.updated_at,
-        ).select_from(problem_table.join(product_table, product_table.c.id == problem_table.c.product_id))
-    ).mappings().all():
-        content = " ".join(part for part in (row["title"], row["description"], row["product_name"]) if part)
+    for row in (
+        connection.execute(
+            select(
+                problem_table.c.id,
+                problem_table.c.title,
+                problem_table.c.description,
+                product_table.c.name.label("product_name"),
+                problem_table.c.created_at,
+                problem_table.c.updated_at,
+            ).select_from(
+                problem_table.join(product_table, product_table.c.id == problem_table.c.product_id)
+            )
+        )
+        .mappings()
+        .all()
+    ):
+        content = " ".join(
+            part for part in (row["title"], row["description"], row["product_name"]) if part
+        )
         candidates.extend(
             _score_knowledge_candidate(
                 query=query,
@@ -949,9 +1156,18 @@ def search_silo_knowledge(
             )
         )
 
-    for row in connection.execute(
-        select(solution_table.c.id, solution_table.c.description, solution_table.c.created_at, solution_table.c.updated_at)
-    ).mappings().all():
+    for row in (
+        connection.execute(
+            select(
+                solution_table.c.id,
+                solution_table.c.description,
+                solution_table.c.created_at,
+                solution_table.c.updated_at,
+            )
+        )
+        .mappings()
+        .all()
+    ):
         candidates.extend(
             _score_knowledge_candidate(
                 query=query,
@@ -973,7 +1189,9 @@ def search_silo_knowledge(
             and candidate["contentSimilarity"] >= AI_RAG_THRESHOLD
         )
     ]
-    primary_ranked = sorted(filtered, key=lambda item: (-item["baseSimilarity"], item["source"], str(item["id"])))
+    primary_ranked = sorted(
+        filtered, key=lambda item: (-item["baseSimilarity"], item["source"], str(item["id"]))
+    )
     candidate_pool = primary_ranked[: normalized_limit * AI_RAG_CANDIDATE_MULTIPLIER]
     candidate_pool.sort(key=lambda item: (-item["similarity"], item["source"], str(item["id"])))
     items = candidate_pool[:normalized_limit]
@@ -1025,7 +1243,9 @@ def build_chart_spec(
             series_unit = _optional_text(series_item.get("unit"))
             if dataset_unit is None and series_unit is not None:
                 dataset_unit = series_unit
-            elif dataset_unit is not None and series_unit is not None and dataset_unit != series_unit:
+            elif (
+                dataset_unit is not None and series_unit is not None and dataset_unit != series_unit
+            ):
                 raise ValueError("Unidades de gráfico incompatíveis.")
             series.append(
                 {
@@ -1053,8 +1273,16 @@ def build_chart_spec(
         products = list(dataset["products"])[:50]
         if not products:
             products = [{"name": "Sem dados no período", "availabilityPercentage": 0.0}]
-        categories = [str(product.get("name") or product.get("slug") or product.get("id")) for product in products]
-        values = [_coerce_chart_number(product.get("availabilityPercentage") or product.get("progress") or 0.0) for product in products]
+        categories = [
+            str(product.get("name") or product.get("slug") or product.get("id"))
+            for product in products
+        ]
+        values = [
+            _coerce_chart_number(
+                product.get("availabilityPercentage") or product.get("progress") or 0.0
+            )
+            for product in products
+        ]
         return _finalize_chart_spec(
             {
                 "kind": "chart",
@@ -1071,8 +1299,19 @@ def build_chart_spec(
 
     if "topProducts" in dataset:
         products = list(dataset["topProducts"])[:50]
-        categories = [str(product.get("name") or product.get("productName") or product.get("productSlug")) for product in products]
-        values = [_coerce_chart_number(product.get("totalProblems") or product.get("incidentRuns") or product.get("value") or 0.0) for product in products]
+        categories = [
+            str(product.get("name") or product.get("productName") or product.get("productSlug"))
+            for product in products
+        ]
+        values = [
+            _coerce_chart_number(
+                product.get("totalProblems")
+                or product.get("incidentRuns")
+                or product.get("value")
+                or 0.0
+            )
+            for product in products
+        ]
         return _finalize_chart_spec(
             {
                 "kind": "chart",
@@ -1090,13 +1329,17 @@ def build_chart_spec(
     raise ValueError("Dataset incompatível com o template solicitado.")
 
 
-def build_mermaid_diagram(*, template_id: str, dataset: dict[str, Any], title: str) -> dict[str, Any]:
+def build_mermaid_diagram(
+    *, template_id: str, dataset: dict[str, Any], title: str
+) -> dict[str, Any]:
     if template_id == "project_flow":
         projects = list(dataset.get("projects", []))[:10]
         lines = ["graph TD", "  start[Entrada] --> projects[Projetos]"]
         for index, project in enumerate(projects, start=1):
             project_id = f"p{index}"
-            lines.append(f'  projects --> {project_id}["{_escape_mermaid(project.get("name") or project.get("title") or project_id)}"]')
+            lines.append(
+                f'  projects --> {project_id}["{_escape_mermaid(project.get("name") or project.get("title") or project_id)}"]'
+            )
             tasks = list(project.get("tasks", []))[:5]
             for task_index, task in enumerate(tasks, start=1):
                 task_id = f"{project_id}_t{task_index}"
@@ -1177,14 +1420,20 @@ def generate_report_pdf(
     renderer = PdfRenderer(builders, _build_pdf_titles())
     render_result = renderer.render(report_type=report_type, data=data, period_label=period_label)
     store = PdfArtifactStore(upload_kind="reports")
-    artifact = store.save(report_type=report_type, pdf_bytes=render_result.pdf_bytes, generated_at=render_result.generated_at)
+    artifact = store.save(
+        report_type=report_type,
+        pdf_bytes=render_result.pdf_bytes,
+        generated_at=render_result.generated_at,
+    )
 
     return {
         "kind": "pdf",
         "reportType": report_type,
         "url": artifact.url,
         "filename": artifact.filename,
-        "mimeType": "application/pdf" if artifact.url.endswith(".pdf") else "application/octet-stream",
+        "mimeType": "application/pdf"
+        if artifact.url.endswith(".pdf")
+        else "application/octet-stream",
         "byteSize": artifact.byte_size,
         "checksum": artifact.sha256,
         "pageCount": render_result.page_count,
@@ -1217,15 +1466,23 @@ def _build_pdf_renderers() -> dict[str, Any]:
     }
 
 
-def _count_solutions_by_problem(connection: Connection, problem_ids: Sequence[str]) -> dict[str, int]:
+def _count_solutions_by_problem(
+    connection: Connection, problem_ids: Sequence[str]
+) -> dict[str, int]:
     solution_table = legacy_tables["product_solution"]
     if not problem_ids:
         return {}
-    rows = connection.execute(
-        select(solution_table.c.product_problem_id, func.count(solution_table.c.id).label("count"))
-        .where(solution_table.c.product_problem_id.in_(tuple(problem_ids)))
-        .group_by(solution_table.c.product_problem_id)
-    ).mappings().all()
+    rows = (
+        connection.execute(
+            select(
+                solution_table.c.product_problem_id, func.count(solution_table.c.id).label("count")
+            )
+            .where(solution_table.c.product_problem_id.in_(tuple(problem_ids)))
+            .group_by(solution_table.c.product_problem_id)
+        )
+        .mappings()
+        .all()
+    )
     counts = {problem_id: 0 for problem_id in problem_ids}
     for row in rows:
         counts[str(row["product_problem_id"])] = int(row["count"])
@@ -1260,11 +1517,15 @@ def _score_knowledge_candidate(
     if not cleaned_content:
         return []
 
-    content_similarity = max(token_overlap_score(query, cleaned_content), fuzzy_score(query, cleaned_content))
+    content_similarity = max(
+        token_overlap_score(query, cleaned_content), fuzzy_score(query, cleaned_content)
+    )
     vector_similarity = _coerce_embedding_similarity(query_embedding, embedding)
     base_similarity = (0.6 * vector_similarity) + (0.4 * content_similarity)
     recency_score = _score_recency(created_at)
-    reranked_similarity = (0.5 * vector_similarity) + (0.3 * content_similarity) + (0.2 * recency_score)
+    reranked_similarity = (
+        (0.5 * vector_similarity) + (0.3 * content_similarity) + (0.2 * recency_score)
+    )
     truncated_content = cleaned_content[:AI_RAG_CONTEXT_LIMIT]
     payload: dict[str, Any] = {
         "source": source,
@@ -1283,7 +1544,9 @@ def _score_knowledge_candidate(
     return [payload]
 
 
-def _coerce_embedding_similarity(query_embedding: tuple[float, ...], embedding: object | None) -> float:
+def _coerce_embedding_similarity(
+    query_embedding: tuple[float, ...], embedding: object | None
+) -> float:
     if not isinstance(embedding, Sequence):
         return 0.0
     try:
@@ -1310,11 +1573,16 @@ def _score_recency(value: object | None) -> float:
             timestamp = None
     if timestamp is None:
         return 0.0
-    age_days = max(0.0, (SYSTEM_CLOCK.now().astimezone(UTC) - timestamp.astimezone(UTC)).total_seconds() / 86_400)
+    age_days = max(
+        0.0,
+        (SYSTEM_CLOCK.now().astimezone(UTC) - timestamp.astimezone(UTC)).total_seconds() / 86_400,
+    )
     return max(0.0, 1.0 - min(1.0, age_days / 30.0))
 
 
 def _coerce_chart_number(value: object) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        raise ValueError("Gráfico contém valor numérico inválido.")
     number = float(value)
     if not math.isfinite(number):
         raise ValueError("Gráfico contém valor não finito.")
@@ -1322,7 +1590,9 @@ def _coerce_chart_number(value: object) -> float:
 
 
 def _finalize_chart_spec(payload: dict[str, Any]) -> dict[str, Any]:
-    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+    encoded = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
+    )
     if len(encoded.encode("utf-8")) > 128 * 1024:
         raise ValueError("Chart spec excede o limite permitido.")
     return payload
@@ -1343,8 +1613,5 @@ def _escape_mermaid(value: object | None) -> str:
 def _escape_svg(value: object | None) -> str:
     text = str(value or "")
     return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
     )

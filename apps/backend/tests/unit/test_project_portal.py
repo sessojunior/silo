@@ -5,12 +5,11 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy import (
-    Boolean,
+    JSON,
     Column,
     Date,
     DateTime,
     Integer,
-    JSON,
     MetaData,
     String,
     Table,
@@ -353,7 +352,9 @@ def project_connection(tmp_path, monkeypatch):
 def test_project_portal_crud_and_task_history(project_connection) -> None:
     connection, ids, tables = project_connection
 
-    filtered = project_portal.list_projects(connection, search="Projeto", status="active", priority="high")
+    filtered = project_portal.list_projects(
+        connection, search="Projeto", status="active", priority="high"
+    )
     assert filtered["ok"] is True
     assert len(filtered["data"]) == 1
     assert filtered["data"][0]["id"] == ids.project_1
@@ -521,7 +522,9 @@ def test_project_portal_crud_and_task_history(project_connection) -> None:
     assert task_users["ok"] is True
     assert [user["id"] for user in task_users["data"]] == [ids.user_1, ids.user_2]
 
-    project_portal.set_task_users(connection, ids.task_1, [ids.user_2, ids.user_2, ids.user_1], role="reviewer")
+    project_portal.set_task_users(
+        connection, ids.task_1, [ids.user_2, ids.user_2, ids.user_1], role="reviewer"
+    )
     task_users_after = project_portal.get_task_users(connection, ids.task_1)
     assert [user["id"] for user in task_users_after["data"]] == [ids.user_2, ids.user_1]
     assert all(user["role"] == "reviewer" for user in task_users_after["data"])
@@ -558,18 +561,22 @@ def test_project_portal_crud_and_task_history(project_connection) -> None:
         "todo",
     ]
 
-    delete_task_result = project_portal.delete_project_activity_task(connection, project_x_id, activity_x_id, task_x_id)
+    delete_task_result = project_portal.delete_project_activity_task(
+        connection, project_x_id, activity_x_id, task_x_id
+    )
     assert delete_task_result["ok"] is True
 
-    delete_activity_result = project_portal.delete_project_activity(connection, project_x_id, activity_x_id)
+    delete_activity_result = project_portal.delete_project_activity(
+        connection, project_x_id, activity_x_id
+    )
     assert delete_activity_result["ok"] is True
 
     delete_project_result = project_portal.delete_project(connection, project_x_id)
     assert delete_project_result["ok"] is True
     assert (
-        connection.execute(
-            tables["project"].select().where(tables["project"].c.id == project_x_id)
-        ).mappings().first()
+        connection.execute(tables["project"].select().where(tables["project"].c.id == project_x_id))
+        .mappings()
+        .first()
         is None
     )
 
@@ -639,7 +646,9 @@ def test_project_portal_covers_task_conflicts_and_project_cascade(project_connec
     ]
 
     connection.execute(
-        update(tables["project_task"]).where(tables["project_task"].c.id == ids.task_1).values(sort=9)
+        update(tables["project_task"])
+        .where(tables["project_task"].c.id == ids.task_1)
+        .values(sort=9)
     )
     connection.commit()
 
@@ -656,10 +665,14 @@ def test_project_portal_covers_task_conflicts_and_project_cascade(project_connec
     assert any(task["id"] == ids.task_2 for task in outdated_result["data"]["tasks"])
 
     connection.execute(
-        update(tables["project_task"]).where(tables["project_task"].c.id == ids.task_1).values(sort=0)
+        update(tables["project_task"])
+        .where(tables["project_task"].c.id == ids.task_1)
+        .values(sort=0)
     )
     connection.execute(
-        update(tables["project_task"]).where(tables["project_task"].c.id == ids.task_2).values(sort=1)
+        update(tables["project_task"])
+        .where(tables["project_task"].c.id == ids.task_2)
+        .values(sort=1)
     )
     connection.commit()
 
@@ -672,11 +685,15 @@ def test_project_portal_covers_task_conflicts_and_project_cascade(project_connec
 
         def execute(self, statement, *args, **kwargs):  # type: ignore[no-untyped-def]
             result = self._inner_connection.execute(statement, *args, **kwargs)
-            if getattr(statement, "__visit_name__", None) == "update" and getattr(
-                getattr(statement, "table", None),
-                "name",
-                None,
-            ) == "project_task":
+            if (
+                getattr(statement, "__visit_name__", None) == "update"
+                and getattr(
+                    getattr(statement, "table", None),
+                    "name",
+                    None,
+                )
+                == "project_task"
+            ):
                 return type("_EmptyUpdateResult", (), {"all": lambda self: []})()
             return result
 
@@ -731,17 +748,31 @@ def test_project_portal_covers_task_conflicts_and_project_cascade(project_connec
 
     delete_project_result = project_portal.delete_project(connection, project_x)
     assert delete_project_result["ok"] is True
-    assert connection.execute(tables["project"].select().where(tables["project"].c.id == project_x)).first() is None
-    assert connection.execute(tables["project_task"].select().where(tables["project_task"].c.id == task_x)).first() is None
     assert (
         connection.execute(
-            tables["project_task_user"].select().where(tables["project_task_user"].c.task_id == task_x)
+            tables["project"].select().where(tables["project"].c.id == project_x)
         ).first()
         is None
     )
     assert (
         connection.execute(
-            tables["project_task_history"].select().where(tables["project_task_history"].c.task_id == task_x)
+            tables["project_task"].select().where(tables["project_task"].c.id == task_x)
+        ).first()
+        is None
+    )
+    assert (
+        connection.execute(
+            tables["project_task_user"]
+            .select()
+            .where(tables["project_task_user"].c.task_id == task_x)
+        ).first()
+        is None
+    )
+    assert (
+        connection.execute(
+            tables["project_task_history"]
+            .select()
+            .where(tables["project_task_history"].c.task_id == task_x)
         ).first()
         is None
     )
@@ -754,10 +785,15 @@ def test_project_portal_rejects_invalid_inputs_and_missing_rows(project_connecti
     assert project_portal.update_project(connection, {"id": "missing"})["ok"] is False
     assert project_portal.delete_project(connection, "missing")["ok"] is False
     assert project_portal.list_project_activities(connection, "missing")["ok"] is False
-    assert project_portal.create_project_activity(connection, "missing", {"name": "x"})["ok"] is False
+    assert (
+        project_portal.create_project_activity(connection, "missing", {"name": "x"})["ok"] is False
+    )
     assert project_portal.update_project_activity(connection, "missing", {"id": "x"})["ok"] is False
     assert project_portal.delete_project_activity(connection, "missing", "x")["ok"] is False
-    assert project_portal.list_project_activity_tasks(connection, ids.project_1, "missing")["ok"] is False
+    assert (
+        project_portal.list_project_activity_tasks(connection, ids.project_1, "missing")["ok"]
+        is False
+    )
     assert (
         project_portal.create_project_activity_task(
             connection,
@@ -772,9 +808,24 @@ def test_project_portal_rejects_invalid_inputs_and_missing_rows(project_connecti
         )["ok"]
         is False
     )
-    assert project_portal.update_project_activity_task(connection, ids.project_1, ids.activity_1, ids.user_1, {"id": "x"})["ok"] is False
-    assert project_portal.delete_project_activity_task(connection, ids.project_1, ids.activity_1, "missing")["ok"] is False
-    assert project_portal.reorder_project_activity_tasks(connection, ids.project_1, ids.activity_1, ids.user_1, [], [])["ok"] is False
+    assert (
+        project_portal.update_project_activity_task(
+            connection, ids.project_1, ids.activity_1, ids.user_1, {"id": "x"}
+        )["ok"]
+        is False
+    )
+    assert (
+        project_portal.delete_project_activity_task(
+            connection, ids.project_1, ids.activity_1, "missing"
+        )["ok"]
+        is False
+    )
+    assert (
+        project_portal.reorder_project_activity_tasks(
+            connection, ids.project_1, ids.activity_1, ids.user_1, [], []
+        )["ok"]
+        is False
+    )
     assert project_portal.get_task_history(connection, "missing")["ok"] is False
     assert project_portal.get_task_users(connection, "missing")["ok"] is False
     assert project_portal.set_task_users(connection, "missing", [ids.user_1])["ok"] is False
@@ -783,60 +834,63 @@ def test_project_portal_rejects_invalid_inputs_and_missing_rows(project_connecti
 def test_project_portal_helpers_cover_payload_and_kanban_branches(project_connection) -> None:
     connection, ids, tables = project_connection
 
-    conflict = project_portal.ProjectTaskReorderConflict([])  # noqa: SLF001
+    conflict = project_portal.ProjectTaskReorderConflict([])
     assert str(conflict) == "KANBAN_OUTDATED"
     assert conflict.tasks == []
 
-    assert project_portal._create_task_groups() == {  # noqa: SLF001
+    assert project_portal._create_task_groups() == {
         "todo": [],
         "in_progress": [],
         "blocked": [],
         "review": [],
         "done": [],
     }
-    assert project_portal._task_position_sort_key({"sort": 3, "createdAt": "a"}) == (3, "a")  # noqa: SLF001
-    assert project_portal._task_position_sort_key({"sort": "7", "createdAt": "b"}) == (7, "b")  # noqa: SLF001
-    assert project_portal._normalize_task_status(None) == "todo"  # noqa: SLF001
-    assert project_portal._normalize_task_status("progress") == "in_progress"  # noqa: SLF001
-    assert project_portal._normalize_task_status("review") == "review"  # noqa: SLF001
-    assert project_portal._normalize_task_status("unknown") == "todo"  # noqa: SLF001
+    assert project_portal._task_position_sort_key({"sort": 3, "createdAt": "a"}) == (3, "a")
+    assert project_portal._task_position_sort_key({"sort": "7", "createdAt": "b"}) == (7, "b")
+    assert project_portal._normalize_task_status(None) == "todo"
+    assert project_portal._normalize_task_status("progress") == "in_progress"
+    assert project_portal._normalize_task_status("review") == "review"
+    assert project_portal._normalize_task_status("unknown") == "todo"
 
     rows = [
         {"id": "task-a", "status": "todo", "sort": 2, "createdAt": "2026-08-01T12:00:00"},
         {"id": "task-b", "status": "progress", "sort": 1, "createdAt": "2026-08-01T12:05:00"},
         {"id": "task-c", "status": "done", "sort": 0, "createdAt": "2026-08-01T12:10:00"},
     ]
-    grouped = project_portal._task_groups_from_rows(rows)  # noqa: SLF001
+    grouped = project_portal._task_groups_from_rows(rows)
     assert [task["id"] for task in grouped["todo"]] == ["task-a"]
     assert [task["id"] for task in grouped["in_progress"]] == ["task-b"]
     assert [task["id"] for task in grouped["done"]] == ["task-c"]
 
-    assert project_portal._read_task_values(  # noqa: SLF001
-        {
-            "name": "Tarefa",
-            "description": "Descricao",
-            "category": "Categoria",
-            "estimated_days": 3,
-            "start_date": "2026-08-01",
-            "end_date": "2026-08-02",
-            "priority": "high",
-            "status": "progress",
-        }
-    )["status"] == "in_progress"
+    assert (
+        project_portal._read_task_values(
+            {
+                "name": "Tarefa",
+                "description": "Descricao",
+                "category": "Categoria",
+                "estimated_days": 3,
+                "start_date": "2026-08-01",
+                "end_date": "2026-08-02",
+                "priority": "high",
+                "status": "progress",
+            }
+        )["status"]
+        == "in_progress"
+    )
 
-    changed = project_portal._detect_changed_fields(  # noqa: SLF001
+    changed = project_portal._detect_changed_fields(
         {"name": "A", "description": "B", "priority": "low", "status": "todo"},
         {"name": "A1", "description": "B", "priority": "high", "status": "done"},
     )
     assert changed == ["name", "priority", "status"]
 
-    assert project_portal._optional_date("2026-08-01") == date(2026, 8, 1)  # noqa: SLF001
-    assert project_portal._optional_date("bad") is None  # noqa: SLF001
-    assert project_portal._optional_date(None) is None  # noqa: SLF001
-    assert project_portal._optional_str("texto") == "texto"  # noqa: SLF001
-    assert project_portal._optional_str(123) is None  # noqa: SLF001
+    assert project_portal._optional_date("2026-08-01") == date(2026, 8, 1)
+    assert project_portal._optional_date("bad") is None
+    assert project_portal._optional_date(None) is None
+    assert project_portal._optional_str("texto") == "texto"
+    assert project_portal._optional_str(123) is None
 
-    safe_value = project_portal._json_safe_value(  # noqa: SLF001
+    safe_value = project_portal._json_safe_value(
         {
             "date": date(2026, 8, 1),
             "datetime": BASE_DATETIME,
@@ -847,72 +901,102 @@ def test_project_portal_helpers_cover_payload_and_kanban_branches(project_connec
     assert safe_value["datetime"].startswith("2026-08-01T12:00:00")
     assert safe_value["list"][1] == [1, BASE_DATETIME.isoformat()]
 
-    assert project_portal._require_project_payload(  # noqa: SLF001
-        {
-            "name": "Projeto",
-            "shortDescription": "Resumo",
-            "description": "Descricao",
-            "priority": "high",
-            "status": "active",
-        }
-    )["name"] == "Projeto"
-    assert project_portal._require_project_payload({"name": "Projeto"}, update=False)["ok"] is False  # noqa: SLF001
-    assert project_portal._require_project_payload(  # noqa: SLF001
-        {
-            "id": "project-x",
-            "name": "Projeto",
-            "shortDescription": "Resumo",
-            "description": "Descricao",
-            "priority": "high",
-            "status": "active",
-        },
-        update=True,
-    )["id"] == "project-x"
-    assert project_portal._require_project_payload(  # noqa: SLF001
-        {
-            "name": "Projeto",
-            "shortDescription": "Resumo",
-            "description": "Descricao",
-            "priority": "high",
-            "status": "active",
-        },
-        update=True,
-    )["ok"] is False
+    assert (
+        project_portal._require_project_payload(
+            {
+                "name": "Projeto",
+                "shortDescription": "Resumo",
+                "description": "Descricao",
+                "priority": "high",
+                "status": "active",
+            }
+        )["name"]
+        == "Projeto"
+    )
+    assert project_portal._require_project_payload({"name": "Projeto"}, update=False)["ok"] is False
+    assert (
+        project_portal._require_project_payload(
+            {
+                "id": "project-x",
+                "name": "Projeto",
+                "shortDescription": "Resumo",
+                "description": "Descricao",
+                "priority": "high",
+                "status": "active",
+            },
+            update=True,
+        )["id"]
+        == "project-x"
+    )
+    assert (
+        project_portal._require_project_payload(
+            {
+                "name": "Projeto",
+                "shortDescription": "Resumo",
+                "description": "Descricao",
+                "priority": "high",
+                "status": "active",
+            },
+            update=True,
+        )["ok"]
+        is False
+    )
 
-    assert project_portal._require_activity_payload(  # noqa: SLF001
-        {"name": "Atividade", "description": "Descricao"}
-    )["name"] == "Atividade"
-    assert project_portal._require_activity_payload({"name": "Atividade"}, update=False)["ok"] is False  # noqa: SLF001
-    assert project_portal._require_activity_payload(  # noqa: SLF001
-        {"id": "activity-x", "name": "Atividade", "description": "Descricao"},
-        update=True,
-    )["id"] == "activity-x"
-    assert project_portal._require_activity_payload({"name": "Atividade", "description": "Descricao"}, update=True)["ok"] is False  # noqa: SLF001
+    assert (
+        project_portal._require_activity_payload({"name": "Atividade", "description": "Descricao"})[
+            "name"
+        ]
+        == "Atividade"
+    )
+    assert (
+        project_portal._require_activity_payload({"name": "Atividade"}, update=False)["ok"] is False
+    )
+    assert (
+        project_portal._require_activity_payload(
+            {"id": "activity-x", "name": "Atividade", "description": "Descricao"},
+            update=True,
+        )["id"]
+        == "activity-x"
+    )
+    assert (
+        project_portal._require_activity_payload(
+            {"name": "Atividade", "description": "Descricao"}, update=True
+        )["ok"]
+        is False
+    )
 
-    assert project_portal._require_task_payload(  # noqa: SLF001
-        {
-            "projectId": ids.project_1,
-            "projectActivityId": ids.activity_1,
-            "name": "Tarefa",
-            "description": "Descricao",
-            "priority": "high",
-            "status": "todo",
-        },
-        include_id=False,
-    )["name"] == "Tarefa"
-    assert project_portal._require_task_payload(  # noqa: SLF001
-        {
-            "projectId": ids.project_1,
-            "projectActivityId": ids.activity_1,
-            "name": "Tarefa",
-            "description": "Descricao",
-            "priority": "high",
-            "status": "todo",
-        },
-        include_id=True,
-    )["ok"] is False
+    assert (
+        project_portal._require_task_payload(
+            {
+                "projectId": ids.project_1,
+                "projectActivityId": ids.activity_1,
+                "name": "Tarefa",
+                "description": "Descricao",
+                "priority": "high",
+                "status": "todo",
+            },
+            include_id=False,
+        )["name"]
+        == "Tarefa"
+    )
+    assert (
+        project_portal._require_task_payload(
+            {
+                "projectId": ids.project_1,
+                "projectActivityId": ids.activity_1,
+                "name": "Tarefa",
+                "description": "Descricao",
+                "priority": "high",
+                "status": "todo",
+            },
+            include_id=True,
+        )["ok"]
+        is False
+    )
 
-    next_sort_existing = project_portal._get_next_task_sort(connection, ids.project_1, ids.activity_1, "todo")  # noqa: SLF001
+    next_sort_existing = project_portal._get_next_task_sort(
+        connection, ids.project_1, ids.activity_1, "todo"
+    )
     assert next_sort_existing == 2
 
     connection.execute(
@@ -950,9 +1034,11 @@ def test_project_portal_helpers_cover_payload_and_kanban_branches(project_connec
         )
     )
     connection.commit()
-    assert project_portal._get_next_task_sort(connection, ids.project_x, ids.activity_x, "todo") == 0  # noqa: SLF001
+    assert (
+        project_portal._get_next_task_sort(connection, ids.project_x, ids.activity_x, "todo") == 0
+    )
 
-    kanban = project_portal._kanban_outdated(  # noqa: SLF001
+    kanban = project_portal._kanban_outdated(
         connection,
         [{"id": "task-a", "status": "progress", "sort": "2", "createdAt": "2026-08-01T12:00:00"}],
     )

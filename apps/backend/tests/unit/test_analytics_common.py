@@ -96,10 +96,7 @@ def test_run_repeatable_read_snapshot_rolls_back_on_success_and_failure() -> Non
     assert result == "ok"
     assert connection.transaction.rollback_calls == 1
     assert any("REPEATABLE READ READ ONLY" in statement for statement in connection.statements)
-    assert any(
-        params.get("timeout") == "1234ms"
-        for params in connection.params
-    )
+    assert any(params.get("timeout") == "1234ms" for params in connection.params)
 
     failure_connection = _FakeConnection()
 

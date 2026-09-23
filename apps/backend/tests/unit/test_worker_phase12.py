@@ -907,14 +907,14 @@ def test_worker_health_helpers_cover_remaining_branches(
 
     fresh_payload = {
         "healthy": True,
-        "startedAt": worker_health._serialize_datetime(monitor.started_at),  # noqa: SLF001
-        "lastActivityAt": worker_health._serialize_datetime(monitor.started_at),  # noqa: SLF001
+        "startedAt": worker_health._serialize_datetime(monitor.started_at),
+        "lastActivityAt": worker_health._serialize_datetime(monitor.started_at),
     }
     assert worker_health.evaluate_worker_health(fresh_payload, stale_seconds=60.0) is True
-    assert worker_health._serialize_datetime(None) is None  # noqa: SLF001
-    assert worker_health._parse_datetime("bad") is None  # noqa: SLF001
-    assert worker_health._sanitize_error("   ") == "unknown error"  # noqa: SLF001
-    assert worker_health._sanitize_error("  erro  ") == "erro"  # noqa: SLF001
+    assert worker_health._serialize_datetime(None) is None
+    assert worker_health._parse_datetime("bad") is None
+    assert worker_health._sanitize_error("   ") == "unknown error"
+    assert worker_health._sanitize_error("  erro  ") == "erro"
 
     bad_state_file = tmp_path / "bad-worker-health.json"
     bad_state_file.write_text("[]", encoding="utf-8")
@@ -995,7 +995,9 @@ def test_worker_processor_handles_dlq_and_commit_failure_paths(
 ) -> None:
     engine, tables = _create_engine_and_tables(tmp_path)
     _patch_worker_tables(monkeypatch, tables)
-    settings = _worker_settings(tmp_path, database_url=f"sqlite+pysqlite:///{tmp_path / 'worker.sqlite3'}")
+    settings = _worker_settings(
+        tmp_path, database_url=f"sqlite+pysqlite:///{tmp_path / 'worker.sqlite3'}"
+    )
     client = _RecordingWorkerClient()
     instance = client.instance
     health_errors: list[str] = []

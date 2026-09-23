@@ -166,7 +166,9 @@ def test_upload_storage_helpers_cover_delete_and_content_types(
     assert uploads.delete_upload_file("reports", "keep.pdf") is True
     assert not keep_file.exists()
     assert uploads.delete_upload_file("reports", "../keep.pdf") is False
-    assert uploads.resolve_upload_path("reports", "keep.pdf") == (reports_dir / "keep.pdf").resolve()
+    assert (
+        uploads.resolve_upload_path("reports", "keep.pdf") == (reports_dir / "keep.pdf").resolve()
+    )
 
 
 def test_upload_storage_helpers_reject_large_or_unsupported_images(
@@ -210,7 +212,9 @@ def test_upload_storage_helpers_reject_large_or_unsupported_images(
         "error": "Tipo de arquivo não permitido."
     }
 
-    monkeypatch.setattr(uploads.os, "open", lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("boom")))
+    monkeypatch.setattr(
+        uploads.os, "open", lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("boom"))
+    )
     uploads._fsync_directory(tmp_path)
 
 
@@ -335,7 +339,7 @@ def test_upload_storage_helpers_cover_stat_resolve_and_unlink_error_branches(
         lambda: SimpleNamespace(uploads_dir=uploads_root),
     )
 
-    reports_dir = uploads.ensure_upload_dir("reports")
+    _reports_dir = uploads.ensure_upload_dir("reports")
 
     class _FakeEntry:
         def __init__(
@@ -423,12 +427,12 @@ def test_upload_storage_helpers_cover_atomic_write_and_image_save(
     )
 
     atomic_path = uploads_root / "avatars" / "atomic.bin"
-    uploads._atomic_write_bytes(atomic_path, b"atomic-bytes")  # noqa: SLF001
+    uploads._atomic_write_bytes(atomic_path, b"atomic-bytes")
     assert atomic_path.read_bytes() == b"atomic-bytes"
 
     image = Image.new("RGB", (8, 4), color=(10, 20, 30))
     image_path = uploads_root / "avatars" / "avatar.webp"
-    uploads._save_image_atomically(image, image_path, quality=80)  # noqa: SLF001
+    uploads._save_image_atomically(image, image_path, quality=80)
     assert image_path.exists()
     with Image.open(image_path) as saved_image:
         saved_image.load()

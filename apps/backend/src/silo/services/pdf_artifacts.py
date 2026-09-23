@@ -3,10 +3,11 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -53,8 +54,7 @@ class PdfArtifactTooLargeError(RuntimeError):
 
     def __init__(self, *, report_type: str, text: str, page_count: int, byte_size: int) -> None:
         message = (
-            "ARTIFACT_TOO_LARGE "
-            f"report_type={report_type} pages={page_count} bytes={byte_size}"
+            f"ARTIFACT_TOO_LARGE report_type={report_type} pages={page_count} bytes={byte_size}"
         )
         super().__init__(message)
         object.__setattr__(self, "report_type", report_type)
@@ -120,7 +120,9 @@ class PdfRenderer:
         buffer = io.BytesIO()
         styles = self._build_styles()
         title = self._title_map.get(report_type, "Relatório SILO")
-        plain_text = self._build_plain_text(report_type=report_type, period_label=period_label, data=data)
+        plain_text = self._build_plain_text(
+            report_type=report_type, period_label=period_label, data=data
+        )
 
         doc = SimpleDocTemplate(
             buffer,
@@ -146,7 +148,9 @@ class PdfRenderer:
             canvas_obj.setFont("Helvetica", 8)
             canvas_obj.setFillColor(colors.HexColor("#6b7280"))
             canvas_obj.drawString(18 * mm, A4[1] - 16 * mm, title)
-            canvas_obj.drawString(18 * mm, 12 * mm, f"Gerado em {generated_at_value.strftime('%d/%m/%Y %H:%M')}")
+            canvas_obj.drawString(
+                18 * mm, 12 * mm, f"Gerado em {generated_at_value.strftime('%d/%m/%Y %H:%M')}"
+            )
             canvas_obj.drawRightString(A4[0] - 18 * mm, 12 * mm, f"Página {doc_obj.page}")
             canvas_obj.restoreState()
 
@@ -229,13 +233,17 @@ class PdfRenderer:
 
         raise ValueError(f"Tipo de relatório desconhecido: {report_type}")
 
-    def _build_plain_text(self, *, report_type: str, period_label: str, data: dict[str, Any]) -> str:
+    def _build_plain_text(
+        self, *, report_type: str, period_label: str, data: dict[str, Any]
+    ) -> str:
         payload = {
             "reportType": report_type,
             "periodLabel": period_label,
             "data": data,
         }
-        return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+        return json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str
+        )
 
 
 class PdfArtifactStore:

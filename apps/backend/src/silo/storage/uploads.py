@@ -8,9 +8,9 @@ import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Final, Literal, TypeGuard
+from typing import Final, Literal, TypeGuard, cast
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from silo.config import load_settings
 
@@ -88,7 +88,7 @@ def list_upload_files(kind: UploadKind) -> list[dict[str, object]]:
             }
         )
 
-    items.sort(key=lambda item: (-float(item["mtime"]), str(item["filename"])))
+    items.sort(key=lambda item: (-cast(float, item["mtime"]), str(item["filename"])))
     return items
 
 
@@ -231,7 +231,7 @@ def store_image_as_webp(
             size=len(buffer),
             url=f"/uploads/{kind}/{filename}",
         )
-    except (OSError, ValueError, Image.DecompressionBombError, Image.UnidentifiedImageError):
+    except (OSError, ValueError, Image.DecompressionBombError, UnidentifiedImageError):
         return {"error": "Erro ao processar imagem."}
 
 

@@ -9,7 +9,6 @@ import math
 import os
 import platform
 import shutil
-import statistics
 import subprocess
 import sys
 import tempfile
@@ -34,9 +33,13 @@ from silo.ai.assistant_runtime import (
     create_model_runtime,
     probe_ai_runtime,
 )
-from silo.ai.assistant_service import create_assistant_thread, delete_assistant_thread, get_assistant_graph
+from silo.ai.assistant_service import (
+    create_assistant_thread,
+    delete_assistant_thread,
+    get_assistant_graph,
+)
 from silo.api.dependencies import CurrentUser
-from silo.config import AiAgentMode, Settings, load_settings
+from silo.config import Settings, load_settings
 from silo.db.models import legacy_tables
 from silo.db.url import sqlalchemy_database_url
 
@@ -47,8 +50,17 @@ EXPECTED_EMBEDDING_DIGEST = "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e94
 
 DEFAULT_DATABASE_URL = "postgresql://silo:silo@127.0.0.1:5432/silo"
 DEFAULT_vllm_url = "http://127.0.0.1:11434"
-DEFAULT_CORPUS_PATH = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "ai" / "eval-cases.jsonl"
-DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[5] / "docs" / "migration" / "evidence" / "phase-11" / "11-agentic-eval"
+DEFAULT_CORPUS_PATH = (
+    Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "ai" / "eval-cases.jsonl"
+)
+DEFAULT_OUTPUT_DIR = (
+    Path(__file__).resolve().parents[5]
+    / "docs"
+    / "migration"
+    / "evidence"
+    / "phase-11"
+    / "11-agentic-eval"
+)
 
 
 def _coerce_str_tuple(value: object) -> tuple[str, ...]:
@@ -179,7 +191,11 @@ class Phase11CorpusCase:
             forbidden_tools=_coerce_str_tuple(payload.get("forbiddenTools")),
             source_kind=str(payload["sourceKind"]),
             sources=_coerce_str_tuple(payload.get("sources")),
-            verifiable_numbers=tuple(dict(item) for item in payload.get("verifiableNumbers", []) if isinstance(item, Mapping)),
+            verifiable_numbers=tuple(
+                dict(item)
+                for item in payload.get("verifiableNumbers", [])
+                if isinstance(item, Mapping)
+            ),
             expected_dataset=dict(payload.get("expectedDataset") or {}),
             expected_artifact=dict(payload.get("expectedArtifact") or {}),
             pdf_allowed=bool(payload["pdfAllowed"]),
@@ -194,7 +210,9 @@ class Phase11CorpusCase:
     def conversation_context_hash(self) -> str | None:
         if self.conversation_context is None:
             return None
-        return _hash_text(json.dumps(self.conversation_context, ensure_ascii=False, sort_keys=True, default=str))
+        return _hash_text(
+            json.dumps(self.conversation_context, ensure_ascii=False, sort_keys=True, default=str)
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -426,29 +444,47 @@ def _settings_database_url(settings: Settings) -> str:
     return str(database_url)
 
 
-def _resolve_eval_user(connection: Connection, *, seed_database_if_missing: bool, settings: Settings) -> CurrentUser:
+def _resolve_eval_user(
+    connection: Connection, *, seed_database_if_missing: bool, settings: Settings
+) -> CurrentUser:
     user_table = legacy_tables["user"]
-    row = connection.execute(
-        select(user_table.c.id, user_table.c.email, user_table.c.name, user_table.c.is_active)
-        .where(user_table.c.is_active.is_(True))
-        .order_by(user_table.c.id.asc())
-        .limit(1)
-    ).mappings().first()
-    if row is None:
-        row = connection.execute(
+    row = (
+        connection.execute(
             select(user_table.c.id, user_table.c.email, user_table.c.name, user_table.c.is_active)
+            .where(user_table.c.is_active.is_(True))
             .order_by(user_table.c.id.asc())
             .limit(1)
-        ).mappings().first()
+        )
+        .mappings()
+        .first()
+    )
+    if row is None:
+        row = (
+            connection.execute(
+                select(
+                    user_table.c.id, user_table.c.email, user_table.c.name, user_table.c.is_active
+                )
+                .order_by(user_table.c.id.asc())
+                .limit(1)
+            )
+            .mappings()
+            .first()
+        )
     if row is None and seed_database_if_missing:
         from silo.db.seed import seed_database
 
         seed_database(_settings_database_url(settings))
-        row = connection.execute(
-            select(user_table.c.id, user_table.c.email, user_table.c.name, user_table.c.is_active)
-            .order_by(user_table.c.id.asc())
-            .limit(1)
-        ).mappings().first()
+        row = (
+            connection.execute(
+                select(
+                    user_table.c.id, user_table.c.email, user_table.c.name, user_table.c.is_active
+                )
+                .order_by(user_table.c.id.asc())
+                .limit(1)
+            )
+            .mappings()
+            .first()
+        )
     if row is None:
         raise RuntimeError("Nenhum usuário disponível no banco de avaliação.")
     return CurrentUser(
@@ -536,7 +572,7 @@ def _create_runtime_context(
     model_runtime: VLLMModelRuntime,
     embedding_runtime: VLLMEmbeddingRuntime,
 ) -> AgentRuntimeContext:
-    runtime_context = assistant_service._build_runtime_context(  # noqa: SLF001
+    runtime_context = assistant_service._build_runtime_context(
         connection,
         current_user,
         request_id=str(uuid.uuid4()),
@@ -545,7 +581,9 @@ def _create_runtime_context(
         embedding_provider=embedding_runtime,
     )
     runtime_context.mode = mode
-    runtime_context.connection_factory = connection.engine.connect if connection.engine is not None else None
+    runtime_context.connection_factory = (
+        connection.engine.connect if connection.engine is not None else None
+    )
     runtime_context.has_reports_permission = True
     return runtime_context
 
@@ -557,7 +595,7 @@ def _build_state_for_case(
     thread_id: str,
 ) -> dict[str, Any]:
     request = AiAssistantMessageRequestDto(thread_id=thread_id, content=case.prompt)
-    return assistant_service._initial_state(request, runtime_context)  # noqa: SLF001
+    return assistant_service._initial_state(request, runtime_context)
 
 
 def _actual_artifact_kind(state: Mapping[str, Any]) -> str:
@@ -603,7 +641,7 @@ def _actual_dataset_summary(state: Mapping[str, Any]) -> tuple[tuple[str, ...], 
 
 
 def _trajectory_from_state(state: Mapping[str, Any]) -> tuple[str, ...]:
-    trajectory = assistant_service._canonical_trajectory(dict(state))  # noqa: SLF001
+    trajectory = assistant_service._canonical_trajectory(dict(state))
     return tuple(trajectory)
 
 
@@ -648,7 +686,9 @@ def _lineage_for_case(case: Phase11CorpusCase, state: Mapping[str, Any]) -> dict
     actual_trajectory = _trajectory_from_state(state)
     actual_tool_calls = _tool_call_names(state)
     required_tools_missing = tuple(
-        tool for tool in case.required_tools if tool not in actual_trajectory and tool not in actual_tool_calls
+        tool
+        for tool in case.required_tools
+        if tool not in actual_trajectory and tool not in actual_tool_calls
     )
     forbidden_tool_violations = tuple(
         tool
@@ -659,12 +699,18 @@ def _lineage_for_case(case: Phase11CorpusCase, state: Mapping[str, Any]) -> dict
     expected_dataset_schema_id = str(case.expected_dataset.get("schemaId") or "")
     expected_source_kind = case.source_kind
     actual_source_kind = source_kinds[0] if source_kinds else None
-    scope_match = bool(actual_scope) and str(actual_scope) == case.scope and bool(actual_is_in_scope) == case.is_in_scope_expected
+    scope_match = (
+        bool(actual_scope)
+        and str(actual_scope) == case.scope
+        and bool(actual_is_in_scope) == case.is_in_scope_expected
+    )
     if not case.is_in_scope_expected:
         scope_match = bool(actual_is_in_scope) is False
     dataset_manifest_ok = False
     if expected_dataset_schema_id:
-        dataset_manifest_ok = expected_dataset_schema_id in schema_ids and expected_source_kind in source_kinds
+        dataset_manifest_ok = (
+            expected_dataset_schema_id in schema_ids and expected_source_kind in source_kinds
+        )
     else:
         dataset_manifest_ok = bool(schema_ids)
     citations_valid = False
@@ -680,7 +726,11 @@ def _lineage_for_case(case: Phase11CorpusCase, state: Mapping[str, Any]) -> dict
     generation_error_message = generation.get("errorMessage")
     conclusion_ok = bool(final_response) and not bool(state.get("errors"))
     if not case.is_in_scope_expected:
-        conclusion_ok = bool(final_response) and bool(actual_is_in_scope) is False and not bool(state.get("errors"))
+        conclusion_ok = (
+            bool(final_response)
+            and bool(actual_is_in_scope) is False
+            and not bool(state.get("errors"))
+        )
     return {
         "actual_scope": str(actual_scope) if actual_scope is not None else None,
         "actual_is_in_scope": bool(actual_is_in_scope) if actual_is_in_scope is not None else None,
@@ -689,7 +739,8 @@ def _lineage_for_case(case: Phase11CorpusCase, state: Mapping[str, Any]) -> dict
         "required_tools_missing": required_tools_missing,
         "forbidden_tool_violations": forbidden_tool_violations,
         "actual_source_kind": actual_source_kind,
-        "source_kind_match": bool(actual_source_kind) and actual_source_kind == expected_source_kind,
+        "source_kind_match": bool(actual_source_kind)
+        and actual_source_kind == expected_source_kind,
         "expected_artifact_kind": expected_artifact_kind,
         "actual_artifact_kind": actual_artifact_kind,
         "artifact_match": actual_artifact_kind == expected_artifact_kind,
@@ -700,7 +751,9 @@ def _lineage_for_case(case: Phase11CorpusCase, state: Mapping[str, Any]) -> dict
         "citations_valid": citations_valid,
         "conclusion_ok": conclusion_ok,
         "generation_status": generation_status,
-        "generation_error_message": str(generation_error_message) if generation_error_message is not None else None,
+        "generation_error_message": str(generation_error_message)
+        if generation_error_message is not None
+        else None,
         "prompt_eval_count": state.get("prompt_eval_count"),
         "output_token_count": generation.get("generatedTokens"),
         "latency_ms": int(generation.get("latencyMs") or 0),
@@ -723,7 +776,7 @@ async def _run_case_attempt(
     model_digest: str | None,
     embedding_digest: str | None,
 ) -> tuple[Phase11AttemptResult, str]:
-    assistant_service._SEMANTIC_CACHE.clear()  # noqa: SLF001
+    assistant_service._SEMANTIC_CACHE.clear()
     request_id = str(uuid.uuid4())
     run_id = str(uuid.uuid4())
     thread_title = f"Phase 11 {case.id} {mode} {attempt}"
@@ -869,7 +922,7 @@ async def _run_case_attempt(
             except Exception:
                 pass
             connection.close()
-            assistant_service._SEMANTIC_CACHE.clear()  # noqa: SLF001
+            assistant_service._SEMANTIC_CACHE.clear()
 
 
 def _summarize_mode(
@@ -926,11 +979,13 @@ def _summarize_mode(
             number_consistency += 1
         forbidden_tool_violations += len(attempt.forbidden_tool_violations)
         required_tools_expected += attempt.required_tools_expected_count
-        required_tools_found += attempt.required_tools_expected_count - len(attempt.required_tools_missing)
+        required_tools_found += attempt.required_tools_expected_count - len(
+            attempt.required_tools_missing
+        )
         first_emissions.append(attempt.first_emission_ms)
         finals.append(attempt.latency_ms)
 
-    for case_id, case_attempts in case_groups.items():
+    for _case_id, case_attempts in case_groups.items():
         if case_attempts and all(
             (
                 attempt.scope_match
@@ -968,7 +1023,9 @@ def _summarize_mode(
     if mode == "deterministic":
         if baseline_first_emission_p95_ms is None or baseline_final_p95_ms is None:
             gate_status = "pending_baseline"
-            gate_notes.append("Baseline Node ausente; compare com um JSON de baseline para aprovar 11.59.")
+            gate_notes.append(
+                "Baseline Node ausente; compare com um JSON de baseline para aprovar 11.59."
+            )
         elif (
             required_tool_recall >= 1.0
             and scope_accuracy >= 1.0
@@ -979,8 +1036,15 @@ def _summarize_mode(
             and first_emission_p95_ms is not None
             and final_p95_ms is not None
             and (
-                (baseline_final_p95_ms > 0 and final_p95_ms <= math.ceil(baseline_final_p95_ms * 1.2))
-                or (baseline_final_p95_ms > 0 and final_p95_ms <= baseline_final_p95_ms + math.ceil(baseline_final_p95_ms * 0.2))
+                (
+                    baseline_final_p95_ms > 0
+                    and final_p95_ms <= math.ceil(baseline_final_p95_ms * 1.2)
+                )
+                or (
+                    baseline_final_p95_ms > 0
+                    and final_p95_ms
+                    <= baseline_final_p95_ms + math.ceil(baseline_final_p95_ms * 0.2)
+                )
             )
         ):
             gate_status = "approved"
@@ -989,7 +1053,9 @@ def _summarize_mode(
     else:
         if deterministic_final_p95_ms is None:
             gate_status = "pending_deterministic"
-            gate_notes.append("Executar primeiro a Fase 11 em modo deterministic para estabelecer baseline.")
+            gate_notes.append(
+                "Executar primeiro a Fase 11 em modo deterministic para estabelecer baseline."
+            )
         elif (
             forbidden_tool_violations == 0
             and required_tool_recall >= 0.98
@@ -1011,7 +1077,9 @@ def _summarize_mode(
     if mode == "hybrid" and gate_status == "approved":
         gate_notes.append("Modo hybrid aprovado e elegível para habilitação controlada em staging.")
     if mode == "hybrid" and gate_status == "failed":
-        gate_notes.append("Modo hybrid não atingiu o Gate 11.60; manter AI_AGENT_MODE=deterministic.")
+        gate_notes.append(
+            "Modo hybrid não atingiu o Gate 11.60; manter AI_AGENT_MODE=deterministic."
+        )
 
     return Phase11ModeSummary(
         mode=mode,
@@ -1090,7 +1158,10 @@ def _render_summary_markdown(report: Phase11EvaluationReport) -> str:
         ]
     )
     for mode_summary in report.modes.values():
-        lines.append(f"- `{mode_summary.mode}`: " + "; ".join(mode_summary.gate_notes or ("sem notas adicionais",)))
+        lines.append(
+            f"- `{mode_summary.mode}`: "
+            + "; ".join(mode_summary.gate_notes or ("sem notas adicionais",))
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -1141,7 +1212,11 @@ async def run_phase11_evaluation(
             settings_cache[mode] = settings
 
             if engine is None:
-                engine = create_engine(sqlalchemy_database_url(_settings_database_url(settings)), future=True, pool_pre_ping=True)
+                engine = create_engine(
+                    sqlalchemy_database_url(_settings_database_url(settings)),
+                    future=True,
+                    pool_pre_ping=True,
+                )
 
             probe = await probe_ai_runtime(settings)
             if probe.fallback_reason is not None:
@@ -1204,11 +1279,15 @@ async def run_phase11_evaluation(
             deterministic_final_p95_ms = None
             if mode == "hybrid":
                 deterministic_summary = mode_summaries.get("deterministic")
-                deterministic_final_p95_ms = deterministic_summary.final_p95_ms if deterministic_summary else None
+                deterministic_final_p95_ms = (
+                    deterministic_summary.final_p95_ms if deterministic_summary else None
+                )
             summary = _summarize_mode(
                 mode=mode,
                 attempts=mode_attempts,
-                baseline_first_emission_p95_ms=baseline.get("firstEmissionP95Ms") if baseline else None,
+                baseline_first_emission_p95_ms=baseline.get("firstEmissionP95Ms")
+                if baseline
+                else None,
                 baseline_final_p95_ms=baseline.get("finalP95Ms") if baseline else None,
                 deterministic_final_p95_ms=deterministic_final_p95_ms,
             )
@@ -1253,7 +1332,9 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--uploads-dir", type=Path, default=None)
     parser.add_argument("--vllm-url", type=str, default=DEFAULT_vllm_url)
     parser.add_argument("--attempts-per-case", type=int, default=3)
-    parser.add_argument("--mode", choices=("deterministic", "hybrid", "both"), default="deterministic")
+    parser.add_argument(
+        "--mode", choices=("deterministic", "hybrid", "both"), default="deterministic"
+    )
     parser.add_argument("--baseline-json", type=Path, default=None)
     parser.add_argument("--seed-database-if-missing", action="store_true")
     return parser.parse_args(argv)
@@ -1278,7 +1359,15 @@ def main(argv: list[str] | None = None) -> int:
             baseline_json_path=args.baseline_json,
         )
     )
-    print(json.dumps(_sanitize_report(report), ensure_ascii=False, indent=2, sort_keys=True, default=_json_default))
+    print(
+        json.dumps(
+            _sanitize_report(report),
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            default=_json_default,
+        )
+    )
     return 0
 
 

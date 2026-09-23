@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
-from typing import Any, Mapping
+from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
+from typing import Any, TypeGuard
 
 from silo.domain.dataflow.helpers import (
     clamp_progress,
@@ -17,11 +18,13 @@ def parse_ecflow_kafka_pipelines(
 ) -> list[dict[str, Any]]:
     if _is_grouped_pipeline_data_file(value):
         pipelines = value["pipelines"]
-        return _sort_pipelines([pipeline for pipeline in pipelines if isinstance(pipeline, Mapping)])
+        return _sort_pipelines(
+            [dict(pipeline) for pipeline in pipelines if isinstance(pipeline, Mapping)]
+        )
 
     if isinstance(value, list):
-        if all(_is_grouped_pipeline_data(item) for item in value):
-            return _sort_pipelines([item for item in value if isinstance(item, Mapping)])
+        if all(_is_grouped_pipeline_data_item(item) for item in value):
+            return _sort_pipelines([dict(item) for item in value if isinstance(item, Mapping)])
 
         snapshots: list[dict[str, Any]] = []
         for item in value:
@@ -71,10 +74,14 @@ def _collect_pipeline_snapshots(
         groups = _collect_task_groups(node, [])
         if groups:
             explicit_status = normalize_product_status(
-                _read_text(node.get("state")) or _read_text(node.get("status")) or _read_text(node.get("node_state")),
+                _read_text(node.get("state"))
+                or _read_text(node.get("status"))
+                or _read_text(node.get("node_state")),
                 _read_text(node.get("default_state")),
             )
-            status = _derive_pipeline_status(groups) if explicit_status == "pending" else explicit_status
+            status = (
+                _derive_pipeline_status(groups) if explicit_status == "pending" else explicit_status
+            )
             snapshots.append(
                 {
                     "model": model,
@@ -115,7 +122,9 @@ def _collect_task_groups(
     return [group for group in groups if group["tasks"]]
 
 
-def _map_task_node_to_data_flow_task(task: Mapping[str, Any], group: Mapping[str, Any]) -> dict[str, Any]:
+def _map_task_node_to_data_flow_task(
+    task: Mapping[str, Any], group: Mapping[str, Any]
+) -> dict[str, Any]:
     status = normalize_product_status(
         _read_text(task.get("state")),
         _read_text(task.get("status")) or _read_text(task.get("node_state")),
@@ -133,7 +142,9 @@ def _map_task_node_to_data_flow_task(task: Mapping[str, Any], group: Mapping[str
     group_reference_duration = _number_value(group.get("referenceDurationMinutes"))
     reference_duration_minutes = _number_value(task.get("referenceDurationMinutes"))
     if reference_duration_minutes is None:
-        reference_duration_minutes = group_reference_duration if group_reference_duration is not None else 15
+        reference_duration_minutes = (
+            group_reference_duration if group_reference_duration is not None else 15
+        )
     planned_end_at = (
         _to_valid_date_string(task.get("plannedEndAt"))
         or _to_valid_date_string(task.get("finishedAt"))
@@ -141,7 +152,11 @@ def _map_task_node_to_data_flow_task(task: Mapping[str, Any], group: Mapping[str
     )
     delay_minutes = _number_value(task.get("delayMinutes")) or 0
 
-    task_id = _read_text(task.get("id")) or _read_text(task.get("name")) or f"{planned_start_at}-{_read_text(group.get('name')) or 'group'}"
+    task_id = (
+        _read_text(task.get("id"))
+        or _read_text(task.get("name"))
+        or f"{planned_start_at}-{_read_text(group.get('name')) or 'group'}"
+    )
     return {
         "id": task_id,
         "name": _read_text(task.get("name")) or _read_text(task.get("id")) or "task",
@@ -159,12 +174,16 @@ def _map_task_node_to_data_flow_task(task: Mapping[str, Any], group: Mapping[str
         "finishedAt": _to_valid_date_string(task.get("finishedAt")),
         "referenceDurationMinutes": reference_duration_minutes,
         "delayMinutes": delay_minutes,
-        "isDelayed": task.get("isDelayed") if isinstance(task.get("isDelayed"), bool) else delay_minutes > 5,
+        "isDelayed": task.get("isDelayed")
+        if isinstance(task.get("isDelayed"), bool)
+        else delay_minutes > 5,
     }
 
 
 def _derive_pipeline_status(groups: list[dict[str, Any]]) -> str:
-    statuses = [str(task.get("status") or "") for group in groups for task in group.get("tasks", [])]
+    statuses = [
+        str(task.get("status") or "") for group in groups for task in group.get("tasks", [])
+    ]
     if "with_problems" in statuses:
         return "with_problems"
     if "in_progress" in statuses:
@@ -188,12 +207,16 @@ def _resolve_model_slug(root: Mapping[str, Any], fallback_slug: str | None = Non
         return normalized_fallback
 
     base_name = _read_text(root.get("name")) or _read_text(root.get("id")) or ""
-    without_suffix = re.sub(r"(_PRE_OPER|_PREOP|_PRE_OPERACAO)$", "", base_name, flags=re.IGNORECASE)
+    without_suffix = re.sub(
+        r"(_PRE_OPER|_PREOP|_PRE_OPERACAO)$", "", base_name, flags=re.IGNORECASE
+    )
     first_token = re.split(r"[_/-]+", without_suffix)[0] if without_suffix else ""
     return normalize_model_key(first_token or without_suffix)
 
 
-def _resolve_execution_date(node: Mapping[str, Any], ancestors: list[Mapping[str, Any]]) -> str | None:
+def _resolve_execution_date(
+    node: Mapping[str, Any], ancestors: list[Mapping[str, Any]]
+) -> str | None:
     return (
         _to_valid_date_string(node.get("date"))
         or _extract_date_from_identifier(_read_text(node.get("id")))
@@ -283,11 +306,11 @@ def _to_valid_date_string(value: object | None) -> str | None:
 def _add_minutes_iso(start: str, minutes: float | int) -> str:
     base = datetime.fromisoformat(start.replace("Z", "+00:00"))
     result = base + timedelta(minutes=float(minutes))
-    return result.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return result.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _now_iso_string() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _number_value(value: object | None) -> float | None:
@@ -307,7 +330,7 @@ def _is_grouped_pipeline_data(value: object) -> bool:
     return all(_is_grouped_pipeline_data_item(item) for item in pipelines)
 
 
-def _is_grouped_pipeline_data_file(value: object) -> bool:
+def _is_grouped_pipeline_data_file(value: object) -> TypeGuard[Mapping[str, Any]]:
     return _is_grouped_pipeline_data(value)
 
 
@@ -321,28 +344,30 @@ def _is_grouped_pipeline_data_item(value: object) -> bool:
     )
 
 
-def _is_ecflow_node(value: object) -> bool:
+def _is_ecflow_node(value: object) -> TypeGuard[Mapping[str, Any]]:
     if not isinstance(value, Mapping):
         return False
-    return isinstance(value.get("name"), str) or isinstance(value.get("kind"), str) or isinstance(value.get("groups"), list) or isinstance(value.get("tasks"), list)
+    return (
+        isinstance(value.get("name"), str)
+        or isinstance(value.get("kind"), str)
+        or isinstance(value.get("groups"), list)
+        or isinstance(value.get("tasks"), list)
+    )
 
 
-def _is_ecflow_tree_root(value: object) -> bool:
+def _is_ecflow_tree_root(value: object) -> TypeGuard[Mapping[str, Any]]:
     if not _is_ecflow_node(value):
         return False
-    kind = _read_text(value.get("kind")) if isinstance(value, Mapping) else None
-    return kind in {"suite", "family"} or isinstance(value.get("groups"), list) or isinstance(value.get("tasks"), list)  # type: ignore[union-attr]
+    kind = _read_text(value.get("kind"))
+    return (
+        kind in {"suite", "family"}
+        or isinstance(value.get("groups"), list)
+        or isinstance(value.get("tasks"), list)
+    )
 
 
 def _stable_pipeline_sort_key(item: Mapping[str, Any]) -> tuple[str, float]:
     return (str(item.get("date") or ""), _parse_turn(str(item.get("turn") or "")))
-
-
-def _parse_turn(value: str) -> float:
-    try:
-        return float(value)
-    except ValueError:
-        return float("-inf")
 
 
 def _read_text(value: object | None) -> str | None:

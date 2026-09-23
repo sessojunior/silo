@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -982,7 +982,7 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
         ),
     )
 
-    assert users_router._extract_group_ids(  # noqa: SLF001
+    assert users_router._extract_group_ids(
         {
             "groupId": ids.group_admin,
             "groups": [
@@ -992,30 +992,30 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
             ],
         }
     ) == [ids.group_admin, ids.group_users, ids.group_ops]
-    assert users_router._normalize_email("  MEMBER.ONE@EXAMPLE.TEST  ") == "member.one@example.test"  # noqa: SLF001
-    assert users_router._normalize_email(123) is None  # noqa: SLF001
-    assert users_router._require_text("  texto  ") == "texto"  # noqa: SLF001
-    assert users_router._require_text("   ") is None  # noqa: SLF001
-    assert users_router._optional_str("texto") == "texto"  # noqa: SLF001
-    assert users_router._optional_str(123) is None  # noqa: SLF001
+    assert users_router._normalize_email("  MEMBER.ONE@EXAMPLE.TEST  ") == "member.one@example.test"
+    assert users_router._normalize_email(123) is None
+    assert users_router._require_text("  texto  ") == "texto"
+    assert users_router._require_text("   ") is None
+    assert users_router._optional_str("texto") == "texto"
+    assert users_router._optional_str(123) is None
     assert (
         users_router._request_ip(SimpleNamespace(client=SimpleNamespace(host="10.0.0.1")))
         == "10.0.0.1"
-    )  # noqa: SLF001
-    assert users_router._request_ip(SimpleNamespace(client=None)) == "127.0.0.1"  # noqa: SLF001
-    assert users_router._new_uuid().startswith("uuid-")  # noqa: SLF001
-    assert users_router._now_naive() == FIXED_NOW  # noqa: SLF001
+    )
+    assert users_router._request_ip(SimpleNamespace(client=None)) == "127.0.0.1"
+    assert users_router._new_uuid().startswith("uuid-")
+    assert users_router._now_naive() == FIXED_NOW
 
-    users_router._delete_profile_image("/uploads/avatars/member-one.webp?download=1#fragment")  # noqa: SLF001
-    users_router._delete_profile_image("/uploads/avatars/bad.webp")  # noqa: SLF001
-    users_router._delete_profile_image("https://example.test/avatars/member-one.webp")  # noqa: SLF001
+    users_router._delete_profile_image("/uploads/avatars/member-one.webp?download=1#fragment")
+    users_router._delete_profile_image("/uploads/avatars/bad.webp")
+    users_router._delete_profile_image("https://example.test/avatars/member-one.webp")
     assert deleted_uploads == [("avatars", "member-one.webp")]
 
-    profile = users_router._get_current_user_profile(connection, ids.member_1)  # noqa: SLF001
+    profile = users_router._get_current_user_profile(connection, ids.member_1)
     assert profile["ok"] is True
     assert profile["data"]["googleId"] == "google-member-1"
 
-    missing_profile = users_router._get_current_user_profile(connection, "missing-user")  # noqa: SLF001
+    missing_profile = users_router._get_current_user_profile(connection, "missing-user")
     assert missing_profile["ok"] is False
 
     profile_payload = {
@@ -1029,44 +1029,44 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
     }
     profile_insert = users_router._update_current_user_profile(
         connection, ids.member_2, profile_payload
-    )  # noqa: SLF001
+    )
     assert profile_insert["ok"] is True
     profile_update = users_router._update_current_user_profile(
         connection, ids.member_1, profile_payload
-    )  # noqa: SLF001
+    )
     assert profile_update["ok"] is True
 
-    prefs_insert = users_router._update_current_user_preferences(connection, ids.member_2, True)  # noqa: SLF001
+    prefs_insert = users_router._update_current_user_preferences(connection, ids.member_2, True)
     assert prefs_insert["ok"] is True
-    prefs_update = users_router._update_current_user_preferences(connection, ids.member_2, False)  # noqa: SLF001
+    prefs_update = users_router._update_current_user_preferences(connection, ids.member_2, False)
     assert prefs_update["ok"] is True
 
     missing_email_update = users_router._update_current_user_email(
         connection, "missing-user", "missing@example.test"
-    )  # noqa: SLF001
+    )
     assert missing_email_update["ok"] is False
     same_email_update = users_router._update_current_user_email(
         connection, ids.member_1, "member.one@example.test"
-    )  # noqa: SLF001
+    )
     assert same_email_update["ok"] is False
     conflict_email_update = users_router._update_current_user_email(
         connection, ids.member_1, "admin.one@example.test"
-    )  # noqa: SLF001
+    )
     assert conflict_email_update["ok"] is False
     updated_email = users_router._update_current_user_email(
         connection, ids.dormant_1, "dormant.updated@example.test"
-    )  # noqa: SLF001
+    )
     assert updated_email["ok"] is False
     assert updated_email["status"] == 410
 
-    same_change_request = users_router._request_current_user_email_change(  # noqa: SLF001
+    same_change_request = users_router._request_current_user_email_change(
         connection,
         ids.member_1,
         "member.one@example.test",
     )
     assert same_change_request["ok"] is False
 
-    conflict_change_request = users_router._request_current_user_email_change(  # noqa: SLF001
+    conflict_change_request = users_router._request_current_user_email_change(
         connection,
         ids.member_1,
         "admin.one@example.test",
@@ -1082,7 +1082,7 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
             else sent_emails.append((to, subject, text))
         ),
     )
-    failed_change_request = users_router._request_current_user_email_change(  # noqa: SLF001
+    failed_change_request = users_router._request_current_user_email_change(
         connection,
         ids.member_1,
         "member.one.pending@example.test",
@@ -1110,7 +1110,7 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
             updated_at=FIXED_NOW,
         )
     )
-    expired_confirmation = users_router._confirm_current_user_email_change(  # noqa: SLF001
+    expired_confirmation = users_router._confirm_current_user_email_change(
         connection,
         ids.member_1,
         "member.one.confirm@example.test",
@@ -1129,7 +1129,7 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
             updated_at=FIXED_NOW,
         )
     )
-    conflict_confirmation = users_router._confirm_current_user_email_change(  # noqa: SLF001
+    conflict_confirmation = users_router._confirm_current_user_email_change(
         connection,
         ids.member_1,
         "admin.one@example.test",
@@ -1140,7 +1140,7 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
     connection.execute(delete(verification_table))
     throttled_email = "member.one.throttle@example.test"
     throttle_salt = "throttle-salt"
-    throttle_digest = users_router._email_change_digest(  # noqa: SLF001
+    throttle_digest = users_router._email_change_digest(
         ids.member_1, throttled_email, throttle_salt, "888888"
     )
     connection.execute(
@@ -1154,11 +1154,11 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
         )
     )
     for _ in range(5):
-        invalid = users_router._confirm_current_user_email_change(  # noqa: SLF001
+        invalid = users_router._confirm_current_user_email_change(
             connection, ids.member_1, throttled_email, "000000"
         )
         assert invalid["status"] == 400
-    locked = users_router._confirm_current_user_email_change(  # noqa: SLF001
+    locked = users_router._confirm_current_user_email_change(
         connection, ids.member_1, throttled_email, "888888"
     )
     assert locked["status"] == 429
@@ -1167,7 +1167,7 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
     salt = "unit-test-salt"
     valid_code = "777777"
     success_email = "member.one.confirmed@example.test"
-    success_digest = users_router._email_change_digest(  # noqa: SLF001
+    success_digest = users_router._email_change_digest(
         ids.member_1, success_email, salt, valid_code
     )
     connection.execute(
@@ -1202,7 +1202,7 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
             updated_at=FIXED_NOW,
         )
     )
-    confirmed = users_router._confirm_current_user_email_change(  # noqa: SLF001
+    confirmed = users_router._confirm_current_user_email_change(
         connection,
         ids.member_1,
         success_email,
@@ -1227,24 +1227,24 @@ async def test_users_router_helpers_cover_profile_email_password_and_upload_bran
 
     missing_password = users_router._update_current_user_password(
         connection, "missing-user", "new-password"
-    )  # noqa: SLF001
+    )
     assert missing_password["ok"] is False
     password_insert = users_router._update_current_user_password(
         connection, ids.member_2, "new-password"
-    )  # noqa: SLF001
+    )
     assert password_insert["ok"] is True
     password_update = users_router._update_current_user_password(
         connection, ids.admin_1, "updated-password"
-    )  # noqa: SLF001
+    )
     assert password_update["ok"] is True
 
     missing_image_url = users_router._update_current_user_profile_image_url(
         connection, "missing-user", "/uploads/avatars/member.webp"
-    )  # noqa: SLF001
+    )
     assert missing_image_url["ok"] is False
     image_url_update = users_router._update_current_user_profile_image_url(
         connection, ids.member_1, "/uploads/avatars/member.webp"
-    )  # noqa: SLF001
+    )
     assert image_url_update["ok"] is True
 
     class _UploadRequest:
@@ -1368,17 +1368,17 @@ async def test_users_router_routes_cover_service_error_wrappers_and_filters(
 
     inactive_users = users_router._list_users(
         connection, search="Member", status="inactive", group_id=None
-    )  # noqa: SLF001
+    )
     assert [item["id"] for item in inactive_users["items"]] == [ids.member_2]
 
     no_match_users = users_router._list_users(
         connection, search="Does not exist", status="active", group_id=None
-    )  # noqa: SLF001
+    )
     assert no_match_users == {"items": [], "total": 0}
 
     empty_group_users = users_router._list_users(
         connection, search=None, status=None, group_id="missing-group"
-    )  # noqa: SLF001
+    )
     assert empty_group_users == {"items": [], "total": 0}
 
 

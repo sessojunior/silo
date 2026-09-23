@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
 
 import pytest
 from fastapi.responses import JSONResponse
-from sqlalchemy import Boolean, Column, JSON, MetaData, String, Table, create_engine, select
+from sqlalchemy import JSON, Boolean, Column, MetaData, String, Table, create_engine, select
 
 from silo.api.routers import products as products_router
 from silo.services.common import service_failure, service_success
@@ -30,18 +29,20 @@ def test_products_router_helpers_match_expected_normalization(value, expected) -
 
 
 def test_products_router_turn_priority_and_url_helpers() -> None:
-    assert products_router._normalize_turns(["0", "12", "", None]) == ["0", "12"]  # noqa: SLF001
-    assert products_router._normalize_turns("0, 6, 12") == ["0", "6", "12", "18"]  # noqa: SLF001
-    assert products_router._normalize_priority("urgent") == "urgent"  # noqa: SLF001
-    assert products_router._normalize_priority("bad") is None  # noqa: SLF001
-    assert products_router._normalize_url("https://example.test/flow") == "https://example.test/flow"  # noqa: SLF001
-    assert products_router._normalize_url("bad url") == "bad url"  # noqa: SLF001
-    assert products_router._nullable_text("  texto  ") == "texto"  # noqa: SLF001
-    assert products_router._nullable_text("   ") is None  # noqa: SLF001
-    assert products_router._require_text("  texto  ") == "texto"  # noqa: SLF001
-    assert products_router._require_text("   ") is None  # noqa: SLF001
-    assert products_router._optional_str("  texto  ") == "  texto  "  # noqa: SLF001
-    assert products_router._optional_str(None) is None  # noqa: SLF001
+    assert products_router._normalize_turns(["0", "12", "", None]) == ["0", "12"]
+    assert products_router._normalize_turns("0, 6, 12") == ["0", "6", "12", "18"]
+    assert products_router._normalize_priority("urgent") == "urgent"
+    assert products_router._normalize_priority("bad") is None
+    assert (
+        products_router._normalize_url("https://example.test/flow") == "https://example.test/flow"
+    )
+    assert products_router._normalize_url("bad url") == "bad url"
+    assert products_router._nullable_text("  texto  ") == "texto"
+    assert products_router._nullable_text("   ") is None
+    assert products_router._require_text("  texto  ") == "texto"
+    assert products_router._require_text("   ") is None
+    assert products_router._optional_str("  texto  ") == "  texto  "
+    assert products_router._optional_str(None) is None
 
 
 @pytest.mark.asyncio
@@ -59,7 +60,9 @@ async def test_products_router_crud_paths(monkeypatch) -> None:
     monkeypatch.setattr(
         products_router,
         "_update_product",
-        lambda *args, **kwargs: service_success({"id": "product-1", "name": "Produto 1 atualizado"}),
+        lambda *args, **kwargs: service_success(
+            {"id": "product-1", "name": "Produto 1 atualizado"}
+        ),
     )
     monkeypatch.setattr(
         products_router,
@@ -76,7 +79,9 @@ async def test_products_router_crud_paths(monkeypatch) -> None:
     list_all = await products_router.list_products(None, None, None, None, None, object(), object())
     assert list_all["data"]["items"][0]["id"] == "product-1"
 
-    list_by_slug = await products_router.list_products("produto-1", None, None, None, None, object(), object())
+    list_by_slug = await products_router.list_products(
+        "produto-1", None, None, None, None, object(), object()
+    )
     assert list_by_slug["data"]["products"][0]["id"] == "product-1"
 
     created = await products_router.create_product(
@@ -118,7 +123,9 @@ async def test_products_router_crud_paths(monkeypatch) -> None:
         lambda *args, **kwargs: service_failure("Falha ao atualizar", 404),
     )
     failed_update = _payload(
-        await products_router.update_product({"id": "product-1", "name": "Produto"}, object(), object())
+        await products_router.update_product(
+            {"id": "product-1", "name": "Produto"}, object(), object()
+        )
     )
     assert failed_update["success"] is False
 
@@ -130,9 +137,9 @@ async def test_products_router_crud_paths(monkeypatch) -> None:
     failed_delete = _payload(await products_router.delete_product("missing", object(), object()))
     assert failed_delete["success"] is False
 
-    products_router._delete_upload_url("/uploads/manual/alpha.webp")  # noqa: SLF001
-    products_router._delete_upload_url("/uploads/manual/alpha.webp?x=1")  # noqa: SLF001
-    products_router._delete_upload_url("https://example.test/alpha.webp")  # noqa: SLF001
+    products_router._delete_upload_url("/uploads/manual/alpha.webp")
+    products_router._delete_upload_url("/uploads/manual/alpha.webp?x=1")
+    products_router._delete_upload_url("https://example.test/alpha.webp")
     assert deleted_uploads == [("manual", "alpha.webp"), ("manual", "alpha.webp")]
 
 
@@ -164,7 +171,7 @@ def test_create_and_update_product_escreve_no_schema_canonico_sem_timestamps(
     monkeypatch.setattr(products_router, "legacy_tables", {"product": product_table})
 
     with engine.connect() as connection:
-        created = products_router._create_product(  # noqa: SLF001
+        created = products_router._create_product(
             connection,
             {
                 "name": "Produto Teste",
@@ -181,7 +188,7 @@ def test_create_and_update_product_escreve_no_schema_canonico_sem_timestamps(
         assert row["priority"] == "high"
         assert row["turns"] == ["0", "6"]
 
-        updated = products_router._update_product(  # noqa: SLF001
+        updated = products_router._update_product(
             connection,
             {
                 "id": row["id"],
@@ -199,7 +206,7 @@ def test_create_and_update_product_escreve_no_schema_canonico_sem_timestamps(
         assert updated_row["available"] is False
         assert updated_row["turns"] == ["12"]
 
-        duplicate = products_router._create_product(  # noqa: SLF001
+        duplicate = products_router._create_product(
             connection,
             {"name": "Outro Produto", "slug": "produto-teste-atualizado"},
         )

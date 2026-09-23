@@ -1172,6 +1172,7 @@ dev = [
     { name = "respx" },
     { name = "ruff" },
     { name = "testcontainers" },
+    { name = "types-reportlab" },
 ]
 
 [package.metadata]
@@ -1205,6 +1206,7 @@ dev = [
     { name = "respx", specifier = "==0.23.1" },
     { name = "ruff", specifier = "==0.15.22" },
     { name = "testcontainers", specifier = "==4.14.2" },
+    { name = "types-reportlab", specifier = ">=4.5.1.20260827" },
 ]
 
 [[package]]
@@ -1314,6 +1316,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/21/3b/6c24bec5be5e743ffd99576daa5cc077722fc7d5bbc00bd133fa0c698dc6/tqdm-4.70.0.tar.gz", hash = "sha256:55b0b0dbd97462d06ebee91e4dac24ed4d4702be82b24f07e6c1d27e08cea220", size = 795438, upload-time = "2026-07-27T11:33:15.271Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f9/1c/01bfd571a64e7f270e6bab5e33777debe0edc56759233ce84f27dec92d14/tqdm-4.70.0-py3-none-any.whl", hash = "sha256:7f585706bfddbdebf89daac705b2dfcc16890130727d3197ca62c732b4310953", size = 80184, upload-time = "2026-07-27T11:33:13.167Z" },
+]
+
+[[package]]
+name = "types-reportlab"
+version = "4.5.1.20260827"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/b5/df8162a5abff2756113f9f25a85e822a1476f5e3a9272740ac34939c4177/types_reportlab-4.5.1.20260827.tar.gz", hash = "sha256:8d3ef6f50d1d75569749f87818b2a51e2672794317ec87c6855fa1c2f0763230", size = 73010, upload-time = "2026-08-27T12:06:35.677Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/fd/735c883964347d5c0461c9be744a59fad1a389b0647a33bf552ed975c5c1/types_reportlab-4.5.1.20260827-py3-none-any.whl", hash = "sha256:90d267e635b968906329827bb21aa1c7398da60f0ffdba6552aaab615ab70b3e", size = 113219, upload-time = "2026-08-27T12:06:34.726Z" },
 ]
 
 [[package]]

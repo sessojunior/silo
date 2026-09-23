@@ -310,12 +310,12 @@ def test_authorized_report_responses_are_not_cacheable(monkeypatch: pytest.Monke
 
 @pytest.mark.asyncio
 async def test_reports_router_helpers_cover_json_fallback_and_text_normalization() -> None:
-    assert reports_router._optional_text("  texto  ") == "texto"  # noqa: SLF001
-    assert reports_router._optional_text("   ") is None  # noqa: SLF001
-    assert reports_router._optional_text(None) is None  # noqa: SLF001
+    assert reports_router._optional_text("  texto  ") == "texto"
+    assert reports_router._optional_text("   ") is None
+    assert reports_router._optional_text(None) is None
 
     assert await reports_router._request_json_object(
         _FakeRequest(body={"start": "2026-07-01"})
-    ) == {"start": "2026-07-01"}  # noqa: SLF001
-    assert await reports_router._request_json_object(_FakeRequest(body="not-a-dict")) == {}  # noqa: SLF001
-    assert await reports_router._request_json_object(_FakeRequest(body=RuntimeError("boom"))) == {}  # noqa: SLF001
+    ) == {"start": "2026-07-01"}
+    assert await reports_router._request_json_object(_FakeRequest(body="not-a-dict")) == {}
+    assert await reports_router._request_json_object(_FakeRequest(body=RuntimeError("boom"))) == {}

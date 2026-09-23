@@ -1,0 +1,82 @@
+{
+  "visualizations": [
+    {
+      "id": "chart-bar-hostile-negative",
+      "coverage": ["bar", "negative-values", "escaped-labels"],
+      "dto": {
+        "kind": "chart", "chartType": "bar",
+        "title": "Incidentes <script>alert(1)</script>",
+        "subtitle": "Variação por produto",
+        "categories": ["<img src='x' onerror='alert(1)'>", "BAM"],
+        "series": [{"name": "Variação", "values": [-3, 5], "color": "#3b82f6"}]
+      },
+      "expectedRender": {"echartsSeriesType": "bar"}
+    },
+    {
+      "id": "chart-line-truncated",
+      "coverage": ["line", "unequal-series-length"],
+      "dto": {
+        "kind": "chart", "chartType": "line", "title": "Evolução diária",
+        "categories": ["Seg", "Ter", "Qua"],
+        "series": [{"name": "Execuções", "values": [2, 4], "color": "#10b981"}]
+      },
+      "expectedRender": {"echartsSeriesType": "line"}
+    },
+    {
+      "id": "chart-donut-zero",
+      "coverage": ["donut", "zero-values"],
+      "dto": {
+        "kind": "chart", "chartType": "donut", "title": "Distribuição sem incidentes",
+        "categories": ["BAM", "WRF"],
+        "series": [{"name": "Incidentes", "values": [0, 0], "color": "#3b82f6"}]
+      },
+      "expectedRender": {"echartsSeriesType": "pie"}
+    },
+    {
+      "id": "chart-empty",
+      "coverage": ["empty-categories", "empty-values"],
+      "dto": {
+        "kind": "chart", "chartType": "bar", "title": "Período sem dados",
+        "categories": [], "series": [{"name": "Incidentes", "values": []}]
+      },
+      "expectedRender": {"echartsSeriesType": "bar"}
+    },
+    {
+      "id": "image-svg-summary-card",
+      "coverage": ["safe-svg", "accessible-description"],
+      "dto": {
+        "kind": "image",
+        "src": "data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22200%22%20height%3D%2260%22%3E%3Ctext%20x%3D%2210%22%20y%3D%2230%22%3EResumo%3C%2Ftext%3E%3C%2Fsvg%3E",
+        "alt": "Resumo operacional", "caption": "Produtos monitorados"
+      },
+      "expectedRender": {"visible": true}
+    },
+    {
+      "id": "image-unsafe-protocol-relative",
+      "coverage": ["blocked-external-image"],
+      "dto": {
+        "kind": "image", "src": "//untrusted.example/track.svg",
+        "alt": "Imagem externa bloqueada", "caption": "Descrição preservada"
+      },
+      "expectedRender": {"visible": false}
+    },
+    {
+      "id": "mermaid-safe-flow",
+      "coverage": ["safe-mermaid", "strict-renderer"],
+      "dto": {
+        "kind": "mermaid", "diagram": "flowchart LR\n  A[Entrada] --> B[Processamento]",
+        "title": "Fluxo operacional", "caption": "Dependências do produto"
+      },
+      "expectedRender": {"visible": true}
+    },
+    {
+      "id": "mermaid-hostile-blocked",
+      "coverage": ["blocked-active-content", "escaped-fallback"],
+      "dto": {
+        "kind": "mermaid", "diagram": "flowchart LR\n  A[\"<img src='x' onerror='alert(1)'>\"] --> B[Saída]",
+        "title": "Diagrama inválido", "caption": "Conteúdo não confiável"
+      },
+      "expectedRender": {"visible": false}
+    }
+  ]
+}

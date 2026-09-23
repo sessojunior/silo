@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 import respx
-from httpx import Response
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from silo.api.dependencies import CurrentUser, UserGroupInfo, get_current_user, get_db
 from silo.api.main import create_app

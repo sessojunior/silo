@@ -10,10 +10,10 @@ import pytest
 
 from silo.services.dashboard_portal import _day_index
 
-
 # ============================================================
 # dashboard — _day_index
 # ============================================================
+
 
 class TestDayIndex:
     REF = date(2026, 7, 1)
@@ -53,29 +53,35 @@ class TestDayIndex:
 # monitoring_data — funcoes auxiliares
 # ============================================================
 
+
 class TestMonitoringHelpers:
     def test_parse_datetimeish_datetime(self):
         from silo.services.monitoring_data import _parse_datetimeish
+
         dt = datetime(2026, 3, 6, 10, 0)
         assert _parse_datetimeish(dt) == dt
 
     def test_parse_datetimeish_string(self):
         from silo.services.monitoring_data import _parse_datetimeish
+
         result = _parse_datetimeish("2026-03-06T10:00:00")
         assert isinstance(result, datetime)
 
     def test_parse_datetimeish_none(self):
         from silo.services.monitoring_data import _parse_datetimeish
+
         assert _parse_datetimeish(None) is None
 
     def test_parse_datetimeish_empty(self):
         from silo.services.monitoring_data import _parse_datetimeish
+
         assert _parse_datetimeish("") is None
 
 
 class TestUpsertRadarValidation:
     def test_missing_id_raises(self):
         from silo.services.monitoring_data import upsert_radar
+
         with pytest.raises((ValueError, TypeError)):
             upsert_radar(None, {})
 
@@ -101,18 +107,23 @@ class _FakeConn:
         class Result:
             def mappings(self):
                 return self
+
             def first(self):
                 return None
+
             def all(self):
                 return []
+
             def scalar_one_or_none(self):
                 return None
+
         return Result()
 
 
 # ============================================================
 # tasks — post_users validation
 # ============================================================
+
 
 class TestTasksValidation:
     @pytest.mark.asyncio
@@ -121,7 +132,9 @@ class TestTasksValidation:
 
         monkeypatch.setattr(tasks_router, "require_permission", lambda *a, **kw: _fake_dep)
         monkeypatch.setattr(tasks_router, "get_db", lambda: MagicMock())
-        monkeypatch.setattr(tasks_router, "set_task_users", lambda *a, **kw: {"success": True, "data": {}})
+        monkeypatch.setattr(
+            tasks_router, "set_task_users", lambda *a, **kw: {"success": True, "data": {}}
+        )
 
         result = await tasks_router.post_users(
             taskId="t1",
@@ -138,7 +151,9 @@ class TestTasksValidation:
 
         monkeypatch.setattr(tasks_router, "require_permission", lambda *a, **kw: _fake_dep)
         monkeypatch.setattr(tasks_router, "get_db", lambda: MagicMock())
-        monkeypatch.setattr(tasks_router, "set_task_users", lambda *a, **kw: {"success": True, "data": {}})
+        monkeypatch.setattr(
+            tasks_router, "set_task_users", lambda *a, **kw: {"success": True, "data": {}}
+        )
 
         result = await tasks_router.post_users(
             taskId="t1",
@@ -154,14 +169,16 @@ class TestTasksValidation:
 
         monkeypatch.setattr(tasks_router, "require_permission", lambda *a, **kw: _fake_dep)
         monkeypatch.setattr(tasks_router, "get_db", lambda: MagicMock())
-        monkeypatch.setattr(tasks_router, "set_task_users", lambda *a, **kw: {"success": True, "data": {}})
+        monkeypatch.setattr(
+            tasks_router, "set_task_users", lambda *a, **kw: {"success": True, "data": {}}
+        )
 
         result = await tasks_router.post_users(
             taskId="t1",
             payload={"userIds": ["u1", "u2"], "role": "viewer"},
             _current_user=SimpleNamespace(id="u1"),
         )
-        if hasattr(result, 'body'):
+        if hasattr(result, "body"):
             payload = json.loads(result.body)
         else:
             payload = result
@@ -173,9 +190,20 @@ async def _fake_dep():
 
 
 class MagicMock:
-    def __enter__(self): return self
-    def __exit__(self, *a): pass
-    def connect(self): return self
-    def begin(self): return self
-    def execute(self, *a, **kw): return self
-    def __getattr__(self, name): return MagicMock()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        pass
+
+    def connect(self):
+        return self
+
+    def begin(self):
+        return self
+
+    def execute(self, *a, **kw):
+        return self
+
+    def __getattr__(self, name):
+        return MagicMock()

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import json
+from pathlib import Path
 
 from silo.security.sbom_contract import build_service_scope_sboms, load_uv_lock
 

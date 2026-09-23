@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -11,8 +12,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 from silo.db.models import legacy_tables
-from silo.services.pdf_artifacts import PdfArtifact
 from silo.services.legacy_utils import new_uuid, now_naive
+from silo.services.pdf_artifacts import PdfArtifact
 
 AI_ARTIFACT_KIND = "pdf"
 AI_ARTIFACT_MIME_TYPE = "application/pdf"
@@ -37,24 +38,36 @@ class AiArtifactRepository:
         connection: Connection,
         *,
         artifact_table: Any | None = None,
-        now_provider=now_naive,
+        now_provider: Callable[[], datetime] = now_naive,
         upload_kind: str = "reports",
     ) -> None:
         self._connection = connection
-        self._table = artifact_table if artifact_table is not None else legacy_tables["ai_assistant_artifact"]
+        self._table = (
+            artifact_table if artifact_table is not None else legacy_tables["ai_assistant_artifact"]
+        )
         self._now = now_provider
         self._upload_kind = upload_kind
 
     def get_by_idempotency_hash(self, idempotency_hash: str) -> dict[str, object] | None:
-        row = self._connection.execute(
-            select(self._table).where(self._table.c.idempotency_hash == idempotency_hash).limit(1)
-        ).mappings().first()
+        row = (
+            self._connection.execute(
+                select(self._table)
+                .where(self._table.c.idempotency_hash == idempotency_hash)
+                .limit(1)
+            )
+            .mappings()
+            .first()
+        )
         return dict(row) if row is not None else None
 
     def get_by_id(self, artifact_id: str) -> dict[str, object] | None:
-        row = self._connection.execute(
-            select(self._table).where(self._table.c.id == artifact_id).limit(1)
-        ).mappings().first()
+        row = (
+            self._connection.execute(
+                select(self._table).where(self._table.c.id == artifact_id).limit(1)
+            )
+            .mappings()
+            .first()
+        )
         return dict(row) if row is not None else None
 
     def claim(
@@ -126,7 +139,9 @@ class AiArtifactRepository:
             }
 
             try:
-                inserted = self._connection.execute(insert(self._table).values(values).returning(self._table))
+                inserted = self._connection.execute(
+                    insert(self._table).values(values).returning(self._table)
+                )
                 row = inserted.mappings().first()
                 if row is not None:
                     return AiArtifactLease(
@@ -257,26 +272,34 @@ class AiArtifactRepository:
 
     def list_pending_expired(self, now: datetime | None = None) -> list[dict[str, object]]:
         reference = now or self._now()
-        rows = self._connection.execute(
-            select(self._table)
-            .where(
-                self._table.c.status == AI_ARTIFACT_PENDING,
-                self._table.c.lease_expires_at <= reference,
+        rows = (
+            self._connection.execute(
+                select(self._table)
+                .where(
+                    self._table.c.status == AI_ARTIFACT_PENDING,
+                    self._table.c.lease_expires_at <= reference,
+                )
+                .order_by(self._table.c.created_at.asc())
             )
-            .order_by(self._table.c.created_at.asc())
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         return [dict(row) for row in rows]
 
     def list_ready_unattached_older_than(self, cutoff: datetime) -> list[dict[str, object]]:
-        rows = self._connection.execute(
-            select(self._table)
-            .where(
-                self._table.c.status == AI_ARTIFACT_READY,
-                self._table.c.attached_at.is_(None),
-                self._table.c.created_at <= cutoff,
+        rows = (
+            self._connection.execute(
+                select(self._table)
+                .where(
+                    self._table.c.status == AI_ARTIFACT_READY,
+                    self._table.c.attached_at.is_(None),
+                    self._table.c.created_at <= cutoff,
+                )
+                .order_by(self._table.c.created_at.asc())
             )
-            .order_by(self._table.c.created_at.asc())
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         return [dict(row) for row in rows]
 
     def delete_artifact(self, artifact_id: str) -> None:
@@ -352,7 +375,7 @@ class AiArtifactRepository:
         return None
 
     @contextmanager
-    def _transaction(self):
+    def _transaction(self) -> Generator[None]:
         if self._connection.in_transaction():
             yield
             return

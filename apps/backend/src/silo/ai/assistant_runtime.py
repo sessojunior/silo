@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import time
 from collections import OrderedDict
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from typing import Any
+from datetime import UTC
+from typing import Any, cast
 
 import httpx
 from langchain_core.messages import (
@@ -18,18 +17,18 @@ from langchain_core.messages import (
     SystemMessage,
 )
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from pydantic import SecretStr
 
 from silo.ai.ports import (
     AiRuntimeProbe,
     ChatMessage,
     ChatModelRuntime,
-    ChatPort,
     ChatResponse,
     EmbeddingPort,
     RuntimeMode,
 )
-from silo.config import VLLMSettings, Settings
 from silo.clock import SYSTEM_CLOCK, Clock
+from silo.config import Settings, VLLMSettings
 
 DEFAULT_CHAT_TIMEOUT_SECONDS = 300.0  # CPU sem GPU e lento; tolerar geracoes longas.
 DEFAULT_EMBEDDING_TIMEOUT_SECONDS = 120.0
@@ -177,7 +176,7 @@ class VLLMModelRuntime(ChatModelRuntime):
         return response, telemetry
 
     def bind_tools(self, tools: Sequence[object]) -> Any:
-        return self._model.bind_tools(list(tools))
+        return self._model.bind_tools(cast(Any, tools))
 
     def _timeout_seconds(self, default_timeout: float) -> float:
         timeout_ms = max(1, int(self.settings.timeout_ms))
@@ -197,7 +196,7 @@ class VLLMEmbeddingRuntime(EmbeddingPort):
         self._embeddings = OpenAIEmbeddings(
             model=self.settings.embedding_model,
             base_url=_embedding_base_url(self.settings),
-            api_key=VLLM_OPENAI_COMPAT_PLACEHOLDER,
+            api_key=SecretStr(VLLM_OPENAI_COMPAT_PLACEHOLDER),
             # Sem isso o langchain tokeniza com tiktoken (cl100k) e envia ids
             # de token no campo `input`; o vllm valida contra o vocabulario
             # do modelo de embedding e responde 400 ("Token id X is out of

@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from silo.api.responses import build_error_payload
-from silo.services.legacy_utils import optional_int, parse_iso_date, parse_date_range_value, is_uuid_like
+from silo.services.legacy_utils import (
+    is_uuid_like,
+    optional_int,
+    parse_date_range_value,
+    parse_iso_date,
+)
 
 
 class TestErrorPayload:

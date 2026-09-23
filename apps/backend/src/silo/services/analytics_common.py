@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
-from typing import TypeVar
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -14,7 +13,6 @@ from silo.services.legacy_utils import normalize_turn_list
 
 ANALYTICS_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 ANALYTICS_METRIC_VERSION = "2026-07-23"
-T = TypeVar("T")
 
 INCIDENT_STATUSES = frozenset(PROBLEM_STATUSES)
 
@@ -27,7 +25,7 @@ def normalize_shift_turns(value: object | None) -> list[str]:
     return normalize_turn_list(value, SHIFT_CODES)
 
 
-def run_repeatable_read_snapshot(
+def run_repeatable_read_snapshot[T](
     connection: Connection,
     callback: Callable[[], T],
     *,
@@ -84,7 +82,9 @@ def build_analytics_meta(
 def format_local_date_text(value: date | datetime | str | None) -> str | None:
     parsed = _parse_datetime_like(value)
     if parsed is not None:
-        localized = parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=ANALYTICS_TIMEZONE)
+        localized = (
+            parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=ANALYTICS_TIMEZONE)
+        )
         return localized.astimezone(ANALYTICS_TIMEZONE).date().isoformat()
 
     if isinstance(value, date):
@@ -111,7 +111,9 @@ def format_local_datetime_text(value: datetime | str | None) -> str | None:
 def format_br_day_short(value: date | datetime | str | None) -> str:
     parsed = _parse_datetime_like(value)
     if parsed is not None:
-        localized = parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=ANALYTICS_TIMEZONE)
+        localized = (
+            parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=ANALYTICS_TIMEZONE)
+        )
         return localized.astimezone(ANALYTICS_TIMEZONE).strftime("%d/%m/")
 
     if isinstance(value, date):

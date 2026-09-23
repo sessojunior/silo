@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
-from typing import Any, Callable, Mapping
+from typing import Any
 
 from pydantic import Field
 
 from silo.ai.assistant_registry import AgentRuntimeContext, AgentState
 from silo.ai.assistant_tools import (
-    AI_TOOL_CATALOG_VERSION,
     compare_model_run_periods,
     compare_problem_periods,
     get_model_run_history,
@@ -97,8 +97,10 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
         args_model=CompareModelRunPeriodsArgs,
         executor=lambda runtime_context, state, args: compare_model_run_periods(
             runtime_context.connection,
-            start_date=_optional_text(args.get("start_date")) or _optional_text(dict(state.get("ranges") or {}).get("start")),
-            end_date=_optional_text(args.get("end_date")) or _optional_text(dict(state.get("ranges") or {}).get("end")),
+            start_date=_optional_text(args.get("start_date"))
+            or _optional_text(dict(state.get("ranges") or {}).get("start")),
+            end_date=_optional_text(args.get("end_date"))
+            or _optional_text(dict(state.get("ranges") or {}).get("end")),
             product_ids=tuple(args.get("product_ids") or ()),
         ),
     ),
@@ -130,8 +132,10 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
         args_model=CompareProblemPeriodsArgs,
         executor=lambda runtime_context, state, args: compare_problem_periods(
             runtime_context.connection,
-            start_date=_optional_text(args.get("start_date")) or _optional_text(dict(state.get("ranges") or {}).get("start")),
-            end_date=_optional_text(args.get("end_date")) or _optional_text(dict(state.get("ranges") or {}).get("end")),
+            start_date=_optional_text(args.get("start_date"))
+            or _optional_text(dict(state.get("ranges") or {}).get("start")),
+            end_date=_optional_text(args.get("end_date"))
+            or _optional_text(dict(state.get("ranges") or {}).get("end")),
             product_id=_optional_text(args.get("product_id")),
             problem_category_id=_optional_text(args.get("problem_category_id")),
         ),
@@ -143,8 +147,10 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
         args_model=ListProblematicRunsArgs,
         executor=lambda runtime_context, state, args: list_problematic_runs(
             runtime_context.connection,
-            start_date=_optional_text(args.get("start_date")) or _optional_text(dict(state.get("ranges") or {}).get("start")),
-            end_date=_optional_text(args.get("end_date")) or _optional_text(dict(state.get("ranges") or {}).get("end")),
+            start_date=_optional_text(args.get("start_date"))
+            or _optional_text(dict(state.get("ranges") or {}).get("start")),
+            end_date=_optional_text(args.get("end_date"))
+            or _optional_text(dict(state.get("ranges") or {}).get("end")),
             product_ids=tuple(args.get("product_ids") or ()),
             limit=int(args.get("limit") or 20),
         ),

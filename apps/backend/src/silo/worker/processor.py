@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql.dml import Insert
 
 from silo.db.models import legacy_tables
 from silo.services.kafka_rest import KafkaRestClient, RestConsumerInstance
@@ -176,6 +177,7 @@ def _insert_processed_message(
         "message_id": message_id,
         "handler": handler_name,
     }
+    statement: Insert
     if connection.dialect.name == "postgresql":
         statement = (
             pg_insert(table)

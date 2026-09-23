@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from uuid import UUID
 
+import pytest
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-import pytest
 
 from silo.api.dependencies import CurrentUser, get_db, require_chat_access
 from silo.api.main import create_app
@@ -1216,6 +1216,6 @@ def test_chat_router_cover_additional_error_branches_and_engine_creation(
         lambda _url, pool_pre_ping=True: _FakeEngine(),
     )
     app = SimpleNamespace(state=SimpleNamespace())
-    engine = chat_module._get_engine_from_app(app)  # noqa: SLF001
+    engine = chat_module._get_engine_from_app(app)
     assert isinstance(engine, _FakeEngine)
     assert app.state.db_engine is engine

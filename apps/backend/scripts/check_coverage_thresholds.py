@@ -137,9 +137,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if area_percent < area.minimum_percent:
             area_threshold = _format_percent(area.minimum_percent)
-            failures.append(
-                f"{area.name} {_format_percent(area_percent)} < {area_threshold}"
-            )
+            failures.append(f"{area.name} {_format_percent(area_percent)} < {area_threshold}")
 
     if failures:
         print("coverage check: falhou", file=sys.stderr)

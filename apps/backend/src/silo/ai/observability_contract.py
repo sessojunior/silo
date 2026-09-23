@@ -77,7 +77,7 @@ OBSERVABILITY_ALERT_RULES: tuple[dict[str, Any], ...] = (
     },
     {
         "alert": "SiloAiGraphArtifactFailureSpike",
-        "expr": "sum(rate(ai_graph_artifact_status_total{status=~\"error|failed\"}[5m])) > 0",
+        "expr": 'sum(rate(ai_graph_artifact_status_total{status=~"error|failed"}[5m])) > 0',
         "for": "10m",
         "labels": {"severity": "critical", "service": "silo-api"},
         "annotations": {

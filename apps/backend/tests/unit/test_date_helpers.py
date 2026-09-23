@@ -40,6 +40,8 @@ def test_date_helpers_parse_and_format_values(monkeypatch) -> None:
     assert date_module.format_date_time_short_br("2026-07-22T15:45:00Z") == "22/07/2026 12:45"
     assert date_module.format_date_time_full_br("") == "Data inválida"
     assert date_module.format_date_time_short_br("") == "Data inválida"
-    assert date_module._parse_datetime_string("2026-07-22T15:45:00Z") == real_datetime(2026, 7, 22, 15, 45, tzinfo=UTC)  # noqa: SLF001
-    assert date_module._is_date_string("2026-07-22") is True  # noqa: SLF001
-    assert date_module._is_date_string("2026-07-22T15:45:00") is False  # noqa: SLF001
+    assert date_module._parse_datetime_string("2026-07-22T15:45:00Z") == real_datetime(
+        2026, 7, 22, 15, 45, tzinfo=UTC
+    )
+    assert date_module._is_date_string("2026-07-22") is True
+    assert date_module._is_date_string("2026-07-22T15:45:00") is False

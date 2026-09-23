@@ -6,8 +6,8 @@ from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import CurrentUser, get_db, require_permission
 from silo.api.responses import build_success_payload, json_error_response
-from silo.services.dataflow_portal import get_product_data_flow_pipelines_from_kafka_rest
 from silo.services.common import is_service_error, service_error_response
+from silo.services.dataflow_portal import get_product_data_flow_pipelines_from_kafka_rest
 from silo.services.product_portal import (
     PRODUCT_AVAILABILITY_EXCEPTION_TYPES,
     bind_connection,
@@ -42,14 +42,14 @@ from silo.services.product_portal import (
     reorder_product_dependencies,
     replace_product_contacts,
     send_product_activity_pending_email,
-    upsert_product_activity,
-    upsert_product_availability_exception,
-    upsert_product_manual,
     update_product_activity,
     update_product_dependency,
     update_product_problem,
     update_product_problem_category,
     update_product_solution,
+    upsert_product_activity,
+    upsert_product_availability_exception,
+    upsert_product_manual,
 )
 from silo.storage.uploads import (
     delete_upload_file,
@@ -132,7 +132,9 @@ async def post_activity(
     action = result["data"]["action"]
     return build_success_payload(
         activity,
-        message="Atividade criada com sucesso" if action == "created" else "Atividade atualizada com sucesso",
+        message="Atividade criada com sucesso"
+        if action == "created"
+        else "Atividade atualizada com sucesso",
     )
 
 
@@ -161,7 +163,9 @@ async def put_activity(
         response = service_error_response(result, "Erro ao atualizar atividade.")
         assert response is not None
         return response
-    return build_success_payload(result["data"]["activity"], message="Atividade atualizada com sucesso")
+    return build_success_payload(
+        result["data"]["activity"], message="Atividade atualizada com sucesso"
+    )
 
 
 @router.get("/activities/pending-email")
@@ -219,7 +223,9 @@ async def post_pending_email(
         return response
 
     sent = int(result["data"]["sent"])
-    message_text = "Pendência enviada com sucesso." if sent == 1 else "Pendências enviadas com sucesso."
+    message_text = (
+        "Pendência enviada com sucesso." if sent == 1 else "Pendências enviadas com sucesso."
+    )
     return build_success_payload({"sent": sent}, message=message_text)
 
 
@@ -279,7 +285,9 @@ async def post_availability_exception(
 
     exception = result["data"]["exception"]
     action = result["data"]["action"]
-    message = "Exceção criada com sucesso." if action == "created" else "Exceção atualizada com sucesso."
+    message = (
+        "Exceção criada com sucesso." if action == "created" else "Exceção atualizada com sucesso."
+    )
     return build_success_payload(exception, message=message)
 
 
@@ -327,11 +335,17 @@ async def post_contacts(
 ):
     product_id = _required_text(payload.get("productId"))
     contact_ids = payload.get("contactIds")
-    if not product_id or not isinstance(contact_ids, list) or any(not isinstance(item, str) for item in contact_ids):
+    if (
+        not product_id
+        or not isinstance(contact_ids, list)
+        or any(not isinstance(item, str) for item in contact_ids)
+    ):
         return json_error_response(400, "ProductId e contactIds são obrigatórios")
 
     normalized_contact_ids = [item for item in contact_ids if item.strip()]
-    result = _call_product_service(db, replace_product_contacts, product_id=product_id, contact_ids=normalized_contact_ids)
+    result = _call_product_service(
+        db, replace_product_contacts, product_id=product_id, contact_ids=normalized_contact_ids
+    )
     if is_service_error(result):
         response = service_error_response(result, "Erro ao associar contatos.")
         assert response is not None
@@ -398,7 +412,9 @@ async def post_dependency(
         response = service_error_response(result, "Erro ao criar dependência.")
         assert response is not None
         return response
-    return build_success_payload(result["data"]["dependency"], message="Dependência criada com sucesso")
+    return build_success_payload(
+        result["data"]["dependency"], message="Dependência criada com sucesso"
+    )
 
 
 @router.put("/dependencies")
@@ -427,7 +443,9 @@ async def put_dependency(
         response = service_error_response(result, "Erro ao atualizar dependência.")
         assert response is not None
         return response
-    return build_success_payload(result["data"]["dependency"], message="Dependência atualizada com sucesso")
+    return build_success_payload(
+        result["data"]["dependency"], message="Dependência atualizada com sucesso"
+    )
 
 
 @router.delete("/dependencies")
@@ -459,7 +477,9 @@ async def reorder_dependencies(
     if not product_id or not isinstance(items, list):
         return json_error_response(400, "ProductId e items são obrigatórios")
 
-    result = _call_product_service(db, reorder_product_dependencies, product_id=product_id, items=items)
+    result = _call_product_service(
+        db, reorder_product_dependencies, product_id=product_id, items=items
+    )
     if is_service_error(result):
         response = service_error_response(result, "Erro ao reordenar dependências.")
         assert response is not None
@@ -500,7 +520,9 @@ async def put_manual(
     if not product_id or description is None:
         return json_error_response(400, "ProductId e description são obrigatórios")
 
-    result = _call_product_service(db, upsert_product_manual, product_id=product_id, description=description)
+    result = _call_product_service(
+        db, upsert_product_manual, product_id=product_id, description=description
+    )
     if is_service_error(result):
         response = service_error_response(result, "Erro ao salvar manual.")
         assert response is not None
@@ -547,7 +569,9 @@ async def get_problems(
 
     page_value = _optional_int(page) or 1
     limit_value = _optional_int(limit) or 20
-    result = _call_product_service(db, list_product_problems, slug=product_slug, page=page_value, limit=limit_value)
+    result = _call_product_service(
+        db, list_product_problems, slug=product_slug, page=page_value, limit=limit_value
+    )
     if is_service_error(result):
         response = service_error_response(result, "Erro ao buscar problemas.")
         assert response is not None
@@ -662,7 +686,9 @@ async def post_problem_category(
     if not name or len(name) < 2:
         return json_error_response(400, "Nome é obrigatório e deve ter pelo menos 2 caracteres.")
 
-    result = _call_product_service(db, create_product_problem_category, name=name, color=_optional_text(payload.get("color")))
+    result = _call_product_service(
+        db, create_product_problem_category, name=name, color=_optional_text(payload.get("color"))
+    )
     if is_service_error(result):
         response = service_error_response(result, "Erro ao criar categoria.")
         assert response is not None
@@ -681,7 +707,13 @@ async def put_problem_category(
     if not category_id or not name or len(name) < 2:
         return json_error_response(400, "Nome é obrigatório e deve ter pelo menos 2 caracteres.")
 
-    result = _call_product_service(db, update_product_problem_category, id=category_id, name=name, color=_optional_text(payload.get("color")))
+    result = _call_product_service(
+        db,
+        update_product_problem_category,
+        id=category_id,
+        name=name,
+        color=_optional_text(payload.get("color")),
+    )
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar categoria.")
         assert response is not None
@@ -794,7 +826,9 @@ async def post_solution(
     problem_id = _required_text(payload.get("problemId"))
     description = _required_text(payload.get("description"))
     if not problem_id or description is None or len(description) < 2:
-        return json_error_response(400, "Descrição e problema são obrigatórios (mín. 2 caracteres).")
+        return json_error_response(
+            400, "Descrição e problema são obrigatórios (mín. 2 caracteres)."
+        )
 
     result = _call_product_service(
         db,
@@ -849,7 +883,9 @@ async def delete_solution(
     if not solution_id:
         return json_error_response(400, "ID obrigatório.")
 
-    result = _call_product_service(db, delete_product_solution, user_id=current_user.id, id=solution_id)
+    result = _call_product_service(
+        db, delete_product_solution, user_id=current_user.id, id=solution_id
+    )
     if is_service_error(result):
         response = service_error_response(result, "Erro ao excluir solução.")
         assert response is not None
@@ -866,7 +902,9 @@ async def count_solutions(
     problem_ids = payload.get("problemIds")
     if not isinstance(problem_ids, list) or not problem_ids:
         return json_error_response(400, "Array problemIds é obrigatório e não pode estar vazio.")
-    normalized_problem_ids = [item for item in problem_ids if isinstance(item, str) and item.strip()]
+    normalized_problem_ids = [
+        item for item in problem_ids if isinstance(item, str) and item.strip()
+    ]
     if not normalized_problem_ids:
         return json_error_response(400, "Array problemIds é obrigatório e não pode estar vazio.")
 

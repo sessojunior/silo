@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from typing import TypedDict
 
 from sqlalchemy import create_engine, delete, insert, update
+from sqlalchemy.sql import Executable
 
 from silo.ai.chunking import chunk_markdown
 from silo.ai.embeddings import generate_embedding
@@ -12,6 +14,12 @@ from silo.db.models import legacy_tables
 from silo.db.url import sqlalchemy_database_url
 
 logger = logging.getLogger(__name__)
+
+
+class MarkdownChunk(TypedDict):
+    content: str
+    token_count: int
+    index: int
 
 
 async def upsert_problem_embedding(problem_id: str, title: str, description: str) -> None:
@@ -56,7 +64,7 @@ async def upsert_help_embedding(description: str) -> None:
 async def upsert_manual_chunks(manual_id: str, product_id: str, markdown: str) -> None:
     try:
         table = legacy_tables["product_manual_chunk"]
-        statements = [delete(table).where(table.c.product_manual_id == manual_id)]
+        statements: list[Executable] = [delete(table).where(table.c.product_manual_id == manual_id)]
         chunks = _chunk_markdown(markdown)
         if not chunks:
             _execute_statements(statements)
@@ -84,13 +92,15 @@ async def upsert_manual_chunks(manual_id: str, product_id: str, markdown: str) -
         logger.warning("Falha ao processar manual %s: %s", manual_id, exc)
 
 
-def _execute_statement(statement) -> None:
+def _execute_statement(statement: Executable) -> None:
     _execute_statements([statement])
 
 
-def _execute_statements(statements: Iterable[object]) -> None:
+def _execute_statements(statements: Iterable[Executable]) -> None:
     settings = load_settings()
-    engine = create_engine(sqlalchemy_database_url(settings.database_url.get_secret_value()), pool_pre_ping=True)
+    engine = create_engine(
+        sqlalchemy_database_url(settings.database_url.get_secret_value()), pool_pre_ping=True
+    )
     try:
         with engine.begin() as connection:
             for statement in statements:
@@ -99,7 +109,7 @@ def _execute_statements(statements: Iterable[object]) -> None:
         engine.dispose()
 
 
-def _chunk_markdown(markdown: str) -> list[dict[str, object]]:
+def _chunk_markdown(markdown: str) -> list[MarkdownChunk]:
     return [
         {
             "content": chunk.content,

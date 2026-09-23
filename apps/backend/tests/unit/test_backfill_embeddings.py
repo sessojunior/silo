@@ -3,10 +3,20 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import pytest
-from sqlalchemy import Column, Integer, JSON, MetaData, String, Table, create_engine, func, select, update
+from sqlalchemy import (
+    JSON,
+    Column,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    func,
+    select,
+    update,
+)
 from sqlalchemy.pool import StaticPool
 
 from silo.ai import backfill_embeddings
@@ -164,9 +174,13 @@ async def test_backfill_embeddings_is_dry_run_capable_and_idempotent(
             embedding_digest=None,
         )
 
-    def _fake_update_embedding_sql(table_name: str, column_name: str, row_id: str, embedding: tuple[float, ...]):
+    def _fake_update_embedding_sql(
+        table_name: str, column_name: str, row_id: str, embedding: tuple[float, ...]
+    ):
         table = tables.as_mapping()[table_name]
-        return update(table).where(table.c.id == row_id).values(embedding=json.dumps(list(embedding)))
+        return (
+            update(table).where(table.c.id == row_id).values(embedding=json.dumps(list(embedding)))
+        )
 
     monkeypatch.setattr(backfill_embeddings, "legacy_tables", tables.as_mapping())
     monkeypatch.setattr(backfill_embeddings, "generate_embedding", _fake_generate_embedding)

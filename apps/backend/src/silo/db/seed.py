@@ -90,6 +90,33 @@ class ManualSeed:
     description: str
 
 
+@dataclass(frozen=True, slots=True)
+class DependencySeed:
+    id: str
+    name: str
+    icon: str
+    description: str
+    parent_id: str | None
+    tree_path: str
+    sort_key: str
+
+
+@dataclass(frozen=True, slots=True)
+class ProblemSeed:
+    id: str
+    title: str
+    description: str
+    category_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class SolutionSeed:
+    id: str
+    problem_id: str
+    user_email: str
+    description: str
+
+
 @dataclass(slots=True)
 class SeedSummary:
     inserted: dict[str, int]
@@ -349,6 +376,87 @@ PROBLEM_CATEGORIES: tuple[ProblemCategorySeed, ...] = (
     ),
 )
 
+BAM_DEPENDENCIES: tuple[DependencySeed, ...] = (
+    DependencySeed(
+        id="bam-dependency-input-data",
+        name="Dados de entrada",
+        icon="icon-[lucide--database]",
+        description="Observações e análises necessárias para iniciar a rodada do BAM.",
+        parent_id=None,
+        tree_path="0",
+        sort_key="0000",
+    ),
+    DependencySeed(
+        id="bam-dependency-observations",
+        name="Observações meteorológicas",
+        icon="icon-[lucide--cloud-sun]",
+        description="Dados observados validados e disponibilizados pelo fluxo de ingestão.",
+        parent_id="bam-dependency-input-data",
+        tree_path="0.0",
+        sort_key="0000.0000",
+    ),
+    DependencySeed(
+        id="bam-dependency-processing",
+        name="Processamento",
+        icon="icon-[lucide--cpu]",
+        description="Recursos computacionais usados para executar o modelo global.",
+        parent_id=None,
+        tree_path="1",
+        sort_key="0001",
+    ),
+    DependencySeed(
+        id="bam-dependency-cluster",
+        name="Cluster de processamento",
+        icon="icon-[lucide--server]",
+        description="Cluster responsável pela execução e pelo armazenamento temporário.",
+        parent_id="bam-dependency-processing",
+        tree_path="1.0",
+        sort_key="0001.0000",
+    ),
+)
+
+BAM_PROBLEMS: tuple[ProblemSeed, ...] = (
+    ProblemSeed(
+        id="bam-problem-input-delay",
+        title="Atraso na ingestão de dados",
+        description=(
+            "Os dados observados não chegaram no horário esperado e a rodada do BAM "
+            "ficou aguardando a validação da entrada."
+        ),
+        category_id="data-delay",
+    ),
+    ProblemSeed(
+        id="bam-problem-run-failure",
+        title="Falha na execução do modelo",
+        description=(
+            "A rodada terminou com erro no cluster de processamento antes de gerar "
+            "os produtos de previsão."
+        ),
+        category_id="model-failure",
+    ),
+)
+
+BAM_SOLUTIONS: tuple[SolutionSeed, ...] = (
+    SolutionSeed(
+        id="bam-solution-input-delay",
+        problem_id="bam-problem-input-delay",
+        user_email="alex@inpe.br",
+        description=(
+            "Verifique o fluxo de ingestão, reprocesse o arquivo recebido e confirme "
+            "a janela de dados antes de liberar a rodada."
+        ),
+    ),
+    SolutionSeed(
+        id="bam-solution-run-failure",
+        problem_id="bam-problem-run-failure",
+        user_email="andre@inpe.br",
+        description=(
+            "Consulte os logs do cluster, libere os recursos pendentes e execute "
+            "novamente a rodada usando a mesma entrada validada."
+        ),
+    ),
+)
+
 HELP_DOCUMENTATION = """# Manual do Usuário - Sistema SILO
 
 Seed estrutural do backend Python para ambientes de desenvolvimento e migração.
@@ -413,6 +521,7 @@ def seed_database(database_url: str, *, allow_production: bool = False) -> SeedS
             contact_ids = _seed_contacts(connection, summary)
             _seed_product_contacts(connection, product_ids, contact_ids, summary)
             _seed_problem_categories(connection, summary)
+            _seed_bam_examples(connection, product_ids, user_ids, summary)
             _seed_help(connection, summary)
             _seed_product_manuals(connection, product_ids, summary)
             _seed_project_fixture(connection, user_ids, summary)
@@ -702,6 +811,91 @@ def _seed_problem_categories(connection: Connection, summary: SeedSummary) -> No
         summary.record("product_problem_category", inserted=True)
 
 
+def _seed_bam_examples(
+    connection: Connection,
+    product_ids: Mapping[str, str],
+    user_ids: Mapping[str, str],
+    summary: SeedSummary,
+) -> None:
+    """Create a small, repeatable BAM knowledge base for local environments."""
+    required_tables = ("product_dependency", "product_problem", "product_solution")
+    if not all(table_name in legacy_tables for table_name in required_tables):
+        return
+
+    product_id = product_ids.get("bam")
+    if product_id is None:
+        return
+
+    dependency_table = legacy_tables["product_dependency"]
+    for dependency in BAM_DEPENDENCIES:
+        if _exists(connection, dependency_table, dependency_table.c.id == dependency.id):
+            summary.record("product_dependency", inserted=False)
+            continue
+        connection.execute(
+            dependency_table.insert().values(
+                {
+                    "id": dependency.id,
+                    "product_id": product_id,
+                    "name": dependency.name,
+                    "icon": dependency.icon,
+                    "description": dependency.description,
+                    "parent_id": dependency.parent_id,
+                    "tree_path": dependency.tree_path,
+                    "tree_depth": dependency.tree_path.count("."),
+                    "sort_key": dependency.sort_key,
+                }
+            )
+        )
+        summary.record("product_dependency", inserted=True)
+
+    problem_table = legacy_tables["product_problem"]
+    category_ids = {category.id for category in PROBLEM_CATEGORIES}
+    author_id = user_ids.get("alex@inpe.br")
+    if author_id is None:
+        return
+    for problem in BAM_PROBLEMS:
+        if problem.category_id not in category_ids:
+            continue
+        if _exists(connection, problem_table, problem_table.c.id == problem.id):
+            summary.record("product_problem", inserted=False)
+            continue
+        connection.execute(
+            problem_table.insert().values(
+                {
+                    "id": problem.id,
+                    "product_id": product_id,
+                    "user_id": author_id,
+                    "title": problem.title,
+                    "description": problem.description,
+                    "problem_category_id": problem.category_id,
+                }
+            )
+        )
+        summary.record("product_problem", inserted=True)
+
+    solution_table = legacy_tables["product_solution"]
+    for solution in BAM_SOLUTIONS:
+        if _exists(connection, solution_table, solution_table.c.id == solution.id):
+            summary.record("product_solution", inserted=False)
+            continue
+        user_id = user_ids.get(solution.user_email)
+        if user_id is None or not _exists(
+            connection, problem_table, problem_table.c.id == solution.problem_id
+        ):
+            continue
+        connection.execute(
+            solution_table.insert().values(
+                {
+                    "id": solution.id,
+                    "user_id": user_id,
+                    "product_problem_id": solution.problem_id,
+                    "description": solution.description,
+                }
+            )
+        )
+        summary.record("product_solution", inserted=True)
+
+
 def _seed_help(connection: Connection, summary: SeedSummary) -> None:
     table = legacy_tables["help"]
     if _exists(connection, table, table.c.id == HELP_ID):
@@ -906,7 +1100,9 @@ PROJECT_FIXTURES: tuple[Row, ...] = (
                     {
                         "key": "implementar-endpoints-coleta",
                         "name": "Implementar endpoints de coleta de dados",
-                        "description": "Desenvolver os endpoints de ingestão de dados meteorológicos.",
+                        "description": (
+                            "Desenvolver os endpoints de ingestão de dados meteorológicos."
+                        ),
                         "category": "Desenvolvimento",
                         "estimated_days": 5,
                         "start_date": "2024-02-02",
@@ -1148,7 +1344,9 @@ PROJECT_FIXTURES: tuple[Row, ...] = (
                     {
                         "key": "avaliar-lustre-gpfs",
                         "name": "Avaliar Lustre vs GPFS",
-                        "description": "Comparar desempenho e custo das opções de sistema de arquivos.",
+                        "description": (
+                            "Comparar desempenho e custo das opções de sistema de arquivos."
+                        ),
                         "category": "Pesquisa",
                         "estimated_days": 5,
                         "start_date": "2024-05-01",

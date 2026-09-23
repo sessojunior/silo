@@ -35,7 +35,10 @@ SMNA_ECFLOW_TREE_URL = "https://unconglomerated-physiologically-grant.ngrok-free
 def _load_pipeline_data() -> dict[str, Any]:
     pipeline_path = _find_pipeline_data_path()
     with pipeline_path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+        value: object = json.load(handle)
+    if not isinstance(value, dict):
+        raise ValueError("pipeline-data.json must contain an object")
+    return {str(key): item for key, item in value.items()}
 
 
 async def get_product_data_flow_pipelines_from_kafka_rest(
@@ -219,7 +222,8 @@ async def _fetch_shared_smna_ecflow_tree_root() -> object | None:
         return None
 
     try:
-        return response.json()
+        value: object = response.json()
+        return value
     except ValueError as error:  # pragma: no cover - defensive fallback
         logger.warning(
             "[kafka-rest-dataflow] SMNA payload could not be decoded; using local fallback",
@@ -333,8 +337,12 @@ def _get_mock_monitoring_products(active_products: list[dict[str, Any]]) -> dict
         return None
 
     products: list[dict[str, Any]] = []
-    for mock_product in SEED_MONITORING_PRODUCTS["products"]:  # type: ignore[index]
-        assert isinstance(mock_product, dict)
+    raw_products = SEED_MONITORING_PRODUCTS.get("products")
+    if not isinstance(raw_products, list):
+        return {"referenceDate": _today_iso(), "products": products}
+    for mock_product in raw_products:
+        if not isinstance(mock_product, dict):
+            continue
         matched_product = find_matching_active_product(mock_product)
         if matched_product is None:
             continue

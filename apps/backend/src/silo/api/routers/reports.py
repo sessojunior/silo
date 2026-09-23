@@ -7,9 +7,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import get_snapshot_db, require_permission
-from silo.api.responses import build_success_payload, json_error_response
+from silo.api.responses import ApiResponse, build_success_payload, json_error_response
+from silo.services.pdf_artifacts import PdfArtifactTooLargeError
 from silo.services.report_portal import (
-    PdfArtifactTooLargeError,
     UnsupportedReportFilterError,
     generate_pdf,
     get_availability_report,
@@ -32,7 +32,9 @@ router = APIRouter(
 
 
 @router.get("/availability")
-async def availability_report(request: Request, db: Connection = Depends(get_snapshot_db)):
+async def availability_report(
+    request: Request, db: Connection = Depends(get_snapshot_db)
+) -> ApiResponse:
     period = _parse_period_or_error(request.query_params)
     if isinstance(period, JSONResponse):
         return period
@@ -45,7 +47,9 @@ async def availability_report(request: Request, db: Connection = Depends(get_sna
 
 
 @router.post("/availability/pdf")
-async def availability_pdf(request: Request, db: Connection = Depends(get_snapshot_db)):
+async def availability_pdf(
+    request: Request, db: Connection = Depends(get_snapshot_db)
+) -> ApiResponse:
     body = await _request_json_object(request)
     period = _parse_period_or_error(body)
     if isinstance(period, JSONResponse):
@@ -66,7 +70,9 @@ async def availability_pdf(request: Request, db: Connection = Depends(get_snapsh
 
 
 @router.get("/problems")
-async def problems_report(request: Request, db: Connection = Depends(get_snapshot_db)):
+async def problems_report(
+    request: Request, db: Connection = Depends(get_snapshot_db)
+) -> ApiResponse:
     period = _parse_period_or_error(request.query_params)
     if isinstance(period, JSONResponse):
         return period
@@ -84,7 +90,7 @@ async def problems_report(request: Request, db: Connection = Depends(get_snapsho
 
 
 @router.post("/problems/pdf")
-async def problems_pdf(request: Request, db: Connection = Depends(get_snapshot_db)):
+async def problems_pdf(request: Request, db: Connection = Depends(get_snapshot_db)) -> ApiResponse:
     body = await _request_json_object(request)
     period = _parse_period_or_error(body)
     if isinstance(period, JSONResponse):
@@ -108,7 +114,9 @@ async def problems_pdf(request: Request, db: Connection = Depends(get_snapshot_d
 
 
 @router.get("/executive")
-async def executive_report(request: Request, db: Connection = Depends(get_snapshot_db)):
+async def executive_report(
+    request: Request, db: Connection = Depends(get_snapshot_db)
+) -> ApiResponse:
     period = _parse_period_or_error(request.query_params)
     if isinstance(period, JSONResponse):
         return period
@@ -126,7 +134,7 @@ async def executive_report(request: Request, db: Connection = Depends(get_snapsh
 
 
 @router.post("/executive/pdf")
-async def executive_pdf(request: Request, db: Connection = Depends(get_snapshot_db)):
+async def executive_pdf(request: Request, db: Connection = Depends(get_snapshot_db)) -> ApiResponse:
     body = await _request_json_object(request)
     period = _parse_period_or_error(body)
     if isinstance(period, JSONResponse):
@@ -150,7 +158,9 @@ async def executive_pdf(request: Request, db: Connection = Depends(get_snapshot_
 
 
 @router.get("/projects")
-async def projects_report(request: Request, db: Connection = Depends(get_snapshot_db)):
+async def projects_report(
+    request: Request, db: Connection = Depends(get_snapshot_db)
+) -> ApiResponse:
     period = _parse_period_or_error(request.query_params)
     if isinstance(period, JSONResponse):
         return period
@@ -163,7 +173,7 @@ async def projects_report(request: Request, db: Connection = Depends(get_snapsho
 
 
 @router.post("/projects/pdf")
-async def projects_pdf(request: Request, db: Connection = Depends(get_snapshot_db)):
+async def projects_pdf(request: Request, db: Connection = Depends(get_snapshot_db)) -> ApiResponse:
     body = await _request_json_object(request)
     period = _parse_period_or_error(body)
     if isinstance(period, JSONResponse):
@@ -182,7 +192,7 @@ async def projects_pdf(request: Request, db: Connection = Depends(get_snapshot_d
 
 
 @router.get("/files")
-async def report_files():
+async def report_files() -> ApiResponse:
     try:
         return build_success_payload(list_report_files())
     except Exception:

@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import CurrentUser, get_current_user, get_db, require_permission
-from silo.api.responses import build_success_payload, json_error_response
+from silo.api.responses import ApiResponse, build_success_payload, json_error_response
 from silo.services.dataflow_portal import get_monitoring_products_from_kafka_rest
 from silo.services.legacy_utils import new_uuid
 from silo.services.monitoring_data import (
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 async def get_picture_pages(
     _current_user: object = Depends(require_permission("picturePages", "view")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     try:
         items = list_picture_pages(db)
         return build_success_payload({"items": items})
@@ -43,7 +43,7 @@ async def post_picture_page(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("picturePages", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     validation = _validate_picture_page_payload(payload, require_id=False)
     if isinstance(validation, JSONResponse):
         return validation
@@ -64,7 +64,7 @@ async def put_picture_page(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("picturePages", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     validation = _validate_picture_page_payload(payload, require_id=True)
     if isinstance(validation, JSONResponse):
         return validation
@@ -81,11 +81,12 @@ async def delete_picture_page_route(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("picturePages", "manage")),
     db: Connection = Depends(get_db),
-):
-    if not _required_text(id):
+) -> ApiResponse:
+    identifier = _required_text(id)
+    if not identifier:
         return json_error_response(400, "ID é obrigatório.")
     try:
-        delete_picture_page(db, id)
+        delete_picture_page(db, identifier)
         return build_success_payload(message="Página excluída com sucesso")
     except Exception:
         return json_error_response(500, "Erro ao excluir página.")
@@ -96,7 +97,7 @@ async def put_picture_link(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("picturePages", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     validation = _validate_picture_link_payload(payload)
     if isinstance(validation, JSONResponse):
         return validation
@@ -117,11 +118,12 @@ async def delete_picture_link_route(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("picturePages", "manage")),
     db: Connection = Depends(get_db),
-):
-    if not _required_text(id):
+) -> ApiResponse:
+    identifier = _required_text(id)
+    if not identifier:
         return json_error_response(400, "ID é obrigatório.")
     try:
-        delete_picture_link(db, id)
+        delete_picture_link(db, identifier)
         return build_success_payload(message="Link excluído com sucesso")
     except Exception:
         return json_error_response(500, "Erro ao excluir link.")
@@ -131,7 +133,7 @@ async def delete_picture_link_route(
 async def get_radar_groups(
     _current_user: object = Depends(require_permission("radarGroups", "view")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     try:
         items = list_radar_groups(db)
         return build_success_payload({"items": items})
@@ -144,7 +146,7 @@ async def post_radar_group(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("radarGroups", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     validation = _validate_radar_group_payload(payload)
     if isinstance(validation, JSONResponse):
         return validation
@@ -160,7 +162,7 @@ async def put_radar_group(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("radarGroups", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     validation = _validate_radar_group_payload(payload)
     if isinstance(validation, JSONResponse):
         return validation
@@ -176,11 +178,12 @@ async def delete_radar_group_route(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("radarGroups", "manage")),
     db: Connection = Depends(get_db),
-):
-    if not _required_text(id):
+) -> ApiResponse:
+    identifier = _required_text(id)
+    if not identifier:
         return json_error_response(400, "ID é obrigatório.")
     try:
-        delete_radar_group(db, id)
+        delete_radar_group(db, identifier)
         return build_success_payload(message="Grupo excluído com sucesso")
     except LookupError as exc:
         return json_error_response(400, str(exc))
@@ -192,7 +195,7 @@ async def delete_radar_group_route(
 async def get_radars(
     _current_user: object = Depends(require_permission("radars", "view")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     try:
         items = list_radars(db)
         return build_success_payload({"items": items})
@@ -205,7 +208,7 @@ async def put_radar(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("radars", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> ApiResponse:
     validation = _validate_radar_payload(payload)
     if isinstance(validation, JSONResponse):
         return validation
@@ -225,18 +228,21 @@ async def delete_radar_route(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("radars", "manage")),
     db: Connection = Depends(get_db),
-):
-    if not _required_text(id):
+) -> ApiResponse:
+    identifier = _required_text(id)
+    if not identifier:
         return json_error_response(400, "ID é obrigatório.")
     try:
-        delete_radar(db, id)
+        delete_radar(db, identifier)
         return build_success_payload(message="Radar excluído com sucesso")
     except Exception:
         return json_error_response(500, "Erro ao excluir radar.")
 
 
 @router.post("/seed-radars")
-async def seed_radars(_current_user: object = Depends(require_permission("radars", "manage"))):
+async def seed_radars(
+    _current_user: object = Depends(require_permission("radars", "manage")),
+) -> ApiResponse:
     return build_success_payload(message="Seed de monitoramento executado com sucesso")
 
 
@@ -244,7 +250,7 @@ async def seed_radars(_current_user: object = Depends(require_permission("radars
 async def monitoring_products(
     payload: dict[str, object],
     _current_user: CurrentUser = Depends(get_current_user),
-):
+) -> ApiResponse:
     products = payload.get("products")
     active_products = products if isinstance(products, list) else []
     try:
@@ -254,7 +260,9 @@ async def monitoring_products(
         return json_error_response(500, "Erro ao carregar dados de monitoramento")
 
 
-def _validate_picture_page_payload(payload: dict[str, object], *, require_id: bool) -> dict[str, object] | JSONResponse:
+def _validate_picture_page_payload(
+    payload: dict[str, object], *, require_id: bool
+) -> dict[str, object] | JSONResponse:
     identifier = _required_text(payload.get("id"))
     if require_id and not identifier:
         return json_error_response(400, "ID é obrigatório")

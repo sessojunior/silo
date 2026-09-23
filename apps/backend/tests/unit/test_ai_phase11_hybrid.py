@@ -1,23 +1,21 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
-import time
 from urllib.parse import unquote
 
 import pytest
 from langchain_core.messages import AIMessage
 from pydantic import ValidationError
-from sqlalchemy import Column, Date, DateTime, JSON, MetaData, String, Table, create_engine
+from sqlalchemy import JSON, Column, Date, DateTime, MetaData, String, Table, create_engine
 
-from silo.ai import assistant_tools
-from silo.ai import assistant_service
+from silo.ai import assistant_service, assistant_tools
 from silo.ai.assistant_contracts import AiAssistantMessageRequestDto
 from silo.ai.assistant_registry import (
-    MAX_TOTAL_REGISTRY_BYTES,
     AgentRuntimeContext,
     DatasetRegistry,
     DatasetRegistryError,
@@ -125,7 +123,9 @@ def _fake_runtime_context(
 
 
 @pytest.mark.asyncio
-async def test_scope_detection_uses_structured_model_fallback_when_heuristics_are_ambiguous() -> None:
+async def test_scope_detection_uses_structured_model_fallback_when_heuristics_are_ambiguous() -> (
+    None
+):
     runtime_context = _fake_runtime_context(
         create_engine("sqlite+pysqlite:///:memory:", future=True).connect(),
         model_runtime=FakeChatPort(
@@ -134,7 +134,9 @@ async def test_scope_detection_uses_structured_model_fallback_when_heuristics_ar
         embedding_provider=_RaisingEmbeddingProvider(),
     )
 
-    scope, confidence = await assistant_service._detect_scope("Resumo de relatórios e projetos", runtime_context)
+    scope, confidence = await assistant_service._detect_scope(
+        "Resumo de relatórios e projetos", runtime_context
+    )
 
     assert scope == "reports"
     assert confidence == 0.65
@@ -204,54 +206,54 @@ async def test_search_silo_knowledge_truncates_large_documents_and_keeps_determi
         connection.execute(
             help_table.insert(),
             [
-                    {
-                        "id": "system-help",
-                        "description": "Ajuda geral do sistema com manual e documentação.",
-                        "embedding": embedding,
-                        "created_at": timestamp,
-                        "updated_at": timestamp,
-                    }
-                ],
-            )
+                {
+                    "id": "system-help",
+                    "description": "Ajuda geral do sistema com manual e documentação.",
+                    "embedding": embedding,
+                    "created_at": timestamp,
+                    "updated_at": timestamp,
+                }
+            ],
+        )
         connection.execute(
             manual_table.insert(),
             [
-                    {
-                        "id": "manual-1",
-                        "product_id": "product-1",
-                        "content": long_text,
-                        "embedding": embedding,
-                        "created_at": timestamp,
-                        "updated_at": timestamp,
-                    }
-                ],
-            )
+                {
+                    "id": "manual-1",
+                    "product_id": "product-1",
+                    "content": long_text,
+                    "embedding": embedding,
+                    "created_at": timestamp,
+                    "updated_at": timestamp,
+                }
+            ],
+        )
         connection.execute(
             problem_table.insert(),
             [
-                    {
-                        "id": "problem-1",
-                        "product_id": "product-1",
-                        "title": "Falha de ingestão",
-                        "description": "Texto auxiliar para busca.",
-                        "embedding": embedding,
-                        "created_at": timestamp,
-                        "updated_at": timestamp,
-                    }
-                ],
-            )
+                {
+                    "id": "problem-1",
+                    "product_id": "product-1",
+                    "title": "Falha de ingestão",
+                    "description": "Texto auxiliar para busca.",
+                    "embedding": embedding,
+                    "created_at": timestamp,
+                    "updated_at": timestamp,
+                }
+            ],
+        )
         connection.execute(
             solution_table.insert(),
             [
-                    {
-                        "id": "solution-1",
-                        "description": "Correção em texto de apoio.",
-                        "embedding": embedding,
-                        "created_at": timestamp,
-                        "updated_at": timestamp,
-                    }
-                ],
-            )
+                {
+                    "id": "solution-1",
+                    "description": "Correção em texto de apoio.",
+                    "embedding": embedding,
+                    "created_at": timestamp,
+                    "updated_at": timestamp,
+                }
+            ],
+        )
 
     monkeypatch.setattr(
         "silo.ai.assistant_tools.legacy_tables",
@@ -276,7 +278,9 @@ async def test_search_silo_knowledge_truncates_large_documents_and_keeps_determi
 
 
 @pytest.mark.asyncio
-async def test_agent_decide_executa_tool_hibrida_e_registra_resultado(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_agent_decide_executa_tool_hibrida_e_registra_resultado(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     connection = engine.connect()
     runtime_context = _fake_runtime_context(
@@ -500,7 +504,12 @@ def test_sanitized_observability_removes_prompt_payloads_and_keeps_safe_metrics(
             "toolResults": [{"value": "segredo"}],
             "unexpected": "drop-me",
             "nodes": [
-                {"name": "normalize_question", "durationMs": 4, "status": "success", "prompt": "oculto"}
+                {
+                    "name": "normalize_question",
+                    "durationMs": 4,
+                    "status": "success",
+                    "prompt": "oculto",
+                }
             ],
             "modelCalls": [
                 {"name": "model", "durationMs": 12, "status": "success", "thinking": "oculto"}
@@ -537,7 +546,9 @@ def test_sanitized_observability_removes_prompt_payloads_and_keeps_safe_metrics(
     ]
     assert sanitized["counts"] == {"nodes": 1, "models": 1, "tools": 1}
     assert sanitized["errors"] == ["Falha controlada"]
-    assert sanitized["nodes"] == [{"name": "normalize_question", "durationMs": 4, "status": "success"}]
+    assert sanitized["nodes"] == [
+        {"name": "normalize_question", "durationMs": 4, "status": "success"}
+    ]
     assert sanitized["modelCalls"] == [{"name": "model", "durationMs": 12, "status": "success"}]
     assert sanitized["toolCalls"] == [{"name": "tool", "durationMs": 7, "status": "error"}]
     assert sanitized["nodeDurationsMs"] == {"normalize_question": 4}
@@ -553,7 +564,9 @@ def test_sanitized_observability_removes_prompt_payloads_and_keeps_safe_metrics(
 
 
 @pytest.mark.asyncio
-async def test_execute_required_data_tools_usa_duas_conexoes_em_paralelo_para_reports(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_execute_required_data_tools_usa_duas_conexoes_em_paralelo_para_reports(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     base_connection = engine.connect()
     connection_count = 0
@@ -597,10 +610,18 @@ async def test_execute_required_data_tools_usa_duas_conexoes_em_paralelo_para_re
 
         return _call
 
-    monkeypatch.setattr(assistant_service, "get_executive_report_data", _slow_result("executiveReport"))
-    monkeypatch.setattr(assistant_service, "get_availability_report_data", _slow_result("availabilityReport"))
-    monkeypatch.setattr(assistant_service, "get_problems_report_data", _slow_result("problemsReport"))
-    monkeypatch.setattr(assistant_service, "get_projects_report_data", _slow_result("projectsReport"))
+    monkeypatch.setattr(
+        assistant_service, "get_executive_report_data", _slow_result("executiveReport")
+    )
+    monkeypatch.setattr(
+        assistant_service, "get_availability_report_data", _slow_result("availabilityReport")
+    )
+    monkeypatch.setattr(
+        assistant_service, "get_problems_report_data", _slow_result("problemsReport")
+    )
+    monkeypatch.setattr(
+        assistant_service, "get_projects_report_data", _slow_result("projectsReport")
+    )
 
     started_at = time.perf_counter()
     await assistant_service._node_execute_required_data_tools(state, runtime)
@@ -636,7 +657,13 @@ async def test_execute_required_data_tools_usa_duas_conexoes_em_paralelo_para_re
         ),
         (
             "problems",
-            {"problemsList", "problemSummary", "problemComparison", "problematicRuns", "problemCategory"},
+            {
+                "problemsList",
+                "problemSummary",
+                "problemComparison",
+                "problematicRuns",
+                "problemCategory",
+            },
             {"problemCategories": {"matches": [{"id": "category-1"}]}},
             False,
         ),
@@ -702,18 +729,40 @@ async def test_execute_required_data_tools_covers_scope_branches(
     monkeypatch.setattr(assistant_service, "list_model_runs", _stub({"items": [{"id": "run-1"}]}))
     monkeypatch.setattr(assistant_service, "summarize_model_runs", _stub({"totalRuns": 1}))
     monkeypatch.setattr(assistant_service, "compare_model_run_periods", _stub({"changed": True}))
-    monkeypatch.setattr(assistant_service, "get_model_run_history", _stub({"history": [{"id": "history-1"}]}))
-    monkeypatch.setattr(assistant_service, "list_model_interventions", _stub({"items": [{"id": "intervention-1"}]}))
-    monkeypatch.setattr(assistant_service, "get_projects_snapshot", _stub({"projects": [{"id": "project-1"}]}))
-    monkeypatch.setattr(assistant_service, "get_projects_report_data", _stub({"summary": {"totalProjects": 1}}))
-    monkeypatch.setattr(assistant_service, "list_registered_problems", _stub({"items": [{"id": "problem-1"}]}))
-    monkeypatch.setattr(assistant_service, "summarize_problems", _stub({"totalProblems": 1, "totalSolutions": 1}))
+    monkeypatch.setattr(
+        assistant_service, "get_model_run_history", _stub({"history": [{"id": "history-1"}]})
+    )
+    monkeypatch.setattr(
+        assistant_service, "list_model_interventions", _stub({"items": [{"id": "intervention-1"}]})
+    )
+    monkeypatch.setattr(
+        assistant_service, "get_projects_snapshot", _stub({"projects": [{"id": "project-1"}]})
+    )
+    monkeypatch.setattr(
+        assistant_service, "get_projects_report_data", _stub({"summary": {"totalProjects": 1}})
+    )
+    monkeypatch.setattr(
+        assistant_service, "list_registered_problems", _stub({"items": [{"id": "problem-1"}]})
+    )
+    monkeypatch.setattr(
+        assistant_service, "summarize_problems", _stub({"totalProblems": 1, "totalSolutions": 1})
+    )
     monkeypatch.setattr(assistant_service, "compare_problem_periods", _stub({"changed": True}))
-    monkeypatch.setattr(assistant_service, "list_problematic_runs", _stub({"items": [{"id": "problematic-1"}]}))
-    monkeypatch.setattr(assistant_service, "resolve_problem_categories", _stub({"matches": [{"id": "category-1"}]}))
-    monkeypatch.setattr(assistant_service, "search_silo_knowledge", _stub({"items": [{"id": "knowledge-1"}]}))
-    monkeypatch.setattr(assistant_service, "get_executive_report_data", _stub({"summary": {"totalProducts": 1}}))
-    monkeypatch.setattr(assistant_service, "get_availability_report_data", _stub({"avgAvailability": 99.0}))
+    monkeypatch.setattr(
+        assistant_service, "list_problematic_runs", _stub({"items": [{"id": "problematic-1"}]})
+    )
+    monkeypatch.setattr(
+        assistant_service, "resolve_problem_categories", _stub({"matches": [{"id": "category-1"}]})
+    )
+    monkeypatch.setattr(
+        assistant_service, "search_silo_knowledge", _stub({"items": [{"id": "knowledge-1"}]})
+    )
+    monkeypatch.setattr(
+        assistant_service, "get_executive_report_data", _stub({"summary": {"totalProducts": 1}})
+    )
+    monkeypatch.setattr(
+        assistant_service, "get_availability_report_data", _stub({"avgAvailability": 99.0})
+    )
     monkeypatch.setattr(assistant_service, "get_problems_report_data", _stub({"totalProblems": 1}))
 
     await assistant_service._node_execute_required_data_tools(state, runtime)
@@ -723,14 +772,19 @@ async def test_execute_required_data_tools_covers_scope_branches(
     assert state["dataset_manifests"] == []
 
 
-
 def test_list_model_interventions_ignora_intervencoes_em_branco(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'interventions.sqlite3'}", future=True)
     metadata = MetaData()
-    product_table = Table("product", metadata, Column("id", String, primary_key=True), Column("name", String, nullable=False), Column("slug", String, nullable=True))
+    product_table = Table(
+        "product",
+        metadata,
+        Column("id", String, primary_key=True),
+        Column("name", String, nullable=False),
+        Column("slug", String, nullable=True),
+    )
     activity_table = Table(
         "product_activity",
         metadata,
@@ -745,7 +799,9 @@ def test_list_model_interventions_ignora_intervencoes_em_branco(
     )
     metadata.create_all(engine)
     with engine.begin() as connection:
-        connection.execute(product_table.insert(), [{"id": "product-1", "name": "Produto 1", "slug": "produto-1"}])
+        connection.execute(
+            product_table.insert(), [{"id": "product-1", "name": "Produto 1", "slug": "produto-1"}]
+        )
         connection.execute(
             activity_table.insert(),
             [
@@ -778,7 +834,9 @@ def test_list_model_interventions_ignora_intervencoes_em_branco(
     )
 
     with engine.connect() as connection:
-        result = assistant_tools.list_model_interventions(connection, product_ids=["product-1"], limit=20)
+        result = assistant_tools.list_model_interventions(
+            connection, product_ids=["product-1"], limit=20
+        )
 
     assert [item["id"] for item in result["items"]] == ["activity-filled"]
 
@@ -789,7 +847,13 @@ def test_get_model_run_history_nao_expoe_email_em_pii(
 ) -> None:
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'history.sqlite3'}", future=True)
     metadata = MetaData()
-    product_table = Table("product", metadata, Column("id", String, primary_key=True), Column("name", String, nullable=False), Column("slug", String, nullable=True))
+    product_table = Table(
+        "product",
+        metadata,
+        Column("id", String, primary_key=True),
+        Column("name", String, nullable=False),
+        Column("slug", String, nullable=True),
+    )
     activity_table = Table(
         "product_activity",
         metadata,
@@ -819,9 +883,17 @@ def test_get_model_run_history_nao_expoe_email_em_pii(
     )
     metadata.create_all(engine)
     with engine.begin() as connection:
-        connection.execute(product_table.insert(), [{"id": "product-1", "name": "Produto 1", "slug": "produto-1"}])
-        connection.execute(activity_table.insert(), [{"id": "activity-1", "product_id": "product-1", "date": "2026-07-22", "turn": "1"}])
-        connection.execute(user_table.insert(), [{"id": "user-1", "name": "Usuário 1", "email": "user@example.com"}])
+        connection.execute(
+            product_table.insert(), [{"id": "product-1", "name": "Produto 1", "slug": "produto-1"}]
+        )
+        connection.execute(
+            activity_table.insert(),
+            [{"id": "activity-1", "product_id": "product-1", "date": "2026-07-22", "turn": "1"}],
+        )
+        connection.execute(
+            user_table.insert(),
+            [{"id": "user-1", "name": "Usuário 1", "email": "user@example.com"}],
+        )
         connection.execute(
             history_table.insert(),
             [
@@ -861,7 +933,13 @@ def test_summarize_model_runs_agrega_sem_varrer_todas_as_linhas(
 ) -> None:
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'summary.sqlite3'}", future=True)
     metadata = MetaData()
-    product_table = Table("product", metadata, Column("id", String, primary_key=True), Column("name", String, nullable=False), Column("slug", String, nullable=True))
+    product_table = Table(
+        "product",
+        metadata,
+        Column("id", String, primary_key=True),
+        Column("name", String, nullable=False),
+        Column("slug", String, nullable=True),
+    )
     activity_table = Table(
         "product_activity",
         metadata,
@@ -887,9 +965,39 @@ def test_summarize_model_runs_agrega_sem_varrer_todas_as_linhas(
         connection.execute(
             activity_table.insert(),
             [
-                {"id": "activity-1", "product_id": "product-1", "date": datetime(2026, 7, 22, tzinfo=UTC).date(), "turn": "1", "status": "completed", "intervention": None, "description": "", "created_at": datetime(2026, 7, 22, 12, 0, tzinfo=UTC), "updated_at": datetime(2026, 7, 22, 12, 0, tzinfo=UTC)},
-                {"id": "activity-2", "product_id": "product-1", "date": datetime(2026, 7, 23, tzinfo=UTC).date(), "turn": "2", "status": "with_problems", "intervention": "Ajuste", "description": "", "created_at": datetime(2026, 7, 23, 12, 0, tzinfo=UTC), "updated_at": datetime(2026, 7, 23, 12, 0, tzinfo=UTC)},
-                {"id": "activity-3", "product_id": "product-2", "date": datetime(2026, 7, 23, tzinfo=UTC).date(), "turn": "1", "status": "pending", "intervention": None, "description": "", "created_at": datetime(2026, 7, 23, 12, 0, tzinfo=UTC), "updated_at": datetime(2026, 7, 23, 12, 0, tzinfo=UTC)},
+                {
+                    "id": "activity-1",
+                    "product_id": "product-1",
+                    "date": datetime(2026, 7, 22, tzinfo=UTC).date(),
+                    "turn": "1",
+                    "status": "completed",
+                    "intervention": None,
+                    "description": "",
+                    "created_at": datetime(2026, 7, 22, 12, 0, tzinfo=UTC),
+                    "updated_at": datetime(2026, 7, 22, 12, 0, tzinfo=UTC),
+                },
+                {
+                    "id": "activity-2",
+                    "product_id": "product-1",
+                    "date": datetime(2026, 7, 23, tzinfo=UTC).date(),
+                    "turn": "2",
+                    "status": "with_problems",
+                    "intervention": "Ajuste",
+                    "description": "",
+                    "created_at": datetime(2026, 7, 23, 12, 0, tzinfo=UTC),
+                    "updated_at": datetime(2026, 7, 23, 12, 0, tzinfo=UTC),
+                },
+                {
+                    "id": "activity-3",
+                    "product_id": "product-2",
+                    "date": datetime(2026, 7, 23, tzinfo=UTC).date(),
+                    "turn": "1",
+                    "status": "pending",
+                    "intervention": None,
+                    "description": "",
+                    "created_at": datetime(2026, 7, 23, 12, 0, tzinfo=UTC),
+                    "updated_at": datetime(2026, 7, 23, 12, 0, tzinfo=UTC),
+                },
             ],
         )
 
@@ -899,7 +1007,9 @@ def test_summarize_model_runs_agrega_sem_varrer_todas_as_linhas(
     )
 
     with engine.connect() as connection:
-        result = assistant_tools.summarize_model_runs(connection, start_date="2026-07-01", end_date="2026-07-23")
+        result = assistant_tools.summarize_model_runs(
+            connection, start_date="2026-07-01", end_date="2026-07-23"
+        )
 
     assert result["totalRuns"] == 3
     assert result["executedRuns"] == 2
@@ -1026,9 +1136,7 @@ def test_assistant_tool_catalog_helpers_cover_remaining_branches(
     monkeypatch.setattr(
         assistant_tool_catalog,
         "replace",
-        lambda runtime_context, **kwargs: SimpleNamespace(
-            **{**runtime_context.__dict__, **kwargs}
-        ),
+        lambda runtime_context, **kwargs: SimpleNamespace(**{**runtime_context.__dict__, **kwargs}),
     )
 
     runtime_context_with_factory = SimpleNamespace(
@@ -1044,8 +1152,8 @@ def test_assistant_tool_catalog_helpers_cover_remaining_branches(
     )
     assert spec.name == "search_silo_knowledge"
     assert result["connection"] == "scoped-db"
-    assert assistant_tool_catalog._optional_text("  texto  ") == "texto"  # noqa: SLF001
-    assert assistant_tool_catalog._optional_text(123) is None  # noqa: SLF001
+    assert assistant_tool_catalog._optional_text("  texto  ") == "texto"
+    assert assistant_tool_catalog._optional_text(123) is None
 
 
 def test_build_mermaid_diagram_bloqueia_conteudo_hostil() -> None:

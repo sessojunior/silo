@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from typing import TypedDict
 
 from sqlalchemy import and_, select
 from sqlalchemy.engine import Connection
@@ -16,10 +17,36 @@ from silo.services.analytics_common import (
     is_incident_status,
     normalize_shift_turns,
 )
-from silo.services.legacy_utils import optional_str
 
 NO_INCIDENTS_CATEGORY_ID = "no-incidents"
 PROBLEM_INCIDENT_STATUSES = tuple(sorted(PROBLEM_STATUSES))
+
+
+class DashboardActivity(TypedDict):
+    id: str
+    date: str | None
+    turn: int
+    user_id: str
+    status: object
+    description: object
+    intervention: object
+    category_id: object
+    alert: bool
+
+
+class DashboardProduct(TypedDict):
+    productId: str
+    name: object
+    priority: object
+    turns: list[str]
+    last_run: str | None
+    percent_completed: int
+    dates: list[DashboardActivity]
+
+
+class DashboardCategory(TypedDict):
+    name: object
+    count: int
 
 
 def get_dashboard_root_meta() -> dict[str, object]:
@@ -89,20 +116,28 @@ def get_dashboard_data(connection: Connection) -> list[dict[str, object]]:
     product_table = legacy_tables["product"]
     activity_table = legacy_tables["product_activity"]
 
-    products = connection.execute(
-        select(product_table).where(product_table.c.available.is_(True))
-    ).mappings().all()
+    products = (
+        connection.execute(select(product_table).where(product_table.c.available.is_(True)))
+        .mappings()
+        .all()
+    )
     if not products:
         return []
 
     cutoff = (datetime.now(ANALYTICS_TIMEZONE) - timedelta(days=60)).date()
-    activity_rows = connection.execute(
-        select(activity_table)
-        .where(activity_table.c.date >= cutoff)
-        .order_by(activity_table.c.date.asc(), activity_table.c.turn.asc(), activity_table.c.id.asc())
-    ).mappings().all()
+    activity_rows = (
+        connection.execute(
+            select(activity_table)
+            .where(activity_table.c.date >= cutoff)
+            .order_by(
+                activity_table.c.date.asc(), activity_table.c.turn.asc(), activity_table.c.id.asc()
+            )
+        )
+        .mappings()
+        .all()
+    )
 
-    grouped: dict[str, dict[str, object]] = {}
+    grouped: dict[str, DashboardProduct] = {}
     for product in products:
         grouped[str(product["id"])] = {
             "productId": str(product["id"]),
@@ -120,7 +155,11 @@ def get_dashboard_data(connection: Connection) -> list[dict[str, object]]:
         if item is None:
             continue
 
-        date_text = row["date"].isoformat() if isinstance(row["date"], date) else format_local_date_text(row["date"])
+        date_text = (
+            row["date"].isoformat()
+            if isinstance(row["date"], date)
+            else format_local_date_text(row["date"])
+        )
         item["dates"].append(
             {
                 "id": str(row["id"]),
@@ -141,11 +180,16 @@ def get_dashboard_data(connection: Connection) -> list[dict[str, object]]:
 
     recent_cutoff = (datetime.now(ANALYTICS_TIMEZONE) - timedelta(days=28)).date()
     for item in grouped.values():
-        last_28 = [row for row in item["dates"] if isinstance(row.get("date"), str) and row["date"] >= recent_cutoff.isoformat()]
+        last_28 = [
+            row
+            for row in item["dates"]
+            if isinstance(row_date := row.get("date"), str)
+            and row_date >= recent_cutoff.isoformat()
+        ]
         completed = sum(1 for row in last_28 if row.get("status") == "completed")
         item["percent_completed"] = round((completed / len(last_28)) * 100) if last_28 else 0
 
-    return list(grouped.values())
+    return [dict(item) for item in grouped.values()]
 
 
 def get_dashboard_summary(connection: Connection) -> dict[str, object]:
@@ -155,17 +199,20 @@ def get_dashboard_summary(connection: Connection) -> dict[str, object]:
     date_7 = (datetime.now(ANALYTICS_TIMEZONE) - timedelta(days=7)).date()
     date_14 = (datetime.now(ANALYTICS_TIMEZONE) - timedelta(days=14)).date()
 
-    rows = connection.execute(
-        select(activity_table.c.date, activity_table.c.problem_category_id)
-        .where(
-            and_(
-                activity_table.c.date >= date_14,
-                activity_table.c.problem_category_id.is_not(None),
-                activity_table.c.problem_category_id != NO_INCIDENTS_CATEGORY_ID,
-                activity_table.c.status.in_(PROBLEM_INCIDENT_STATUSES),
+    rows = (
+        connection.execute(
+            select(activity_table.c.date, activity_table.c.problem_category_id).where(
+                and_(
+                    activity_table.c.date >= date_14,
+                    activity_table.c.problem_category_id.is_not(None),
+                    activity_table.c.problem_category_id != NO_INCIDENTS_CATEGORY_ID,
+                    activity_table.c.status.in_(PROBLEM_INCIDENT_STATUSES),
+                )
             )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     recent_count = 0
     previous_count = 0
@@ -178,13 +225,17 @@ def get_dashboard_summary(connection: Connection) -> dict[str, object]:
         else:
             previous_count += 1
 
-    top_categories: list[dict[str, object]] = []
+    top_categories: list[DashboardCategory] = []
     if recent_category_counts:
-        cat_rows = connection.execute(
-            select(category_table.c.id, category_table.c.name)
-            .where(category_table.c.id.in_(tuple(recent_category_counts.keys())))
-            .order_by(category_table.c.name.asc(), category_table.c.id.asc())
-        ).mappings().all()
+        cat_rows = (
+            connection.execute(
+                select(category_table.c.id, category_table.c.name)
+                .where(category_table.c.id.in_(tuple(recent_category_counts.keys())))
+                .order_by(category_table.c.name.asc(), category_table.c.id.asc())
+            )
+            .mappings()
+            .all()
+        )
         for category in cat_rows:
             top_categories.append(
                 {
@@ -195,7 +246,9 @@ def get_dashboard_summary(connection: Connection) -> dict[str, object]:
         top_categories.sort(key=lambda item: (-int(item["count"]), str(item["name"])))
         top_categories = top_categories[:5]
 
-    trend = None if previous_count == 0 else ((recent_count - previous_count) / previous_count) * 100
+    trend = (
+        None if previous_count == 0 else ((recent_count - previous_count) / previous_count) * 100
+    )
     return {
         "recentCount": recent_count,
         "previousCount": previous_count,
@@ -210,8 +263,7 @@ def get_dashboard_problems_causes(connection: Connection) -> dict[str, object]:
 
     cutoff = (datetime.now(ANALYTICS_TIMEZONE) - timedelta(days=28)).date()
     rows = connection.execute(
-        select(activity_table.c.problem_category_id)
-        .where(
+        select(activity_table.c.problem_category_id).where(
             and_(
                 activity_table.c.date >= cutoff,
                 activity_table.c.problem_category_id.is_not(None),
@@ -228,11 +280,15 @@ def get_dashboard_problems_causes(connection: Connection) -> dict[str, object]:
     if not counts:
         return {"labels": [], "values": [], "colors": []}
 
-    category_rows = connection.execute(
-        select(category_table.c.id, category_table.c.name, category_table.c.color)
-        .where(category_table.c.id.in_(tuple(counts.keys())))
-        .order_by(category_table.c.name.asc(), category_table.c.id.asc())
-    ).mappings().all()
+    category_rows = (
+        connection.execute(
+            select(category_table.c.id, category_table.c.name, category_table.c.color)
+            .where(category_table.c.id.in_(tuple(counts.keys())))
+            .order_by(category_table.c.name.asc(), category_table.c.id.asc())
+        )
+        .mappings()
+        .all()
+    )
 
     ordered = sorted(
         category_rows,
@@ -254,16 +310,17 @@ def get_dashboard_problems_solutions(connection: Connection) -> dict[str, object
     start = today - timedelta(days=total_days - 1)
 
     problem_rows = connection.execute(
-        select(problem_table.c.created_at).where(problem_table.c.created_at >= datetime.combine(start, datetime.min.time()))
+        select(problem_table.c.created_at).where(
+            problem_table.c.created_at >= datetime.combine(start, datetime.min.time())
+        )
     ).all()
     solution_rows = connection.execute(
-        select(solution_table.c.updated_at).where(solution_table.c.updated_at >= datetime.combine(start, datetime.min.time()))
+        select(solution_table.c.updated_at).where(
+            solution_table.c.updated_at >= datetime.combine(start, datetime.min.time())
+        )
     ).all()
 
-    categories = [
-        format_br_day_short(start + timedelta(days=index))
-        for index in range(total_days)
-    ]
+    categories = [format_br_day_short(start + timedelta(days=index)) for index in range(total_days)]
     problems_counts = [0] * total_days
     solutions_counts = [0] * total_days
 
@@ -288,21 +345,32 @@ def get_dashboard_projects(connection: Connection) -> list[dict[str, object]]:
     project_table = legacy_tables["project"]
     task_table = legacy_tables["project_task"]
 
-    active_projects = connection.execute(
-        select(project_table)
-        .where(project_table.c.status == "active")
-        .order_by(project_table.c.name.asc(), project_table.c.id.asc())
-    ).mappings().all()
+    active_projects = (
+        connection.execute(
+            select(project_table)
+            .where(project_table.c.status == "active")
+            .order_by(project_table.c.name.asc(), project_table.c.id.asc())
+        )
+        .mappings()
+        .all()
+    )
     if not active_projects:
         return []
 
     project_ids = [str(row["id"]) for row in active_projects]
-    tasks = connection.execute(
-        select(task_table.c.project_id, task_table.c.status)
-        .where(task_table.c.project_id.in_(tuple(project_ids)))
-    ).mappings().all()
+    tasks = (
+        connection.execute(
+            select(task_table.c.project_id, task_table.c.status).where(
+                task_table.c.project_id.in_(tuple(project_ids))
+            )
+        )
+        .mappings()
+        .all()
+    )
 
-    summary: dict[str, dict[str, int]] = {project_id: {"total": 0, "done": 0} for project_id in project_ids}
+    summary: dict[str, dict[str, int]] = {
+        project_id: {"total": 0, "done": 0} for project_id in project_ids
+    }
     for task in tasks:
         project_id = str(task["project_id"])
         project_summary = summary.get(project_id)
@@ -316,9 +384,13 @@ def get_dashboard_projects(connection: Connection) -> list[dict[str, object]]:
     result: list[dict[str, object]] = []
     for project in active_projects:
         aggregate = summary.get(str(project["id"]), {"total": 0, "done": 0})
-        progress = round((aggregate["done"] / aggregate["total"]) * 100) if aggregate["total"] > 0 else 0
+        progress = (
+            round((aggregate["done"] / aggregate["total"]) * 100) if aggregate["total"] > 0 else 0
+        )
         if isinstance(project.get("start_date"), date):
-            start_date = datetime.combine(project["start_date"], datetime.min.time(), tzinfo=ANALYTICS_TIMEZONE)
+            start_date = datetime.combine(
+                project["start_date"], datetime.min.time(), tzinfo=ANALYTICS_TIMEZONE
+            )
             days_elapsed = max(1, round((today - start_date).total_seconds() / 86_400))
         else:
             days_elapsed = 0
@@ -337,7 +409,11 @@ def get_dashboard_projects(connection: Connection) -> list[dict[str, object]]:
 
 def _day_index(start: date, value: object) -> int | None:
     if isinstance(value, datetime):
-        current_date = value.astimezone(ANALYTICS_TIMEZONE).date() if value.tzinfo is not None else value.date()
+        current_date = (
+            value.astimezone(ANALYTICS_TIMEZONE).date()
+            if value.tzinfo is not None
+            else value.date()
+        )
     elif isinstance(value, date):
         current_date = value
     elif isinstance(value, str):
@@ -345,7 +421,11 @@ def _day_index(start: date, value: object) -> int | None:
         if not text:
             return None
         try:
-            current_date = datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(ANALYTICS_TIMEZONE).date()
+            current_date = (
+                datetime.fromisoformat(text.replace("Z", "+00:00"))
+                .astimezone(ANALYTICS_TIMEZONE)
+                .date()
+            )
         except ValueError:
             return None
     else:

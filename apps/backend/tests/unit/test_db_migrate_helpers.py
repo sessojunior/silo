@@ -92,9 +92,13 @@ def test_run_migrations_executes_upgrade_and_checks_heads(monkeypatch: pytest.Mo
     assert engine.disposed is True
     assert any(
         "pg_advisory_lock" in statement.lower() and str(MIGRATION_ADVISORY_LOCK_ID) in str(params)
-        for statement, params in zip(engine.connection.statements, engine.connection.executed_params, strict=True)
+        for statement, params in zip(
+            engine.connection.statements, engine.connection.executed_params, strict=True
+        )
     )
-    assert any("pg_advisory_unlock" in statement.lower() for statement in engine.connection.statements)
+    assert any(
+        "pg_advisory_unlock" in statement.lower() for statement in engine.connection.statements
+    )
 
 
 def test_run_migrations_raises_on_head_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -113,9 +117,12 @@ def test_run_migrations_raises_on_head_mismatch(monkeypatch: pytest.MonkeyPatch)
 
 def test_main_rejects_positional_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(db_migrate, "run_migrations", lambda database_url: None)
-    monkeypatch.setattr(db_migrate, "database_url_from_environment", lambda environ: "postgresql://example.test/silo")
+    monkeypatch.setattr(
+        db_migrate,
+        "database_url_from_environment",
+        lambda environ: "postgresql://example.test/silo",
+    )
     monkeypatch.setattr(db_migrate, "os", __import__("os"))
 
     with pytest.raises(RuntimeError, match="nao aceita argumentos posicionais"):
         db_migrate.main(["extra"])
-

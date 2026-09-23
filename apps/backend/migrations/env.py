@@ -24,9 +24,7 @@ def _database_url_from_environment() -> str:
     if value and value.strip():
         return sqlalchemy_database_url(value.strip())
 
-    raise RuntimeError(
-        "DATABASE_URL ausente para Alembic. Configure a variavel DATABASE_URL."
-    )
+    raise RuntimeError("DATABASE_URL ausente para Alembic. Configure a variavel DATABASE_URL.")
 
 
 def run_migrations_offline() -> None:

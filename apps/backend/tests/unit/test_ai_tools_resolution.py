@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import Column, DateTime, JSON, MetaData, String, Table, create_engine
+from sqlalchemy import JSON, Column, DateTime, MetaData, String, Table, create_engine
 
 from silo.ai import assistant_tools
 
@@ -191,9 +191,24 @@ def test_resolution_helpers_cover_database_paths(monkeypatch: pytest.MonkeyPatch
         connection.execute(
             tables["product_problem_category"].insert(),
             [
-                {"id": "no-incidents", "name": "Sem incidentes", "color": "#10B981", "sort_order": 0},
-                {"id": "model-failure", "name": "Falha de modelo", "color": "#EF4444", "sort_order": 10},
-                {"id": "data-delay", "name": "Atraso de dados", "color": "#F59E0B", "sort_order": 20},
+                {
+                    "id": "no-incidents",
+                    "name": "Sem incidentes",
+                    "color": "#10B981",
+                    "sort_order": 0,
+                },
+                {
+                    "id": "model-failure",
+                    "name": "Falha de modelo",
+                    "color": "#EF4444",
+                    "sort_order": 10,
+                },
+                {
+                    "id": "data-delay",
+                    "name": "Atraso de dados",
+                    "color": "#F59E0B",
+                    "sort_order": 20,
+                },
             ],
         )
         connection.execute(
@@ -255,9 +270,27 @@ def test_resolution_helpers_cover_database_paths(monkeypatch: pytest.MonkeyPatch
         connection.execute(
             tables["project_task"].insert(),
             [
-                {"id": "task-1", "project_id": "project-1", "status": "open", "priority": "high", "sort": "1"},
-                {"id": "task-2", "project_id": "project-1", "status": "blocked", "priority": "high", "sort": "2"},
-                {"id": "task-3", "project_id": "project-2", "status": "done", "priority": "normal", "sort": "3"},
+                {
+                    "id": "task-1",
+                    "project_id": "project-1",
+                    "status": "open",
+                    "priority": "high",
+                    "sort": "1",
+                },
+                {
+                    "id": "task-2",
+                    "project_id": "project-1",
+                    "status": "blocked",
+                    "priority": "high",
+                    "sort": "2",
+                },
+                {
+                    "id": "task-3",
+                    "project_id": "project-2",
+                    "status": "done",
+                    "priority": "normal",
+                    "sort": "3",
+                },
             ],
         )
         connection.execute(
@@ -330,11 +363,19 @@ def test_resolution_helpers_cover_database_paths(monkeypatch: pytest.MonkeyPatch
             end_date="2026-08-31",
             limit=10,
         )
-        problem_details = assistant_tools.get_registered_problem_details(connection, problem_id="problem-1")
-        missing_problem_details = assistant_tools.get_registered_problem_details(connection, problem_id="missing")
+        problem_details = assistant_tools.get_registered_problem_details(
+            connection, problem_id="problem-1"
+        )
+        missing_problem_details = assistant_tools.get_registered_problem_details(
+            connection, problem_id="missing"
+        )
         snapshot = assistant_tools.get_projects_snapshot(connection)
-        snapshot_without_tasks = assistant_tools.get_projects_snapshot(connection, include_tasks=False)
-        solution_counts = assistant_tools._count_solutions_by_problem(connection, ["problem-1", "problem-2"])  # noqa: SLF001
+        snapshot_without_tasks = assistant_tools.get_projects_snapshot(
+            connection, include_tasks=False
+        )
+        solution_counts = assistant_tools._count_solutions_by_problem(
+            connection, ["problem-1", "problem-2"]
+        )
 
     assert exact_models["matches"][0]["id"] == "product-bam"
     assert exact_models["ambiguous"] is False
@@ -359,14 +400,18 @@ def test_resolution_helpers_cover_database_paths(monkeypatch: pytest.MonkeyPatch
     assert snapshot["blockedTasks"] == 1
     project_1_snapshot = next(item for item in snapshot["projects"] if item["id"] == "project-1")
     project_2_snapshot = next(item for item in snapshot["projects"] if item["id"] == "project-2")
-    project_1_snapshot_without_tasks = next(item for item in snapshot_without_tasks["projects"] if item["id"] == "project-1")
+    project_1_snapshot_without_tasks = next(
+        item for item in snapshot_without_tasks["projects"] if item["id"] == "project-1"
+    )
     assert len(project_1_snapshot["tasks"]) == 2
     assert len(project_2_snapshot["tasks"]) == 1
     assert project_1_snapshot_without_tasks["tasks"] == []
     assert solution_counts == {"problem-1": 2, "problem-2": 0}
 
 
-def test_resolution_scoring_and_date_helpers_cover_edge_cases(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolution_scoring_and_date_helpers_cover_edge_cases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     async def _fake_generate_embedding(query: str) -> list[float]:
         assert query == "texto de teste"
         return [0.25 for _ in range(768)]
@@ -378,35 +423,42 @@ def test_resolution_scoring_and_date_helpers_cover_edge_cases(monkeypatch: pytes
         SimpleNamespace(now=lambda: datetime(2026, 8, 4, 12, 0, tzinfo=UTC)),
     )
 
-    query_embedding = assistant_tools._generate_query_embedding_for_search("texto de teste")  # noqa: SLF001
+    query_embedding = assistant_tools._generate_query_embedding_for_search("texto de teste")
     assert len(query_embedding) == 768
     assert query_embedding[0] == 0.25
-    assert assistant_tools._generate_query_embedding_for_search("   ") == tuple(0.0 for _ in range(768))  # noqa: SLF001
+    assert assistant_tools._generate_query_embedding_for_search("   ") == tuple(
+        0.0 for _ in range(768)
+    )
 
-    assert assistant_tools._coerce_embedding_similarity(query_embedding, [0.25 for _ in range(768)]) > 0.99  # noqa: SLF001
-    assert assistant_tools._coerce_embedding_similarity(query_embedding, [0.25]) == 0.0  # noqa: SLF001
-    assert assistant_tools._coerce_embedding_similarity(query_embedding, None) == 0.0  # noqa: SLF001
+    assert (
+        assistant_tools._coerce_embedding_similarity(query_embedding, [0.25 for _ in range(768)])
+        > 0.99
+    )
+    assert assistant_tools._coerce_embedding_similarity(query_embedding, [0.25]) == 0.0
+    assert assistant_tools._coerce_embedding_similarity(query_embedding, None) == 0.0
 
     recent = datetime(2026, 8, 4, 11, 50, tzinfo=UTC)
     old = recent - timedelta(days=20)
-    assert assistant_tools._score_recency(recent) > assistant_tools._score_recency(old)  # noqa: SLF001
-    assert assistant_tools._score_recency("invalid") == 0.0  # noqa: SLF001
+    assert assistant_tools._score_recency(recent) > assistant_tools._score_recency(old)
+    assert assistant_tools._score_recency("invalid") == 0.0
 
-    assert assistant_tools._date_range_bounds("2026-08-01", "2026-08-04") == (  # noqa: SLF001
+    assert assistant_tools._date_range_bounds("2026-08-01", "2026-08-04") == (
         date(2026, 8, 1),
         date(2026, 8, 4),
     )
-    assert assistant_tools._date_range_bounds(None, None, default_days=7) == (  # noqa: SLF001
+    assert assistant_tools._date_range_bounds(None, None, default_days=7) == (
         date(2026, 7, 29),
         date(2026, 8, 4),
     )
-    assert assistant_tools._period_from_query({"start": "2026-08-01", "end": "2026-08-04"}) == {  # noqa: SLF001
+    assert assistant_tools._period_from_query({"start": "2026-08-01", "end": "2026-08-04"}) == {
         "start": "2026-08-01",
         "end": "2026-08-04",
     }
 
 
-def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolution_remaining_branches_cover_search_rendering_and_helpers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     metadata = MetaData()
     tables = _build_tables(metadata)
@@ -482,8 +534,18 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
         connection.execute(
             tables["product_problem_category"].insert(),
             [
-                {"id": "model-failure", "name": "Falha de modelo", "color": "#EF4444", "sort_order": 10},
-                {"id": "data-delay", "name": "Atraso de dados", "color": "#F59E0B", "sort_order": 20},
+                {
+                    "id": "model-failure",
+                    "name": "Falha de modelo",
+                    "color": "#EF4444",
+                    "sort_order": 10,
+                },
+                {
+                    "id": "data-delay",
+                    "name": "Atraso de dados",
+                    "color": "#F59E0B",
+                    "sort_order": 20,
+                },
             ],
         )
         connection.execute(
@@ -526,8 +588,20 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
         connection.execute(
             tables["project_task"].insert(),
             [
-                {"id": "task-1", "project_id": "project-1", "status": "open", "priority": "high", "sort": "1"},
-                {"id": "task-2", "project_id": "project-1", "status": "done", "priority": "low", "sort": "2"},
+                {
+                    "id": "task-1",
+                    "project_id": "project-1",
+                    "status": "open",
+                    "priority": "high",
+                    "sort": "1",
+                },
+                {
+                    "id": "task-2",
+                    "project_id": "project-1",
+                    "status": "done",
+                    "priority": "low",
+                    "sort": "2",
+                },
             ],
         )
         connection.execute(
@@ -611,29 +685,32 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
         )
 
     assert assistant_tools.normalize_text("  Árvore   de\n  Dados ") == "arvore de dados"
-    assert assistant_tools.token_overlap_score("a e", "sem termos") == 0.0  # noqa: SLF001
-    assert assistant_tools.token_overlap_score("falha modelo", "falha do modelo") > 0.0  # noqa: SLF001
-    assert assistant_tools.fuzzy_score("", "qualquer coisa") == 0.0  # noqa: SLF001
-    canonical_1 = assistant_tools._canonical_json({"b": 1, "a": 2})  # noqa: SLF001
-    canonical_2 = assistant_tools._canonical_json({"a": 2, "b": 1})  # noqa: SLF001
+    assert assistant_tools.token_overlap_score("a e", "sem termos") == 0.0
+    assert assistant_tools.token_overlap_score("falha modelo", "falha do modelo") > 0.0
+    assert assistant_tools.fuzzy_score("", "qualquer coisa") == 0.0
+    canonical_1 = assistant_tools._canonical_json({"b": 1, "a": 2})
+    canonical_2 = assistant_tools._canonical_json({"a": 2, "b": 1})
     assert canonical_1 == canonical_2
-    assert assistant_tools._optional_text(123) is None  # noqa: SLF001
-    assert assistant_tools._escape_mermaid('linha "um"\ndois') == "linha 'um' dois"  # noqa: SLF001
-    assert assistant_tools._escape_svg('<a & b> "c"') == "&lt;a &amp; b&gt; &quot;c&quot;"  # noqa: SLF001
-    assert assistant_tools._select_products_by_ids(connection, []) == []  # noqa: SLF001
-    assert assistant_tools._coerce_embedding_similarity((0.1, 0.2), object()) == 0.0  # noqa: SLF001
-    assert assistant_tools._coerce_embedding_similarity((0.1, 0.2), [float("inf"), 0.2]) == 0.0  # noqa: SLF001
-    assert assistant_tools._score_recency(None) == 0.0  # noqa: SLF001
-    assert assistant_tools._score_knowledge_candidate(  # noqa: SLF001
-        query="falha",
-        query_embedding=(0.1, 0.1),
-        source="help",
-        identifier="help-0",
-        content="   ",
-        embedding=None,
-        created_at=None,
-    ) == []
-    scored_candidates = assistant_tools._score_knowledge_candidate(  # noqa: SLF001
+    assert assistant_tools._optional_text(123) is None
+    assert assistant_tools._escape_mermaid('linha "um"\ndois') == "linha 'um' dois"
+    assert assistant_tools._escape_svg('<a & b> "c"') == "&lt;a &amp; b&gt; &quot;c&quot;"
+    assert assistant_tools._select_products_by_ids(connection, []) == []
+    assert assistant_tools._coerce_embedding_similarity((0.1, 0.2), object()) == 0.0
+    assert assistant_tools._coerce_embedding_similarity((0.1, 0.2), [float("inf"), 0.2]) == 0.0
+    assert assistant_tools._score_recency(None) == 0.0
+    assert (
+        assistant_tools._score_knowledge_candidate(
+            query="falha",
+            query_embedding=(0.1, 0.1),
+            source="help",
+            identifier="help-0",
+            content="   ",
+            embedding=None,
+            created_at=None,
+        )
+        == []
+    )
+    scored_candidates = assistant_tools._score_knowledge_candidate(
         query="falha",
         query_embedding=(0.1, 0.1, 0.1),
         source="help",
@@ -648,7 +725,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
     assert "ignored" not in scored_candidates[0]
 
     with engine.connect() as connection:
-        invalid_cursor_runs = assistant_tools.list_model_runs(  # noqa: SLF001
+        invalid_cursor_runs = assistant_tools.list_model_runs(
             connection,
             start_date="2026-08-03",
             end_date="2026-08-04",
@@ -658,7 +735,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
         assert len(invalid_cursor_runs["items"]) == 1
         assert invalid_cursor_runs["nextCursor"] is not None
 
-        cursor_runs = assistant_tools.list_model_runs(  # noqa: SLF001
+        cursor_runs = assistant_tools.list_model_runs(
             connection,
             start_date="2026-08-03",
             end_date="2026-08-04",
@@ -667,13 +744,13 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
         )
         assert [item["id"] for item in cursor_runs["items"]] == ["run-1"]
 
-        summarized_all = assistant_tools.summarize_model_runs(  # noqa: SLF001
+        summarized_all = assistant_tools.summarize_model_runs(
             connection,
             start_date="2026-08-03",
             end_date="2026-08-04",
             product_ids=["product-bam"],
         )
-        summarized_empty = assistant_tools.summarize_model_runs(  # noqa: SLF001
+        summarized_empty = assistant_tools.summarize_model_runs(
             connection,
             start_date="2026-08-03",
             end_date="2026-08-04",
@@ -684,7 +761,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
         assert summarized_empty["totalRuns"] == 0
         assert summarized_empty["availabilityPct"] == 0.0
 
-        compared = assistant_tools.compare_model_run_periods(  # noqa: SLF001
+        compared = assistant_tools.compare_model_run_periods(
             connection,
             start_date="2026-08-04",
             end_date="2026-08-04",
@@ -693,7 +770,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
         assert compared["current"]["totalRuns"] == 1
         assert compared["previous"]["totalRuns"] == 1
 
-        problematic = assistant_tools.list_problematic_runs(  # noqa: SLF001
+        problematic = assistant_tools.list_problematic_runs(
             connection,
             start_date="2026-08-03",
             end_date="2026-08-04",
@@ -701,27 +778,37 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
         )
         assert problematic["items"][0]["id"] == "run-2"
 
-        history_missing_product = assistant_tools.get_model_run_history(connection, product_id_or_slug="missing")  # noqa: SLF001
-        history_without_runs = assistant_tools.get_model_run_history(connection, product_id_or_slug="brams")  # noqa: SLF001
-        history_with_runs = assistant_tools.get_model_run_history(connection, product_id_or_slug="bam")  # noqa: SLF001
+        history_missing_product = assistant_tools.get_model_run_history(
+            connection, product_id_or_slug="missing"
+        )
+        history_without_runs = assistant_tools.get_model_run_history(
+            connection, product_id_or_slug="brams"
+        )
+        history_with_runs = assistant_tools.get_model_run_history(
+            connection, product_id_or_slug="bam"
+        )
         assert history_missing_product == {"product": None, "history": []}
         assert history_without_runs["history"] == []
         assert history_with_runs["history"][0]["id"] == "history-1"
 
-        problems_filtered = assistant_tools.list_registered_problems(  # noqa: SLF001
+        problems_filtered = assistant_tools.list_registered_problems(
             connection,
             start_date="2026-08-03",
             end_date="2026-08-04",
             product_id="product-bam",
             problem_category_id="model-failure",
         )
-        problem_details = assistant_tools.get_registered_problem_details(connection, problem_id="problem-1")  # noqa: SLF001
+        problem_details = assistant_tools.get_registered_problem_details(
+            connection, problem_id="problem-1"
+        )
         assert problems_filtered["items"][0]["id"] == "problem-1"
         assert problem_details["problem"]["id"] == "problem-1"
         assert problem_details["solutions"][0]["verified"] is True
 
         snapshot = assistant_tools.get_projects_snapshot(connection)
-        snapshot_without_tasks = assistant_tools.get_projects_snapshot(connection, include_tasks=False)
+        snapshot_without_tasks = assistant_tools.get_projects_snapshot(
+            connection, include_tasks=False
+        )
         assert snapshot["totalProjects"] == 1
         assert snapshot["totalTasks"] == 2
         assert snapshot_without_tasks["projects"][0]["tasks"] == []
@@ -756,25 +843,59 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
             "get_projects_report",
             lambda connection, period: {"kind": "projects", "period": period},
         )
-        assert assistant_tools.get_availability_report_data(connection, {"start": "2026-08-03", "end": "2026-08-04"})["kind"] == "availability"  # noqa: SLF001
-        assert assistant_tools.get_problems_report_data(connection, {"start": "2026-08-03", "end": "2026-08-04", "productId": "product-bam", "problemCategory": "model-failure"})["productId"] == "product-bam"  # noqa: SLF001
-        assert assistant_tools.get_executive_report_data(connection, {"start": "2026-08-03", "end": "2026-08-04", "productId": "product-bam", "groupId": "group-ops"})["groupId"] == "group-ops"  # noqa: SLF001
-        assert assistant_tools.get_projects_report_data(connection, {"start": "2026-08-03", "end": "2026-08-04"})["kind"] == "projects"  # noqa: SLF001
+        assert (
+            assistant_tools.get_availability_report_data(
+                connection, {"start": "2026-08-03", "end": "2026-08-04"}
+            )["kind"]
+            == "availability"
+        )
+        assert (
+            assistant_tools.get_problems_report_data(
+                connection,
+                {
+                    "start": "2026-08-03",
+                    "end": "2026-08-04",
+                    "productId": "product-bam",
+                    "problemCategory": "model-failure",
+                },
+            )["productId"]
+            == "product-bam"
+        )
+        assert (
+            assistant_tools.get_executive_report_data(
+                connection,
+                {
+                    "start": "2026-08-03",
+                    "end": "2026-08-04",
+                    "productId": "product-bam",
+                    "groupId": "group-ops",
+                },
+            )["groupId"]
+            == "group-ops"
+        )
+        assert (
+            assistant_tools.get_projects_report_data(
+                connection, {"start": "2026-08-03", "end": "2026-08-04"}
+            )["kind"]
+            == "projects"
+        )
 
-        search_results = assistant_tools.search_silo_knowledge(connection, query="falha no modelo", limit=-1)  # noqa: SLF001
+        search_results = assistant_tools.search_silo_knowledge(
+            connection, query="falha no modelo", limit=-1
+        )
         assert search_results["limit"] == 1
         assert set(search_results["sources"]) <= {"help", "manual", "problem", "solution"}
         assert search_results["items"]
 
     with pytest.raises(ValueError, match="inválido"):
-        assistant_tools.build_chart_spec(  # noqa: SLF001
+        assistant_tools.build_chart_spec(
             template_id="models_overview",
             dataset={},
             chart_type="scatter",
             title="Teste",
         )
 
-    empty_chart = assistant_tools.build_chart_spec(  # noqa: SLF001
+    empty_chart = assistant_tools.build_chart_spec(
         template_id="models_overview",
         dataset={},
         chart_type="bar",
@@ -783,7 +904,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
     assert empty_chart["categories"] == []
 
     with pytest.raises(ValueError, match="incompatíveis"):
-        assistant_tools.build_chart_spec(  # noqa: SLF001
+        assistant_tools.build_chart_spec(
             template_id="models_overview",
             dataset={
                 "categories": ["A"],
@@ -794,7 +915,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
             title="Teste",
         )
 
-    chart_from_dataset = assistant_tools.build_chart_spec(  # noqa: SLF001
+    chart_from_dataset = assistant_tools.build_chart_spec(
         template_id="models_overview",
         dataset={
             "categories": ["A", "B"],
@@ -805,7 +926,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
     )
     assert chart_from_dataset["series"][0]["values"] == [1.0, 2.0]
 
-    chart_from_products = assistant_tools.build_chart_spec(  # noqa: SLF001
+    chart_from_products = assistant_tools.build_chart_spec(
         template_id="projects_overview",
         dataset={"products": [{"slug": "produto-a", "availabilityPercentage": 88}]},
         chart_type="donut",
@@ -813,7 +934,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
     )
     assert chart_from_products["categories"] == ["produto-a"]
 
-    chart_from_top_products = assistant_tools.build_chart_spec(  # noqa: SLF001
+    chart_from_top_products = assistant_tools.build_chart_spec(
         template_id="executive_overview",
         dataset={"topProducts": [{"productName": "Produto A", "incidentRuns": 4}]},
         chart_type="bar",
@@ -822,9 +943,9 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
     assert chart_from_top_products["series"][0]["values"] == [4.0]
 
     with pytest.raises(ValueError, match="excede"):
-        assistant_tools._finalize_chart_spec({"data": "x" * 200000})  # noqa: SLF001
+        assistant_tools._finalize_chart_spec({"data": "x" * 200000})
 
-    valid_mermaid = assistant_tools.build_mermaid_diagram(  # noqa: SLF001
+    valid_mermaid = assistant_tools.build_mermaid_diagram(
         template_id="project_flow",
         dataset={"projects": [{"name": "Projeto A", "tasks": [{"name": "Tarefa A"}]}]},
         title="Fluxo",
@@ -832,7 +953,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
     assert valid_mermaid["kind"] == "mermaid"
 
     with pytest.raises(ValueError, match="inválido"):
-        assistant_tools.build_mermaid_diagram(  # noqa: SLF001
+        assistant_tools.build_mermaid_diagram(
             template_id="template-desconhecido",
             dataset={"projects": []},
             title="Fluxo",
@@ -840,7 +961,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
 
     monkeypatch.setattr(assistant_tools, "_escape_mermaid", lambda value: "javascript:alert(1)")
     with pytest.raises(ValueError, match="inseguro"):
-        assistant_tools.build_mermaid_diagram(  # noqa: SLF001
+        assistant_tools.build_mermaid_diagram(
             template_id="project_flow",
             dataset={"projects": [{"name": "Projeto A", "tasks": []}]},
             title="Fluxo inseguro",
@@ -848,42 +969,44 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
 
     monkeypatch.setattr(assistant_tools, "_escape_svg", lambda value: "X" * 100_000)
     with pytest.raises(ValueError, match="excede"):
-        assistant_tools.render_summary_image(title="Título", lines=["Linha 1", "Linha 2"])  # noqa: SLF001
+        assistant_tools.render_summary_image(title="Título", lines=["Linha 1", "Linha 2"])
 
     monkeypatch.setattr(assistant_tools.asyncio, "get_running_loop", lambda: object())
-    assert assistant_tools._generate_query_embedding_for_search("texto") == tuple(0.0 for _ in range(768))  # noqa: SLF001
+    assert assistant_tools._generate_query_embedding_for_search("texto") == tuple(
+        0.0 for _ in range(768)
+    )
 
-    assert assistant_tools._coerce_chart_number(1.5) == 1.5  # noqa: SLF001
+    assert assistant_tools._coerce_chart_number(1.5) == 1.5
     with pytest.raises(ValueError, match="não finito"):
-        assistant_tools._coerce_chart_number(float("inf"))  # noqa: SLF001
+        assistant_tools._coerce_chart_number(float("inf"))
 
     with pytest.raises(ValueError, match="Tipo de relatório desconhecido"):
-        assistant_tools.generate_report_pdf(  # noqa: SLF001
+        assistant_tools.generate_report_pdf(
             connection,
             report_type="invalid",
             data={"summary": {}},
             period_label="Período",
         )
 
-    assert assistant_tools._build_pdf_titles()["executive"] == "Relatório Executivo"  # noqa: SLF001
-    assert "executive" in assistant_tools._build_pdf_renderers()  # noqa: SLF001
+    assert assistant_tools._build_pdf_titles()["executive"] == "Relatório Executivo"
+    assert "executive" in assistant_tools._build_pdf_renderers()
 
     from silo.services import pdf_artifacts as pdf_artifacts_module
 
     class _FakeRenderer:
-        def __init__(self, builders, title_map):  # noqa: ANN001
+        def __init__(self, builders, title_map):
             self.builders = builders
             self.title_map = title_map
 
-        def render(self, *, report_type, data, period_label):  # noqa: ANN001
+        def render(self, *, report_type, data, period_label):
             del report_type, data, period_label
             return SimpleNamespace(pdf_bytes=b"%PDF-1.4", generated_at=timestamp, page_count=1)
 
     class _FakeArtifactStore:
-        def __init__(self, upload_kind):  # noqa: ANN001
+        def __init__(self, upload_kind):
             self.upload_kind = upload_kind
 
-        def save(self, *, report_type, pdf_bytes, generated_at):  # noqa: ANN001
+        def save(self, *, report_type, pdf_bytes, generated_at):
             del report_type, pdf_bytes, generated_at
             return SimpleNamespace(
                 url="/uploads/serve/reports/executive.pdf",
@@ -894,7 +1017,7 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(monkey
 
     monkeypatch.setattr(pdf_artifacts_module, "PdfRenderer", _FakeRenderer)
     monkeypatch.setattr(pdf_artifacts_module, "PdfArtifactStore", _FakeArtifactStore)
-    generated_pdf = assistant_tools.generate_report_pdf(  # noqa: SLF001
+    generated_pdf = assistant_tools.generate_report_pdf(
         connection,
         report_type="executive",
         data={"summary": {"totalProducts": 1}},

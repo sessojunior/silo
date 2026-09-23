@@ -18,7 +18,9 @@ class _FakeEmbeddingProvider:
 
 
 @pytest.mark.asyncio
-async def test_embedding_helpers_cover_cache_similarity_and_sql(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_embedding_helpers_cover_cache_similarity_and_sql(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     provider = _FakeEmbeddingProvider(
         vectors=[
             tuple(0.25 for _ in range(768)),
@@ -71,10 +73,10 @@ async def test_embedding_helpers_cover_cache_similarity_and_sql(monkeypatch: pyt
 
 
 def test_embedding_identifier_validation_rejects_bad_names() -> None:
-    assert embeddings._validate_identifier("table_name") == "table_name"  # noqa: SLF001
+    assert embeddings._validate_identifier("table_name") == "table_name"
 
     with pytest.raises(ValueError, match="Identificador SQL inv\\u00e1lido"):
-        embeddings._validate_identifier("1bad")  # noqa: SLF001
+        embeddings._validate_identifier("1bad")
 
     with pytest.raises(ValueError, match="Identificador SQL inv\\u00e1lido"):
-        embeddings._validate_identifier("bad-name")  # noqa: SLF001
+        embeddings._validate_identifier("bad-name")

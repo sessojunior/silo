@@ -1,11 +1,22 @@
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from uuid import UUID, uuid5
 
 import pytest
-from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, MetaData, String, Table, and_, create_engine, select
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    and_,
+    create_engine,
+    select,
+)
 
 from silo.db import seed
 
@@ -235,7 +246,9 @@ def _build_seed_tables(metadata: MetaData) -> dict[str, Table]:
     }
 
 
-def _fake_insert_do_nothing(connection, table: Table, values: dict[str, object], *, constraint: str | None = None) -> bool:  # noqa: ARG001
+def _fake_insert_do_nothing(
+    connection, table: Table, values: dict[str, object], *, constraint: str | None = None
+) -> bool:
     normalized_values: dict[str, object] = {}
     for column_name, value in values.items():
         if isinstance(value, UUID):
@@ -259,7 +272,9 @@ def _fake_insert_do_nothing(connection, table: Table, values: dict[str, object],
     return True
 
 
-def test_seed_database_populates_expected_rows_and_is_idempotent(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_seed_database_populates_expected_rows_and_is_idempotent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     database_path = tmp_path / "seed.sqlite"
     database_url = f"sqlite+pysqlite:///{database_path.as_posix()}"
     engine = create_engine(database_url, future=True)
@@ -292,7 +307,9 @@ def test_seed_database_populates_expected_rows_and_is_idempotent(monkeypatch: py
     )
 
     assert first_summary.inserted["group"] == len(seed.GROUPS)
-    assert first_summary.inserted["group_permissions"] == len(seed.ADMIN_GROUP_PERMISSIONS) + (3 * len(seed.DEFAULT_GROUP_PERMISSIONS))
+    assert first_summary.inserted["group_permissions"] == len(seed.ADMIN_GROUP_PERMISSIONS) + (
+        3 * len(seed.DEFAULT_GROUP_PERMISSIONS)
+    )
     assert first_summary.inserted["user"] == len(seed.USERS)
     assert first_summary.inserted["account"] == len(seed.USERS)
     assert first_summary.inserted["user_profile"] == 1
@@ -312,7 +329,9 @@ def test_seed_database_populates_expected_rows_and_is_idempotent(monkeypatch: py
     assert first_summary.inserted["project_task_user"] == expected_task_users
 
     assert second_summary.existing["group"] == len(seed.GROUPS)
-    assert second_summary.existing["group_permissions"] == len(seed.ADMIN_GROUP_PERMISSIONS) + (3 * len(seed.DEFAULT_GROUP_PERMISSIONS))
+    assert second_summary.existing["group_permissions"] == len(seed.ADMIN_GROUP_PERMISSIONS) + (
+        3 * len(seed.DEFAULT_GROUP_PERMISSIONS)
+    )
     assert second_summary.existing["user"] == len(seed.USERS)
     assert second_summary.existing["account"] == len(seed.USERS)
     assert second_summary.existing["user_profile"] == 1
@@ -333,7 +352,9 @@ def test_seed_database_populates_expected_rows_and_is_idempotent(monkeypatch: py
 
     with engine.connect() as connection:
         group_count = connection.execute(select(seed.legacy_tables["group"].c.id)).all()
-        help_row = connection.execute(select(tables["help"].c.description).where(tables["help"].c.id == seed.HELP_ID)).scalar_one()
+        help_row = connection.execute(
+            select(tables["help"].c.description).where(tables["help"].c.id == seed.HELP_ID)
+        ).scalar_one()
         manual_count = connection.execute(select(tables["product_manual_chunk"].c.id)).all()
 
     assert len(group_count) == len(seed.GROUPS)
@@ -341,11 +362,16 @@ def test_seed_database_populates_expected_rows_and_is_idempotent(monkeypatch: py
     assert len(manual_count) == len(seed.MANUALS) * 2
 
 
-def test_seed_helpers_cover_environment_and_chunk_parsing(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_seed_helpers_cover_environment_and_chunk_parsing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     assert seed._manual_chunks("Uma parte\n\nOutra parte") == ("Uma parte", "Outra parte")
 
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///test.db")
-    assert seed._database_url_from_environment({"DATABASE_URL": "sqlite+pysqlite:///test.db"}) == "sqlite+pysqlite:///test.db"
+    assert (
+        seed._database_url_from_environment({"DATABASE_URL": "sqlite+pysqlite:///test.db"})
+        == "sqlite+pysqlite:///test.db"
+    )
 
     args = seed._parse_args(["--database-url", "sqlite+pysqlite:///test.db", "--allow-production"])
     assert args.database_url == "sqlite+pysqlite:///test.db"
