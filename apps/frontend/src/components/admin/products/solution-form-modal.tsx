@@ -309,6 +309,7 @@ export default function SolutionFormModal({
               ) : (
                 <UploadButtonLocal
                   endpoint="solutionImageUploader"
+                  multiple={false}
                   onClientUploadComplete={(res) => {
                     const imageData = Array.isArray(res) ? res[0] : res;
                     if (!imageData) return;

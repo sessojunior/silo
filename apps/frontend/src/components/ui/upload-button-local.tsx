@@ -40,6 +40,7 @@ interface UploadButtonLocalProps {
 
   className?: string;
   disabled?: boolean;
+  multiple?: boolean;
 }
 
 export default function UploadButtonLocal({
@@ -50,6 +51,7 @@ export default function UploadButtonLocal({
   content,
   className,
   disabled = false,
+  multiple,
 }: UploadButtonLocalProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,6 +76,7 @@ export default function UploadButtonLocal({
     "helpImageUploader",
     "projectImageUploader",
   ]);
+  const allowMultiple = multiple ?? multiUploadEndpoints.has(endpoint);
 
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null;
@@ -169,13 +172,13 @@ export default function UploadButtonLocal({
     setIsUploading(true);
 
     try {
-      const uploadedItems = multiUploadEndpoints.has(endpoint)
+      const uploadedItems = allowMultiple
         ? await Promise.all(fileArray.map(async (file) => uploadSingleFile(file)))
         : [await uploadSingleFile(fileArray[0])];
 
       if (onClientUploadComplete) {
         onClientUploadComplete(
-          multiUploadEndpoints.has(endpoint) ? uploadedItems : uploadedItems[0],
+          allowMultiple ? uploadedItems : uploadedItems[0],
         );
       }
     } catch (error) {
@@ -223,14 +226,7 @@ export default function UploadButtonLocal({
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        multiple={
-          endpoint === "problemImageUploader" ||
-          endpoint === "incidentImageUploader" ||
-          endpoint === "solutionImageUploader" ||
-          endpoint === "manualImageUploader" ||
-          endpoint === "helpImageUploader" ||
-          endpoint === "projectImageUploader"
-        }
+        multiple={allowMultiple}
         onChange={handleFileSelect}
         className="hidden"
         disabled={disabled || isUploading}
