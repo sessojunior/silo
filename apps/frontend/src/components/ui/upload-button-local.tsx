@@ -116,6 +116,7 @@ export default function UploadButtonLocal({
 
     const response = await fetch(uploadEndpoint, {
       method: "POST",
+      credentials: "include",
       body: formData,
     });
 

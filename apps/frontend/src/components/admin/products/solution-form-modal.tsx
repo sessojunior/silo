@@ -339,9 +339,6 @@ export default function SolutionFormModal({
                 />
               )}
             </div>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Depois de salvar, você poderá adicionar outras imagens editando a solução.
-            </p>
           </div>
         )}
 
