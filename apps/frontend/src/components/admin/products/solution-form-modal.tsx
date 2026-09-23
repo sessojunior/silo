@@ -73,6 +73,9 @@ export default function SolutionFormModal({
   editingSolution,
   solutionDescription,
   setSolutionDescription,
+  setSolutionImage,
+  solutionImagePreview,
+  setSolutionImagePreview,
   solutionLoading,
   onSubmit,
   onDeleteSolution,
@@ -135,7 +138,7 @@ export default function SolutionFormModal({
           </div>
         </div>
 
-        {/* Upload de imagem - apenas para modo edit */}
+        {/* Imagens já vinculadas ficam disponíveis no modo de edição. */}
         {mode === "edit" && editingSolution && (
           <div className="flex flex-col gap-4">
             <div className="font-semibold">Imagens da solução</div>
@@ -268,6 +271,76 @@ export default function SolutionFormModal({
                 }}
               />
             </div>
+          </div>
+        )}
+
+        {/*
+         * Ao criar uma solução ou responder outra, o registro ainda não existe
+         * para vincular imagens pela galeria. O upload inicial é enviado junto
+         * com a solução e, depois de salva, novas imagens podem ser adicionadas
+         * pelo modo de edição.
+         */}
+        {mode !== "edit" && (
+          <div className="flex flex-col gap-4">
+            <div className="font-semibold">Imagem da solução</div>
+            <div className="flex flex-wrap items-center gap-4">
+              {solutionImagePreview ? (
+                <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50">
+                  <Image
+                    src={toPublicUploadsSrc(solutionImagePreview)}
+                    alt="Imagem selecionada para a solução"
+                    className="h-full w-full object-contain"
+                    width={128}
+                    height={128}
+                    unoptimized
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-1 top-1 z-10 flex size-8 items-center justify-center rounded-full bg-red-100/80 p-0.5 text-red-600 shadow transition hover:bg-red-200"
+                    title="Remover imagem"
+                    onClick={() => {
+                      setSolutionImage(null);
+                      setSolutionImagePreview(null);
+                    }}
+                  >
+                    <span className="icon-[lucide--trash] flex size-4 items-center justify-center" />
+                  </button>
+                </div>
+              ) : (
+                <UploadButtonLocal
+                  endpoint="solutionImageUploader"
+                  onClientUploadComplete={(res) => {
+                    const imageData = Array.isArray(res) ? res[0] : res;
+                    if (!imageData) return;
+                    setSolutionImage(null);
+                    setSolutionImagePreview(toStoredUploadsSrc(imageData.url));
+                  }}
+                  onUploadError={(error) =>
+                    toast({ type: "error", title: error.message })
+                  }
+                  appearance={{
+                    button:
+                      "flex h-32 w-32 flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 transition hover:border-blue-400 dark:border-zinc-600 dark:hover:border-blue-500",
+                    container: "",
+                    allowedContent: "hidden",
+                  }}
+                  content={{
+                    button: (
+                      <>
+                        <span className="icon-[lucide--plus] size-10 text-zinc-400" />
+                        <span className="mt-2 text-xs text-zinc-400">
+                          Adicionar
+                        </span>
+                      </>
+                    ),
+                    allowedContent: "Imagens até 4MB",
+                  }}
+                />
+              )}
+            </div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Depois de salvar, você poderá adicionar outras imagens editando a solução.
+            </p>
           </div>
         )}
 
