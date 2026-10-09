@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from collections import OrderedDict
 from typing import Final
 
@@ -12,6 +13,15 @@ from silo.config import load_settings
 _EMBEDDING_CACHE_MAX_SIZE: Final[int] = 256
 _embedding_cache: OrderedDict[str, tuple[float, ...]] = OrderedDict()
 _embedding_provider: EmbeddingPort | None = None
+
+
+def embedding_content_hash(text_value: str) -> str:
+    normalized = " ".join(str(text_value or "").split())
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def embedding_model_digest(model_name: str) -> str:
+    return hashlib.sha256(str(model_name).strip().encode("utf-8")).hexdigest()[:16]
 
 
 async def generate_embedding(text_value: str) -> tuple[float, ...]:

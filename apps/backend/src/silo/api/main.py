@@ -19,6 +19,7 @@ from silo.api.middleware import (
 )
 from silo.api.rate_limit import GlobalRateLimiter
 from silo.api.routers.ai_assistant import router as ai_assistant_router
+from silo.api.routers.ai_observability import router as ai_observability_router
 from silo.api.routers.auth import router as auth_router
 from silo.api.routers.chat import router as chat_router
 from silo.api.routers.contacts import router as contacts_router
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
     application.include_router(products_extended_router)
     application.include_router(chat_router)
     application.include_router(ai_assistant_router)
+    application.include_router(ai_observability_router)
     return application
 
 

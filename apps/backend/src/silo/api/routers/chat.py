@@ -143,14 +143,18 @@ def _chat_message_payload(
     }
     if target_type is not None:
         payload["type"] = target_type
-    return serialize_legacy_value(payload)
+    return cast(dict[str, Any], serialize_legacy_value(payload))
 
 
 def _presence_payload(row: dict[str, Any]) -> dict[str, Any]:
-    return serialize_legacy_value(row)
+    return cast(dict[str, Any], serialize_legacy_value(row))
 
 
-def _response_with_serialized_data(data: Any, *, message: str | None = None):
+def _serialized_mapping(value: object) -> dict[str, Any]:
+    return cast(dict[str, Any], serialize_legacy_value(value))
+
+
+def _response_with_serialized_data(data: Any, *, message: str | None = None) -> Any:
     return build_success_payload(serialize_legacy_value(data), message=message)
 
 
@@ -159,7 +163,7 @@ async def get_messages(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         query = dict(request.query_params.multi_items())
         group_id = _query_param(query, "groupId")
@@ -202,7 +206,7 @@ async def get_messages_count_route(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         query = dict(request.query_params.multi_items())
         group_id = _query_param(query, "groupId")
@@ -227,7 +231,7 @@ async def post_message(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         body = _parse_json_body(await request.json())
         content = body.get("content")
@@ -276,7 +280,7 @@ async def post_messages_read(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         body = _parse_json_body(await request.json())
         target_id = body.get("targetId")
@@ -327,7 +331,7 @@ async def _handle_single_message_read(
     message_id: str,
     db: Connection,
     current_user: CurrentUser,
-):
+) -> Any:
     try:
         parsed_message_id = _parse_uuid(message_id, field="messageId")
         result = mark_message_as_read(db, current_user.id, parsed_message_id)
@@ -367,7 +371,7 @@ async def post_message_read(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         return await _handle_single_message_read(request, messageId, db, current_user)
     except Exception:
@@ -384,7 +388,7 @@ async def patch_message_read(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         return await _handle_single_message_read(request, messageId, db, current_user)
     except Exception:
@@ -401,7 +405,7 @@ async def delete_message_route(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         parsed_message_id = _parse_uuid(messageId, field="messageId")
         result = delete_message(db, current_user.id, parsed_message_id)
@@ -434,7 +438,7 @@ async def get_presence(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         presence_rows = get_presence_all(db)
         now = legacy_local_now()
@@ -483,7 +487,7 @@ async def post_presence(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         body = _parse_json_body(await request.json())
         status = body.get("status")
@@ -519,7 +523,7 @@ async def patch_presence(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         result = update_presence_heartbeat(db, current_user.id)
         await _broadcast_chat_event(
@@ -553,7 +557,7 @@ async def get_unread_messages_route(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         query = dict(request.query_params.multi_items())
         group_id = _query_param(query, "groupId")
@@ -562,7 +566,7 @@ async def get_unread_messages_route(
 
         if not group_id and not user_id:
             unread = get_unread_messages(db, current_user.id, limit=limit)
-            unread_messages: dict[str, dict[str, Any]] = {}
+            unread_by_conversation: dict[str, dict[str, Any]] = {}
             conversations_map: dict[str, list[dict[str, Any]]] = {}
 
             for message in unread["messages"]:
@@ -583,14 +587,14 @@ async def get_unread_messages_route(
                     sorted_by_recent[:3],
                     key=lambda item: item["createdAt"],
                 )
-                unread_messages[conversation_id] = {
+                unread_by_conversation[conversation_id] = {
                     "messages": recent_messages,
                     "totalCount": len(unread_only),
                 }
 
             return build_success_payload(
                 {
-                    "unreadMessages": unread_messages,
+                    "unreadMessages": unread_by_conversation,
                     "count": unread["count"],
                 }
             )
@@ -633,7 +637,7 @@ async def get_sidebar(
     request: Request,
     current_user: ChatUser,
     db: ChatDb,
-):
+) -> Any:
     try:
         sidebar = get_chat_sidebar(db, current_user.id)
         if not sidebar["can_view_chat"]:
@@ -658,7 +662,7 @@ async def get_sidebar(
 async def post_status(
     request: Request,
     current_user: ChatUser,
-):
+) -> Any:
     try:
         body = _parse_json_body(await request.json())
         status = body.get("status")
@@ -719,7 +723,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
             if first_connection:
                 presence = touch_presence_on_connect(db, current_user.id)
                 await hub.broadcast(
-                    serialize_legacy_value(
+                    _serialized_mapping(
                         {
                             "type": "chat.presence.updated",
                             "data": {
@@ -762,17 +766,17 @@ async def websocket_chat(websocket: WebSocket) -> None:
         finally:
             remaining = await hub.unregister(websocket)
             if remaining == 0 and not hub.shutting_down:
-                presence = mark_presence_offline_on_disconnect(db, current_user.id)
-                if presence is not None:
+                offline_presence = mark_presence_offline_on_disconnect(db, current_user.id)
+                if offline_presence is not None:
                     await hub.broadcast(
-                        serialize_legacy_value(
+                        _serialized_mapping(
                             {
                                 "type": "chat.presence.updated",
                                 "data": {
-                                    "user_id": presence["user_id"],
-                                    "status": presence["status"],
-                                    "last_activity": presence["last_activity"],
-                                    "updated_at": presence["updated_at"],
+                                "user_id": offline_presence["user_id"],
+                                "status": offline_presence["status"],
+                                "last_activity": offline_presence["last_activity"],
+                                "updated_at": offline_presence["updated_at"],
                                 },
                             }
                         ),
@@ -782,7 +786,10 @@ async def websocket_chat(websocket: WebSocket) -> None:
 
 async def _broadcast_chat_event(request: Request, event: dict[str, Any]) -> None:
     hub = _chat_realtime_hub(request.app)
-    await hub.broadcast(serialize_legacy_value(event), request_id=_request_request_id(request))
+    await hub.broadcast(
+        cast(dict[str, Any], serialize_legacy_value(event)),
+        request_id=_request_request_id(request),
+    )
 
 
 def _presence_payload_list(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -26,9 +26,9 @@ Desenvolvido para o **CPTEC/INPE**, o SILO resolve um problema comum em organiza
 | **Banco de dados** | PostgreSQL + pgvector (para busca semântica) |
 | **IA — Orquestração** | LangChain + LangGraph (agentes, ferramentas, RAG) |
 | **IA — Servidor de modelos** | vLLM (OpenAI-compatible, PagedAttention, continuous batching) |
-| **IA — Modelos** | Qwen2.5 0.5B (chat) + BGE-small (embeddings) |
+| **IA — Modelos** | Qwen2.5 0.5B (chat) + BGE-base (embeddings, 768 dimensões) |
 | **Mensageria** | Kafka REST Proxy (dados de data-flow) |
-| **Infraestrutura** | Docker Compose (6 serviços) |
+| **Infraestrutura** | Docker Compose (7 serviços no desenvolvimento) |
 
 ---
 
@@ -68,8 +68,8 @@ Edite o `.env` com estes valores mínimos:
 BETTER_AUTH_SECRET=
 SESSION_SECRET=
 
-# IA (modo deterministic nao depende do vLLM)
-AI_AGENT_MODE=deterministic
+# IA (hybrid ativa o Agentic RAG controlado; deterministic permanece como fallback)
+AI_AGENT_MODE=hybrid
 ```
 
 > **Atenção ao `DATABASE_URL`:** dentro dos containers, o host do banco é o
@@ -80,7 +80,7 @@ AI_AGENT_MODE=deterministic
 > (esse valor é embutido na imagem do frontend no build).
 > **vLLM:** por padrão sobe a imagem CPU oficial (`vllm/vllm-openai-cpu`), que
 > roda em qualquer máquina (mais lenta). Com GPU NVIDIA, defina
-> `SILO_VLLM_IMAGE=vllm/vllm-openai:v0.11.2` no `.env`.
+> `SILO_VLLM_GPU_IMAGE=vllm/vllm-openai:v0.29.0` no `.env` usado pelo deploy.
 
 ### 3. Suba a stack completa (um único comando)
 
@@ -88,10 +88,10 @@ AI_AGENT_MODE=deterministic
 docker compose up -d --build
 ```
 
-Esse comando único sobe **tudo**: `db` (PostgreSQL), `vllm` (IA), `migrate`
-(migrations), `api` (backend FastAPI), `worker` (Kafka) e `web` (frontend
-Next.js). Não é preciso subir os serviços separadamente — o Docker resolve a
-ordem de inicialização e os healthchecks por conta própria.
+Esse comando único sobe **tudo**: `db` (PostgreSQL), `vllm` (IA), `vllm-embed`
+(embeddings), `migrate` (migrations), `api` (backend FastAPI), `worker` (Kafka)
+e `web` (frontend Next.js). Não é preciso subir os serviços separadamente — o
+Docker resolve a ordem de inicialização e os healthchecks por conta própria.
 
 Na primeira execução, o Docker vai:
 1. Baixar as imagens (PostgreSQL, vLLM CPU)
@@ -120,6 +120,7 @@ Um único comando (`docker compose up -d --build`) já sobe tudo o que você pre
 | `web` (frontend Next.js) | 3000 | `SILO_HOST_PORT` (padrão 80) | `http://localhost/silo` — ex.: `/silo/admin/ai-assistant` |
 | `api` (backend FastAPI) | 4000 | `API_PORT` (padrão 4000) | `http://localhost:4000/docs` |
 | `vllm` (IA) | 8000 | `VLLM_PORT` (padrão 8000) | `http://localhost:8000/v1/models` |
+| `vllm-embed` (embeddings) | 8000 | `VLLM_EMBED_PORT` (padrão 8001) | `http://localhost:8001/v1/models` |
 | `db` (PostgreSQL) | 5432 | `POSTGRES_PORT` (padrão 5432) | `localhost:5432` |
 
 > O prefixo `/silo` vem de `NEXT_PUBLIC_BASE_PATH`. Se trocar para `/`, acesse `http://localhost/`.
@@ -392,6 +393,14 @@ O assistente de IA do SILO roda **inteiramente no seu servidor**. Nenhum dado é
 4. O **vLLM** processa a pergunta com os dados coletados e formula a resposta
 5. A resposta aparece no chat, com gráficos e relatórios quando necessário
 
+O chat usa SSE para acompanhar o processamento: exibe progresso, recebe
+fragmentos reais (`delta`) quando o runtime do modelo oferece streaming e
+finaliza apenas com o resultado completo (`result`) validado e persistido. Se a
+conexão falhar, a mensagem parcial é removida e o usuário pode tentar
+novamente sem duplicar a solicitação. O frontend renderiza Markdown do
+assistente sem habilitar HTML arbitrário. O contrato detalhado está em
+[`docs/ai-assistant.md`](docs/ai-assistant.md).
+
 ### Tecnologias da IA
 
 ```
@@ -411,7 +420,7 @@ O assistente de IA do SILO roda **inteiramente no seu servidor**. Nenhum dado é
 │  │ vLLM (servidor de modelos)        │  │
 │  │ ┌─────────────────────────────┐   │  │
 │  │ │ Qwen2.5 0.5B (chat)        │   │  │
-│  │ │ BGE-small (embeddings)      │   │  │
+│  │ │ BGE-base (embeddings)       │   │  │
 │  │ │ GPU ou CPU                  │   │  │
 │  │ └─────────────────────────────┘   │  │
 │  └───────────────────────────────────┘  │
@@ -423,9 +432,12 @@ O assistente de IA do SILO roda **inteiramente no seu servidor**. Nenhum dado é
 | Modelo | Função | Tamanho |
 |---|---|---|
 | `Qwen/Qwen2.5-0.5B-Instruct` | Chat e raciocínio | ~400 MB |
-| `BAAI/bge-small-en-v1.5` | Busca semântica (embeddings) | ~130 MB |
+| `BAAI/bge-base-en-v1.5` | Busca semântica (embeddings, 768 dimensões) | ~440 MB |
 
 O modelo padrão é o **Qwen2.5 0.5B** — leve para rodar em CPU, capaz para perguntas operacionais.
+O embedding roda em uma segunda instância dedicada (`vllm-embed`) com
+`BAAI/bge-base-en-v1.5`; esse modelo gera vetores de 768 dimensões, compatíveis
+com a coluna `pgvector` do banco.
 
 > Para produção com GPU, use um modelo maior: `VLLM_MODEL=Qwen/Qwen2.5-7B-Instruct` no `.env`. O vLLM suporta qualquer modelo do HuggingFace Hub.
 
@@ -434,9 +446,30 @@ O modelo padrão é o **Qwen2.5 0.5B** — leve para rodar em CPU, capaz para pe
 | Modo | Comportamento |
 |---|---|
 | `deterministic` | Respostas previsíveis. Ideal para produção. |
-| `hybrid` | Combina respostas determinísticas com geração criativa. |
+| `hybrid` | Ativa o Agentic RAG controlado: recupera evidências autorizadas, avalia relevância e usa o vLLM para síntese. |
 
 Definido em `AI_AGENT_MODE` no `.env`.
+
+### Agentic RAG em produção
+
+O modo `hybrid` não dá ao modelo acesso livre ao sistema. O fluxo é limitado a
+ferramentas de leitura autorizadas, busca híbrida lexical + vetorial, deduplicação
+de evidências, citações com origem/trecho/score e síntese grounded. O agente possui
+limites para rodadas, chamadas de ferramentas e tempo por ferramenta:
+
+```env
+AI_AGENT_MODE=hybrid
+AI_AGENT_MAX_ROUNDS=2
+AI_AGENT_MAX_TOOL_CALLS=4
+AI_AGENT_TOOL_TIMEOUT_MS=60000
+VLLM_MAX_CONCURRENT_REQUESTS=4
+VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS=500
+```
+
+Ative gradualmente: valide primeiro em `deterministic`, depois habilite `hybrid`
+para um grupo pequeno e acompanhe fallback, erros, latência, timeouts e abstentions.
+Se houver degradação, defina `AI_AGENT_MODE=deterministic` e reinicie somente a API.
+Não é necessário alterar banco ou apagar threads para fazer rollback do modo.
 
 ---
 
@@ -452,20 +485,39 @@ Com uma GPU NVIDIA, o vLLM entrega **10 a 20 vezes mais desempenho** que em CPU.
 
 ### Ativar GPU
 
-Descomente o bloco `deploy` no serviço `vllm` do `docker-compose.yml`:
+Use `docker-compose.deploy.yml` em um servidor com NVIDIA Container Toolkit.
+O arquivo já contém a reserva de GPU e usa `SILO_VLLM_GPU_IMAGE`, separado da
+imagem CPU do desenvolvimento:
 
 ```yaml
 vllm:
-  image: vllm/vllm-openai:v0.11.2
+  image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}
   # ...
   deploy:
     resources:
       reservations:
         devices:
           - driver: nvidia
-            count: 1
+            device_ids: ["${SILO_VLLM_GPU_ID:-0}"]
             capabilities: [gpu]
 ```
+
+Por padrão chat e embeddings compartilham a GPU `0`. Para separar as cargas:
+
+```env
+SILO_VLLM_GPU_ID=0
+SILO_VLLM_EMBED_GPU_ID=1
+SILO_VLLM_GPU_MEM_UTIL=0.85
+SILO_VLLM_EMBED_GPU_MEM_UTIL=0.85
+```
+
+No perfil compartilhado, os padrões são `SILO_VLLM_GPU_MEM_UTIL=0.70` para chat e
+`SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20` para embeddings, evitando que duas instâncias
+reservem 85% da mesma VRAM.
+
+No desenvolvimento CPU, mantenha `SILO_VLLM_CPU_IMAGE` e use
+`docker-compose.yml`; não troque essa variável por uma imagem CUDA sem também
+migrar para o compose de deploy.
 
 ### Escolhendo o modelo para sua GPU
 
@@ -499,10 +551,16 @@ Toda configuração fica no arquivo `.env` na raiz. Principais variáveis:
 | `BETTER_AUTH_SECRET` | — | Segredo de autenticação **(obrigatório)** |
 | `SESSION_SECRET` | — | Segredo de sessão **(obrigatório)** |
 | `VLLM_MODEL` | `Qwen/Qwen2.5-0.5B-Instruct` | Modelo de IA para chat |
-| `VLLM_EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Modelo para embeddings |
-| `VLLM_GPU_MEM_UTIL` | `0.85` | Fração da VRAM usada (0 a 1) |
+| `VLLM_EMBEDDING_MODEL` | `BAAI/bge-base-en-v1.5` | Modelo para embeddings de 768 dimensões |
+| `SILO_VLLM_GPU_MEM_UTIL` | `0.70` | Fração da VRAM do chat (0 a 1) |
+| `SILO_VLLM_EMBED_GPU_MEM_UTIL` | `0.20` | Fração da VRAM do embedding (0 a 1) |
 | `HF_TOKEN` | — | Token HuggingFace (modelos restritos) |
-| `AI_AGENT_MODE` | `deterministic` | Modo do assistente |
+| `AI_AGENT_MODE` | `hybrid` | Modo do assistente |
+| `AI_AGENT_MAX_ROUNDS` | `2` | Máximo de rodadas do Agentic RAG |
+| `AI_AGENT_MAX_TOOL_CALLS` | `4` | Máximo de ferramentas por pergunta |
+| `AI_AGENT_TOOL_TIMEOUT_MS` | `60000` | Timeout de cada ferramenta |
+| `VLLM_MAX_CONCURRENT_REQUESTS` | `4` | Chamadas simultâneas por runtime vLLM |
+| `VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS` | `500` | Tempo máximo aguardando vaga no runtime |
 | `KAFKA_REST_PROXY_USE_MOCK_DATA` | `true` | Dados simulados (dev) |
 | `LOG_LEVEL` | `INFO` | Nível de log |
 | `NEXT_PUBLIC_BASE_PATH` | `/silo` | Caminho base da URL |
@@ -517,6 +575,7 @@ Consulte [`env.example`](env.example) para a lista completa.
 |---|---|
 | [`docs/index.md`](docs/index.md) | Visão geral do projeto, stack, estrutura |
 | [`docs/backend.md`](docs/backend.md) | Backend Python: arquitetura, banco, auth, API, IA, Kafka |
+| [`docs/ai-assistant.md`](docs/ai-assistant.md) | Assistente de IA: threads, SSE, streaming, retry, segurança e testes |
 | [`docs/frontend.md`](docs/frontend.md) | Frontend Next.js: rotas, componentes, estado |
 | [`docs/deploy.md`](docs/deploy.md) | Docker, deploy em produção, CI/CD |
 | [`docs/monitoring.md`](docs/monitoring.md) | Monitoramento, logs, observabilidade |
@@ -533,7 +592,7 @@ Consulte [`env.example`](env.example) para a lista completa.
 | **"Login retorna 401 com `teste@inpe.br`"** | O banco local está sem usuários. Rode o seed: `docker compose run --rm --no-deps migrate python -m silo.db.seed` e tente de novo. |
 | **"`api`/`web` ficam em `Created` e `migrate` em `Exited (1)`"** | O `DATABASE_URL` no `.env` aponta para um host que o container não alcança. Use `postgresql://silo:silo@db:5432/silo` (ou remova a variável) e rode `docker compose up -d`. Veja `docker compose logs migrate`. |
 | **"O frontend não carrega"** | O frontend depende da API. Aguarde o healthcheck: `docker compose ps api`. Confira o prefixo: com `NEXT_PUBLIC_BASE_PATH=/silo`, acesse `http://localhost/silo`. |
-| **"GPU não detectada"** | Sem GPU, o vLLM roda em CPU pela imagem `vllm/vllm-openai-cpu` (padrão do compose). Com GPU NVIDIA, instale o NVIDIA Container Toolkit e defina `SILO_VLLM_IMAGE=vllm/vllm-openai:v0.11.2`. |
+| **"GPU não detectada"** | No desenvolvimento, o vLLM roda em CPU pela imagem `vllm/vllm-openai-cpu` (`SILO_VLLM_CPU_IMAGE`). No deploy GPU, instale o NVIDIA Container Toolkit e defina `SILO_VLLM_GPU_IMAGE`. |
 | **"`vllm` reinicia com `Failed to infer device type`"** | Você está usando a imagem CUDA sem GPU. Use a imagem CPU (`vllm/vllm-openai-cpu`, padrão) ou ative o passthrough de GPU no Docker Desktop. |
 | **"Porta 5432/8000/4000/80 já em uso"** | Altere no `.env` (`POSTGRES_PORT`, `VLLM_PORT`, `API_PORT`, `SILO_HOST_PORT`). |
 | **"Modelo não encontrado"** | Verifique o nome em https://huggingface.co/models. Para modelos restritos, configure `HF_TOKEN`. |

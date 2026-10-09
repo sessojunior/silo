@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,7 +21,9 @@ from sqlalchemy import (
     text,
 )
 
-from silo.ai import assistant_service
+from silo.ai import assistant_runtime, assistant_service
+from silo.ai.ports import ChatMessage
+from silo.config import VLLMSettings
 
 
 @dataclass(frozen=True, slots=True)
@@ -267,3 +270,37 @@ async def test_assistant_runtime_status_reports_fallback_when_probe_reports_fail
     assert status.mode == "fallback"
     assert status.fallback_reason == "vllm indisponível"
     assert status.model == "mistral"
+
+
+@pytest.mark.asyncio
+async def test_vllm_runtime_handles_100_concurrent_requests_with_bounded_pressure() -> None:
+    settings = VLLMSettings(
+        max_concurrent_requests=4,
+        concurrency_acquire_timeout_ms=500,
+        timeout_ms=1000,
+    )
+    runtime = assistant_runtime.VLLMModelRuntime(settings)
+    active = 0
+    peak = 0
+
+    class FastModel:
+        async def ainvoke(self, _messages):
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+            return SimpleNamespace(content="ok")
+
+    runtime._model = FastModel()
+    results = await asyncio.gather(
+        *(
+            runtime.complete_with_metadata(
+                [ChatMessage(role="user", content=f"request-{index}")]
+            )
+            for index in range(100)
+        )
+    )
+
+    assert len(results) == 100
+    assert peak <= 4

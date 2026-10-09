@@ -402,6 +402,36 @@ def _json_response_body(response):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "parse_error",
+    [
+        json.JSONDecodeError("malformed", "{", 1),
+        UnicodeDecodeError("utf-8", b"\\xff", 0, 1, "invalid start byte"),
+    ],
+)
+async def test_ai_assistant_message_routes_return_400_for_malformed_request_body(
+    parse_error: ValueError,
+) -> None:
+    class _MalformedRequest:
+        state = SimpleNamespace()
+
+        async def json(self) -> object:
+            raise parse_error
+
+    request = _MalformedRequest()
+
+    message_response = await ai_assistant_router.post_message(request, _admin_user(), object())
+    stream_response = await ai_assistant_router.post_message_stream(
+        request, _admin_user(), object()
+    )
+
+    assert message_response.status_code == 400
+    assert stream_response.status_code == 400
+    assert _json_response_body(message_response)["field"] == "content"
+    assert _json_response_body(stream_response)["field"] == "content"
+
+
+@pytest.mark.asyncio
 async def test_ai_assistant_routes_cover_error_paths_and_helper_branches(monkeypatch) -> None:
     class _FakeRequest:
         def __init__(

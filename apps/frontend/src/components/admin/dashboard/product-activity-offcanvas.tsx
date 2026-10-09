@@ -121,6 +121,30 @@ export default function ProductActivityOffcanvas({
     initialCategoryId,
   ]);
 
+  const updateIncidentsForStatus = useCallback(
+    (allOptions: SelectOption[], currentStatus: string) => {
+      const requireIncidentForStatus = INCIDENT_STATUS.has(
+        currentStatus as ProductStatus,
+      );
+
+      if (!requireIncidentForStatus) {
+        const optionsWithEmpty = [
+          { label: "Nenhum incidente", value: "" },
+          ...allOptions.filter(
+            (option) => option.value !== NO_INCIDENTS_CATEGORY_ID,
+          ),
+        ];
+        setIncidents(optionsWithEmpty);
+        return;
+      }
+
+      setIncidents(
+        allOptions.filter((option) => option.value !== NO_INCIDENTS_CATEGORY_ID),
+      );
+    },
+    [],
+  );
+
   const loadIncidents = useCallback(async () => {
     try {
       const response = await fetch(config.getApiUrl("/api/admin/incidents"), {
@@ -165,31 +189,7 @@ export default function ProductActivityOffcanvas({
       setAllIncidents(defaultOptions);
       updateIncidentsForStatus(defaultOptions, status);
     }
-  }, [status]);
-
-  const updateIncidentsForStatus = (
-    allOptions: SelectOption[],
-    currentStatus: string,
-  ) => {
-    const requireIncidentForStatus = INCIDENT_STATUS.has(
-      currentStatus as ProductStatus,
-    );
-
-    if (!requireIncidentForStatus) {
-      const optionsWithEmpty = [
-        { label: "Nenhum incidente", value: "" },
-        ...allOptions.filter(
-          (option) => option.value !== NO_INCIDENTS_CATEGORY_ID,
-        ),
-      ];
-      setIncidents(optionsWithEmpty);
-      return;
-    }
-
-    setIncidents(
-      allOptions.filter((option) => option.value !== NO_INCIDENTS_CATEGORY_ID),
-    );
-  };
+  }, [status, updateIncidentsForStatus]);
 
   // Carregar incidentes quando o offcanvas abre
   useEffect(() => {
@@ -205,7 +205,7 @@ export default function ProductActivityOffcanvas({
 
       if (incidentId === NO_INCIDENTS_CATEGORY_ID) setIncidentId("");
     }
-  }, [status, allIncidents, incidentId]);
+  }, [status, allIncidents, incidentId, updateIncidentsForStatus]);
 
   useEffect(() => {
     if (!isRealIncident(incidentId)) {

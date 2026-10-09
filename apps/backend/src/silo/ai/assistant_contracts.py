@@ -58,6 +58,10 @@ class AiAssistantThreadSummaryDto(CamelModel):
 class AiAssistantCitationDto(CamelModel):
     label: str
     detail: str | None = None
+    source: str | None = None
+    source_id: str | None = None
+    snippet: str | None = None
+    score: float | None = None
 
 
 class AiAssistantGenerationDto(CamelModel):
@@ -146,6 +150,7 @@ class AiAssistantThreadMessageDto(CamelModel):
     sender_name: str
     content: str
     thinking: str | None = None
+    citations: list[AiAssistantCitationDto] = Field(default_factory=list)
     generation: AiAssistantGenerationDto | None = None
     visualization: AiAssistantVisualizationDto | None = None
     artifacts: list[AiAssistantArtifactDto] | None = None

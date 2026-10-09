@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Any
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import and_, delete, func, insert, select, update
@@ -34,7 +37,7 @@ async def list_groups(
     status: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("groups", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     items = _list_groups(db, search=search, status=status)
     return build_success_payload(items)
 
@@ -45,7 +48,7 @@ async def create_group(
     payload: dict[str, object],
     _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _create_group(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao criar grupo.")
@@ -64,7 +67,7 @@ async def update_group(
     payload: dict[str, object],
     _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _update_group(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar grupo.")
@@ -80,7 +83,7 @@ async def delete_group(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not id:
         return service_error_response(
             service_failure("ID é obrigatório.", 400, field="id"), "Erro ao excluir grupo."
@@ -100,7 +103,7 @@ async def get_group_permissions(
     groupId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("groups", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not groupId:
         return service_error_response(
             service_failure("groupId é obrigatório.", 400, field="groupId"),
@@ -121,7 +124,7 @@ async def update_group_permission(
     payload: dict[str, object],
     _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _update_group_permission(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar permissão.")
@@ -129,7 +132,9 @@ async def update_group_permission(
         return response
 
     payload_data = result["data"]
-    return build_success_payload(payload_data, message=result.get("message"))
+    result_message = result.get("message")
+    message = result_message if isinstance(result_message, str) else None
+    return build_success_payload(payload_data, message=message)
 
 
 @router.delete("/users")
@@ -138,7 +143,7 @@ async def remove_user_from_group(
     groupId: str | None = Query(default=None),
     _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not userId or not groupId:
         return service_error_response(
             service_failure("userId e groupId são obrigatórios.", 400),
@@ -169,17 +174,18 @@ def _list_groups(db: Connection, *, search: str | None, status: str | None) -> d
         statement = statement.where(and_(*conditions))
 
     groups = [serialize_legacy_row(row) for row in db.execute(statement).mappings().all()]
-    counts = dict(
-        db.execute(
+    counts: dict[str, int] = {
+        str(row[0]): int(row[1] or 0)
+        for row in db.execute(
             select(
                 user_group_table.c.group_id,
                 func.count(user_group_table.c.user_id),
             ).group_by(user_group_table.c.group_id)
         ).all()
-    )
+    }
 
     for group in groups:
-        group["userCount"] = int(counts.get(group["id"], 0))
+        group["userCount"] = counts.get(str(group["id"]), 0)
     return {"items": groups, "total": len(groups)}
 
 
@@ -557,7 +563,7 @@ def _nullable_text(value: object | None) -> str | None:
     return stripped or None
 
 
-def now_naive():
+def now_naive() -> datetime:
     from datetime import datetime
 
     return datetime.now()

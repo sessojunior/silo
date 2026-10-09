@@ -25,10 +25,8 @@ from sqlalchemy.engine import Connection, Engine
 
 from silo.ai import assistant_service
 from silo.ai.assistant_contracts import AiAssistantMessageRequestDto
-from silo.ai.assistant_registry import AgentRuntimeContext
+from silo.ai.assistant_registry import AgentRuntimeContext, AgentState
 from silo.ai.assistant_runtime import (
-    VLLMEmbeddingRuntime,
-    VLLMModelRuntime,
     create_embedding_runtime,
     create_model_runtime,
     probe_ai_runtime,
@@ -38,6 +36,7 @@ from silo.ai.assistant_service import (
     delete_assistant_thread,
     get_assistant_graph,
 )
+from silo.ai.ports import ChatModelRuntime, EmbeddingPort
 from silo.api.dependencies import CurrentUser
 from silo.config import Settings, load_settings
 from silo.db.models import legacy_tables
@@ -78,7 +77,7 @@ def _hash_text(value: str) -> str:
 
 
 def _json_default(value: object) -> object:
-    if dataclasses.is_dataclass(value):
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
         return dataclasses.asdict(value)
     if isinstance(value, Path):
         return str(value)
@@ -352,7 +351,10 @@ def _capture_gpu_snapshot() -> dict[str, Any] | None:
             "powershell",
             "-NoProfile",
             "-Command",
-            "Get-CimInstance Win32_VideoController | Select-Object -First 2 Name,AdapterRAM | ConvertTo-Json -Compress",
+            (
+                "Get-CimInstance Win32_VideoController | Select-Object -First 2 "
+                "Name,AdapterRAM | ConvertTo-Json -Compress"
+            ),
         ],
     ]
     for command in commands:
@@ -390,7 +392,10 @@ def _capture_cpu_name() -> str | None:
             "powershell",
             "-NoProfile",
             "-Command",
-            "(Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty Name).Trim()",
+            (
+                "(Get-CimInstance Win32_Processor | Select-Object -First 1 "
+                "-ExpandProperty Name).Trim()"
+            ),
         ],
         ["wmic", "cpu", "get", "name"],
     ]
@@ -569,8 +574,8 @@ def _create_runtime_context(
     current_user: CurrentUser,
     settings: Settings,
     mode: Literal["deterministic", "hybrid"],
-    model_runtime: VLLMModelRuntime,
-    embedding_runtime: VLLMEmbeddingRuntime,
+    model_runtime: ChatModelRuntime,
+    embedding_runtime: EmbeddingPort,
 ) -> AgentRuntimeContext:
     runtime_context = assistant_service._build_runtime_context(
         connection,
@@ -593,7 +598,7 @@ def _build_state_for_case(
     *,
     runtime_context: AgentRuntimeContext,
     thread_id: str,
-) -> dict[str, Any]:
+) -> AgentState:
     request = AiAssistantMessageRequestDto(thread_id=thread_id, content=case.prompt)
     return assistant_service._initial_state(request, runtime_context)
 
@@ -640,8 +645,8 @@ def _actual_dataset_summary(state: Mapping[str, Any]) -> tuple[tuple[str, ...], 
     return tuple(schema_ids), tuple(source_kinds)
 
 
-def _trajectory_from_state(state: Mapping[str, Any]) -> tuple[str, ...]:
-    trajectory = assistant_service._canonical_trajectory(dict(state))
+def _trajectory_from_state(state: AgentState) -> tuple[str, ...]:
+    trajectory = assistant_service._canonical_trajectory(state)
     return tuple(trajectory)
 
 
@@ -659,7 +664,7 @@ def _tool_call_names(state: Mapping[str, Any]) -> tuple[str, ...]:
     return tuple(names)
 
 
-def _lineage_for_case(case: Phase11CorpusCase, state: Mapping[str, Any]) -> dict[str, Any]:
+def _lineage_for_case(case: Phase11CorpusCase, state: AgentState) -> dict[str, Any]:
     final_response = state.get("final_response") or {}
     if not isinstance(final_response, Mapping):
         final_response = {}
@@ -770,8 +775,8 @@ async def _run_case_attempt(
     settings: Settings,
     engine: Engine,
     current_user: CurrentUser,
-    model_runtime: VLLMModelRuntime,
-    embedding_runtime: VLLMEmbeddingRuntime,
+    model_runtime: ChatModelRuntime,
+    embedding_runtime: EmbeddingPort,
     hardware: dict[str, Any],
     model_digest: str | None,
     embedding_digest: str | None,
@@ -1124,7 +1129,11 @@ def _render_summary_markdown(report: Phase11EvaluationReport) -> str:
         "",
         "## Resumo por modo",
         "",
-        "| Modo | Casos | Execuções | Casos aprovados | Execuções aprovadas | Recall tools | Sem violação | Scope | SourceKind | Artefato | Citações | Conclusão | p95 final | Gate |",
+        (
+            "| Modo | Casos | Execuções | Casos aprovados | Execuções aprovadas | "
+            "Recall tools | Sem violação | Scope | SourceKind | Artefato | Citações | "
+            "Conclusão | p95 final | Gate |"
+        ),
         "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for mode_summary in report.modes.values():

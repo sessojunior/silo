@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import date, datetime, timedelta
-from typing import Any
+from typing import Any, Literal, cast
 
 from sqlalchemy import and_, asc, delete, desc, func, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -16,9 +17,11 @@ from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
 from silo.domain.scheduling import (
     SHIFT_CODES,
+    DayOfWeek,
     ProfessionalSchedule,
     ScheduleBlock,
     ScheduleException,
+    ShiftCode,
     WorkSchedule,
     check_slot_fit,
     get_shift_slot,
@@ -53,7 +56,7 @@ _CURRENT_CONNECTION: ContextVar[Connection | None] = ContextVar("_CURRENT_CONNEC
 
 
 @contextmanager
-def bind_connection(connection: Connection):
+def bind_connection(connection: Connection) -> Iterator[None]:
     token = _CURRENT_CONNECTION.set(connection)
     try:
         yield
@@ -75,7 +78,9 @@ def get_product_activity_availability(
     if product_row is None:
         return service_failure("Produto não encontrado.", 404)
 
-    allowed_turns = normalize_shift_turns(product_row.get("turns"))
+    allowed_turns: list[ShiftCode] = [
+        cast(ShiftCode, value) for value in normalize_shift_turns(product_row.get("turns"))
+    ]
     if not bool(product_row.get("available")):
         return service_success(
             {
@@ -89,15 +94,19 @@ def get_product_activity_availability(
             }
         )
 
-    requested_turn_allowed = str(turn) in allowed_turns
-    requested_slot = get_shift_slot(_date_to_datetime(date_value), str(turn))
+    requested_turn = str(turn)
+    requested_turn_allowed = requested_turn in allowed_turns
+    requested_slot = get_shift_slot(
+        _date_to_datetime(date_value),
+        cast(ShiftCode, requested_turn if requested_turn_allowed else "0"),
+    )
     range_end = _date_to_datetime(date_value) + timedelta(days=7)
 
     activity_rows = _connection_select_rows(
         select(activity_table.c.id, activity_table.c.date, activity_table.c.turn).where(
             and_(
                 activity_table.c.product_id == product_id,
-                activity_table.c.date >= parse_date(date_value) if date_value else True,
+                activity_table.c.date >= parse_date(date_value),
                 activity_table.c.date <= range_end.date(),
             )
         )
@@ -133,7 +142,7 @@ def get_product_activity_availability(
     exceptions = [
         ScheduleException(
             date=_date_to_datetime(str(row["date"])),
-            type=str(row["type"]),
+            type=cast(Literal["holiday", "pause", "extra"], str(row["type"])),
             description=str(row["description"]) if row.get("description") is not None else None,
         )
         for row in exception_rows
@@ -141,10 +150,10 @@ def get_product_activity_availability(
     ]
 
     professional_schedule = ProfessionalSchedule(
-        professional_id=product_row["id"],
+        professional_id=str(product_row["id"]),
         work_schedule=WorkSchedule(
             shifts_per_day=allowed_turns,
-            work_days=DEFAULT_WORK_DAYS,
+            work_days=[cast(DayOfWeek, day) for day in DEFAULT_WORK_DAYS],
         ),
         blocks=blocks,
         exceptions=exceptions,
@@ -338,6 +347,8 @@ def list_product_activity_history(
     activity_row = _connection_select_first(
         select(activity_table).where(activity_table.c.id == current_activity["id"])
     )
+    if activity_row is None:
+        return service_failure("Atividade nÃ£o encontrada.", 404)
     return service_success({"task": serialize_legacy_row(activity_row), "history": history})
 
 
@@ -384,7 +395,10 @@ def send_product_activity_pending_email(
         return service_failure("Um ou mais destinatários não encontrados ou inativos.", 400)
 
     incident_suffix = f" - {incident_name}" if incident_name else ""
-    subject = f"Pendências do turno - {product_row['name']}{incident_suffix} - {status} - {format_date_br(date_value)} {turn}h"
+    subject = (
+        f"Pendências do turno - {product_row['name']}{incident_suffix} - {status} - "
+        f"{format_date_br(date_value)} {turn}h"
+    )
     for recipient in recipients:
         send_plain_email(
             to=str(recipient["email"] or ""),
@@ -813,7 +827,7 @@ def upsert_product_manual(*, product_id: str, description: str) -> dict[str, obj
         )
         if updated is None:
             return service_failure("Erro ao salvar manual.", 500)
-        manual_row = updated
+        manual_row: dict[str, Any] | None = updated
     else:
         manual_row = _connection_execute_first(
             insert(manual_table)
@@ -830,6 +844,7 @@ def upsert_product_manual(*, product_id: str, description: str) -> dict[str, obj
             return service_failure("Erro ao salvar manual.", 500)
 
     _commit()
+    assert manual_row is not None
     _fire_and_forget(upsert_manual_chunks(str(manual_row["id"]), product_id, description))
     return service_success({"manual": serialize_legacy_row(manual_row)})
 
@@ -1417,7 +1432,7 @@ def list_product_data_flow_pipelines(
 
 def _record_product_activity_history(
     *,
-    history_table,
+    history_table: Any,
     activity_id: str,
     user_id: str,
     status: str,
@@ -1493,8 +1508,8 @@ def _fetch_product_by_id(product_id: str) -> dict[str, object] | None:
     return _connection_select_first(select(product_table).where(product_table.c.id == product_id))
 
 
-def _connection_select_rows(statement) -> list[dict[str, object]]:
-    return list(_db().execute(statement).mappings().all())
+def _connection_select_rows(statement: Any) -> list[dict[str, Any]]:
+    return [dict(row) for row in _db().execute(statement).mappings().all()]
 
 
 def _delete_upload_url(image_url: object | None) -> None:
@@ -1512,21 +1527,21 @@ def _delete_upload_url(image_url: object | None) -> None:
         delete_upload_file(kind, filename)
 
 
-def _connection_select_first(statement) -> dict[str, object] | tuple[Any, ...] | None:
+def _connection_select_first(statement: Any) -> dict[str, Any] | None:
     row = _db().execute(statement).mappings().first()
-    return row
+    return dict(row) if row is not None else None
 
 
-def _connection_execute(statement, values: object | None = None):
+def _connection_execute(statement: Any, values: Any = None) -> Any:
     connection = _db()
     if values is None:
         return connection.execute(statement)
     return connection.execute(statement, values)
 
 
-def _connection_execute_first(statement) -> dict[str, object] | None:
+def _connection_execute_first(statement: Any) -> dict[str, Any] | None:
     row = _db().execute(statement).mappings().first()
-    return row
+    return dict(row) if row is not None else None
 
 
 def _db() -> Connection:
@@ -1553,4 +1568,9 @@ def _fire_and_forget(coro: Any) -> None:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         return
-    _task = loop.create_task(coro)
+    task = loop.create_task(coro)
+    task.add_done_callback(
+        lambda completed_task: None
+        if completed_task.cancelled()
+        else completed_task.exception()
+    )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import type { ChatMessage } from "@/context/chat-context";
 import AssistantVisualizationBlock from "@/components/admin/chat/assistant-visualization";
 import AssistantArtifactsBlock from "@/components/admin/chat/assistant-artifacts";
@@ -143,6 +144,10 @@ export default function MessageBubble({
       return generation.errorMessage || "Erro ao gerar resposta.";
     }
 
+    if (generation.status === "fallback") {
+      return "Resposta de contingência";
+    }
+
     if (generation.provider === "seed" || generation.model === "demo") {
       return "Sem IA.";
     }
@@ -269,17 +274,14 @@ export default function MessageBubble({
 
             {/* Conteúdo da mensagem ou raciocínio em streaming */}
             {message.content ? (
-              <div className="text-sm whitespace-pre-wrap wrap-break-word overflow-hidden">
-                {message.content.split("\n\n").map((paragraph, idx) => (
-                  <p key={idx} className={idx > 0 ? "pt-2" : ""}>
-                    {paragraph.split("\n").map((line, lineIdx) => (
-                      <span key={lineIdx}>
-                        {lineIdx > 0 && <br />}
-                        {line}
-                      </span>
-                    ))}
-                  </p>
-                ))}
+              <div className="text-sm wrap-break-word overflow-hidden">
+                {isOwnMessageFinal ? (
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                ) : (
+                  <div className="prose prose-sm prose-zinc max-w-none dark:prose-invert">
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  </div>
+                )}
               </div>
             ) : isStreaming ? (
               <div className="min-w-0 space-y-3">
@@ -324,6 +326,28 @@ export default function MessageBubble({
             ) : null}
 
             {/* Visualização (gráfico/imagem) — renderiza ANTES do raciocínio */}
+            {!isOwnMessageFinal && message.assistantCitations?.length ? (
+              <div
+                className="mt-3 space-y-1.5 border-t border-zinc-200/60 pt-2 dark:border-zinc-700/60"
+                data-testid="assistant-citations"
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Fontes consultadas
+                </p>
+                {message.assistantCitations.slice(0, 3).map((citation, index) => (
+                  <div key={`${citation.sourceId ?? citation.label}-${index}`} className="text-xs">
+                    <p className="font-medium text-zinc-700 dark:text-zinc-200">
+                      {citation.label}
+                      {citation.sourceId ? ` · ${citation.sourceId}` : ""}
+                    </p>
+                    {citation.snippet ? (
+                      <p className="text-zinc-500 dark:text-zinc-400">{citation.snippet}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             {assistantVisualization ? (
               <AssistantVisualizationBlock visualization={assistantVisualization} />
             ) : null}

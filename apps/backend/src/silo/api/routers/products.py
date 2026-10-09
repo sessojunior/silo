@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unicodedata
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
@@ -35,7 +36,7 @@ async def list_products(
     available: bool | None = Query(default=None),
     _current_user: object = Depends(require_permission("products", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     items = _list_products(
         db, slug=slug, name=name, page=page or 1, limit=limit or 40, available=available
     )
@@ -50,7 +51,7 @@ async def create_product(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("products", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _create_product(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao criar produto.")
@@ -68,7 +69,7 @@ async def update_product(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("products", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _update_product(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar produto.")
@@ -83,7 +84,7 @@ async def delete_product(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("products", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not id:
         return service_error_response(
             service_failure("ID do produto é obrigatório.", 400, field="id"),

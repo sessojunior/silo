@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.engine import Connection
@@ -61,7 +64,9 @@ from silo.storage.uploads import (
 router = APIRouter(prefix="/api/products", tags=["products-extended"])
 
 
-def _call_product_service(db: Connection, func, *args, **kwargs):
+def _call_product_service(
+    db: Connection, func: Callable[..., Any], *args: Any, **kwargs: Any
+) -> Any:
     with bind_connection(db):
         return func(*args, **kwargs)
 
@@ -74,7 +79,7 @@ async def get_activity_availability(
     activityId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productActivities", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(productId):
         return json_error_response(400, "Produto é obrigatório.")
     if not _required_text(date):
@@ -103,7 +108,7 @@ async def post_activity(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_permission("productActivities", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_id = _required_text(payload.get("productId"))
     date_value = _required_text(payload.get("date"))
     turn_value = _optional_int(payload.get("turn"))
@@ -143,7 +148,7 @@ async def put_activity(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_permission("productActivities", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     activity_id = _required_text(payload.get("id"))
     status = _required_text(payload.get("status"))
     if not activity_id or status is None:
@@ -172,7 +177,7 @@ async def put_activity(
 async def get_pending_email_recipients(
     _current_user: object = Depends(require_permission("productActivities", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _call_product_service(db, list_product_activity_pending_email_recipients)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao carregar destinatários.")
@@ -187,7 +192,7 @@ async def post_pending_email(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productActivities", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_id = _required_text(payload.get("productId"))
     date_value = _required_text(payload.get("date"))
     turn_value = _optional_int(payload.get("turn"))
@@ -236,7 +241,7 @@ async def get_availability_exceptions(
     to_date: str | None = Query(default=None, alias="to"),
     _current_user: object = Depends(require_permission("productActivities", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(productId):
         return json_error_response(400, "ProductId é obrigatório")
 
@@ -261,7 +266,7 @@ async def post_availability_exception(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productActivities", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_id = _required_text(payload.get("productId"))
     date_value = _required_text(payload.get("date"))
     type_value = _required_text(payload.get("type"))
@@ -296,7 +301,7 @@ async def delete_availability_exception(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productActivities", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(id):
         return json_error_response(400, "Exceção é obrigatória.")
 
@@ -313,7 +318,7 @@ async def get_contacts(
     productId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("contacts", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(productId):
         return json_error_response(400, "ProductId é obrigatório")
 
@@ -332,7 +337,7 @@ async def post_contacts(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("contacts", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_id = _required_text(payload.get("productId"))
     contact_ids = payload.get("contactIds")
     if (
@@ -358,7 +363,7 @@ async def delete_contact(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("contacts", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     association_id = _required_text(payload.get("associationId"))
     if not association_id:
         return json_error_response(400, "AssociationId é obrigatório")
@@ -376,7 +381,7 @@ async def get_dependencies(
     productId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productDependencies", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(productId):
         return json_error_response(400, "ProductId é obrigatório")
 
@@ -393,7 +398,7 @@ async def post_dependency(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productDependencies", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_id = _required_text(payload.get("productId"))
     name = _required_text(payload.get("name"))
     if not product_id or not name:
@@ -422,7 +427,7 @@ async def put_dependency(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productDependencies", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     dependency_id = _required_text(payload.get("id"))
     name = _required_text(payload.get("name"))
     if not dependency_id or not name:
@@ -453,7 +458,7 @@ async def delete_dependency(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productDependencies", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     dependency_id = _required_text(payload.get("id"))
     if not dependency_id:
         return json_error_response(400, "ID é obrigatório")
@@ -471,7 +476,7 @@ async def reorder_dependencies(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productDependencies", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_id = _required_text(payload.get("productId"))
     items = payload.get("items")
     if not product_id or not isinstance(items, list):
@@ -493,7 +498,7 @@ async def get_manual(
     productId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productManual", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _call_product_service(
         db,
         get_product_manual,
@@ -514,7 +519,7 @@ async def put_manual(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productManual", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_id = _required_text(payload.get("productId"))
     description = _required_text(payload.get("description"))
     if not product_id or description is None:
@@ -534,7 +539,7 @@ async def put_manual(
 @router.get("/manual/images")
 async def get_manual_images(
     _current_user: object = Depends(require_permission("productManual", "view")),
-):
+) -> Any:
     try:
         return build_success_payload({"items": list_upload_files("manual")})
     except Exception:
@@ -545,7 +550,7 @@ async def get_manual_images(
 async def delete_manual_image(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productManual", "manage")),
-):
+) -> Any:
     filename = _required_text(payload.get("filename"))
     if not filename or not is_safe_filename(filename):
         return json_error_response(400, "Arquivo inválido.")
@@ -562,7 +567,7 @@ async def get_problems(
     limit: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productProblems", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_slug = _required_text(slug)
     if not product_slug:
         return json_error_response(400, "Parâmetro slug é obrigatório.")
@@ -584,7 +589,7 @@ async def post_problem(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_permission("productProblems", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_id = _required_text(payload.get("productId"))
     problem_category_id = _required_text(payload.get("problemCategoryId"))
     title = _required_text(payload.get("title"))
@@ -617,7 +622,7 @@ async def put_problem(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productProblems", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     problem_id = _required_text(payload.get("id"))
     title = _required_text(payload.get("title"))
     description = _required_text(payload.get("description"))
@@ -649,7 +654,7 @@ async def delete_problem(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productProblems", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     problem_id = _required_text(payload.get("id"))
     if not problem_id:
         return json_error_response(400, "ID obrigatório.")
@@ -667,7 +672,7 @@ async def get_problem_categories(
     search: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productProblems", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _call_product_service(db, list_product_problem_categories, _optional_text(search))
     if is_service_error(result):
         response = service_error_response(result, "Erro ao listar categorias.")
@@ -681,7 +686,7 @@ async def post_problem_category(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productProblems", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     name = _required_text(payload.get("name"))
     if not name or len(name) < 2:
         return json_error_response(400, "Nome é obrigatório e deve ter pelo menos 2 caracteres.")
@@ -701,7 +706,7 @@ async def put_problem_category(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productProblems", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     category_id = _required_text(payload.get("id"))
     name = _required_text(payload.get("name"))
     if not category_id or not name or len(name) < 2:
@@ -726,7 +731,7 @@ async def delete_problem_category(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productProblems", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(id):
         return json_error_response(400, "ID obrigatório.")
     result = _call_product_service(db, delete_product_problem_category, id)
@@ -742,7 +747,7 @@ async def get_problem_images(
     problemId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productProblems", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(problemId):
         return json_error_response(400, "Parâmetro problemId é obrigatório.")
     result = _call_product_service(db, list_product_problem_images, problemId)
@@ -758,7 +763,7 @@ async def post_problem_image(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productProblems", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     product_problem_id = _required_text(payload.get("productProblemId"))
     image_url = _required_text(payload.get("imageUrl"))
     description = _optional_text(payload.get("description"))
@@ -785,7 +790,7 @@ async def delete_problem_image(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productProblems", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     image_id = _required_text(payload.get("id"))
     if not image_id:
         return json_error_response(400, "ID da imagem é obrigatório.")
@@ -806,7 +811,7 @@ async def get_solutions(
     problemId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productSolutions", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(problemId):
         return json_error_response(400, "Parâmetro problemId é obrigatório.")
     result = _call_product_service(db, list_product_solutions, problemId)
@@ -822,7 +827,7 @@ async def post_solution(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_permission("productSolutions", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     problem_id = _required_text(payload.get("problemId"))
     description = _required_text(payload.get("description"))
     if not problem_id or description is None or len(description) < 2:
@@ -851,7 +856,7 @@ async def put_solution(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_permission("productSolutions", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     solution_id = _required_text(payload.get("id"))
     description = _required_text(payload.get("description"))
     if not solution_id or description is None or len(description) < 2:
@@ -878,7 +883,7 @@ async def delete_solution(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_permission("productSolutions", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     solution_id = _required_text(payload.get("id"))
     if not solution_id:
         return json_error_response(400, "ID obrigatório.")
@@ -898,7 +903,7 @@ async def count_solutions(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productSolutions", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     problem_ids = payload.get("problemIds")
     if not isinstance(problem_ids, list) or not problem_ids:
         return json_error_response(400, "Array problemIds é obrigatório e não pode estar vazio.")
@@ -921,7 +926,7 @@ async def solutions_summary(
     productSlug: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productSolutions", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(productSlug):
         return json_error_response(400, "Parâmetro productSlug é obrigatório.")
     result = _call_product_service(db, get_product_solutions_summary, productSlug)
@@ -937,7 +942,7 @@ async def get_solution_images(
     solutionId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productSolutions", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not _required_text(solutionId):
         return json_error_response(400, "Parâmetro solutionId é obrigatório.")
     result = _call_product_service(db, list_product_solution_images, solutionId)
@@ -953,7 +958,7 @@ async def post_solution_image(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productSolutions", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     solution_id = _required_text(payload.get("productSolutionId"))
     image_url = _required_text(payload.get("imageUrl"))
     if not solution_id or not image_url:
@@ -979,7 +984,7 @@ async def delete_solution_image(
     payload: dict[str, object],
     _current_user: object = Depends(require_permission("productSolutions", "manage")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     image_id = _required_text(payload.get("id"))
     if not image_id:
         return json_error_response(400, "ID da imagem é obrigatório.")
@@ -1002,7 +1007,7 @@ async def get_history(
     turn: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("productActivities", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _call_product_service(
         db,
         list_product_activity_history,
@@ -1024,7 +1029,7 @@ async def get_data_flow(
     turn: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("products", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     try:
         pipelines = await get_product_data_flow_pipelines_from_kafka_rest(
             slug=productId,

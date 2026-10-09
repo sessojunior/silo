@@ -148,6 +148,11 @@ export default function ProblemFormOffcanvas({
           className="flex flex-col gap-6"
           id="problem-form"
         >
+          {formError ? (
+            <div role="alert" className="text-sm text-red-600">
+              {formError}
+            </div>
+          ) : null}
           <div>
             <Label htmlFor="problem-title" required>
               Título do problema

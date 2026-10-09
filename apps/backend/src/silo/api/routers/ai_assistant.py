@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Annotated
+from collections.abc import AsyncIterator
+from typing import Annotated, Any, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Request
@@ -15,6 +16,7 @@ from starlette.types import Receive
 from silo.ai.assistant_contracts import AiAssistantMessageRequestDto
 from silo.ai.assistant_service import (
     AssistantMessageConflictError,
+    AssistantStreamEvent,
     AssistantThreadNotFoundError,
     create_assistant_thread,
     delete_assistant_message,
@@ -99,32 +101,32 @@ class AssistantStreamingResponse(StreamingResponse):
                 break
 
 
-def _invalid_request_response(field: str | None = None):
+def _invalid_request_response(field: str | None = None) -> Any:
     return json_error_response(400, "Dados inválidos.", field=field)
 
 
 @router.get("/status")
-async def get_status(current_user: AssistantUser):
+async def get_status(current_user: AssistantUser) -> Any:
     del current_user
     status = await get_assistant_runtime_status()
     return build_success_payload(status.model_dump(mode="json"))
 
 
 @router.get("/examples")
-async def get_examples(current_user: AssistantUser):
+async def get_examples(current_user: AssistantUser) -> Any:
     del current_user
     examples = get_assistant_examples()
     return build_success_payload(examples.model_dump(mode="json"))
 
 
 @router.get("/threads")
-async def get_threads(current_user: AssistantUser, db: AssistantReadDb):
+async def get_threads(current_user: AssistantUser, db: AssistantReadDb) -> Any:
     threads = list_assistant_threads(db, current_user.id)
     return build_success_payload(threads.model_dump(mode="json"))
 
 
 @router.post("/threads")
-async def post_thread(request: Request, current_user: AssistantUser, db: AssistantWriteDb):
+async def post_thread(request: Request, current_user: AssistantUser, db: AssistantWriteDb) -> Any:
     try:
         try:
             body = await request.json()
@@ -147,7 +149,7 @@ async def post_thread(request: Request, current_user: AssistantUser, db: Assista
 
 
 @router.get("/threads/{thread_id}")
-async def get_thread(thread_id: str, current_user: AssistantUser, db: AssistantReadDb):
+async def get_thread(thread_id: str, current_user: AssistantUser, db: AssistantReadDb) -> Any:
     thread = get_assistant_thread_details(db, current_user.id, thread_id)
     if thread is None:
         return json_error_response(404, "Conversa não encontrada.")
@@ -155,7 +157,7 @@ async def get_thread(thread_id: str, current_user: AssistantUser, db: AssistantR
 
 
 @router.post("/messages")
-async def post_message(request: Request, current_user: AssistantUser, db: AssistantWriteDb):
+async def post_message(request: Request, current_user: AssistantUser, db: AssistantWriteDb) -> Any:
     try:
         body = await request.json()
         request_payload = AiAssistantMessageRequestDto.model_validate(body)
@@ -167,6 +169,8 @@ async def post_message(request: Request, current_user: AssistantUser, db: Assist
         )
         return build_success_payload(response.model_dump(mode="json"))
     except ValidationError:
+        return _invalid_request_response("content")
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return _invalid_request_response("content")
     except AssistantThreadNotFoundError as error:
         return json_error_response(404, str(error))
@@ -181,11 +185,15 @@ async def post_message(request: Request, current_user: AssistantUser, db: Assist
 
 
 @router.post("/messages/stream")
-async def post_message_stream(request: Request, current_user: AssistantUser, db: AssistantWriteDb):
+async def post_message_stream(
+    request: Request, current_user: AssistantUser, db: AssistantWriteDb
+) -> Any:
     try:
         body = await request.json()
         request_payload = AiAssistantMessageRequestDto.model_validate(body)
     except ValidationError:
+        return _invalid_request_response("content")
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return _invalid_request_response("content")
     except Exception:
         logger.exception(
@@ -194,7 +202,7 @@ async def post_message_stream(request: Request, current_user: AssistantUser, db:
         )
         return json_error_response(500, "Erro interno do servidor")
 
-    async def event_stream():
+    async def event_stream() -> AsyncIterator[str]:
         yield _stream_event("connected", {"status": "processing"})
         service_stream = stream_assistant_message(
             db,
@@ -202,7 +210,15 @@ async def post_message_stream(request: Request, current_user: AssistantUser, db:
             request_payload,
             request_id=_request_request_id(request),
         )
-        pending_event = asyncio.create_task(service_stream.__anext__())
+        async def next_event() -> AssistantStreamEvent:
+            return await service_stream.__anext__()
+
+        async def close_stream() -> None:
+            close = getattr(service_stream, "aclose", None)
+            if callable(close):
+                await cast(Any, close)()
+
+        pending_event = asyncio.create_task(next_event())
         try:
             while True:
                 try:
@@ -218,7 +234,7 @@ async def post_message_stream(request: Request, current_user: AssistantUser, db:
                     break
 
                 yield _stream_event(event.event, event.data)
-                pending_event = asyncio.create_task(service_stream.__anext__())
+                pending_event = asyncio.create_task(next_event())
         except AssistantThreadNotFoundError as error:
             yield _stream_event("error", {"content": str(error)})
         except AssistantMessageConflictError as error:
@@ -226,7 +242,7 @@ async def post_message_stream(request: Request, current_user: AssistantUser, db:
         except asyncio.CancelledError:
             pending_event.cancel()
             await asyncio.gather(pending_event, return_exceptions=True)
-            await service_stream.aclose()
+            await close_stream()
             raise
         except Exception:
             logger.exception(
@@ -238,7 +254,7 @@ async def post_message_stream(request: Request, current_user: AssistantUser, db:
             if not pending_event.done():
                 pending_event.cancel()
                 await asyncio.gather(pending_event, return_exceptions=True)
-            await service_stream.aclose()
+            await close_stream()
 
     return AssistantStreamingResponse(
         event_stream(),
@@ -258,7 +274,7 @@ async def delete_message(
     message_id: str,
     current_user: AssistantUser,
     db: AssistantWriteDb,
-):
+) -> Any:
     try:
         delete_assistant_message(db, current_user.id, thread_id, message_id)
         return build_success_payload({"deleted": True})
@@ -278,7 +294,7 @@ async def delete_thread(
     thread_id: str,
     current_user: AssistantUser,
     db: AssistantWriteDb,
-):
+) -> Any:
     try:
         delete_assistant_thread(db, current_user.id, thread_id)
         return build_success_payload({"deleted": True})

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import and_, asc, delete, desc, insert, or_, select, update
 from sqlalchemy.engine import Connection
@@ -29,7 +30,7 @@ def list_projects(
     search: str | None = None,
     status: str | None = None,
     priority: str | None = None,
-):
+) -> Any:
     project_table = legacy_tables["project"]
 
     conditions = []
@@ -55,7 +56,7 @@ def list_projects(
     return service_success([serialize_legacy_row(row) for row in rows])
 
 
-def create_project(connection: Connection, payload: dict[str, object]):
+def create_project(connection: Connection, payload: dict[str, object]) -> Any:
     required = _require_project_payload(payload)
     if isinstance(required, dict) and required.get("error"):
         return required
@@ -79,7 +80,7 @@ def create_project(connection: Connection, payload: dict[str, object]):
     return service_success(serialize_legacy_row(row))
 
 
-def update_project(connection: Connection, payload: dict[str, object]):
+def update_project(connection: Connection, payload: dict[str, object]) -> Any:
     required = _require_project_payload(payload, update=True)
     if isinstance(required, dict) and required.get("error"):
         return required
@@ -111,7 +112,7 @@ def update_project(connection: Connection, payload: dict[str, object]):
     return service_success(serialize_legacy_row(row))
 
 
-def delete_project(connection: Connection, project_id: str):
+def delete_project(connection: Connection, project_id: str) -> Any:
     project_table = legacy_tables["project"]
     activity_table = legacy_tables["project_activity"]
     task_table = legacy_tables["project_task"]
@@ -147,7 +148,7 @@ def delete_project(connection: Connection, project_id: str):
     return service_success(None)
 
 
-def list_project_activities(connection: Connection, project_id: str):
+def list_project_activities(connection: Connection, project_id: str) -> Any:
     project_table = legacy_tables["project"]
     activity_table = legacy_tables["project_activity"]
 
@@ -170,7 +171,9 @@ def list_project_activities(connection: Connection, project_id: str):
     return service_success({"activities": activities})
 
 
-def create_project_activity(connection: Connection, project_id: str, payload: dict[str, object]):
+def create_project_activity(
+    connection: Connection, project_id: str, payload: dict[str, object]
+) -> Any:
     project_table = legacy_tables["project"]
     activity_table = legacy_tables["project_activity"]
 
@@ -210,7 +213,9 @@ def create_project_activity(connection: Connection, project_id: str, payload: di
     return service_success({"activity": serialize_legacy_row(row)})
 
 
-def update_project_activity(connection: Connection, project_id: str, payload: dict[str, object]):
+def update_project_activity(
+    connection: Connection, project_id: str, payload: dict[str, object]
+) -> Any:
     project_table = legacy_tables["project"]
     activity_table = legacy_tables["project_activity"]
 
@@ -268,7 +273,7 @@ def update_project_activity(connection: Connection, project_id: str, payload: di
     return service_success({"activity": serialize_legacy_row(row)})
 
 
-def delete_project_activity(connection: Connection, project_id: str, activity_id: str):
+def delete_project_activity(connection: Connection, project_id: str, activity_id: str) -> Any:
     activity_table = legacy_tables["project_activity"]
     project_table = legacy_tables["project"]
 
@@ -291,7 +296,7 @@ def delete_project_activity(connection: Connection, project_id: str, activity_id
     return service_success(None)
 
 
-def list_project_activity_tasks(connection: Connection, project_id: str, activity_id: str):
+def list_project_activity_tasks(connection: Connection, project_id: str, activity_id: str) -> Any:
     activity_table = legacy_tables["project_activity"]
     task_table = legacy_tables["project_task"]
 
@@ -345,7 +350,7 @@ def create_project_activity_task(
     activity_id: str,
     user_id: str,
     payload: dict[str, object],
-):
+) -> Any:
     activity_table = legacy_tables["project_activity"]
     task_table = legacy_tables["project_task"]
     history_table = legacy_tables["project_task_history"]
@@ -432,7 +437,7 @@ def update_project_activity_task(
     activity_id: str,
     user_id: str,
     payload: dict[str, object],
-):
+) -> Any:
     activity_table = legacy_tables["project_activity"]
     task_table = legacy_tables["project_task"]
     history_table = legacy_tables["project_task_history"]
@@ -488,7 +493,7 @@ def update_project_activity_task(
     }
 
     next_sort = (
-        int(current["sort"])
+        int(str(current["sort"]))
         if current_values["status"] == next_status
         else _get_next_task_sort(connection, project_id, activity_id, next_status)
     )
@@ -539,7 +544,7 @@ def update_project_activity_task(
                         "action": "updated",
                         "from_status": current_values["status"],
                         "to_status": updated_values["status"],
-                        "from_sort": int(current["sort"]),
+                        "from_sort": int(str(current["sort"])),
                         "to_sort": next_sort,
                         "details": _json_safe_value(
                             {
@@ -559,7 +564,7 @@ def update_project_activity_task(
 
 def delete_project_activity_task(
     connection: Connection, project_id: str, activity_id: str, task_id: str
-):
+) -> Any:
     activity_table = legacy_tables["project_activity"]
     task_table = legacy_tables["project_task"]
 
@@ -598,7 +603,7 @@ def reorder_project_activity_tasks(
     user_id: str,
     tasks_before_move: list[dict[str, object]],
     tasks_after_move: list[dict[str, object]],
-):
+) -> Any:
     activity_table = legacy_tables["project_activity"]
     task_table = legacy_tables["project_task"]
     history_table = legacy_tables["project_task_history"]
@@ -622,15 +627,23 @@ def reorder_project_activity_tasks(
     ):
         return service_failure("Dados de movimentação inválidos.", 400)
 
-    normalized_before = [_normalize_position_item(item) for item in tasks_before_move]
-    normalized_after = [_normalize_position_item(item) for item in tasks_after_move]
+    normalized_before: list[dict[str, Any] | None] = [
+        _normalize_position_item(item) for item in tasks_before_move
+    ]
+    normalized_after: list[dict[str, Any] | None] = [
+        _normalize_position_item(item) for item in tasks_after_move
+    ]
     if any(item is None for item in normalized_before) or any(
         item is None for item in normalized_after
     ):
         return service_failure("Dados de movimentação inválidos.", 400)
 
-    before_map = {item["taskId"]: item for item in normalized_before if item is not None}
-    after_map = {item["taskId"]: item for item in normalized_after if item is not None}
+    before_map: dict[str, dict[str, Any]] = {
+        str(item["taskId"]): item for item in normalized_before if item is not None
+    }
+    after_map: dict[str, dict[str, Any]] = {
+        str(item["taskId"]): item for item in normalized_after if item is not None
+    }
     if len(before_map) != len(normalized_before) or len(after_map) != len(normalized_after):
         return service_failure("Dados de movimentação inválidos.", 400)
     if before_map.keys() != after_map.keys():
@@ -651,11 +664,11 @@ def reorder_project_activity_tasks(
         .all()
     )
     current_map = {str(row["id"]): row for row in current_rows}
-    current_normalized = {
+    current_normalized: dict[str, dict[str, Any]] = {
         task_id: {
             "taskId": task_id,
             "status": _normalize_task_status(row["status"]),
-            "sort": int(row["sort"]),
+            "sort": int(str(row["sort"])),
         }
         for task_id, row in current_map.items()
     }
@@ -667,7 +680,7 @@ def reorder_project_activity_tasks(
         if (
             current is None
             or current["status"] != expected["status"]
-            or current["sort"] != int(expected["sort"])
+            or current["sort"] != int(str(expected["sort"]))
         ):
             return _kanban_outdated(connection, current_rows)
 
@@ -686,7 +699,7 @@ def reorder_project_activity_tasks(
 
                 if current_normalized_task["status"] == next_task[
                     "status"
-                ] and current_normalized_task["sort"] == int(next_task["sort"]):
+                ] and current_normalized_task["sort"] == int(str(next_task["sort"])):
                     continue
 
                 updated_rows = connection.execute(
@@ -697,10 +710,14 @@ def reorder_project_activity_tasks(
                             task_table.c.project_id == project_id,
                             task_table.c.project_activity_id == activity_id,
                             task_table.c.status == current_task["status"],
-                            task_table.c.sort == int(current_task["sort"]),
+                            task_table.c.sort == int(str(current_task["sort"])),
                         )
                     )
-                    .values(status=next_task["status"], sort=int(next_task["sort"]), updated_at=now)
+                    .values(
+                        status=next_task["status"],
+                        sort=int(str(next_task["sort"])),
+                        updated_at=now,
+                    )
                     .returning(task_table.c.id)
                 ).all()
                 if not updated_rows:
@@ -732,7 +749,7 @@ def reorder_project_activity_tasks(
                             "from_status": current_normalized_task["status"],
                             "to_status": next_task["status"],
                             "from_sort": current_normalized_task["sort"],
-                            "to_sort": int(next_task["sort"]),
+                            "to_sort": int(str(next_task["sort"])),
                             "details": {"kanbanMove": True},
                             "created_at": now,
                         }
@@ -760,7 +777,7 @@ def reorder_project_activity_tasks(
     return service_success({"tasks": tasks})
 
 
-def get_task_history(connection: Connection, task_id: str):
+def get_task_history(connection: Connection, task_id: str) -> Any:
     task_table = legacy_tables["project_task"]
     history_table = legacy_tables["project_task_history"]
     user_table = legacy_tables["user"]
@@ -811,7 +828,7 @@ def get_task_history(connection: Connection, task_id: str):
     return service_success({"task": serialize_legacy_row(task), "history": history})
 
 
-def get_task_users(connection: Connection, task_id: str):
+def get_task_users(connection: Connection, task_id: str) -> Any:
     task_table = legacy_tables["project_task"]
     task_user_table = legacy_tables["project_task_user"]
     user_table = legacy_tables["user"]
@@ -852,7 +869,7 @@ def get_task_users(connection: Connection, task_id: str):
 
 def set_task_users(
     connection: Connection, task_id: str, user_ids: list[str], role: str = "assignee"
-):
+) -> Any:
     task_table = legacy_tables["project_task"]
     task_user_table = legacy_tables["project_task_user"]
 
@@ -891,17 +908,17 @@ def set_task_users(
     return service_success(None)
 
 
-def _create_task_groups() -> dict[str, list[dict[str, object]]]:
+def _create_task_groups() -> dict[str, list[dict[str, Any]]]:
     return {status: [] for status in PROJECT_TASK_STATUSES}
 
 
 def _task_users_by_task_id(
     connection: Connection,
     task_ids: list[str],
-) -> dict[str, list[dict[str, object]]]:
+) -> dict[str, list[dict[str, Any]]]:
     task_user_table = legacy_tables["project_task_user"]
     user_table = legacy_tables["user"]
-    user_map: dict[str, list[dict[str, object]]] = {task_id: [] for task_id in task_ids}
+    user_map: dict[str, list[dict[str, Any]]] = {task_id: [] for task_id in task_ids}
     if task_ids:
         user_rows = (
             connection.execute(
@@ -938,7 +955,7 @@ def _task_users_by_task_id(
 
 def _attach_task_users(
     connection: Connection,
-    tasks: list[dict[str, object]],
+    tasks: list[dict[str, Any]],
 ) -> None:
     task_ids = [str(task["id"]) for task in tasks]
     user_map = _task_users_by_task_id(connection, task_ids)
@@ -948,7 +965,7 @@ def _attach_task_users(
         task["assignedUsersDetails"] = users
 
 
-def _task_position_sort_key(task: dict[str, object]) -> tuple[int, str]:
+def _task_position_sort_key(task: dict[str, Any]) -> tuple[int, str]:
     sort_value = task.get("sort")
     if isinstance(sort_value, int):
         sort_key = sort_value
@@ -958,7 +975,7 @@ def _task_position_sort_key(task: dict[str, object]) -> tuple[int, str]:
     return sort_key, created_at
 
 
-def _normalize_task_view(row: dict[str, object]) -> dict[str, object]:
+def _normalize_task_view(row: Any) -> dict[str, Any]:
     task = serialize_legacy_row(row)
     task["status"] = _normalize_task_status(str(row.get("status") or "todo"))
     return task
@@ -973,7 +990,7 @@ def _normalize_task_status(status: object | None) -> str:
     return "todo"
 
 
-def _task_groups_from_rows(rows: list[dict[str, object]]) -> dict[str, list[dict[str, object]]]:
+def _task_groups_from_rows(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     grouped = _create_task_groups()
     for row in rows:
         task = _normalize_task_view(row)
@@ -1043,8 +1060,8 @@ def _normalize_position_item(item: dict[str, object]) -> dict[str, object] | Non
 
 def _kanban_outdated(
     connection: Connection,
-    rows: list[dict[str, object]],
-):
+    rows: Any,
+) -> Any:
     normalized = [_normalize_task_view(row) for row in rows]
     _attach_task_users(connection, normalized)
     return service_failure("KANBAN_OUTDATED", 409, data={"tasks": normalized})
@@ -1078,7 +1095,7 @@ def _json_safe_value(value: object) -> object:
     return value
 
 
-def _require_project_payload(payload: dict[str, object], *, update: bool = False):
+def _require_project_payload(payload: dict[str, object], *, update: bool = False) -> Any:
     if update:
         identifier = _optional_str(payload.get("id"))
         if identifier is None:
@@ -1099,7 +1116,7 @@ def _require_project_payload(payload: dict[str, object], *, update: bool = False
     return required
 
 
-def _require_activity_payload(payload: dict[str, object], *, update: bool = False):
+def _require_activity_payload(payload: dict[str, object], *, update: bool = False) -> Any:
     if update:
         identifier = _optional_str(payload.get("id"))
         if identifier is None:
@@ -1121,7 +1138,7 @@ def _require_activity_payload(payload: dict[str, object], *, update: bool = Fals
     return required
 
 
-def _parse_estimated_days(value: object | None):
+def _parse_estimated_days(value: object | None) -> Any:
     # A coluna estimated_days e integer no banco. Numeros decimais (ex.: 2.5)
     # seriam perdidos como NULL pelo optional_int; melhor rejeitar com erro claro.
     if value is None:
@@ -1149,7 +1166,7 @@ def _parse_estimated_days(value: object | None):
     return None, service_failure("Dias estimados inválido.", 400, field="estimatedDays")
 
 
-def _require_task_payload(payload: dict[str, object], *, include_id: bool):
+def _require_task_payload(payload: dict[str, object], *, include_id: bool) -> Any:
     if include_id:
         identifier = _optional_str(payload.get("id"))
         if identifier is None:
@@ -1168,6 +1185,12 @@ def _require_task_payload(payload: dict[str, object], *, include_id: bool):
         for value in (project_id, project_activity_id, name, description, priority, status)
     ):
         return service_failure("Invalid input: expected string, received undefined", 400)
+    assert project_id is not None
+    assert project_activity_id is not None
+    assert name is not None
+    assert description is not None
+    assert priority is not None
+    assert status is not None
 
     required = {
         "projectId": project_id.strip(),

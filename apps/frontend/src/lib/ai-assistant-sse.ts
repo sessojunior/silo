@@ -1,5 +1,6 @@
 import {
   AI_ASSISTANT_SCOPES,
+  AiAssistantMessageResponseSchema,
   type AiAssistantMessageResponseDto,
   type AiAssistantScope,
 } from "@silo/engine/contracts/dto/ai-assistant";
@@ -9,6 +10,7 @@ const ASSISTANT_SCOPE_SET = new Set<string>(AI_ASSISTANT_SCOPES);
 export type AssistantSseAction =
   | { type: "ignore" }
   | { type: "thinking"; content: string }
+  | { type: "delta"; content: string }
   | { type: "result"; data: AiAssistantMessageResponseDto }
   | { type: "legacy-data"; data: Partial<AiAssistantMessageResponseDto> }
   | { type: "legacy-complete" }
@@ -60,6 +62,22 @@ const readCitations = (
           typeof entry.detail === "string" || entry.detail === null
             ? entry.detail
             : undefined,
+        source:
+          typeof entry.source === "string" || entry.source === null
+            ? entry.source
+            : undefined,
+        sourceId:
+          typeof entry.sourceId === "string" || entry.sourceId === null
+            ? entry.sourceId
+            : undefined,
+        snippet:
+          typeof entry.snippet === "string" || entry.snippet === null
+            ? entry.snippet
+            : undefined,
+        score:
+          typeof entry.score === "number" && Number.isFinite(entry.score)
+            ? entry.score
+            : undefined,
       },
     ];
   });
@@ -105,11 +123,16 @@ export const parseAssistantSseEvent = (
       return { type: "ignore" };
     case "thinking":
       return { type: "thinking", content: readString(payload.content) ?? "" };
-    case "result":
-      return {
-        type: "result",
-        data: payload as unknown as AiAssistantMessageResponseDto,
-      };
+    case "delta":
+      return typeof payload.content === "string"
+        ? { type: "delta", content: payload.content }
+        : { type: "error", message: "Delta inválido recebido do assistente." };
+    case "result": {
+      const parsed = AiAssistantMessageResponseSchema.safeParse(payload);
+      return parsed.success
+        ? { type: "result", data: parsed.data }
+        : { type: "error", message: "Resposta inválida recebida do assistente." };
+    }
     case "data":
       return {
         type: "legacy-data",

@@ -13,6 +13,7 @@ import { useUser } from "@/context/user-context";
 import { config } from "@/lib/config";
 import { readApiResponse } from "@silo/engine/contracts/api-response";
 import type {
+  AiAssistantCitationDto,
   AiAssistantArtifactDto,
   AiAssistantGenerationDto,
   AiAssistantVisualizationDto,
@@ -62,6 +63,7 @@ export type ChatMessage = {
   deletedAt: Date | null;
   messageType: "groupMessage" | "userMessage";
   assistantGeneration?: AiAssistantGenerationDto | null;
+  assistantCitations?: AiAssistantCitationDto[] | null;
   assistantVisualization?: AiAssistantVisualizationDto | null;
   assistantArtifacts?: AiAssistantArtifactDto[] | null;
   assistantThinking?: string | null;

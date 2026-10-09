@@ -65,7 +65,9 @@ def test_session_cookie_attrs_are_dual_runtime_safe() -> None:
     set_session_cookie(response, "token", settings)
 
     assert response.headers.get("set-cookie") == (
-        f"{SESSION_COOKIE_NAME}=token; Max-Age={sessions_module.SESSION_ABSOLUTE_MAX_AGE_SECONDS}; Path=/; HttpOnly; SameSite=Lax"
+        f"{SESSION_COOKIE_NAME}=token; "
+        f"Max-Age={sessions_module.SESSION_ABSOLUTE_MAX_AGE_SECONDS}; "
+        "Path=/; HttpOnly; SameSite=Lax"
     )
 
 

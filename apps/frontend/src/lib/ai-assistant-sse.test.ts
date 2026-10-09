@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { AiAssistantMessageResponseDto } from "@silo/engine/contracts/dto/ai-assistant";
+import {
+  AiAssistantMessageResponseSchema,
+  AiAssistantScopeSchema,
+  type AiAssistantMessageResponseDto,
+} from "@silo/engine/contracts/dto/ai-assistant";
 
 import {
   AssistantSseStreamParser,
@@ -9,6 +13,21 @@ import {
 } from "./ai-assistant-sse";
 
 describe("AI assistant SSE compatibility parser", () => {
+  it("accepts the products scope and incremental deltas", () => {
+    expect(AiAssistantScopeSchema.parse("products")).toBe("products");
+    expect(parseAssistantSseEvent("delta", { content: "parcial" })).toEqual({
+      type: "delta",
+      content: "parcial",
+    });
+  });
+
+  it("rejects malformed terminal result payloads", () => {
+    expect(parseAssistantSseEvent("result", { answer: "incompleta" })).toEqual({
+      type: "error",
+      message: "Resposta inválida recebida do assistente.",
+    });
+  });
+
   it("accepts the repaired result terminal event", () => {
     const payload = {
       threadId: "thread-1",
@@ -44,6 +63,7 @@ describe("AI assistant SSE compatibility parser", () => {
       type: "result",
       data: payload,
     });
+    expect(AiAssistantMessageResponseSchema.safeParse(payload).success).toBe(true);
   });
 
   it("accepts legacy data followed by complete as a final answer", () => {
@@ -53,7 +73,16 @@ describe("AI assistant SSE compatibility parser", () => {
       scope: "models",
       isInScope: true,
       suggestedQuestions: ["Pergunta seguinte"],
-      citations: [{ label: "Fonte", detail: "Detalhe" }],
+      citations: [
+        {
+          label: "Manual",
+          detail: "Trecho autorizado",
+          source: "manual",
+          sourceId: "manual-1",
+          snippet: "Trecho autorizado do manual.",
+          score: 0.91,
+        },
+      ],
       artifacts: [
         {
           kind: "pdf",
@@ -87,7 +116,16 @@ describe("AI assistant SSE compatibility parser", () => {
       scope: "models",
       isInScope: true,
       suggestedQuestions: ["Pergunta seguinte"],
-      citations: [{ label: "Fonte", detail: "Detalhe" }],
+      citations: [
+        {
+          label: "Manual",
+          detail: "Trecho autorizado",
+          source: "manual",
+          sourceId: "manual-1",
+          snippet: "Trecho autorizado do manual.",
+          score: 0.91,
+        },
+      ],
       artifacts: legacyData.artifacts,
       contextSummary: "Resumo legado",
     });

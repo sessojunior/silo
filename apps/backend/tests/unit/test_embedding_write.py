@@ -80,3 +80,56 @@ async def test_embedding_write_swallow_errors_without_raising(
     await embedding_write.upsert_solution_embedding("solution-1", "Descricao")
     await embedding_write.upsert_help_embedding("Descricao")
     await embedding_write.upsert_manual_chunks("manual-1", "product-1", "# Manual")
+
+
+@pytest.mark.asyncio
+async def test_embedding_write_reports_partial_manual_chunk_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    executed: list[list[object]] = []
+
+    async def fake_generate_embedding(text: str) -> tuple[float, ...]:
+        if text == "chunk 2":
+            raise RuntimeError("embedding indisponível")
+        return await _fake_embedding(text)
+
+    monkeypatch.setattr(embedding_write, "generate_embedding", fake_generate_embedding)
+    monkeypatch.setattr(
+        embedding_write,
+        "chunk_markdown",
+        lambda markdown: [
+            SimpleNamespace(content="chunk 1", token_count=2, index=0),
+            SimpleNamespace(content="chunk 2", token_count=2, index=1),
+        ],
+    )
+    monkeypatch.setattr(
+        embedding_write,
+        "_execute_statements",
+        lambda statements: executed.append(list(statements)),
+    )
+
+    result = await embedding_write.upsert_manual_chunks("manual-1", "product-1", "# Manual")
+
+    assert result.status == "partial"
+    assert result.updated_count == 1
+    assert result.failed_count == 1
+    assert "embedding indisponível" in result.errors[0]
+    assert [statement.table.name for statement in executed[0]] == [
+        "product_manual_chunk",
+        "product_manual_chunk",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_embedding_write_records_model_and_content_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    statements: list[object] = []
+    monkeypatch.setattr(embedding_write, "generate_embedding", _fake_embedding)
+    monkeypatch.setattr(embedding_write, "_execute_statement", statements.append)
+
+    await embedding_write.upsert_problem_embedding("problem-1", "Título", "Descrição")
+
+    compiled = str(statements[0])
+    assert "embedding_model" in compiled
+    assert "embedding_content_hash" in compiled

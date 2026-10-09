@@ -80,3 +80,13 @@ def test_embedding_identifier_validation_rejects_bad_names() -> None:
 
     with pytest.raises(ValueError, match="Identificador SQL inv\\u00e1lido"):
         embeddings._validate_identifier("bad-name")
+
+
+def test_embedding_metadata_is_stable_and_changes_when_content_changes() -> None:
+    first = embeddings.embedding_content_hash(" Texto operacional ")
+    same = embeddings.embedding_content_hash("Texto operacional")
+    changed = embeddings.embedding_content_hash("Texto operacional atualizado")
+
+    assert first == same
+    assert first != changed
+    assert embeddings.embedding_model_digest("BAAI/bge-base-en-v1.5")

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -131,11 +131,13 @@ def get_availability_report(
         .all()
     )
 
-    activities_by_product: dict[str, list[dict[str, object]]] = {}
+    activities_by_product: dict[str, list[dict[str, Any]]] = {}
     for activity in all_activities:
-        activities_by_product.setdefault(str(activity["product_id"]), []).append(activity)
+        activities_by_product.setdefault(str(activity["product_id"]), []).append(
+            dict(activity)
+        )
 
-    products_with_availability: list[dict[str, object]] = []
+    products_with_availability: list[dict[str, Any]] = []
     for product in products:
         activities = activities_by_product.get(str(product["id"]), [])
         total_activities = len(activities)
@@ -288,18 +290,18 @@ def get_problems_report(
         for grouped_solutions in solutions_by_problem.values()
         for solution in grouped_solutions
     ]
-    checked_solution_ids = {
-        str(row[0])
-        for row in connection.execute(
-            select(solution_checked_table.c.product_solution_id).where(
-                solution_checked_table.c.product_solution_id.in_(tuple(solution_ids))
-                if solution_ids
-                else False
-            )
-        ).all()
-    }
+    checked_solution_ids: set[str] = set()
+    if solution_ids:
+        checked_solution_ids = {
+            str(row[0])
+            for row in connection.execute(
+                select(solution_checked_table.c.product_solution_id).where(
+                    solution_checked_table.c.product_solution_id.in_(tuple(solution_ids))
+                )
+            ).all()
+        }
 
-    problems_by_category: list[dict[str, object]] = []
+    problems_by_category: list[dict[str, Any]] = []
     for category in categories:
         category_problems = [
             problem
@@ -319,7 +321,7 @@ def get_problems_report(
             }
         )
 
-    products_by_problem: list[dict[str, object]] = []
+    products_by_problem: list[dict[str, Any]] = []
     product_rows = (
         connection.execute(
             select(product_table.c.id, product_table.c.name, product_table.c.slug).order_by(
@@ -761,7 +763,7 @@ def get_projects_report(connection: Connection, date_range: dict[str, str]) -> d
             project_activity_counts.get(str(activity["project_id"]), 0) + 1
         )
 
-    most_active_projects = sorted(
+    most_active_project_counts = sorted(
         project_activity_counts.items(),
         key=lambda item: (-item[1], item[0]),
     )[:5]
@@ -778,7 +780,7 @@ def get_projects_report(connection: Connection, date_range: dict[str, str]) -> d
             ),
             "activityCount": count,
         }
-        for project_id, count in most_active_projects
+        for project_id, count in most_active_project_counts
     ]
 
     project_users = (
@@ -801,7 +803,7 @@ def get_projects_report(connection: Connection, date_range: dict[str, str]) -> d
         .all()
     )
 
-    users_by_project: dict[str, dict[str, dict[str, object]]] = {}
+    users_by_project: dict[str, dict[str, dict[str, Any]]] = {}
     for row in project_users:
         project_id = str(row["project_id"])
         users_by_project.setdefault(project_id, {})
@@ -813,9 +815,9 @@ def get_projects_report(connection: Connection, date_range: dict[str, str]) -> d
 
     projects_with_progress = []
     projects_response = []
-    tasks_by_project: dict[str, list[dict[str, object]]] = {}
+    tasks_by_project: dict[str, list[dict[str, Any]]] = {}
     for task in tasks_in_period:
-        tasks_by_project.setdefault(str(task["project_id"]), []).append(task)
+        tasks_by_project.setdefault(str(task["project_id"]), []).append(dict(task))
 
     for project in projects_in_period:
         project_tasks = tasks_by_project.get(str(project["id"]), [])
@@ -894,7 +896,7 @@ def generate_pdf(
     report_type: str,
     data: dict[str, Any],
     period_label: str,
-) -> dict[str, str]:
+) -> dict[str, Any]:
     generated_at = datetime.now(ANALYTICS_TIMEZONE)
     render_result = _PDF_RENDERER.render(
         report_type=report_type,
@@ -916,7 +918,7 @@ def generate_pdf(
     }
 
 
-def _build_availability_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
+def _build_availability_pdf(story: list[Any], data: dict[str, Any], styles: Any) -> None:
     story.append(Paragraph("Visão Geral", styles["SiloSection"]))
     avg_availability = data.get("avgAvailability")
     avg_availability_label = (
@@ -953,7 +955,7 @@ def _build_availability_pdf(story: list[Any], data: dict[str, Any], styles) -> N
     story.append(_zebra_table(rows))
 
 
-def _build_problems_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
+def _build_problems_pdf(story: list[Any], data: dict[str, Any], styles: Any) -> None:
     story.append(Paragraph("Visão Geral", styles["SiloSection"]))
     summary = data.get("summary", {})
     avg_resolution = data.get("avgResolutionHours", summary.get("averageResolutionHours"))
@@ -1008,7 +1010,7 @@ def _build_problems_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
         story.append(_zebra_table(rows))
 
 
-def _build_executive_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
+def _build_executive_pdf(story: list[Any], data: dict[str, Any], styles: Any) -> None:
     summary = data.get("summary", {})
     trends = data.get("trends", {})
     story.append(Paragraph("Indicadores", styles["SiloSection"]))
@@ -1056,7 +1058,7 @@ def _build_executive_pdf(story: list[Any], data: dict[str, Any], styles) -> None
         story.append(_zebra_table(rows))
 
 
-def _build_projects_pdf(story: list[Any], data: dict[str, Any], styles) -> None:
+def _build_projects_pdf(story: list[Any], data: dict[str, Any], styles: Any) -> None:
     summary = data.get("summary", {})
     story.append(Paragraph("Visão Geral", styles["SiloSection"]))
     story.append(
@@ -1123,7 +1125,7 @@ _PDF_RENDERER = PdfRenderer(PDF_BUILDERS, TITLE_MAP)
 _PDF_ARTIFACT_STORE = PdfArtifactStore()
 
 
-def _kv_table(rows: list[tuple[str, str]]):
+def _kv_table(rows: list[tuple[str, str]]) -> Table:
     data = [
         [
             Paragraph(f"<b>{key}:</b> {value}", getSampleStyleSheet()["BodyText"])
@@ -1144,7 +1146,7 @@ def _kv_table(rows: list[tuple[str, str]]):
     return table
 
 
-def _zebra_table(rows: list[list[str]]):
+def _zebra_table(rows: list[list[str]]) -> Table:
     table = Table(rows, repeatRows=1, colWidths=[None] * len(rows[0]))
     style = TableStyle(
         [
@@ -1189,7 +1191,7 @@ def _status_pt(status: str) -> str:
     }.get(status.lower(), status)
 
 
-def _count_by(items: Iterable[dict[str, object]], key: str) -> dict[str, int]:
+def _count_by(items: Iterable[Mapping[Any, Any]], key: str) -> dict[str, int]:
     counts: dict[str, int] = {}
     for item in items:
         value = str(item.get(key) or "").strip()
@@ -1202,8 +1204,8 @@ def _count_by(items: Iterable[dict[str, object]], key: str) -> dict[str, int]:
 def _group_solutions(
     connection: Connection,
     problem_ids: list[str],
-    solution_table,
-) -> dict[str, list[dict[str, object]]]:
+    solution_table: Any,
+) -> dict[str, list[Mapping[Any, Any]]]:
     if not problem_ids:
         return {}
     rows = (
@@ -1215,15 +1217,15 @@ def _group_solutions(
         .mappings()
         .all()
     )
-    grouped: dict[str, list[dict[str, object]]] = {}
+    grouped: dict[str, list[Mapping[Any, Any]]] = {}
     for row in rows:
-        grouped.setdefault(str(row["product_problem_id"]), []).append(row)
+        grouped.setdefault(str(row["product_problem_id"]), []).append(dict(row))
     return grouped
 
 
 def _average_resolution_hours(
-    category_problems: list[dict[str, object]],
-    solutions_by_problem: dict[str, list[dict[str, object]]],
+    category_problems: Iterable[Mapping[Any, Any]],
+    solutions_by_problem: Mapping[str, list[Mapping[Any, Any]]],
 ) -> float:
     durations: list[float] = []
     for problem in category_problems:

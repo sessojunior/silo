@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -16,6 +17,30 @@ from silo.config import (
     VLLMSettings,
 )
 
+
+class _BlockingToolModel:
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+        self.bound_tools: list[object] = []
+        self.bind_tool_kwargs: dict[str, object] = {}
+
+    def bind_tools(self, tools, **kwargs):
+        self.bound_tools = list(tools)
+        self.bind_tool_kwargs = kwargs
+        return self
+
+    async def ainvoke(self, _messages):
+        self.started.set()
+        await self.release.wait()
+        return AIMessage(content="tool response")
+
+
+class _BlockingToolChatOpenAI(_BlockingToolModel):
+    def __init__(self, **kwargs) -> None:
+        super().__init__()
+        self.kwargs = kwargs
+
 # ── Fake ChatOpenAI ──────────────────────────────────────────────────────────
 
 
@@ -25,6 +50,11 @@ class _FakeChatOpenAI:
         self.bound_tools: list[object] | None = None
         self.last_ainvoke_messages = None
         self.last_stream_messages = None
+        self.bound_kwargs: dict[str, object] = {}
+
+    def bind(self, **kwargs):
+        self.bound_kwargs = kwargs
+        return self
 
     async def ainvoke(self, messages):
         self.last_ainvoke_messages = list(messages)
@@ -39,8 +69,9 @@ class _FakeChatOpenAI:
         yield AIMessageChunk(content="vllm-par")
         yield SimpleNamespace(content="cial")
 
-    def bind_tools(self, tools):
+    def bind_tools(self, tools, **kwargs):
         self.bound_tools = list(tools)
+        self.bind_tool_kwargs = kwargs
         return {"tools": self.bound_tools}
 
 
@@ -52,6 +83,21 @@ class _FakeOpenAIEmbeddings:
     async def aembed_query(self, text: str):
         self.calls.append(text)
         return [0.75 for _ in range(assistant_runtime.EMBEDDING_VECTOR_SIZE)]
+
+
+class _ClosableOpenAIEmbeddings(_FakeOpenAIEmbeddings):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.closed = False
+
+        class _AsyncClient:
+            def __init__(self, owner) -> None:
+                self.owner = owner
+
+            async def close(self) -> None:
+                self.owner.closed = True
+
+        self.async_client = SimpleNamespace(_client=_AsyncClient(self))
 
 
 # ── Tests: VLLMModelRuntime ─────────────────────────────────────────────────
@@ -112,6 +158,63 @@ async def test_vllm_model_runtime_complete() -> None:
     assert telemetry.prompt_eval_count == 5
     assert telemetry.latency_ms is not None
     assert telemetry.latency_ms >= 0
+
+
+@pytest.mark.asyncio
+async def test_vllm_model_runtime_can_raise_generation_token_budget() -> None:
+    settings = VLLMSettings(url="http://vllm.local:8000/v1", model="m", embedding_model="emb")
+    with patch.object(assistant_runtime, "ChatOpenAI", _FakeChatOpenAI):
+        runtime = assistant_runtime.VLLMModelRuntime(settings)
+
+    await runtime.complete_with_metadata(
+        [ChatMessage(role="user", content="pergunta")],
+        max_tokens=512,
+        response_format={"type": "json_object"},
+    )
+
+    assert runtime._model.bound_kwargs == {
+        "max_tokens": 512,
+        "response_format": {"type": "json_object"},
+    }
+
+
+@pytest.mark.asyncio
+async def test_vllm_tool_invocation_uses_runtime_concurrency_budget() -> None:
+    settings = VLLMSettings(
+        url="http://vllm.local:8000/v1",
+        model="m",
+        embedding_model="emb",
+        max_concurrent_requests=1,
+        concurrency_acquire_timeout_ms=10,
+    )
+    with patch.object(assistant_runtime, "ChatOpenAI", _BlockingToolChatOpenAI):
+        runtime = assistant_runtime.VLLMModelRuntime(settings)
+
+    first_call = asyncio.create_task(runtime.ainvoke_with_tools([], ["tool-a"]))
+    await asyncio.wait_for(runtime._model.started.wait(), timeout=1)
+
+    with pytest.raises(assistant_runtime.VLLMRuntimeBusyError):
+        await runtime.ainvoke_with_tools([], ["tool-a"])
+
+    runtime._model.release.set()
+    response = await first_call
+
+    assert response.content == "tool response"
+    assert runtime._model.bound_tools == ["tool-a"]
+
+
+@pytest.mark.asyncio
+async def test_vllm_tool_invocation_can_require_a_tool_call() -> None:
+    settings = VLLMSettings(url="http://vllm.local:8000/v1", model="m", embedding_model="emb")
+    with patch.object(assistant_runtime, "ChatOpenAI", _BlockingToolChatOpenAI):
+        runtime = assistant_runtime.VLLMModelRuntime(settings)
+
+    call = asyncio.create_task(runtime.ainvoke_with_tools([], ["tool-a"], tool_choice="required"))
+    await asyncio.wait_for(runtime._model.started.wait(), timeout=1)
+    runtime._model.release.set()
+    await call
+
+    assert runtime._model.bind_tool_kwargs == {"tool_choice": "required"}
 
 
 @pytest.mark.asyncio
@@ -192,6 +295,20 @@ async def test_vllm_embedding_runtime_vector_size() -> None:
     vector = await runtime.embed("teste")
     assert len(vector) == assistant_runtime.EMBEDDING_VECTOR_SIZE
     assert all(v == 0.75 for v in vector)
+
+
+@pytest.mark.asyncio
+async def test_vllm_embedding_runtime_closes_async_client() -> None:
+    settings = VLLMSettings(
+        url="http://vllm.local:8000/v1",
+        model="m",
+        embedding_model="emb",
+    )
+    with patch.object(assistant_runtime, "OpenAIEmbeddings", _ClosableOpenAIEmbeddings):
+        runtime = assistant_runtime.VLLMEmbeddingRuntime(settings)
+
+    await runtime.aclose()
+    assert runtime._embeddings.async_client._client.owner.closed is True
 
 
 # ── Tests: Factory functions ────────────────────────────────────────────────

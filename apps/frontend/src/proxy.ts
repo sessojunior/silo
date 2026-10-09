@@ -84,10 +84,10 @@ export async function proxy(req: NextRequest) {
     return rewriteToApi(apiPath, req.nextUrl.search);
   }
 
-  // APIs de upload: validar sessao mas deixar o Route Handler
-  // (api/upload/[kind]/route.ts) encaminhar o multipart/form-data
-  // corretamente, ja que NextResponse.rewrite nao preserva o corpo
-  // multipart ao reescrever para origem externa.
+  // APIs de upload: validar sessao mas deixar os Route Handlers
+  // (upload multipart e serve de PDFs) encaminharem a requisicao.
+  // NextResponse.rewrite nao preserva o corpo multipart ao reescrever
+  // para origem externa.
   if (routePath.startsWith("/api/upload/")) {
     if (!sessionCookie) {
       return errorResponse("Usuário não autenticado.", 401);

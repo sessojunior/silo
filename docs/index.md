@@ -19,9 +19,9 @@ O SILO centraliza informações sobre produtos meteorológicos, incidentes opera
 | **Banco de dados** | PostgreSQL + pgvector (busca semântica) |
 | **IA — Orquestração** | LangChain + LangGraph (agentes, ferramentas, RAG) |
 | **IA — Servidor** | vLLM — OpenAI-compatible API (PagedAttention, continuous batching) |
-| **IA — Modelos** | Qwen2.5 0.5B (chat) + BGE-small (embeddings) |
+| **IA — Modelos** | Qwen2.5 0.5B (chat) + BGE-base (embeddings, 768 dimensões) |
 | **Mensageria** | Kafka REST Proxy |
-| **Infraestrutura** | Docker Compose (6 serviços) |
+| **Infraestrutura** | Docker Compose (7 serviços no desenvolvimento) |
 
 ---
 
@@ -48,6 +48,7 @@ silo/
 |---|---|---|
 | `db` | 5432 | PostgreSQL + pgvector |
 | `vllm` | 8000 | Servidor de IA (OpenAI-compatible API) |
+| `vllm-embed` | 8001 | Servidor dedicado de embeddings |
 | `migrate` | — | Roda migrations e encerra (one-shot) |
 | `api` | 4000 | Backend FastAPI |
 | `worker` | — | Consumer Kafka |
@@ -61,6 +62,8 @@ silo/
 Browser → Next.js (web :80) → FastAPI (api :4000) → PostgreSQL (db :5432)
                                    ↕
                               vLLM (vllm :8000)
+                                   ↕
+                         vLLM embeddings (:8001)
 ```
 
 - O frontend **nunca** acessa o banco diretamente
@@ -75,6 +78,7 @@ Browser → Next.js (web :80) → FastAPI (api :4000) → PostgreSQL (db :5432)
 | Documento | Conteúdo |
 |---|---|
 | [`backend.md`](backend.md) | Backend Python: arquitetura, banco, auth, API, IA, Kafka |
+| [`ai-assistant.md`](ai-assistant.md) | Contratos de threads, SSE, streaming, segurança, testes e diagnóstico do assistente |
 | [`frontend.md`](frontend.md) | Frontend Next.js: rotas, componentes, estado |
 | [`deploy.md`](deploy.md) | Docker, deploy em produção, CI/CD |
 | [`monitoring.md`](monitoring.md) | Monitoramento, logs, observabilidade |

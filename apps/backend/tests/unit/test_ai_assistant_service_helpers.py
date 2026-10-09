@@ -19,7 +19,7 @@ from sqlalchemy import (
     select,
 )
 
-from silo.ai import assistant_service
+from silo.ai import assistant_service, assistant_tools
 from silo.ai.assistant_contracts import AiAssistantMessageRequestDto
 from silo.ai.assistant_registry import DatasetRegistry
 from silo.api.dependencies import CurrentUser
@@ -148,12 +148,83 @@ async def test_assistant_examples_runtime_status_and_context_setup(
         monkeypatch.setattr(assistant_service, "_current_epoch_ms", lambda: 1_723_000_000_000)
         request = AiAssistantMessageRequestDto(content="Resumo diário")
         state = assistant_service._initial_state(request, runtime)
+        assert state["thread_id"] is None
         assert state["question"] == "Resumo diário"
         assert state["request_id"] == "request-1"
         assert state["deadline_epoch_ms"] == 1_723_000_000_000 + (
             assistant_service.ASSISTANT_GRAPH_DEADLINE_SECONDS * 1000
         )
         assert assistant_service.get_assistant_graph() is assistant_service._COMPILED_GRAPH
+
+
+def test_streamed_json_answer_extracts_only_new_text() -> None:
+    assert assistant_service._streamed_json_answer_prefix('{"answer":"OlÃ¡', "") == "OlÃ¡"
+    assert (
+        assistant_service._streamed_json_answer_prefix('{"answer":"OlÃ¡ mundo"}', "OlÃ¡")
+        == "OlÃ¡ mundo"
+    )
+
+
+@pytest.mark.asyncio
+async def test_stream_assistant_message_forwards_model_deltas_before_result(monkeypatch) -> None:
+    response = SimpleNamespace(
+        scope="reports",
+        is_in_scope=True,
+        model_dump=lambda mode: {"answer": "OlÃ¡ mundo"},
+    )
+
+    async def _fake_send(*_args, **kwargs):
+        queue = kwargs["stream_queue"]
+        await queue.put("OlÃ¡")
+        await queue.put(" mundo")
+        return response
+
+    monkeypatch.setattr(assistant_service, "send_assistant_message", _fake_send)
+    events = [
+        event
+        async for event in assistant_service.stream_assistant_message(
+            object(),
+            CurrentUser(id="user-1", email="user@example.test", name="User", is_active=True),
+            AiAssistantMessageRequestDto(content="Resumo"),
+        )
+    ]
+
+    assert [event.event for event in events] == [
+        "thinking",
+        "delta",
+        "delta",
+        "scope",
+        "result",
+    ]
+    assert [event.data["content"] for event in events if event.event == "delta"] == [
+        "OlÃ¡",
+        " mundo",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_stream_synthesis_response_emits_json_answer_deltas() -> None:
+    stream_kwargs: dict[str, object] = {}
+
+    class _StreamingRuntime:
+        async def stream(self, _messages, **kwargs):
+            stream_kwargs.update(kwargs)
+            yield '{"answer":"Uma resposta '
+            yield 'fundamentada"}'
+
+    queue: asyncio.Queue[str] = asyncio.Queue()
+    runtime = SimpleNamespace(model_runtime=_StreamingRuntime(), stream_queue=queue)
+
+    response, telemetry = await assistant_service._stream_synthesis_response(
+        runtime,
+        [assistant_service.ChatMessage(role="user", content="Resumo")],
+    )
+
+    assert response.content == '{"answer":"Uma resposta fundamentada"}'
+    assert telemetry.latency_ms is not None
+    assert await queue.get() == "Uma resposta "
+    assert await queue.get() == "fundamentada"
+    assert stream_kwargs["max_tokens"] == 256
 
 
 def test_assistant_message_and_thread_row_helpers() -> None:
@@ -196,6 +267,16 @@ def test_assistant_message_and_thread_row_helpers() -> None:
         },
         {"kind": "pdf", "url": "https://example.test/ignored.pdf", "filename": "ignored.pdf"},
     ]
+    citations = [
+        {
+            "label": "Manual de modelos",
+            "detail": "Recuperação híbrida",
+            "source": "manual",
+            "sourceId": "manual-models",
+            "snippet": "Os modelos ativos são mantidos no manual.",
+            "score": 0.91,
+        }
+    ]
     message_row = {
         "id": "message-1",
         "thread_id": "thread-1",
@@ -207,6 +288,7 @@ def test_assistant_message_and_thread_row_helpers() -> None:
             "generation": generation,
             "visualization": visualization,
             "artifacts": artifacts,
+            "citations": citations,
             "thinking": "  cadeia interna  ",
         },
         "created_at": "2026-08-04T11:59:00",
@@ -222,6 +304,8 @@ def test_assistant_message_and_thread_row_helpers() -> None:
     assert message.visualization.kind == "chart"
     assert message.artifacts is not None
     assert message.artifacts[0].filename == "report.pdf"
+    assert len(message.citations) == 1
+    assert message.citations[0].source_id == "manual-models"
     assert assistant_service._safe_model_validate_generation({"generation": generation}) is not None
     assert (
         assistant_service._safe_model_validate_generation({"generation": {"provider": "vllm"}})
@@ -352,6 +436,43 @@ def test_assistant_selection_helpers(
 @pytest.mark.parametrize(
     ("question", "expected"),
     [
+        ("esta semana", {"start": "2026-08-03", "end": "2026-08-04"}),
+        ("nesta semana", {"start": "2026-08-03", "end": "2026-08-04"}),
+        ("neste mes", {"start": "2026-08-01", "end": "2026-08-04"}),
+        ("semana passada", {"start": "2026-07-27", "end": "2026-08-02"}),
+        ("\u00faltima semana", {"start": "2026-07-27", "end": "2026-08-02"}),
+        ("este m\u00eas", {"start": "2026-08-01", "end": "2026-08-04"}),
+        ("m\u00eas passado", {"start": "2026-07-01", "end": "2026-07-31"}),
+        ("este trimestre", {"start": "2026-07-01", "end": "2026-08-04"}),
+        ("neste trimestre", {"start": "2026-07-01", "end": "2026-08-04"}),
+        ("trimestre passado", {"start": "2026-04-01", "end": "2026-06-30"}),
+    ],
+)
+def test_assistant_calendar_date_ranges(
+    question: str, expected: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(assistant_service, "SYSTEM_CLOCK", _FixedClock())
+    assert assistant_service._detect_date_range(question) == expected
+
+
+@pytest.mark.asyncio
+async def test_assistant_routes_incidents_by_product_to_models() -> None:
+    class _UnexpectedProvider:
+        async def embed(self, _text: str) -> tuple[float, float]:
+            raise AssertionError("a pergunta deveria ser resolvida pelo roteamento explícito")
+
+    scope, confidence = await assistant_service._detect_scope(
+        "Quais produtos tiveram incidentes esta semana?",
+        SimpleNamespace(embedding_provider=_UnexpectedProvider()),
+    )
+
+    assert scope == "models"
+    assert confidence >= 0.9
+
+
+@pytest.mark.parametrize(
+    ("question", "expected"),
+    [
         ("hoje", {"start": "2026-08-04", "end": "2026-08-04"}),
         ("ontem", {"start": "2026-08-03", "end": "2026-08-03"}),
         ("anteontem", {"start": "2026-08-02", "end": "2026-08-02"}),
@@ -368,6 +489,32 @@ def test_assistant_date_range_helpers(
     assert assistant_service._detect_date_range(question) == expected
 
 
+def test_assistant_date_range_uses_operational_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _LateUtcClock:
+        def now(self) -> datetime:
+            return datetime(2026, 8, 5, 1, 30, tzinfo=UTC)
+
+    monkeypatch.setattr(assistant_service, "SYSTEM_CLOCK", _LateUtcClock())
+    assert assistant_service._detect_date_range("esta semana") == {
+        "start": "2026-08-03",
+        "end": "2026-08-04",
+    }
+
+
+def test_assistant_tool_default_date_range_uses_operational_timezone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _LateUtcClock:
+        def now(self) -> datetime:
+            return datetime(2026, 8, 5, 1, 30, tzinfo=UTC)
+
+    monkeypatch.setattr(assistant_tools, "SYSTEM_CLOCK", _LateUtcClock())
+    assert assistant_tools._date_range_bounds(None, None) == (
+        datetime(2026, 7, 6, tzinfo=UTC).date(),
+        datetime(2026, 8, 4, tzinfo=UTC).date(),
+    )
+
+
 @pytest.mark.parametrize(
     ("scope", "question", "expected"),
     [
@@ -381,6 +528,50 @@ def test_assistant_date_range_helpers(
 )
 def test_assistant_report_selection(scope: str, question: str, expected: str) -> None:
     assert assistant_service._select_report_type(question, scope) == expected
+
+
+def test_assistant_models_answer_lists_incidents_by_product() -> None:
+    answer = assistant_service._format_models_answer(
+        {
+            "totalRuns": 12,
+            "availabilityPct": 87.5,
+            "incidentRuns": 3,
+            "topProducts": [
+                {"productName": "BAM", "incidentRuns": 3},
+                {"productName": "WRF", "incidentRuns": 1},
+            ],
+        },
+        {},
+        "2026-08-03 a 2026-08-04",
+    )
+
+    assert "BAM (3)" in answer
+    assert "WRF (1)" in answer
+
+
+def test_assistant_models_answer_keeps_zero_incident_counts() -> None:
+    answer = assistant_service._format_models_answer(
+        {"topProducts": [{"productName": "BAM", "incidentRuns": 0}]},
+        {},
+        "2026-08-04 a 2026-08-04",
+    )
+
+    assert "BAM (0)" in answer
+
+
+def test_assistant_solutions_chart_describes_the_available_problem_metric() -> None:
+    chart = assistant_service._build_chart_visualization(
+        "solutions",
+        {"ranges": {"start": "2026-08-01", "end": "2026-08-04"}},
+        {
+            "problemSummary": {
+                "problemsByCategory": [{"name": "Falha de modelo", "problemsCount": 2}]
+            }
+        },
+    )
+
+    assert chart.title == "Problemas relacionados a solu\u00e7\u00f5es"
+    assert chart.series[0].name == "Problemas relacionados"
 
 
 @pytest.mark.parametrize(
@@ -433,6 +624,9 @@ async def test_assistant_prompt_and_visualization_helpers(monkeypatch: pytest.Mo
     assert assistant_service._parse_structured_synthesis_response(
         '```json\n{"answer":"ok"}\n```'
     ) == {"answer": "ok"}
+    assert assistant_service._parse_structured_synthesis_response(
+        '{"response":"A resposta operacional foi localizada."}'
+    ) == {"answer": "A resposta operacional foi localizada."}
     assert assistant_service._parse_structured_synthesis_response("sem json") is None
     # Respostas degeneradas (curtas ou sem texto) sao recusadas.
     assert assistant_service._synthesis_answer_is_safe("0", "os modelos tiveram 0 rodadas") is False
@@ -456,6 +650,28 @@ async def test_assistant_prompt_and_visualization_helpers(monkeypatch: pytest.Mo
             "No periodo, os modelos tiveram 10 rodadas",
         )
         is False
+    )
+    assert (
+        assistant_service._synthesis_answer_is_safe_for_state(
+            "Nenhum gráfico de barras foi gerado.",
+            "Não há incidentes no período.",
+            {
+                "artifact_intent": {"kind": "chart"},
+                "visualization": {"kind": "chart", "categories": ["Sem dados no período"]},
+            },
+        )
+        is False
+    )
+    assert (
+        assistant_service._synthesis_answer_is_safe_for_state(
+            "Não há dados de incidentes no período para exibir.",
+            "Não há incidentes no período.",
+            {
+                "artifact_intent": {"kind": "chart"},
+                "visualization": {"kind": "chart", "categories": ["Sem dados no período"]},
+            },
+        )
+        is True
     )
 
     monkeypatch.setattr(
@@ -502,6 +718,11 @@ async def test_assistant_prompt_and_visualization_helpers(monkeypatch: pytest.Mo
     chart = assistant_service._build_chart_visualization(
         "projects", state, {"projectsSnapshot": {"projects": [{"name": "P1"}]}}
     )
+    model_chart = assistant_service._build_chart_visualization(
+        "models",
+        state,
+        {"modelSummary": {"topProducts": [{"productName": "BAM", "incidentRuns": 3}]}},
+    )
     image = assistant_service._build_image_visualization(
         "projects", state, {"projectsSnapshot": {"totalProjects": 2}}
     )
@@ -509,6 +730,15 @@ async def test_assistant_prompt_and_visualization_helpers(monkeypatch: pytest.Mo
         "projects", state, {"projectsSnapshot": {"projects": []}}
     )
     assert chart.kind == "chart"
+    assert model_chart.title == "Incidentes por produto"
+    empty_model_chart = assistant_tools.build_chart_spec(
+        template_id="models_overview",
+        dataset={"categories": [], "series": [{"name": "Incidentes", "values": []}]},
+        chart_type="bar",
+        title="Incidentes por produto",
+    )
+    assert empty_model_chart["categories"]
+    assert empty_model_chart["series"][0]["values"] == [0.0]
     assert image.kind == "image"
     assert mermaid.kind == "mermaid"
 
@@ -522,6 +752,51 @@ async def test_assistant_prompt_and_visualization_helpers(monkeypatch: pytest.Mo
     assert artifact["filename"] == "projects.pdf"
     assert pdf_visualization is not None
     assert pdf_visualization.kind == "image"
+
+
+@pytest.mark.asyncio
+async def test_pdf_generation_failure_is_not_reported_as_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    failed_calls: list[dict[str, object]] = []
+
+    class _ArtifactRepository:
+        def __init__(self, _connection: object) -> None:
+            pass
+
+        def mark_failed(self, **kwargs: object) -> None:
+            failed_calls.append(kwargs)
+
+    async def _raise_pdf(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("disco indisponivel")
+
+    monkeypatch.setattr(assistant_service, "AiArtifactRepository", _ArtifactRepository)
+    monkeypatch.setattr(assistant_service, "_build_pdf_artifact", _raise_pdf)
+    runtime = SimpleNamespace(context=SimpleNamespace(connection=object()))
+    state = {
+        "progress": [],
+        "artifact_intent": {"kind": "pdf", "reportType": "executive"},
+        "artifact_result": {
+            "status": "claimed",
+            "idempotencyHash": "hash-1",
+            "ownerToken": "owner-1",
+        },
+    }
+
+    result = await assistant_service._node_presentation_router(state, runtime)
+
+    assert result["artifact_result"]["status"] == "failed"
+    assert result["artifact_result"]["errorMessage"] == "disco indisponivel"
+    assert failed_calls == [
+        {
+            "idempotency_hash": "hash-1",
+            "owner_token": "owner-1",
+            "error_message": "disco indisponivel",
+        }
+    ]
+    error_answer = assistant_service._format_pdf_answer(result, "2026-08-04 a 2026-08-04")
+    assert "PDF" in error_answer
+    assert "Tente novamente" in error_answer
 
 
 @pytest.mark.asyncio
@@ -578,7 +853,7 @@ async def test_assistant_grounded_text_helpers_cover_all_scope_formats() -> None
             {
                 "problemSummary": {
                     "totalProblems": 2,
-                    "totalSolutions": 6,
+                    "summary": {"totalSolutions": 6},
                 }
             },
             "2 problemas",
@@ -669,6 +944,76 @@ async def test_assistant_grounded_text_helpers_cover_all_scope_formats() -> None
     assert "PDF de executive" in pdf_answer
     assert any(citation.label == "PDF solicitado" for citation in pdf_citations)
     assert pdf_suggestions[-1] == "Quer que eu gere outro recorte em PDF?"
+
+
+def test_knowledge_citations_include_provenance_and_filter_unauthorized_sources() -> None:
+    state = {
+        "scope": "models",
+        "ranges": {"start": "2026-08-01", "end": "2026-08-04"},
+        "question": "Como está o manual do modelo?",
+        "required_results": {
+            "knowledgeSearch": {
+                "items": [
+                    {
+                        "source": "manual",
+                        "sourceKind": "manual",
+                        "id": "manual-1",
+                        "content": "Trecho autorizado do manual.",
+                        "similarity": 0.91,
+                    },
+                    {
+                        "source": "problem",
+                        "sourceKind": "problem",
+                        "id": "problem-secret",
+                        "content": "Fonte não autorizada para o escopo de modelos.",
+                        "similarity": 0.99,
+                    },
+                    {
+                        "source": "external",
+                        "sourceKind": "external",
+                        "id": "external-1",
+                        "content": "Fonte desconhecida.",
+                        "similarity": 1.0,
+                    },
+                ]
+            }
+        },
+        "supplemental_results": {},
+        "artifact_result": {},
+    }
+
+    answer, citations, _ = assistant_service._build_grounded_text(state, SimpleNamespace())
+    del answer
+
+    knowledge_citations = [citation for citation in citations if citation.source_id]
+    assert len(knowledge_citations) == 1
+    citation = knowledge_citations[0]
+    assert citation.source == "manual"
+    assert citation.source_id == "manual-1"
+    assert citation.snippet == "Trecho autorizado do manual."
+    assert citation.score == pytest.approx(0.91)
+
+    synthesis_payload = json.loads(assistant_service._build_synthesis_prompt(state))
+    knowledge_items = synthesis_payload["requiredResults"]["knowledgeSearch"]["items"]
+    assert [item["id"] for item in knowledge_items] == ["manual-1"]
+    assert any("conteúdo recuperado" in rule.lower() for rule in synthesis_payload["rules"])
+
+
+def test_grounded_text_declares_absence_of_relevant_knowledge_evidence() -> None:
+    state = {
+        "scope": "solutions",
+        "ranges": {"start": "2026-08-01", "end": "2026-08-04"},
+        "required_results": {
+            "problemSummary": {"totalProblems": 2, "totalSolutions": 3},
+            "knowledgeSearch": {"items": []},
+        },
+        "supplemental_results": {},
+        "artifact_result": {},
+    }
+
+    answer, _, _ = assistant_service._build_grounded_text(state, SimpleNamespace())
+
+    assert "não encontrou evidência relevante" in answer
 
 
 def test_assistant_history_cache_and_persisted_response_helpers(
@@ -2387,9 +2732,12 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(
 
     monkeypatch.setattr(assistant_service, "_build_synthesis_prompt", lambda state: "ok")
 
+    metadata_kwargs: dict[str, object] = {}
+
     class _MetadataRuntime:
-        async def complete_with_metadata(self, messages):
+        async def complete_with_metadata(self, messages, **kwargs):
             del messages
+            metadata_kwargs.update(kwargs)
             return (
                 SimpleNamespace(
                     content='{"answer":"Resposta final completa","contextSummary":"resumo"}'
@@ -2407,6 +2755,7 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(
     synth_state = await assistant_service._node_synthesize_once(synth_state, runtime)
     assert synth_state["answer"] == "Resposta final completa"
     assert synth_state["synthesis_context_summary"] == "resumo"
+    assert metadata_kwargs["max_tokens"] == 256
 
     class _TokenLimitedRuntime:
         async def complete_with_metadata(self, messages):
@@ -2426,7 +2775,9 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(
     token_limited_state = await assistant_service._node_synthesize_once(
         token_limited_state, runtime
     )
-    assert token_limited_state["generation"]["status"] == "error"
+    assert token_limited_state["answer"] == token_limited_state["response_base"]
+    assert token_limited_state["generation"]["status"] == "fallback"
+    assert "limite" in token_limited_state["generation"]["errorMessage"]
 
     class _SimpleRuntime:
         async def complete(self, messages):
@@ -2640,3 +2991,34 @@ async def test_classify_and_plan_refuses_out_of_scope_questions(
     result_state = await assistant_service._node_classify_and_plan(in_state, runtime)
     assert "refusal_reason" not in result_state
     assert result_state["is_in_scope"] is True
+
+
+def test_synthesis_prompt_bounds_large_agentic_retrieval_payload() -> None:
+    state = {
+        "question": "Como corrigir o problema?",
+        "scope": "solutions",
+        "response_base": {"answer": "A base registrou uma ocorrência."},
+        "required_results": {
+            "knowledgeSearch": {
+                "items": [
+                    {
+                        "source": "solution",
+                        "sourceKind": "solution",
+                        "id": f"solution-{index}",
+                        "content": "evidência operacional " * 500,
+                        "similarity": 0.9,
+                    }
+                    for index in range(20)
+                ]
+            }
+        },
+        "supplemental_results": {},
+        "citations": [],
+        "suggested_questions": [],
+        "ranges": {},
+    }
+
+    prompt = assistant_service._build_synthesis_prompt(state)
+
+    assert len(prompt.encode("utf-8")) <= 12_000
+    assert "solution-0" in prompt

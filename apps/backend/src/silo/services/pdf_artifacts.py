@@ -11,13 +11,13 @@ from typing import Any
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, StyleSheet1, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from silo.services.analytics_common import ANALYTICS_TIMEZONE
-from silo.storage.uploads import get_upload_file_path, write_upload_bytes
+from silo.storage.uploads import UploadKind, get_upload_file_path, write_upload_bytes
 
 PdfBuilder = Callable[[list[Any], dict[str, Any], Any], None]
 
@@ -76,12 +76,12 @@ class _CountingCanvas(canvas.Canvas):
         super().__init__(*args, **kwargs)
         self.page_count = 0
 
-    def showPage(self) -> None:  # type: ignore[override]
+    def showPage(self) -> None:
         self.page_count += 1
         super().showPage()
 
-    def save(self) -> None:  # type: ignore[override]
-        self.page_count = max(self.page_count, self._pageNumber)
+    def save(self) -> None:
+        self.page_count = max(self.page_count, int(getattr(self, "_pageNumber", 0)))
         super().save()
 
 
@@ -141,7 +141,7 @@ class PdfRenderer:
 
         tracker = _CountingCanvasFactory()
 
-        def _draw_page(canvas_obj: _CountingCanvas, doc_obj: Any) -> None:
+        def _draw_page(canvas_obj: canvas.Canvas, doc_obj: Any) -> None:
             canvas_obj.saveState()
             canvas_obj.setFillColor(colors.HexColor("#1e3a5f"))
             canvas_obj.rect(0, A4[1] - 6, A4[0], 6, fill=1, stroke=0)
@@ -177,7 +177,7 @@ class PdfRenderer:
             byte_size=byte_size,
         )
 
-    def _build_styles(self):
+    def _build_styles(self) -> StyleSheet1:
         styles = getSampleStyleSheet()
         styles.add(
             ParagraphStyle(
@@ -247,7 +247,7 @@ class PdfRenderer:
 
 
 class PdfArtifactStore:
-    def __init__(self, *, upload_kind: str = "reports") -> None:
+    def __init__(self, *, upload_kind: UploadKind = "reports") -> None:
         self._upload_kind = upload_kind
 
     def save(
@@ -259,13 +259,14 @@ class PdfArtifactStore:
     ) -> PdfArtifact:
         filename = build_report_pdf_filename(report_type, generated_at=generated_at)
         stored = write_upload_bytes(self._upload_kind, filename, pdf_bytes)
-        file_path = get_upload_file_path(self._upload_kind, filename)
+        file_path = get_upload_file_path(self._upload_kind, stored.filename)
+        persisted_bytes = file_path.read_bytes()
         return PdfArtifact(
             file_path=file_path,
             filename=stored.filename,
             url=f"/api/upload/serve/{self._upload_kind}/{stored.filename}",
-            byte_size=len(pdf_bytes),
-            sha256=hashlib.sha256(pdf_bytes).hexdigest(),
+            byte_size=len(persisted_bytes),
+            sha256=hashlib.sha256(persisted_bytes).hexdigest(),
         )
 
 

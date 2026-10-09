@@ -7,7 +7,7 @@ import re
 import uuid
 from collections.abc import Callable, MutableMapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Generic, Literal, TypedDict, TypeVar
+from typing import Any, Literal, TypedDict, TypeVar
 
 from sqlalchemy.engine import Connection
 
@@ -31,7 +31,7 @@ class DatasetRegistryError(RuntimeError):
 
 
 @dataclass(frozen=True, slots=True)
-class ToolResult(Generic[T]):
+class ToolResult[T]:
     ok: bool
     value: T | None = None
     warnings: tuple[str, ...] = ()
@@ -189,7 +189,7 @@ class DatasetRegistry:
 class AgentState(TypedDict, total=False):
     request_id: str
     run_id: str
-    thread_id: str
+    thread_id: str | None
     started_at_epoch_ms: int
     deadline_epoch_ms: int
     question: str
@@ -243,6 +243,7 @@ class AgentRuntimeContext:
     connection_factory: Callable[[], Connection] | None = None
     semaphore: asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(2))
     cancel_event: asyncio.Event = field(default_factory=asyncio.Event, repr=False)
+    stream_queue: asyncio.Queue[str] | None = field(default=None, repr=False)
     mode: Literal["deterministic", "hybrid"] = "deterministic"
     graph_version: str = "2026-07-23"
     prompt_version: str = "2026-07-23"

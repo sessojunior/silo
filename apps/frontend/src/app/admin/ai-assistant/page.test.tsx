@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { config } from "@/lib/config";
 
 import AiAssistantPage from "./page";
 
@@ -37,7 +36,8 @@ vi.mock("@/components/ui/button", () => ({
     onClick?: React.MouseEventHandler<HTMLButtonElement>;
     [key: string]: unknown;
   }) {
-    const { style: _style, ...buttonProps } = rest as Record<string, unknown>;
+    const buttonProps = { ...(rest as Record<string, unknown>) };
+    delete buttonProps.style;
     return (
       <button type={type} onClick={onClick} {...buttonProps}>
         {children}
@@ -64,11 +64,30 @@ vi.mock("@/components/admin/chat/messages-list", () => ({
   MessagesList: function MockMessagesList({
     messages,
   }: {
-    messages: Array<{ content: string }>;
+    messages: Array<{
+      content: string;
+      assistantCitations?: Array<{ source?: string | null; sourceId?: string | null }> | null;
+      assistantVisualization?: { kind: string } | null;
+      assistantArtifacts?: unknown[] | null;
+    }>;
   }) {
     return (
       <div data-testid="messages-list">
-        {messages.map((message) => message.content).join(" | ")}
+        {messages
+          .map((message) =>
+            [
+              message.content,
+              message.assistantCitations?.map((citation) => `${citation.source}:${citation.sourceId}`)
+                .join(","),
+              message.assistantVisualization?.kind,
+              message.assistantArtifacts?.length
+                ? `artifacts=${message.assistantArtifacts.length}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" "),
+          )
+          .join(" | ")}
       </div>
     );
   },
@@ -160,7 +179,7 @@ describe("AiAssistantPage", () => {
   });
 
   it("loads assistant data and streams a response when the user selects an example", async () => {
-    const threadId = "thread-1";
+    const threadId = "11111111-1111-4111-8111-111111111111";
     const thread = {
       id: threadId,
       title: "Pergunta inicial",
@@ -244,16 +263,48 @@ describe("AiAssistantPage", () => {
           isInScope: true,
           refusalReason: null,
           suggestedQuestions: [],
-          citations: [],
+          citations: [
+            {
+              label: "Manual de modelos",
+              detail: "Recuperação híbrida",
+              source: "manual",
+              sourceId: "manual-models",
+              snippet: "Os modelos ativos são mantidos no manual.",
+              score: 0.91,
+            },
+          ],
+          visualization: {
+            kind: "chart",
+            chartType: "bar",
+            title: "Disponibilidade",
+            categories: ["Produto Alfa"],
+            series: [{ name: "Disponibilidade", values: [96] }],
+          },
+          artifacts: [
+            {
+              kind: "pdf",
+              url: "/api/upload/serve/reports/executive.pdf",
+              filename: "executive.pdf",
+              title: "Relatório executivo",
+              mimeType: "application/pdf",
+              reportType: "executive",
+              checksum: "abc123",
+              byteSize: 1024,
+            },
+          ],
           contextSummary: "",
         };
 
-        return new Response(`event: result\ndata: ${JSON.stringify(payload)}\n\n`, {
+        return new Response(
+          `event: delta\ndata: ${JSON.stringify({ content: "Resposta parcial" })}\n\n` +
+            `event: result\ndata: ${JSON.stringify(payload)}\n\n`,
+          {
           status: 200,
           headers: {
             "Content-Type": "text/event-stream",
           },
-        });
+          },
+        );
       }
 
       throw new Error(`Unexpected request: ${method} ${requestUrl.pathname}`);
@@ -281,5 +332,86 @@ describe("AiAssistantPage", () => {
     });
 
     expect(await screen.findByTestId("messages-list")).toHaveTextContent("Resposta de teste");
+    expect(screen.getByTestId("messages-list")).toHaveTextContent("manual:manual-models");
+    expect(screen.getByTestId("messages-list")).toHaveTextContent("chart");
+    expect(screen.getByTestId("messages-list")).toHaveTextContent("artifacts=1");
+  });
+
+  it("offers retry after a failed assistant stream", async () => {
+    const threadId = "22222222-2222-4222-8222-222222222222";
+    const thread = {
+      id: threadId,
+      title: "Pergunta inicial",
+      lastMessagePreview: "Pergunta inicial",
+      messageCount: 0,
+      lastMessageAt: "2026-08-04T12:00:00.000Z",
+      createdAt: "2026-08-04T12:00:00.000Z",
+      updatedAt: "2026-08-04T12:00:00.000Z",
+    };
+    let streamCalls = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = new URL(String(input), "http://localhost");
+      const method = (init?.method ?? "GET").toUpperCase();
+
+      if (method === "GET" && requestUrl.pathname.endsWith("/examples")) {
+        return jsonResponse({ success: true, data: { examples: [] } });
+      }
+      if (method === "GET" && requestUrl.pathname.endsWith("/threads")) {
+        return jsonResponse({ success: true, data: { threads: [] } });
+      }
+      if (method === "GET" && requestUrl.pathname.endsWith("/status")) {
+        return jsonResponse({
+          success: true,
+          data: {
+            provider: "vllm",
+            model: "smna",
+            mode: "vllm",
+            latencyMs: 12,
+            checkedAt: "2026-08-04T12:00:00.000Z",
+          },
+        });
+      }
+      if (method === "POST" && requestUrl.pathname.endsWith("/threads")) {
+        return jsonResponse({ success: true, data: { thread } });
+      }
+      if (method === "POST" && requestUrl.pathname.endsWith("/messages/stream")) {
+        streamCalls += 1;
+        if (streamCalls === 1) {
+          return new Response('event: error\ndata: {"content":"Falha temporária"}\n\n', {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream" },
+          });
+        }
+        const payload = {
+          threadId,
+          thread,
+          messageContent: "Resposta recuperada",
+          answer: "Resposta recuperada",
+          scope: "general",
+          isInScope: true,
+          refusalReason: null,
+          suggestedQuestions: [],
+          citations: [],
+          contextSummary: "",
+        };
+        return new Response(`event: result\ndata: ${JSON.stringify(payload)}\n\n`, {
+          status: 200,
+          headers: { "Content-Type": "text/event-stream" },
+        });
+      }
+      throw new Error(`Unexpected request: ${method} ${requestUrl.pathname}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AiAssistantPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Perguntar" }));
+
+    const retryButton = await screen.findByRole("button", { name: "Tentar novamente" });
+    fireEvent.click(retryButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("messages-list")).toHaveTextContent("Resposta recuperada");
+    });
+    expect(streamCalls).toBe(2);
   });
 });

@@ -3,11 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { toast } from "@silo/engine/format/toast";
 
-import { useUser } from "@/context/user-context";
-import { useCurrentUser } from "@/hooks/use-current-user";
-import { config } from "@/lib/config";
-import { useSearchParams } from "next/navigation";
-
 import SettingsPage from "./page";
 
 type CurrentUserState = {
@@ -106,7 +101,8 @@ vi.mock("@/components/ui/button", () => ({
     onClick?: React.MouseEventHandler<HTMLButtonElement>;
     [key: string]: unknown;
   }) {
-    const { style: _style, ...buttonProps } = rest as Record<string, unknown>;
+    const { style, ...buttonProps } = rest as Record<string, unknown>;
+    void style;
     return (
       <button type={type} disabled={disabled} onClick={onClick} {...buttonProps}>
         {children}
@@ -120,8 +116,6 @@ vi.mock("@/components/ui/input", () => ({
     id,
     value,
     setValue,
-    invalidMessage: _invalidMessage,
-    isInvalid: _isInvalid,
     ...rest
   }: {
     id?: string;
@@ -209,7 +203,6 @@ vi.mock("@/components/ui/pin", () => ({
     id,
     value,
     setValue,
-    compact: _compact,
     ...rest
   }: {
     id?: string;

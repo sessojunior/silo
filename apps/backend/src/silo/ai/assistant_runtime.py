@@ -6,6 +6,7 @@ from collections import OrderedDict
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC
+from inspect import isawaitable
 from typing import Any, cast
 
 import httpx
@@ -19,6 +20,7 @@ from langchain_core.messages import (
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from pydantic import SecretStr
 
+from silo.ai.observability_contract import record_runtime_metric
 from silo.ai.ports import (
     AiRuntimeProbe,
     ChatMessage,
@@ -36,6 +38,21 @@ EMBEDDING_VECTOR_SIZE = 768
 EMBEDDING_CACHE_MAX_SIZE = 256
 # The OpenAI SDK requires a value even when this local vLLM server has no auth.
 VLLM_OPENAI_COMPAT_PLACEHOLDER = "not-needed"
+
+
+async def _aclose_langchain_openai_client(wrapper: object) -> None:
+    async_resource = getattr(wrapper, "async_client", None)
+    client = getattr(async_resource, "_client", None)
+    close = getattr(client, "close", None)
+    if not callable(close):
+        return
+    result = close()
+    if isawaitable(result):
+        await result
+
+
+class VLLMRuntimeBusyError(RuntimeError):
+    """Raised when the local vLLM concurrency budget is saturated."""
 
 
 def _embedding_base_url(settings: VLLMSettings) -> str:
@@ -134,7 +151,7 @@ class VLLMModelRuntime(ChatModelRuntime):
 
     def __post_init__(self) -> None:
         self.semaphore = asyncio.Semaphore(max(1, int(self.settings.max_concurrent_requests)))
-        self._model = ChatOpenAI(
+        self._model = cast(Any, ChatOpenAI)(
             model=self.settings.model,
             base_url=self.settings.url,
             api_key=VLLM_OPENAI_COMPAT_PLACEHOLDER,
@@ -148,25 +165,53 @@ class VLLMModelRuntime(ChatModelRuntime):
         response, _telemetry = await self.complete_with_metadata(messages)
         return response
 
-    async def stream(self, messages: Sequence[ChatMessage]) -> AsyncIterator[str]:
-        async with self.semaphore:
-            stream = self._model.astream([_message_to_langchain(message) for message in messages])
+    async def stream(
+        self,
+        messages: Sequence[ChatMessage],
+        *,
+        max_tokens: int | None = None,
+        response_format: dict[str, object] | None = None,
+    ) -> AsyncIterator[str]:
+        await self._acquire_slot()
+        try:
+            bind_kwargs: dict[str, Any] = {}
+            if max_tokens is not None:
+                bind_kwargs["max_tokens"] = max_tokens
+            if response_format is not None:
+                bind_kwargs["response_format"] = response_format
+            model = self._model.bind(**bind_kwargs) if bind_kwargs else self._model
+            stream = model.astream([_message_to_langchain(message) for message in messages])
             async for chunk in stream:
                 if isinstance(chunk, AIMessageChunk):
                     yield _coerce_text(chunk.content)
                 else:
                     yield _coerce_text(getattr(chunk, "content", chunk))
+        finally:
+            self.semaphore.release()
 
     async def complete_with_metadata(
-        self, messages: Sequence[ChatMessage]
+        self,
+        messages: Sequence[ChatMessage],
+        *,
+        max_tokens: int | None = None,
+        response_format: dict[str, object] | None = None,
     ) -> tuple[ChatResponse, ChatCompletionTelemetry]:
-        async with self.semaphore:
+        await self._acquire_slot()
+        try:
             started_at = time.perf_counter()
+            bind_kwargs: dict[str, Any] = {}
+            if max_tokens is not None:
+                bind_kwargs["max_tokens"] = max_tokens
+            if response_format is not None:
+                bind_kwargs["response_format"] = response_format
+            model = self._model.bind(**bind_kwargs) if bind_kwargs else self._model
             ai_message = await asyncio.wait_for(
-                self._model.ainvoke([_message_to_langchain(message) for message in messages]),
+                model.ainvoke([_message_to_langchain(message) for message in messages]),
                 timeout=self._timeout_seconds(DEFAULT_CHAT_TIMEOUT_SECONDS),
             )
             elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+        finally:
+            self.semaphore.release()
         response = ChatResponse(content=_coerce_text(ai_message.content))
         telemetry = ChatCompletionTelemetry(
             prompt_eval_count=_extract_prompt_eval_count(ai_message),
@@ -178,9 +223,45 @@ class VLLMModelRuntime(ChatModelRuntime):
     def bind_tools(self, tools: Sequence[object]) -> Any:
         return self._model.bind_tools(cast(Any, tools))
 
+    async def aclose(self) -> None:
+        await _aclose_langchain_openai_client(self._model)
+
+    async def ainvoke_with_tools(
+        self,
+        messages: Sequence[BaseMessage],
+        tools: Sequence[object],
+        *,
+        tool_choice: str | None = None,
+    ) -> AIMessage:
+        """Invoke a tool-enabled model call through the runtime budget."""
+        await self._acquire_slot()
+        try:
+            bind_kwargs: dict[str, Any] = (
+                {"tool_choice": tool_choice} if tool_choice is not None else {}
+            )
+            bound_model = self._model.bind_tools(cast(Any, tools), **bind_kwargs)
+            return await asyncio.wait_for(
+                bound_model.ainvoke(list(messages)),
+                timeout=self._timeout_seconds(DEFAULT_CHAT_TIMEOUT_SECONDS),
+            )
+        finally:
+            self.semaphore.release()
+
     def _timeout_seconds(self, default_timeout: float) -> float:
         timeout_ms = max(1, int(self.settings.timeout_ms))
         return max(1.0, min(default_timeout, timeout_ms / 1000.0))
+
+    async def _acquire_slot(self) -> None:
+        timeout_ms = max(
+            1,
+            int(getattr(self.settings, "concurrency_acquire_timeout_ms", 500)),
+        )
+        try:
+            await asyncio.wait_for(self.semaphore.acquire(), timeout=timeout_ms / 1000.0)
+        except TimeoutError as exc:
+            raise VLLMRuntimeBusyError(
+                "vLLM atingiu o limite de concorrência; tente novamente em instantes."
+            ) from exc
 
 
 @dataclass(slots=True)
@@ -214,11 +295,14 @@ class VLLMEmbeddingRuntime(EmbeddingPort):
             self._cache.move_to_end(key)
             return cached
 
-        async with self.semaphore:
+        await self._acquire_slot()
+        try:
             values = await asyncio.wait_for(
                 self._embeddings.aembed_query(key),
                 timeout=self._timeout_seconds(DEFAULT_EMBEDDING_TIMEOUT_SECONDS),
             )
+        finally:
+            self.semaphore.release()
 
         vector = _ensure_finite_vector(values, allow_zero_vector=False)
         self._cache[key] = vector
@@ -227,9 +311,24 @@ class VLLMEmbeddingRuntime(EmbeddingPort):
             self._cache.popitem(last=False)
         return vector
 
+    async def aclose(self) -> None:
+        await _aclose_langchain_openai_client(self._embeddings)
+
     def _timeout_seconds(self, default_timeout: float) -> float:
         timeout_ms = max(1, int(self.settings.timeout_ms))
         return max(1.0, min(default_timeout, timeout_ms / 1000.0))
+
+    async def _acquire_slot(self) -> None:
+        timeout_ms = max(
+            1,
+            int(getattr(self.settings, "concurrency_acquire_timeout_ms", 500)),
+        )
+        try:
+            await asyncio.wait_for(self.semaphore.acquire(), timeout=timeout_ms / 1000.0)
+        except TimeoutError as exc:
+            raise VLLMRuntimeBusyError(
+                "vLLM atingiu o limite de concorrência; tente novamente em instantes."
+            ) from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -302,6 +401,10 @@ async def probe_vllm_runtime(
 
     elapsed_ms = int((time.perf_counter() - started_at) * 1000)
     mode = RuntimeMode.VLLM if fallback_reason is None else RuntimeMode.FALLBACK
+    record_runtime_metric(
+        "ai_graph_model_calls_total",
+        {"scope": "runtime_probe", "status": "success" if fallback_reason is None else "fallback"},
+    )
     return AiRuntimeProbe(
         provider="vllm",
         model=settings.vllm.model,

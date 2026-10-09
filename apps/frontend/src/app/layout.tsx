@@ -1,14 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "@/app/globals.css";
 
 import AuthIntroNavigationTracker from "@/components/auth/auth-intro-navigation-tracker";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Silo",
@@ -22,9 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-br">
-      <body
-        className={`${inter.variable} antialiased bg-white dark:bg-zinc-900`}
-      >
+      <body className="antialiased bg-white dark:bg-zinc-900">
         <AuthIntroNavigationTracker />
         {children}
       </body>

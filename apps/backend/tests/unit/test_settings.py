@@ -108,8 +108,10 @@ def test_current_runtime_variable_families_are_loaded() -> None:
             "VLLM_URL": "http://localhost:11434",
             "VLLM_MODEL": "Qwen/Qwen2.5-0.5B-Instruct",
             "VLLM_EMBEDDING_MODEL": "nomic-embed-text:v1.5",
+            "VLLM_EMBEDDING_URL": "http://localhost:8001/v1",
             "VLLM_TIMEOUT_MS": "60000",
             "VLLM_MAX_CONCURRENT_REQUESTS": "2",
+            "VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS": "750",
         }
     )
 
@@ -141,8 +143,27 @@ def test_current_runtime_variable_families_are_loaded() -> None:
     assert settings.kafka.process_retry_count == 5
     assert settings.kafka.retry_backoff_ms == 2500
     assert settings.vllm.url == "http://localhost:11434"
+    assert settings.vllm.embedding_url == "http://localhost:8001/v1"
+    assert settings.vllm.embedding_model == "nomic-embed-text:v1.5"
     assert settings.vllm.timeout_ms == 60_000
     assert settings.vllm.max_concurrent_requests == 2
+    assert settings.vllm.concurrency_acquire_timeout_ms == 750
+
+
+def test_agentic_limits_are_loaded_from_environment() -> None:
+    settings = load_settings(
+        {
+            "SILO_ENV": "test",
+            "DATABASE_URL": "postgresql://test-user:test-pass@localhost:5432/silo",
+            "AI_AGENT_MAX_ROUNDS": "3",
+            "AI_AGENT_MAX_TOOL_CALLS": "6",
+            "AI_AGENT_TOOL_TIMEOUT_MS": "4500",
+        }
+    )
+
+    assert settings.ai_agent_max_rounds == 3
+    assert settings.ai_agent_max_tool_calls == 6
+    assert settings.ai_agent_tool_timeout_ms == 4500
 
 
 def test_better_auth_secret_is_accepted_as_session_secret_during_coexistence() -> None:

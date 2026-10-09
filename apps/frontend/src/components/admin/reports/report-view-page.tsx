@@ -22,6 +22,36 @@ interface ReportFilters {
   endDate?: Date;
 }
 
+function getReportTitle(id: string): string {
+  switch (id) {
+    case "availability":
+      return "Disponibilidade por Produto";
+    case "problems":
+      return "Problemas Mais Frequentes";
+    case "projects":
+      return "Projetos e Atividades";
+    case "executive":
+      return "Resumo Executivo";
+    default:
+      return "Relatório";
+  }
+}
+
+function getReportDescription(id: string): string {
+  switch (id) {
+    case "availability":
+      return "Análise detalhada da disponibilidade de produtos no sistema";
+    case "problems":
+      return "Visão geral dos problemas mais frequentes e suas categorias";
+    case "projects":
+      return "Análise completa de projetos, atividades e progresso";
+    case "executive":
+      return "Resumo consolidado de produtos, problemas e projetos";
+    default:
+      return "Descrição do relatório";
+  }
+}
+
 // Interfaces específicas para cada tipo de relatório
 interface AvailabilityReportData {
   products: Array<{
@@ -358,35 +388,6 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
     setFilters(newFilters);
   };
 
-  const getReportTitle = (id: string): string => {
-    switch (id) {
-      case "availability":
-        return "Disponibilidade por Produto";
-      case "problems":
-        return "Problemas Mais Frequentes";
-      case "projects":
-        return "Projetos e Atividades";
-      case "executive":
-        return "Resumo Executivo";
-      default:
-        return "Relatório";
-    }
-  };
-
-  const getReportDescription = (id: string): string => {
-    switch (id) {
-      case "availability":
-        return "Análise detalhada da disponibilidade de produtos no sistema";
-      case "problems":
-        return "Visão geral dos problemas mais frequentes e suas categorias";
-      case "projects":
-        return "Análise completa de projetos, atividades e progresso";
-      case "executive":
-        return "Resumo consolidado de produtos, problemas e projetos";
-      default:
-        return "Descrição do relatório";
-    }
-  };
 
   if (loading) {
     return (

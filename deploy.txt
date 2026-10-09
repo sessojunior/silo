@@ -175,31 +175,42 @@
      API_PORT=4000                                  # [.env]
      SILO_HOST_PORT=80                              # [.env]
      AI_AGENT_MODE=deterministic                    # [.env]
+     AI_AGENT_MAX_ROUNDS=2                          # [.env] limite do Agentic RAG
+     AI_AGENT_MAX_TOOL_CALLS=4                      # [.env] limite de tools por pergunta
+     AI_AGENT_TOOL_TIMEOUT_MS=20000                 # [.env] timeout de cada tool
      LANGSMITH_TRACING=false                        # [.env] se true, exige LANGSMITH_TRACING_APPROVED=true
 
    IA (vLLM) e Kafka:
 
      SILO_IMAGE=ghcr.io/<org>/silo-api-python:<sha> # [prod] .env local usa silo-api-python:latest
-     SILO_VLLM_IMAGE=vllm/vllm-openai:v0.11.2       # [prod] GPU; .env local usa vllm-openai-cpu
+     SILO_VLLM_GPU_IMAGE=vllm/vllm-openai:v0.29.0   # [prod] imagem CUDA; independente do .env local CPU
      VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct          # [.env]
      VLLM_EMBEDDING_MODEL=BAAI/bge-base-en-v1.5     # [.env]
      VLLM_EMBEDDING_URL=http://vllm-embed:8000/v1   # [prod] compose injeta esta URL dentro do Docker
-     VLLM_GPU_MEM_UTIL=0.85                         # [.env]
+     SILO_VLLM_GPU_MEM_UTIL=0.70                    # [prod] chat; perfil GPU compartilhado
+     SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20              # [prod] embedding; perfil GPU compartilhado
+     SILO_VLLM_GPU_ID=0                              # [prod] GPU do chat
+     SILO_VLLM_EMBED_GPU_ID=0                        # [prod] 0 compartilhada; 1 separada
      VLLM_MAX_MODEL_LEN=16384                       # [.env]
+     VLLM_MAX_CONCURRENT_REQUESTS=4                 # [.env] slots por runtime
+     VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS=500        # [.env] espera máxima por slot
      HF_TOKEN=                                      # [.env] vazio; somente para modelos restritos
      KAFKA_REST_PROXY_URL=<url do kafka rest proxy> # [prod] OBRIGATÓRIA p/ worker; .env local usa http://localhost:8082
      KAFKA_REST_PROXY_AUTH=<token, se houver>       # [.env] vazio
      KAFKA_DATAFLOW_TOPIC_PREFIX=silo.dataflow.     # [.env]
      KAFKA_GROUP_ID=silo-consumer-group             # [.env]
-     KAFKA_TOPICS=<tópicos do fluxo de dados>       # [prod] .env local vazio
+     KAFKA_TOPIC=<um único tópico>                  # [prod] alternativa a KAFKA_TOPICS
+     KAFKA_TOPICS=<tópico1,tópico2>                 # [prod] alternativa; use para vários
 
    Integração (opcional):
 
      PRODUCT_FLOW_API_KEY=<chave, se houver>        # [.env] vazio
 
-   Em produção o worker exige KAFKA_REST_PROXY_URL (KAFKA_REST_PROXY_USE_MOCK_DATA
-   é false por padrão no compose de deploy; não há fallback de mock). Sem essa
-   variável, o worker não sobe.
+   Em produção o worker exige KAFKA_REST_PROXY_URL e pelo menos um tópico em
+   KAFKA_TOPIC ou KAFKA_TOPICS (KAFKA_REST_PROXY_USE_MOCK_DATA é false por padrão
+   no compose de deploy; não há fallback de mock). Se ambos forem definidos,
+   KAFKA_TOPIC tem precedência e KAFKA_TOPICS é ignorada. Sem URL ou sem tópico,
+   o worker não sobe; a API e as migrations não dependem de KAFKA_TOPICS.
 
    Referência do banco (valores de desenvolvimento do .env):
      - Em containers (docker compose): postgresql://silo:silo@db:5432/silo
@@ -211,18 +222,30 @@
 
  6.3 vLLM: GPU e CPU
 
-   Com GPU NVIDIA: instalar o NVIDIA Container Toolkit e drivers 525+, e
-   descomentar o bloco `deploy` do serviço vllm no docker-compose.deploy.yml.
+   Com GPU NVIDIA: instalar o NVIDIA Container Toolkit e drivers 525+. O
+   docker-compose.deploy.yml já contém as reservas NVIDIA; não é necessário
+   descomentar blocos manualmente. O deploy usa `SILO_VLLM_GPU_IMAGE`, separado
+   da variável CPU usada no desenvolvimento.
 
-   Em servidor SEM GPU (imagem vllm-openai-cpu): o compose de deploy passa
-   `--gpu-memory-utilization ${VLLM_GPU_MEM_UTIL:-0.85}`. No backend CPU esse
-   flag controla a fração de RAM reservada (apesar do nome). Com pouca memória
-   o vLLM falha ao iniciar com erro "Available memory ... less than desired CPU
-   memory utilization". Nesse caso, reduzir VLLM_GPU_MEM_UTIL no .env (ex.:
-   0.25 a 0.5) e garantir RAM suficiente para os DOIS modelos (chat e
-   embeddings) rodarem simultaneamente.
+   O perfil CPU é o docker-compose.yml. Para produção sem GPU, não use o
+   docker-compose.deploy.yml: suba o compose de desenvolvimento com uma imagem
+   CPU e ajuste VLLM_CPU_KVCACHE_SPACE conforme a RAM disponível.
 
- 6.4 Validar a configuração (não sobe nada)
+   6.4 Perfil de GPU e validar a configuração (não sobe nada)
+
+   O `docker-compose.yml` é o perfil CPU e não solicita GPU. O
+   `docker-compose.deploy.yml` é o perfil NVIDIA: por padrão, chat e embedding
+   compartilham a GPU 0. Para separar as cargas em duas GPUs, configure no `.env`:
+
+     SILO_VLLM_GPU_ID=0
+     SILO_VLLM_EMBED_GPU_ID=1
+
+   Os dois serviços usam reservas explícitas do NVIDIA Container Toolkit. Não
+   use a imagem CUDA no compose de desenvolvimento, nem a imagem CPU no deploy
+   GPU. Os valores 0.70/0.20 mantêm chat e embedding na mesma GPU sem reservar
+   85% duas vezes. Se usar GPUs separadas, defina também
+   `SILO_VLLM_GPU_MEM_UTIL=0.85` e `SILO_VLLM_EMBED_GPU_MEM_UTIL=0.85`. O servidor precisa
+   ter o Docker com suporte NVIDIA configurado.
 
      docker compose -f docker-compose.deploy.yml config
 
@@ -318,6 +341,7 @@
    [ ] Relatório PDF
    [ ] Assistente de IA respondendo (WebSocket/SSE)
    [ ] Busca semântica
+   [ ] Agentic RAG em grupo piloto, se `AI_AGENT_MODE=hybrid` estiver habilitado
    [ ] Fluxo de dados: offsets subindo e lag estável (worker)
    [ ] Página /admin/monitoring com produtos e radares
 
@@ -345,6 +369,12 @@
 
  Se o problema for exclusivamente do modo hybrid, voltar
  AI_AGENT_MODE=deterministic no .env e reiniciar a API.
+
+ O rollback recomendado do Agentic RAG é gradual: primeiro reduza a exposição
+ ao grupo piloto, depois defina `AI_AGENT_MODE=deterministic`, execute `up -d`
+ apenas para `api` e confirme `/health/live`, chat determinístico e geração de
+ PDF. Não faça downgrade de migration nem remova embeddings; eles continuam
+ compatíveis com o modo determinístico.
 
  Para cutover/rollback completo, usar scripts/deploy/cutover-runbook.mjs
  (preflight, rehearsal, cutover, rollback).

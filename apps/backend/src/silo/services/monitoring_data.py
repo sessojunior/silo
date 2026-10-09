@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from datetime import date, datetime
 from typing import Any, TypedDict
 
@@ -11,8 +11,9 @@ from sqlalchemy.engine import Connection, RowMapping
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
 from silo.domain.model_run_status import normalize_model_run_status
-from silo.domain.scheduling import SHIFT_CODES
 from silo.services.legacy_utils import normalize_turn_list, now_naive, optional_str
+
+SHIFT_CODES: tuple[str, ...] = ("0", "6", "12", "18")
 
 SEED_MONITORING_PRODUCTS: tuple[dict[str, Any], ...] = (
     {
@@ -602,7 +603,7 @@ def _status_progress(status: str) -> int:
     return STATUS_PROGRESS.get(status, 0)
 
 
-def _latest_activity_date(rows: Sequence[Mapping[object, object]]) -> str | None:
+def _latest_activity_date(rows: Sequence[RowMapping]) -> str | None:
     latest: date | None = None
     for row in rows:
         row_date = row.get("date")

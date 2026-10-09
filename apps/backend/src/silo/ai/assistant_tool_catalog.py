@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable, Mapping
+from copy import copy
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -88,6 +90,7 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
             runtime_context.connection,
             query=str(args["query"] or state.get("question") or ""),
             limit=int(args.get("limit") or 5),
+            embedding_provider=getattr(runtime_context, "embedding_provider", None),
         ),
     ),
     HybridToolSpec(
@@ -190,9 +193,46 @@ def execute_hybrid_tool(
         return spec, result
 
     with runtime_context.connection_factory() as connection:
-        scoped_context = replace(runtime_context, connection=connection)
+        scoped_context = _runtime_context_with_connection(runtime_context, connection)
         result = spec.executor(scoped_context, state, payload)
         return spec, result
+
+
+async def execute_hybrid_tool_async(
+    tool_name: str,
+    runtime_context: AgentRuntimeContext,
+    state: AgentState,
+    args: Mapping[str, Any],
+) -> tuple[HybridToolSpec, Any]:
+    """Execute a synchronous read tool without blocking the event loop.
+
+    The synchronous catalog remains available for deterministic callers. Hybrid
+    graph nodes must use this boundary because retrieval may perform embedding
+    I/O and database work, and its connection factory creates a thread-local
+    SQLAlchemy connection when available.
+    """
+    if runtime_context.connection_factory is None:
+        engine = getattr(runtime_context.connection, "engine", None)
+        connect = getattr(engine, "connect", None)
+        if callable(connect):
+            def _execute_with_engine() -> tuple[HybridToolSpec, Any]:
+                with connect() as connection:
+                    scoped_context = _runtime_context_with_connection(runtime_context, connection)
+                    return execute_hybrid_tool(tool_name, scoped_context, state, args)
+
+            return await asyncio.to_thread(_execute_with_engine)
+    return await asyncio.to_thread(execute_hybrid_tool, tool_name, runtime_context, state, args)
+
+
+def _runtime_context_with_connection(
+    runtime_context: AgentRuntimeContext, connection: Any
+) -> AgentRuntimeContext:
+    try:
+        return replace(runtime_context, connection=connection)
+    except TypeError:
+        scoped_context = copy(runtime_context)
+        scoped_context.connection = connection
+        return scoped_context
 
 
 def _optional_text(value: object | None) -> str | None:

@@ -11,6 +11,7 @@ from silo.services.pdf_artifacts import (
     PdfRenderer,
 )
 from silo.services.report_portal import generate_pdf
+from silo.storage.uploads import StoredUpload
 
 
 def test_generate_pdf_writes_allowlisted_upload(
@@ -69,3 +70,35 @@ def test_pdf_artifact_store_persists_bytes_to_reports_volume(
     assert artifact.file_path.exists()
     assert artifact.url.startswith("/api/upload/serve/reports/")
     assert artifact.byte_size == len(b"%PDF-1.4 test bytes%")
+
+
+def test_pdf_artifact_metadata_matches_bytes_after_persistence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SILO_ENV", "test")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://test-user:test-pass@localhost:5432/silo")
+    monkeypatch.setenv("UPLOADS_DIR", str(tmp_path / "uploads"))
+
+    persisted_bytes = b"%PDF-1.7 bytes actually persisted%"
+
+    def write_with_persisted_bytes(kind: str, filename: str, buffer: bytes) -> StoredUpload:
+        path = tmp_path / "uploads" / kind / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(persisted_bytes)
+        return StoredUpload(
+            filename=filename,
+            original_name=filename,
+            size=len(buffer),
+            url=f"/uploads/{kind}/{filename}",
+        )
+
+    monkeypatch.setattr(pdf_artifacts_module, "write_upload_bytes", write_with_persisted_bytes)
+
+    artifact = PdfArtifactStore().save(
+        report_type="executive",
+        pdf_bytes=b"%PDF-1.4 bytes before persistence%",
+    )
+
+    assert artifact.byte_size == len(persisted_bytes)
+    assert artifact.sha256 == pdf_artifacts_module.hashlib.sha256(persisted_bytes).hexdigest()

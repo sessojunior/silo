@@ -4,8 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "@silo/engine/format/toast";
 
 import { useUser } from "@/context/user-context";
-import { config } from "@/lib/config";
-
 import PhotoUploadLocal from "./photo-upload-local";
 
 vi.mock("next/image", () => ({
@@ -21,7 +19,8 @@ vi.mock("next/image", () => ({
     [key: string]: unknown;
   }) {
     const imageProps = rest as Record<string, unknown>;
-    return <img src={src} alt={alt} onError={onError} {...imageProps} />;
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={alt ?? ""} onError={onError} {...imageProps} />;
   },
 }));
 

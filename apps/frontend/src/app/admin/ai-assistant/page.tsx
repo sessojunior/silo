@@ -132,6 +132,7 @@ const buildChatMessage = (
 
 type AssistantMessageOptions = {
   assistantGeneration?: ChatMessage["assistantGeneration"];
+  assistantCitations?: ChatMessage["assistantCitations"];
   assistantVisualization?: ChatMessage["assistantVisualization"];
   assistantArtifacts?: ChatMessage["assistantArtifacts"];
   assistantThinking?: string | null;
@@ -150,6 +151,7 @@ const buildAssistantMessage = (
 ): ChatMessage => {
   const {
     assistantGeneration,
+    assistantCitations,
     assistantVisualization,
     assistantArtifacts,
     assistantThinking,
@@ -160,6 +162,7 @@ const buildAssistantMessage = (
   return {
     ...msg,
     assistantGeneration: assistantGeneration ?? null,
+    assistantCitations: assistantCitations ?? null,
     assistantVisualization: assistantVisualization ?? null,
     assistantArtifacts: assistantArtifacts ?? null,
     assistantThinking: assistantThinking?.trim() || null,
@@ -206,6 +209,7 @@ const mapThreadMessageToChatMessage = (
       message.content,
       {
         assistantGeneration: message.generation,
+        assistantCitations: message.citations,
         assistantVisualization: message.visualization,
         assistantArtifacts: message.artifacts,
         assistantThinking: message.thinking,
@@ -274,6 +278,10 @@ export default function AiAssistantPage() {
   const [isSending, setIsSending] = useState(false);
   const sendingStartTimeRef = useRef(0);
   const assistantRequestIdempotencyKeyRef = useRef<AssistantRequestIdempotencyState | null>(null);
+  const [retryableAssistantRequest, setRetryableAssistantRequest] = useState<{
+    threadId: string;
+    content: string;
+  } | null>(null);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [runtimeStatus, setRuntimeStatus] = useState<AiAssistantRuntimeStatusDto | null>(null);
   const [isLoadingRuntimeStatus, setIsLoadingRuntimeStatus] = useState(() => !smokeMode);
@@ -493,7 +501,7 @@ export default function AiAssistantPage() {
   );
 
   const handleAssistantMessage = useCallback(
-    async (messageText: string) => {
+    async (messageText: string, options?: { retry?: boolean }) => {
       const trimmedMessage = messageText.trim();
       if (!trimmedMessage || isSending || isLoadingUser || !currentUser) return;
 
@@ -522,20 +530,34 @@ export default function AiAssistantPage() {
         key: idempotencyKey,
       };
 
-      setMessagesByThread((current) => ({
-        ...current,
-        [threadId]: [...(current[threadId] ?? []), userMessage, assistantPlaceholder],
-      }));
+      if (!options?.retry) {
+        setRetryableAssistantRequest(null);
+      }
+      setMessagesByThread((current) => {
+        const existingMessages = current[threadId] ?? [];
+        const lastMessage = existingMessages.at(-1);
+        const retryBase =
+          options?.retry &&
+          lastMessage?.senderUserId === currentUserId &&
+          lastMessage.content === trimmedMessage
+            ? existingMessages.slice(0, -1)
+            : existingMessages;
+        return {
+          ...current,
+          [threadId]: [...retryBase, userMessage, assistantPlaceholder],
+        };
+      });
       setIsSending(true);
       sendingStartTimeRef.current = Date.now();
       let hasReceivedResult = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
       try {
         const apiUrl = config.getAssistantApiUrl("/api/admin/ai-assistant/messages/stream");
         const abortController = new AbortController();
 
         // Timeout de segurança: 5 minutos para o streaming completo
-        const timeoutId = setTimeout(() => abortController.abort(), 300_000);
+        timeoutId = setTimeout(() => abortController.abort(), 300_000);
 
         const response = await fetch(apiUrl, {
           method: "POST",
@@ -547,8 +569,6 @@ export default function AiAssistantPage() {
           body: JSON.stringify({ content: trimmedMessage, threadId }),
           signal: abortController.signal,
         });
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error("Erro ao conectar com o assistente.");
@@ -563,6 +583,7 @@ export default function AiAssistantPage() {
         const decoder = new TextDecoder();
         const parser = new AssistantSseStreamParser();
         let currentThinking = "";
+        let streamedContent = "";
         let legacyData: Partial<AiAssistantMessageResponseDto> | null = null;
 
         const updatePlaceholder = (
@@ -587,11 +608,13 @@ export default function AiAssistantPage() {
 
         const finalizeAssistantResult = (data: AiAssistantMessageResponseDto) => {
           hasReceivedResult = true;
+          setRetryableAssistantRequest(null);
           legacyData = null;
           const assistantMessage = buildAssistantMessage(
             buildAssistantMessageContent(data),
             {
               assistantGeneration: data.generation,
+              assistantCitations: data.citations,
               assistantVisualization: data.visualization,
               assistantArtifacts: data.artifacts,
               assistantThinking: data.thinking ?? currentThinking,
@@ -619,6 +642,10 @@ export default function AiAssistantPage() {
             case "thinking":
               currentThinking = action.content;
               updatePlaceholder(action.content);
+              return;
+            case "delta":
+              streamedContent += action.content;
+              updatePlaceholder(currentThinking, streamedContent);
               return;
             case "result":
               finalizeAssistantResult(action.data);
@@ -681,10 +708,14 @@ export default function AiAssistantPage() {
           ? "O assistente de IA não está disponível no momento. Tente novamente em instantes."
           : "Não foi possível consultar o assistente. Verifique sua conexão e tente novamente.";
         setAssistantError(errorMsg);
+        setRetryableAssistantRequest({ threadId, content: trimmedMessage });
 
         // Auto-limpa o erro após 8 segundos
         setTimeout(() => setAssistantError(null), 8000);
       } finally {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
         if (hasReceivedResult) {
           assistantRequestIdempotencyKeyRef.current = null;
         }
@@ -1065,6 +1096,18 @@ export default function AiAssistantPage() {
             <div className="flex items-center gap-2">
               <span className="icon-[lucide--alert-triangle] size-4 shrink-0 text-red-500" />
               <p className="flex-1">{assistantError}</p>
+              {retryableAssistantRequest && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAssistantError(null);
+                    void handleAssistantMessage(retryableAssistantRequest.content, { retry: true });
+                  }}
+                  className="shrink-0 font-medium text-red-700 underline hover:text-red-900 dark:text-red-300 dark:hover:text-red-100"
+                >
+                  Tentar novamente
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setAssistantError(null)}

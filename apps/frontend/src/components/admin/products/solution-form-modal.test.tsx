@@ -33,10 +33,11 @@ vi.mock("@/components/ui/label", () => ({
 vi.mock("@/components/ui/button", () => ({
   default: function MockButton({
     children,
-    style: _style,
     ...props
   }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
-    return <button {...props}>{children}</button>;
+    const { style, ...buttonProps } = props;
+    void style;
+    return <button {...buttonProps}>{children}</button>;
   },
 }));
 
@@ -64,7 +65,8 @@ vi.mock("@/components/ui/lightbox", () => ({
 
 vi.mock("next/image", () => ({
   default: function MockImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
-    return <img {...props} />;
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img alt={props.alt ?? ""} {...props} />;
   },
 }));
 

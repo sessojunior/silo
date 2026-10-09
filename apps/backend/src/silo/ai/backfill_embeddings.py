@@ -5,13 +5,19 @@ import asyncio
 import json
 import sys
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 
-from sqlalchemy import create_engine, delete, insert, select
+from sqlalchemy import Table, create_engine, delete, insert, select
 from sqlalchemy.engine import Connection
 
 from silo.ai.assistant_runtime import probe_ai_runtime
-from silo.ai.chunking import chunk_markdown
-from silo.ai.embeddings import generate_embedding, update_embedding_sql
+from silo.ai.chunking import TextChunk, chunk_markdown
+from silo.ai.embeddings import (
+    embedding_content_hash,
+    embedding_model_digest,
+    generate_embedding,
+    update_embedding_sql,
+)
 from silo.config import Settings, load_settings
 from silo.db.models import legacy_tables
 from silo.db.url import sqlalchemy_database_url
@@ -61,7 +67,8 @@ async def run_backfill(
         chat_model=settings.vllm.model,
         embedding_model=settings.vllm.embedding_model,
         chat_digest=probe.chat_digest,
-        embedding_digest=probe.embedding_digest,
+        embedding_digest=probe.embedding_digest
+        or embedding_model_digest(settings.vllm.embedding_model),
     )
     try:
         with engine.begin() as connection:
@@ -100,6 +107,9 @@ async def _run_backfill_with_connection(
         resume_after_id=resume_after_id,
         dry_run=dry_run,
         sleep_ms=sleep_ms,
+        embedding_model=summary.embedding_model,
+        embedding_digest=summary.embedding_digest
+        or embedding_model_digest(summary.embedding_model),
     )
     solutions_processed, solutions_updated = await _backfill_embeddings_for_table(
         connection,
@@ -110,17 +120,26 @@ async def _run_backfill_with_connection(
         resume_after_id=resume_after_id,
         dry_run=dry_run,
         sleep_ms=sleep_ms,
+        embedding_model=summary.embedding_model,
+        embedding_digest=summary.embedding_digest
+        or embedding_model_digest(summary.embedding_model),
     )
     manuals_processed, manual_chunks_written = await _backfill_manuals(
         connection,
         dry_run=dry_run,
         sleep_ms=sleep_ms,
         limit=limit,
+        embedding_model=summary.embedding_model,
+        embedding_digest=summary.embedding_digest
+        or embedding_model_digest(summary.embedding_model),
     )
     help_processed, help_updated = await _backfill_help(
         connection,
         dry_run=dry_run,
         help_char_limit=help_char_limit,
+        embedding_model=summary.embedding_model,
+        embedding_digest=summary.embedding_digest
+        or embedding_model_digest(summary.embedding_model),
     )
 
     return BackfillSummary(
@@ -151,14 +170,19 @@ async def _backfill_embeddings_for_table(
     resume_after_id: str | None,
     dry_run: bool,
     sleep_ms: int,
+    embedding_model: str,
+    embedding_digest: str,
 ) -> tuple[int, int]:
     table = legacy_tables[table_name]
+    has_metadata = _has_embedding_metadata(table)
     processed = 0
     updated = 0
     last_id = resume_after_id
 
     while True:
-        statement = select(table).where(table.c.embedding.is_(None)).order_by(table.c.id.asc())
+        statement = select(table).order_by(table.c.id.asc())
+        if not has_metadata:
+            statement = statement.where(table.c.embedding.is_(None))
         if last_id:
             statement = statement.where(table.c.id > last_id)
         if limit is not None:
@@ -180,6 +204,15 @@ async def _backfill_embeddings_for_table(
                 for column_name in text_columns
                 if isinstance((part := row_dict.get(column_name)), str) and part.strip()
             )
+            if has_metadata and _embedding_metadata_matches(
+                row_dict,
+                text,
+                embedding_model=embedding_model,
+                embedding_digest=embedding_digest,
+            ):
+                processed += 1
+                last_id = str(row_dict["id"])
+                continue
             embedding = await generate_embedding(text)
             _validate_embedding_vector(embedding)
             processed += 1
@@ -192,6 +225,14 @@ async def _backfill_embeddings_for_table(
                         str(row_dict["id"]),
                         embedding,
                     )
+                )
+                _persist_embedding_metadata(
+                    connection,
+                    table,
+                    str(row_dict["id"]),
+                    text,
+                    embedding_model=embedding_model,
+                    embedding_digest=embedding_digest,
                 )
                 updated += 1
 
@@ -207,6 +248,8 @@ async def _backfill_manuals(
     dry_run: bool,
     sleep_ms: int,
     limit: int | None,
+    embedding_model: str,
+    embedding_digest: str,
 ) -> tuple[int, int]:
     manual_table = legacy_tables["product_manual"]
     chunk_table = legacy_tables["product_manual_chunk"]
@@ -223,6 +266,15 @@ async def _backfill_manuals(
         manual = dict(row)
         processed += 1
         chunks = chunk_markdown(str(manual.get("description") or ""))
+        if _manual_chunks_are_current(
+            connection,
+            chunk_table,
+            str(manual["id"]),
+            chunks,
+            embedding_model=embedding_model,
+            embedding_digest=embedding_digest,
+        ):
+            continue
         if dry_run:
             chunks_written += len(chunks)
             continue
@@ -235,7 +287,8 @@ async def _backfill_manuals(
             _validate_embedding_vector(embedding)
             connection.execute(
                 insert(chunk_table).values(
-                    {
+                    _with_embedding_metadata(
+                        {
                         "id": f"{manual['id']}_chunk_{chunk.index}",
                         "product_manual_id": manual["id"],
                         "product_id": manual["product_id"],
@@ -243,7 +296,12 @@ async def _backfill_manuals(
                         "content": chunk.content,
                         "token_count": chunk.token_count,
                         "embedding": list(embedding),
-                    }
+                        },
+                        chunk.content,
+                        embedding_model=embedding_model,
+                        embedding_digest=embedding_digest,
+                        table=chunk_table,
+                    )
                 )
             )
             chunks_written += 1
@@ -259,6 +317,8 @@ async def _backfill_help(
     *,
     dry_run: bool,
     help_char_limit: int,
+    embedding_model: str,
+    embedding_digest: str,
 ) -> tuple[int, int]:
     help_table = legacy_tables["help"]
     row = (
@@ -274,20 +334,126 @@ async def _backfill_help(
         return 1, 0
 
     truncated = description[:help_char_limit]
+    if _embedding_metadata_matches(
+        dict(row),
+        truncated,
+        embedding_model=embedding_model,
+        embedding_digest=embedding_digest,
+    ):
+        return 1, 0
     embedding = await generate_embedding(truncated)
     _validate_embedding_vector(embedding)
     if dry_run:
         return 1, 0
 
-    connection.execute(
-        update_embedding_sql(
-            "help",
-            "embedding",
-            "system-help",
-            embedding,
-        )
+    connection.execute(update_embedding_sql("help", "embedding", "system-help", embedding))
+    _persist_embedding_metadata(
+        connection,
+        help_table,
+        "system-help",
+        truncated,
+        embedding_model=embedding_model,
+        embedding_digest=embedding_digest,
     )
     return 1, 1
+
+
+def _has_embedding_metadata(table: Table) -> bool:
+    return all(getattr(table.c, name, None) is not None for name in _EMBEDDING_METADATA_COLUMNS)
+
+
+_EMBEDDING_METADATA_COLUMNS = (
+    "embedding_model",
+    "embedding_digest",
+    "embedding_content_hash",
+    "embedding_updated_at",
+)
+
+
+def _embedding_metadata_matches(
+    row: dict[str, object],
+    text: str,
+    *,
+    embedding_model: str,
+    embedding_digest: str,
+) -> bool:
+    return bool(
+        row.get("embedding") is not None
+        and row.get("embedding_model") == embedding_model
+        and row.get("embedding_digest") == embedding_digest
+        and row.get("embedding_content_hash") == embedding_content_hash(text)
+    )
+
+
+def _with_embedding_metadata(
+    values: dict[str, object],
+    text: str,
+    *,
+    embedding_model: str,
+    embedding_digest: str,
+    table: Table,
+) -> dict[str, object]:
+    if _has_embedding_metadata(table):
+        values.update(
+            {
+                "embedding_model": embedding_model,
+                "embedding_digest": embedding_digest,
+                "embedding_content_hash": embedding_content_hash(text),
+                "embedding_updated_at": datetime.now(UTC).replace(tzinfo=None),
+            }
+        )
+    return values
+
+
+def _persist_embedding_metadata(
+    connection: Connection,
+    table: Table,
+    row_id: str,
+    text: str,
+    *,
+    embedding_model: str,
+    embedding_digest: str,
+) -> None:
+    values = _with_embedding_metadata(
+        {},
+        text,
+        embedding_model=embedding_model,
+        embedding_digest=embedding_digest,
+        table=table,
+    )
+    if values:
+        connection.execute(table.update().where(table.c.id == row_id).values(**values))
+
+
+def _manual_chunks_are_current(
+    connection: Connection,
+    chunk_table: Table,
+    manual_id: str,
+    chunks: list[TextChunk],
+    *,
+    embedding_model: str,
+    embedding_digest: str,
+) -> bool:
+    if not _has_embedding_metadata(chunk_table):
+        return False
+    rows = list(
+        connection.execute(
+            select(chunk_table).where(chunk_table.c.product_manual_id == manual_id)
+        ).mappings()
+    )
+    if len(rows) != len(chunks):
+        return False
+    by_index = {int(row["chunk_index"]): dict(row) for row in rows}
+    return all(
+        _embedding_metadata_matches(
+            by_index.get(int(chunk.index), {}),
+            str(chunk.content),
+            embedding_model=embedding_model,
+            embedding_digest=embedding_digest,
+        )
+        and by_index[int(chunk.index)].get("content") == chunk.content
+        for chunk in chunks
+    )
 
 
 def _validate_embedding_vector(embedding: tuple[float, ...]) -> None:

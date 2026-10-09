@@ -16,7 +16,7 @@ O SILO usa dois arquivos de orquestração:
 | Serviço | Imagem | Porta |
 |---|---|---|
 | `db` | `pgvector/pgvector:pg17` | 5432 |
-| `vllm` | `vllm/vllm-openai:v0.11.2` | 8000 |
+| `vllm` | `vllm/vllm-openai-cpu:v0.29.0-x86_64` | 8000 (CPU) |
 | `migrate` | `silo-api-python` (one-shot) | — |
 | `api` | `silo-api-python` | 4000 |
 | `worker` | `silo-worker-python` | — |
@@ -26,10 +26,11 @@ O SILO usa dois arquivos de orquestração:
 
 | Serviço | Imagem | Nota |
 |---|---|---|
-| `vllm` | `vllm/vllm-openai:v0.11.2` | GPU recomendada |
+| `vllm` | `${SILO_VLLM_GPU_IMAGE}` | GPU NVIDIA |
 | `migrate` | `${SILO_IMAGE}` (one-shot) | Imagem publicada |
 | `api` | `${SILO_IMAGE}` | Imagem publicada |
 | `worker` | `${SILO_IMAGE}` | Imagem publicada |
+| `embedding-backfill` | `${SILO_IMAGE}` | Reconcilia embeddings ausentes ou obsoletos |
 
 O banco de dados e o frontend em produção são gerenciados externamente (PostgreSQL gerenciado, Nginx/CDN).
 
@@ -41,15 +42,30 @@ docker compose up -d --build        # Subir stack
 docker compose down                 # Parar
 docker compose logs -f vllm api     # Logs
 
+# Verificação do assistente após atualizar a API
+docker compose ps
+curl http://localhost:4000/health/live
+curl http://localhost:4000/health/ready
+
 # Produção
 docker compose -f docker-compose.deploy.yml up -d
 docker compose -f docker-compose.deploy.yml down
 docker compose -f docker-compose.deploy.yml logs -f
 ```
 
+Depois de um deploy, valide também o fluxo do assistente conforme
+[`ai-assistant.md`](ai-assistant.md): login, envio sem `threadId`, eventos SSE
+`delta`/`scope`/`result`, ausência de erro e limpeza da thread temporária. O
+healthcheck da API confirma disponibilidade de configuração e banco, mas não
+substitui o smoke test do modelo vLLM.
+
 ### GPU (produção)
 
-Para ativar aceleração GPU no vLLM, descomente o bloco `deploy` no serviço `vllm`:
+O deploy já reserva GPU NVIDIA explicitamente. Por padrão, chat e embedding usam
+a GPU 0. Para separar em duas GPUs, defina `SILO_VLLM_GPU_ID=0` e
+`SILO_VLLM_EMBED_GPU_ID=1` no `.env`. O perfil compartilhado usa
+`SILO_VLLM_GPU_MEM_UTIL=0.70` e `SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20`; com GPUs
+separadas, ambos podem ser ajustados para `0.85`.
 
 ```yaml
 deploy:
@@ -57,7 +73,7 @@ deploy:
     reservations:
       devices:
         - driver: nvidia
-          count: 1
+          device_ids: ["${SILO_VLLM_GPU_ID:-0}"]
           capabilities: [gpu]
 ```
 
@@ -102,7 +118,8 @@ SESSION_SECRET=...
 
 # IA (vLLM)
 VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct
-VLLM_GPU_MEM_UTIL=0.85
+SILO_VLLM_GPU_MEM_UTIL=0.70
+SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20
 HF_TOKEN=              # Para modelos restritos
 
 # Deploy

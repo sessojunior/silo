@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { config } from "@/lib/config";
 
 interface AdminCheckResult {
@@ -18,11 +18,7 @@ export function useAdminCheck(): AdminCheckResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    checkAdminStatus();
-  }, []);
-
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -70,7 +66,11 @@ export function useAdminCheck(): AdminCheckResult {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void checkAdminStatus();
+  }, [checkAdminStatus]);
 
   return { isAdmin, loading, error };
 }

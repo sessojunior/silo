@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from fastapi.testclient import TestClient
 
 from silo.testing.fixture_api import (
@@ -45,6 +47,7 @@ def test_fixture_api_auth_sessions_and_profile_routes() -> None:
         assert client.get("/health").json()["service"] == "SILO Fixture API"
         assert client.get("/health/live").json() == {"ok": True}
         assert client.get("/health/ready").json() == {"ok": True}
+        assert client.get("/api/upload/serve/reports/availability-report.pdf").status_code == 401
 
         _login_admin(client)
 
@@ -274,6 +277,10 @@ def test_fixture_api_catalog_reports_chat_assistant_and_websocket_routes() -> No
         assert pdf_response.status_code == 200
         assert pdf_response.headers["content-type"] == "application/pdf"
         assert len(pdf_response.content) > 0
+        assert pdf_response.headers["content-length"] == str(len(pdf_response.content))
+        assert pdf_response.headers["x-content-sha256"] == hashlib.sha256(
+            pdf_response.content
+        ).hexdigest()
 
         image_response = client.get("/api/upload/serve/avatars/profile.png")
         assert image_response.status_code == 200

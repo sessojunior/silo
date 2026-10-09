@@ -7,6 +7,7 @@ export const AI_ASSISTANT_SCOPES = [
   "problems",
   "solutions",
   "projects",
+  "products",
   "general",
   "generate_pdf",
 ] as const;
@@ -56,6 +57,7 @@ export const AiAssistantThreadMessageSchema = z.object({
   senderName: z.string(),
   content: z.string(),
   thinking: z.string().optional(),
+  citations: z.array(z.lazy(() => AiAssistantCitationSchema)).default([]),
   generation: z.lazy(() => AiAssistantGenerationSchema).optional(),
   visualization: z.lazy(() => AiAssistantVisualizationSchema).optional(),
   artifacts: z.array(z.lazy(() => AiAssistantArtifactSchema)).optional().nullable(),
@@ -103,6 +105,10 @@ export type AiAssistantMessageRequestDto = z.infer<
 export const AiAssistantCitationSchema = z.object({
   label: z.string(),
   detail: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
+  sourceId: z.string().optional().nullable(),
+  snippet: z.string().optional().nullable(),
+  score: z.number().finite().optional().nullable(),
 });
 
 export type AiAssistantCitationDto = z.infer<typeof AiAssistantCitationSchema>;

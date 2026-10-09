@@ -9,14 +9,17 @@ import unicodedata
 from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta
 from difflib import SequenceMatcher
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote
 
-from sqlalchemy import and_, case, desc, func, or_, select
+from sqlalchemy import and_, case, desc, func, or_, select, text
 from sqlalchemy.engine import Connection
+from sqlalchemy.exc import SQLAlchemyError
 
 from silo.ai.embeddings import cosine_similarity, generate_embedding
+from silo.ai.ports import EmbeddingPort
 from silo.clock import SYSTEM_CLOCK
+from silo.date import TIMEZONE
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
 from silo.domain.model_run_status import (
@@ -71,6 +74,31 @@ def token_overlap_score(query: str, target: str) -> float:
     return min(1.0, matches / len(query_tokens))
 
 
+def _lexical_query_terms(query: str) -> tuple[str, ...]:
+    raw_terms = re.findall(r"[^\W_]{3,}", query.casefold(), flags=re.UNICODE)
+    normalized_terms = re.findall(r"[a-z0-9]{3,}", normalize_text(query))
+    return tuple(dict.fromkeys((*raw_terms, *normalized_terms)))[:12]
+
+
+def _lexical_fallback_order(
+    columns: Sequence[Any], query: str, updated_column: Any, id_column: Any
+) -> list[Any]:
+    terms = _lexical_query_terms(query)
+    order: list[Any] = []
+    if terms:
+        lexical_score = sum(
+            (
+                case((column.ilike(f"%{term}%"), 1), else_=0)
+                for term in terms
+                for column in columns
+            ),
+            0,
+        )
+        order.append(cast(Any, lexical_score).desc())
+    order.extend((updated_column.desc(), id_column))
+    return order
+
+
 def fuzzy_score(query: str, target: str) -> float:
     query_norm = normalize_text(query)
     target_norm = normalize_text(target)
@@ -100,7 +128,7 @@ def _date_range_bounds(
     if start and end:
         return date.fromisoformat(start), date.fromisoformat(end)
 
-    end_date = date.fromisoformat(end) if end else SYSTEM_CLOCK.now().astimezone(UTC).date()
+    end_date = date.fromisoformat(end) if end else SYSTEM_CLOCK.now().astimezone(TIMEZONE).date()
     start_date = end_date - timedelta(days=max(1, default_days) - 1)
     return start_date, end_date
 
@@ -413,7 +441,9 @@ def list_model_runs(
                     "isPending": semantics.is_pending,
                     "isTerminal": semantics.is_terminal,
                     "isAvailable": semantics.is_available,
-                    "countsForAvailabilityDenominator": semantics.counts_for_availability_denominator,
+                    "countsForAvailabilityDenominator": (
+                        semantics.counts_for_availability_denominator
+                    ),
                 },
                 "didExecute": semantics.is_execution,
             }
@@ -1084,100 +1114,40 @@ def search_silo_knowledge(
     *,
     query: str,
     limit: int = AI_RAG_LIMIT,
+    embedding_provider: EmbeddingPort | None = None,
 ) -> dict[str, Any]:
-    help_table = legacy_tables["help"]
-    manual_table = legacy_tables["product_manual_chunk"]
-    problem_table = legacy_tables["product_problem"]
-    solution_table = legacy_tables["product_solution"]
-    product_table = legacy_tables["product"]
-
     normalized_limit = max(1, min(int(limit or AI_RAG_LIMIT), AI_RAG_LIMIT))
-    query_embedding = _generate_query_embedding_for_search(query)
+    query_embedding = (
+        _generate_query_embedding_for_search(query)
+        if embedding_provider is None
+        else _generate_query_embedding_for_search(query, embedding_provider)
+    )
 
-    candidates: list[dict[str, Any]] = []
-
-    for row in connection.execute(select(help_table)).mappings().all():
-        candidates.extend(
-            _score_knowledge_candidate(
+    candidates = _search_pgvector_candidates(
+        connection,
+        query=query,
+        query_embedding=query_embedding,
+        limit=normalized_limit,
+    )
+    if candidates is None:
+        candidates = _search_knowledge_lexical_fallback(
+            connection,
+            query=query,
+            query_embedding=query_embedding,
+            limit=normalized_limit,
+        )
+    else:
+        # pgvector can only see rows that already have an embedding. Keep a
+        # bounded lexical pass so newly-created or failed-to-index records are
+        # still eligible until the reconciliation job catches up.
+        candidates = _merge_knowledge_candidates(
+            candidates,
+            _search_knowledge_lexical_fallback(
+                connection,
                 query=query,
                 query_embedding=query_embedding,
-                source="help",
-                identifier=str(row["id"]),
-                content=str(row.get("description") or ""),
-                embedding=row.get("embedding"),
-                created_at=row.get("created_at") or row.get("updated_at"),
-                extra={"title": row.get("title")},
-            )
-        )
-
-    for row in connection.execute(select(manual_table)).mappings().all():
-        candidates.extend(
-            _score_knowledge_candidate(
-                query=query,
-                query_embedding=query_embedding,
-                source="manual",
-                identifier=str(row["id"]),
-                content=str(row.get("content") or ""),
-                embedding=row.get("embedding"),
-                created_at=row.get("created_at") or row.get("updated_at"),
-                extra={"productId": row.get("product_id")},
-            )
-        )
-
-    for row in (
-        connection.execute(
-            select(
-                problem_table.c.id,
-                problem_table.c.title,
-                problem_table.c.description,
-                product_table.c.name.label("product_name"),
-                problem_table.c.created_at,
-                problem_table.c.updated_at,
-            ).select_from(
-                problem_table.join(product_table, product_table.c.id == problem_table.c.product_id)
-            )
-        )
-        .mappings()
-        .all()
-    ):
-        content = " ".join(
-            part for part in (row["title"], row["description"], row["product_name"]) if part
-        )
-        candidates.extend(
-            _score_knowledge_candidate(
-                query=query,
-                query_embedding=query_embedding,
-                source="problem",
-                identifier=str(row["id"]),
-                content=content,
-                embedding=None,
-                created_at=row.get("created_at") or row.get("updated_at"),
-                extra={"productName": row.get("product_name")},
-            )
-        )
-
-    for row in (
-        connection.execute(
-            select(
-                solution_table.c.id,
-                solution_table.c.description,
-                solution_table.c.created_at,
-                solution_table.c.updated_at,
-            )
-        )
-        .mappings()
-        .all()
-    ):
-        candidates.extend(
-            _score_knowledge_candidate(
-                query=query,
-                query_embedding=query_embedding,
-                source="solution",
-                identifier=str(row["id"]),
-                content=str(row["description"] or ""),
-                embedding=None,
-                created_at=row.get("created_at") or row.get("updated_at"),
-            )
+                limit=normalized_limit,
+            ),
         )
 
     filtered = [
@@ -1202,6 +1172,308 @@ def search_silo_knowledge(
         "sources": sorted({str(item["source"]) for item in items}),
         "items": items,
     }
+
+
+def _merge_knowledge_candidates(
+    vector_candidates: Sequence[dict[str, Any]],
+    lexical_candidates: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    for candidate in (*vector_candidates, *lexical_candidates):
+        key = (str(candidate.get("source") or ""), str(candidate.get("id") or ""))
+        if not key[0] or not key[1]:
+            continue
+        previous = merged.get(key)
+        if previous is None or float(candidate.get("similarity") or 0.0) > float(
+            previous.get("similarity") or 0.0
+        ):
+            merged[key] = candidate
+    return list(merged.values())
+
+
+def _search_knowledge_lexical_fallback(
+    connection: Connection,
+    *,
+    query: str,
+    query_embedding: tuple[float, ...],
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Search SQLite or a database where pgvector is unavailable.
+
+    This path is a compatibility fallback for development/test databases, not the
+    production PostgreSQL retrieval strategy. Each source is bounded before rows
+    are materialized so a degraded vector store cannot turn one request into a
+    full-table memory scan.
+    """
+    candidate_limit = max(1, min(int(limit), AI_RAG_LIMIT)) * AI_RAG_CANDIDATE_MULTIPLIER
+    help_table = legacy_tables["help"]
+    manual_table = legacy_tables["product_manual_chunk"]
+    problem_table = legacy_tables["product_problem"]
+    solution_table = legacy_tables["product_solution"]
+    product_table = legacy_tables["product"]
+    candidates: list[dict[str, Any]] = []
+
+    for row in connection.execute(
+        select(help_table)
+        .order_by(
+            *_lexical_fallback_order(
+                [help_table.c.description], query, help_table.c.updated_at, help_table.c.id
+            )
+        )
+        .limit(candidate_limit)
+    ).mappings().all():
+        candidates.extend(
+            _score_knowledge_candidate(
+                query=query,
+                query_embedding=query_embedding,
+                source="help",
+                identifier=str(row["id"]),
+                content=str(row.get("description") or ""),
+                embedding=row.get("embedding"),
+                created_at=row.get("created_at") or row.get("updated_at"),
+                extra={"title": row.get("title")},
+            )
+        )
+
+    for row in connection.execute(
+        select(manual_table)
+        .order_by(
+            *_lexical_fallback_order(
+                [manual_table.c.content], query, manual_table.c.updated_at, manual_table.c.id
+            )
+        )
+        .limit(candidate_limit)
+    ).mappings().all():
+        candidates.extend(
+            _score_knowledge_candidate(
+                query=query,
+                query_embedding=query_embedding,
+                source="manual",
+                identifier=str(row["id"]),
+                content=str(row.get("content") or ""),
+                embedding=row.get("embedding"),
+                created_at=row.get("created_at") or row.get("updated_at"),
+                extra={"productId": row.get("product_id")},
+            )
+        )
+
+    problem_columns = [
+        problem_table.c.id,
+        problem_table.c.title,
+        problem_table.c.description,
+        product_table.c.name.label("product_name"),
+        problem_table.c.created_at,
+        problem_table.c.updated_at,
+    ]
+    problem_embedding_column = getattr(problem_table.c, "embedding", None)
+    if problem_embedding_column is not None:
+        problem_columns.append(problem_embedding_column)
+    for row in (
+        connection.execute(
+            select(*problem_columns)
+            .select_from(
+                problem_table.join(product_table, product_table.c.id == problem_table.c.product_id)
+            )
+            .order_by(
+                *_lexical_fallback_order(
+                    [
+                        problem_table.c.title,
+                        problem_table.c.description,
+                        product_table.c.name,
+                    ],
+                    query,
+                    problem_table.c.updated_at,
+                    problem_table.c.id,
+                )
+            )
+            .limit(candidate_limit)
+        )
+        .mappings()
+        .all()
+    ):
+        content = " ".join(
+            part for part in (row["title"], row["description"], row["product_name"]) if part
+        )
+        candidates.extend(
+            _score_knowledge_candidate(
+                query=query,
+                query_embedding=query_embedding,
+                source="problem",
+                identifier=str(row["id"]),
+                content=content,
+                embedding=row.get("embedding"),
+                created_at=row.get("created_at") or row.get("updated_at"),
+                extra={"productName": row.get("product_name")},
+            )
+        )
+
+    solution_columns = [
+        solution_table.c.id,
+        solution_table.c.description,
+        solution_table.c.created_at,
+        solution_table.c.updated_at,
+    ]
+    solution_embedding_column = getattr(solution_table.c, "embedding", None)
+    if solution_embedding_column is not None:
+        solution_columns.append(solution_embedding_column)
+    for row in connection.execute(
+        select(*solution_columns)
+        .order_by(
+            *_lexical_fallback_order(
+                [solution_table.c.description],
+                query,
+                solution_table.c.updated_at,
+                solution_table.c.id,
+            )
+        )
+        .limit(candidate_limit)
+    ).mappings().all():
+        candidates.extend(
+            _score_knowledge_candidate(
+                query=query,
+                query_embedding=query_embedding,
+                source="solution",
+                identifier=str(row["id"]),
+                content=str(row["description"] or ""),
+                embedding=row.get("embedding"),
+                created_at=row.get("created_at") or row.get("updated_at"),
+            )
+        )
+    return candidates
+
+
+def _search_pgvector_candidates(
+    connection: Connection,
+    *,
+    query: str,
+    query_embedding: tuple[float, ...],
+    limit: int,
+) -> list[dict[str, Any]] | None:
+    """Retrieve top vector candidates per knowledge source using pgvector.
+
+    ``None`` means PostgreSQL/pgvector is not available and lets the caller use
+    the deterministic lexical fallback. Database errors are deliberately scoped
+    to this optional acceleration path so a missing extension does not break the
+    chat tool entirely.
+    """
+    if getattr(getattr(connection, "dialect", None), "name", None) != "postgresql":
+        return None
+    if not query_embedding or all(value == 0.0 for value in query_embedding):
+        return None
+
+    tables = legacy_tables
+    try:
+        table_names = {
+            key: _quote_pgvector_identifier(tables[key].name)
+            for key in (
+                "help",
+                "product_manual_chunk",
+                "product_problem",
+                "product_solution",
+                "product",
+            )
+        }
+        vector = "[" + ",".join(format(float(value), ".9g") for value in query_embedding) + "]"
+        candidate_limit = max(1, min(int(limit), AI_RAG_LIMIT)) * AI_RAG_CANDIDATE_MULTIPLIER
+        specs = (
+            (
+                "help",
+                f"""
+                SELECT id::text AS id, description AS content, NULL::text AS title,
+                       NULL::text AS product_name, created_at, updated_at,
+                       1 - (embedding <=> CAST(:query_embedding AS vector)) AS vector_similarity
+                FROM {table_names['help']}
+                WHERE embedding IS NOT NULL
+                ORDER BY embedding <=> CAST(:query_embedding AS vector)
+                LIMIT :candidate_limit
+                """,
+            ),
+            (
+                "manual",
+                f"""
+                SELECT id::text AS id, content, NULL::text AS title,
+                       NULL::text AS product_name, product_id::text AS product_id,
+                       created_at, updated_at,
+                       1 - (embedding <=> CAST(:query_embedding AS vector)) AS vector_similarity
+                FROM {table_names['product_manual_chunk']}
+                WHERE embedding IS NOT NULL
+                ORDER BY embedding <=> CAST(:query_embedding AS vector)
+                LIMIT :candidate_limit
+                """,
+            ),
+            (
+                "problem",
+                f"""
+                SELECT problem.id::text AS id, problem.title, problem.description,
+                       product.name AS product_name, problem.created_at, problem.updated_at,
+                       1 - (problem.embedding <=> CAST(:query_embedding AS vector))
+                       AS vector_similarity
+                FROM {table_names['product_problem']} AS problem
+                JOIN {table_names['product']} AS product ON product.id = problem.product_id
+                WHERE problem.embedding IS NOT NULL
+                ORDER BY problem.embedding <=> CAST(:query_embedding AS vector)
+                LIMIT :candidate_limit
+                """,
+            ),
+            (
+                "solution",
+                f"""
+                SELECT id::text AS id, description AS content, NULL::text AS title,
+                       NULL::text AS product_name, created_at, updated_at,
+                       1 - (embedding <=> CAST(:query_embedding AS vector)) AS vector_similarity
+                FROM {table_names['product_solution']}
+                WHERE embedding IS NOT NULL
+                ORDER BY embedding <=> CAST(:query_embedding AS vector)
+                LIMIT :candidate_limit
+                """,
+            ),
+        )
+        candidates: list[dict[str, Any]] = []
+        parameters = {"query_embedding": vector, "candidate_limit": candidate_limit}
+        for source, sql in specs:
+            rows = connection.execute(text(sql), parameters).mappings().all()
+            for row in rows:
+                if source == "problem":
+                    content = " ".join(
+                        part
+                        for part in (
+                            row.get("title"),
+                            row.get("description"),
+                            row.get("product_name"),
+                        )
+                        if part
+                    )
+                    extra: dict[str, Any] | None = {"productName": row.get("product_name")}
+                else:
+                    content = str(row.get("content") or row.get("description") or "")
+                    extra = (
+                        {"productId": row.get("product_id")}
+                        if source == "manual"
+                        else None
+                    )
+                candidates.extend(
+                    _score_knowledge_candidate(
+                        query=query,
+                        query_embedding=query_embedding,
+                        source=source,
+                        identifier=str(row["id"]),
+                        content=content,
+                        embedding=None,
+                        vector_similarity=row.get("vector_similarity"),
+                        created_at=row.get("created_at") or row.get("updated_at"),
+                        extra=extra,
+                    )
+                )
+        return candidates
+    except (SQLAlchemyError, KeyError, TypeError, ValueError):
+        return None
+
+
+def _quote_pgvector_identifier(value: object) -> str:
+    identifier = str(value)
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", identifier):
+        raise ValueError("Identificador de tabela inválido para busca vetorial.")
+    return f'"{identifier}"'
 
 
 def build_chart_spec(
@@ -1238,7 +1510,9 @@ def build_chart_spec(
         series: list[dict[str, Any]] = []
         for index, series_item in enumerate(dataset["series"][:6]):
             values = [_coerce_chart_number(value) for value in series_item.get("values", [])][:500]
-            if len(values) != len(categories):
+            if len(values) < len(categories):
+                values.extend([0.0] * (len(categories) - len(values)))
+            else:
                 values = values[: len(categories)]
             series_unit = _optional_text(series_item.get("unit"))
             if dataset_unit is None and series_unit is not None:
@@ -1337,14 +1611,20 @@ def build_mermaid_diagram(
         lines = ["graph TD", "  start[Entrada] --> projects[Projetos]"]
         for index, project in enumerate(projects, start=1):
             project_id = f"p{index}"
+            project_label = _escape_mermaid(
+                project.get("name") or project.get("title") or project_id
+            )
             lines.append(
-                f'  projects --> {project_id}["{_escape_mermaid(project.get("name") or project.get("title") or project_id)}"]'
+                f'  projects --> {project_id}["{project_label}"]'
             )
             tasks = list(project.get("tasks", []))[:5]
             for task_index, task in enumerate(tasks, start=1):
                 task_id = f"{project_id}_t{task_index}"
+                task_label = _escape_mermaid(
+                    task.get("name") or task.get("title") or task_id
+                )
                 lines.append(
-                    f'  {project_id} --> {task_id}["{_escape_mermaid(task.get("name") or task.get("title") or task_id)}"]'
+                    f'  {project_id} --> {task_id}["{task_label}"]'
                 )
         diagram = "\n".join(lines)
     elif template_id == "run_status_flow":
@@ -1363,8 +1643,11 @@ def build_mermaid_diagram(
         categories = list(dataset.get("categories", []))[:8]
         lines = ["graph TD", "  start[Problemas] --> root[Categorias]"]
         for index, category in enumerate(categories, start=1):
+            category_label = _escape_mermaid(
+                category.get("name") or category.get("title") or f"C{index}"
+            )
             lines.append(
-                f'  root --> c{index}["{_escape_mermaid(category.get("name") or category.get("title") or f"C{index}")}"]'
+                f'  root --> c{index}["{category_label}"]'
             )
         diagram = "\n".join(lines)
     else:
@@ -1380,14 +1663,17 @@ def build_mermaid_diagram(
 def render_summary_image(*, title: str, lines: Sequence[str]) -> dict[str, Any]:
     escaped_title = _escape_svg(title)
     body_lines = "".join(
-        f'<text x="24" y="{96 + index * 28}" font-family="Inter, Arial, sans-serif" font-size="20" fill="#334155">{_escape_svg(line)}</text>'
+        f'<text x="24" y="{96 + index * 28}" '
+        f'font-family="Inter, Arial, sans-serif" font-size="20" fill="#334155">'
+        f'{_escape_svg(line)}</text>'
         for index, line in enumerate(lines[:10])
     )
     svg = (
         '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">'
         '<rect width="1280" height="720" fill="#0f172a"/>'
         '<rect x="24" y="24" width="1232" height="672" rx="28" fill="#f8fafc"/>'
-        f'<text x="24" y="72" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="700" fill="#0f172a">{escaped_title}</text>'
+        f'<text x="24" y="72" font-family="Inter, Arial, sans-serif" '
+        f'font-size="32" font-weight="700" fill="#0f172a">{escaped_title}</text>'
         f"{body_lines}"
         "</svg>"
     )
@@ -1489,13 +1775,17 @@ def _count_solutions_by_problem(
     return counts
 
 
-def _generate_query_embedding_for_search(query: str) -> tuple[float, ...]:
+def _generate_query_embedding_for_search(
+    query: str, embedding_provider: EmbeddingPort | None = None
+) -> tuple[float, ...]:
     key = query.strip()
     if not key:
         return tuple(0.0 for _ in range(768))
     try:
         asyncio.get_running_loop()
     except RuntimeError:
+        if embedding_provider is not None:
+            return asyncio.run(embedding_provider.embed(key))
         return asyncio.run(generate_embedding(key))
     # Quando já existe um loop ativo, não é seguro bloquear com asyncio.run.
     # Nessa situação a busca continua com similaridade textual determinística.
@@ -1511,6 +1801,7 @@ def _score_knowledge_candidate(
     content: str,
     embedding: object | None,
     created_at: object | None,
+    vector_similarity: object | None = None,
     extra: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     cleaned_content = content.strip()
@@ -1520,11 +1811,14 @@ def _score_knowledge_candidate(
     content_similarity = max(
         token_overlap_score(query, cleaned_content), fuzzy_score(query, cleaned_content)
     )
-    vector_similarity = _coerce_embedding_similarity(query_embedding, embedding)
-    base_similarity = (0.6 * vector_similarity) + (0.4 * content_similarity)
+    if vector_similarity is None:
+        vector_similarity_value = _coerce_embedding_similarity(query_embedding, embedding)
+    else:
+        vector_similarity_value = _coerce_vector_similarity(vector_similarity)
+    base_similarity = (0.6 * vector_similarity_value) + (0.4 * content_similarity)
     recency_score = _score_recency(created_at)
     reranked_similarity = (
-        (0.5 * vector_similarity) + (0.3 * content_similarity) + (0.2 * recency_score)
+        (0.5 * vector_similarity_value) + (0.3 * content_similarity) + (0.2 * recency_score)
     )
     truncated_content = cleaned_content[:AI_RAG_CONTEXT_LIMIT]
     payload: dict[str, Any] = {
@@ -1535,7 +1829,7 @@ def _score_knowledge_candidate(
         "similarity": reranked_similarity,
         "baseSimilarity": base_similarity,
         "contentSimilarity": content_similarity,
-        "vectorSimilarity": vector_similarity,
+        "vectorSimilarity": vector_similarity_value,
         "recencyScore": recency_score,
         "truncated": len(cleaned_content) > AI_RAG_CONTEXT_LIMIT,
     }
@@ -1558,6 +1852,16 @@ def _coerce_embedding_similarity(
     if any(not math.isfinite(value) for value in values):
         return 0.0
     return cosine_similarity(list(query_embedding), values)
+
+
+def _coerce_vector_similarity(value: object) -> float:
+    try:
+        similarity = float(str(value))
+    except (TypeError, ValueError):
+        return 0.0
+    if not math.isfinite(similarity):
+        return 0.0
+    return similarity
 
 
 def _score_recency(value: object | None) -> float:

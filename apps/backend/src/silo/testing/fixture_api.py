@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import io
 import json
+import math
 import re
 import uuid
 from collections.abc import AsyncIterator
@@ -151,6 +152,22 @@ def _make_pdf_bytes(title: str, lines: list[str]) -> bytes:
 
 def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _fixture_embedding(value: str) -> list[float]:
+    digest = hashlib.sha256(value.casefold().encode("utf-8")).digest()
+    return [((byte / 255.0) * 2.0) - 1.0 for byte in digest[:8]]
+
+
+def _cosine_similarity(left: list[float], right: list[float]) -> float:
+    if len(left) != len(right) or not left:
+        return 0.0
+    numerator = sum(a * b for a, b in zip(left, right, strict=True))
+    left_norm = math.sqrt(sum(value * value for value in left))
+    right_norm = math.sqrt(sum(value * value for value in right))
+    if left_norm == 0 or right_norm == 0:
+        return 0.0
+    return max(0.0, min(1.0, (numerator / (left_norm * right_norm) + 1.0) / 2.0))
 
 
 def _record_to_cookie_header(token: str) -> str:
@@ -326,6 +343,7 @@ class AssistantMessageRecord:
     content: str
     created_at: datetime
     thinking: str | None = None
+    citations: list[dict[str, Any]] | None = None
     generation: dict[str, Any] | None = None
     visualization: dict[str, Any] | None = None
     artifacts: list[dict[str, Any]] | None = None
@@ -342,6 +360,8 @@ class AssistantMessageRecord:
         }
         if self.thinking is not None:
             payload["thinking"] = self.thinking
+        if self.citations is not None:
+            payload["citations"] = self.citations
         if self.generation is not None:
             payload["generation"] = self.generation
         if self.visualization is not None:
@@ -366,6 +386,58 @@ class FixtureState:
             ],
         )
         self.pdf_sha256 = _sha256_hex(self.pdf_bytes)
+        self.upload_assets: dict[tuple[str, str], dict[str, Any]] = {}
+        for filename in (
+            "availability-report.pdf",
+            "problems-report.pdf",
+            "projects-report.pdf",
+            "executive-report.pdf",
+        ):
+            self.upload_assets[("reports", filename)] = {
+                "filename": filename,
+                "bytes": self.pdf_bytes,
+                "sha256": self.pdf_sha256,
+                "byteSize": len(self.pdf_bytes),
+            }
+        legacy_pdf = _make_pdf_bytes("Legacy Node PDF", ["PDF legado do fluxo Node."])
+        self.upload_assets[("reports", "ai-node-legacy.pdf")] = {
+            "filename": "ai-node-legacy.pdf",
+            "bytes": legacy_pdf,
+            "sha256": _sha256_hex(legacy_pdf),
+            "byteSize": len(legacy_pdf),
+        }
+        self.knowledge_sources: list[dict[str, Any]] = [
+            {
+                "source": "reports",
+                "sourceId": "availability-report",
+                "scope": "reports",
+                "title": "Relatório de disponibilidade",
+                "text": "A disponibilidade dos produtos é consolidada por período e unidade.",
+            },
+            {
+                "source": "manual",
+                "sourceId": "manual-models",
+                "scope": "models",
+                "title": "Manual de modelos",
+                "text": "Os modelos ativos e seus parâmetros são mantidos no manual operacional.",
+            },
+            {
+                "source": "projects",
+                "sourceId": "project-flow",
+                "scope": "projects",
+                "title": "Fluxo de projetos",
+                "text": "Projetos avançam por entrada, validação, execução e fallback controlado.",
+            },
+            {
+                "source": "manual",
+                "sourceId": "manual-visual-summary",
+                "scope": "reports",
+                "title": "Manual do resumo visual",
+                "text": "O resumo visual apresenta indicadores do SILO em imagem e gráfico.",
+            },
+        ]
+        for source in self.knowledge_sources:
+            source["embedding"] = _fixture_embedding(str(source["text"]))
 
         self.users_by_email: dict[str, AuthUserRecord] = {
             "admin@inpe.br": AuthUserRecord(
@@ -1295,7 +1367,9 @@ class FixtureState:
         return thread, [message.to_dto() for message in messages]
 
     def _build_pdf_asset(self, label: str, lines: list[str]) -> dict[str, Any]:
-        return _build_pdf_asset(label, lines)
+        asset = _build_pdf_asset(label, lines)
+        self.upload_assets[("reports", str(asset["filename"]))] = asset
+        return asset
 
     def assistant_response_for_prompt(self, prompt: str, thread_id: str) -> dict[str, Any]:
         normalized = prompt.strip().lower()
@@ -1306,11 +1380,17 @@ class FixtureState:
                 "thread": self.assistant_threads[thread_id].to_summary()
                 if thread_id in self.assistant_threads
                 else None,
-                "messageContent": "Não foi possível gerar o arquivo desta vez, mas o texto da resposta foi preservado.",
+                "messageContent": (
+                    "Não foi possível gerar o arquivo desta vez, mas o texto da resposta "
+                    "foi preservado."
+                ),
                 "scope": "reports",
                 "isInScope": True,
                 "refusalReason": None,
-                "answer": "Não foi possível gerar o arquivo desta vez, mas o texto da resposta foi preservado.",
+                "answer": (
+                    "Não foi possível gerar o arquivo desta vez, mas o texto da resposta "
+                    "foi preservado."
+                ),
                 "thinking": "Validando o fluxo de artefatos.",
                 "suggestedQuestions": [
                     "Quer que eu tente novamente?",
@@ -1371,6 +1451,7 @@ class FixtureState:
     def _assistant_base_payload(
         self, thread_id: str, prompt: str, scope: str = "reports"
     ) -> dict[str, Any]:
+        citations, context_summary = self._retrieve_hybrid_citations(prompt, scope)
         return {
             "threadId": thread_id,
             "thread": self._assistant_thread_summary(thread_id, prompt),
@@ -1384,7 +1465,7 @@ class FixtureState:
                 "Quer ver mais detalhes?",
                 "Deseja comparar com o período anterior?",
             ],
-            "citations": [{"label": "Dados do SILO", "detail": "Fixture e2e"}],
+            "citations": citations,
             "generation": {
                 "provider": "vllm",
                 "model": "fixture-model",
@@ -1394,8 +1475,44 @@ class FixtureState:
                 "thinkingTimeMs": 12,
                 "errorMessage": None,
             },
-            "contextSummary": "fixture assistant response",
+            "contextSummary": context_summary,
         }
+
+    def _retrieve_hybrid_citations(
+        self, prompt: str, scope: str
+    ) -> tuple[list[dict[str, object]], str]:
+        prompt_terms = set(re.findall(r"[a-z0-9À-ÿ]+", prompt.casefold()))
+        query_embedding = _fixture_embedding(prompt)
+        candidates: list[tuple[float, dict[str, Any]]] = []
+        for source in self.knowledge_sources:
+            source_scope = str(source.get("scope") or "general")
+            if source_scope not in {scope, "general"} and scope != "general":
+                continue
+            source_terms = set(
+                re.findall(r"[a-z0-9À-ÿ]+", str(source.get("text") or "").casefold())
+            )
+            lexical_score = len(prompt_terms & source_terms) / max(len(prompt_terms), 1)
+            vector_score = _cosine_similarity(
+                query_embedding, list(source.get("embedding") or [])
+            )
+            score = round(min(0.99, (lexical_score * 0.65) + (vector_score * 0.35)), 4)
+            candidates.append((score, source))
+
+        candidates.sort(key=lambda item: (-item[0], str(item[1].get("sourceId") or "")))
+        selected = candidates[:2]
+        citations = [
+            {
+                "label": str(source["title"]),
+                "detail": f"Recuperação híbrida para o escopo {scope}",
+                "source": str(source["source"]),
+                "sourceId": str(source["sourceId"]),
+                "snippet": str(source["text"]),
+                "score": score,
+            }
+            for score, source in selected
+        ]
+        source_ids = ",".join(str(source["sourceId"]) for _, source in selected)
+        return citations, f"agentic hybrid retrieval (lexical+embedding); sources={source_ids}"
 
     def _assistant_response_text(self, thread_id: str, prompt: str) -> dict[str, Any]:
         payload = self._assistant_base_payload(thread_id, prompt, "general")
@@ -1441,7 +1558,10 @@ class FixtureState:
         payload["messageContent"] = payload["answer"]
         payload["visualization"] = {
             "kind": "mermaid",
-            "diagram": "flowchart LR\nA[Entrada] --> B{Validação}\nB -->|ok| C[Saída]\nB -->|erro| D[Fallback]",
+            "diagram": (
+                "flowchart LR\nA[Entrada] --> B{Validação}\nB -->|ok| C[Saída]\n"
+                "B -->|erro| D[Fallback]"
+            ),
             "title": "Fluxo de validação",
             "caption": "Teste do renderer em securityLevel strict.",
         }
@@ -1544,6 +1664,7 @@ class FixtureState:
             content=response_payload.get("messageContent") or response_payload.get("answer") or "",
             created_at=now,
             thinking=response_payload.get("thinking"),
+            citations=response_payload.get("citations"),
             generation=response_payload.get("generation"),
             visualization=response_payload.get("visualization"),
             artifacts=response_payload.get("artifacts"),
@@ -1719,17 +1840,38 @@ def _build_chat_sidebar_payload(user: AuthUserRecord) -> dict[str, Any]:
     return {"groups": groups, "users": users, "totalUnread": 0}
 
 
-def _build_upload_response(kind: str, filename: str) -> Response:
+def _build_upload_response(
+    state_or_kind: FixtureState | str,
+    kind_or_filename: str,
+    filename: str | None = None,
+) -> Response:
+    if filename is None:
+        fixture_state = state
+        kind = str(state_or_kind)
+        filename = kind_or_filename
+    else:
+        fixture_state = cast(FixtureState, state_or_kind)
+        kind = kind_or_filename
+    if not isinstance(fixture_state, FixtureState):
+        raise TypeError("Fixture state invÃ¡lido.")
     lower = filename.lower()
     if lower.endswith(".pdf"):
-        if "ai-node-legacy" in lower:
+        asset = fixture_state.upload_assets.get((kind, filename))
+        if asset is not None:
+            pdf_bytes = bytes(asset["bytes"])
+        elif "ai-node-legacy" in lower:
             pdf_bytes = _make_pdf_bytes("Legacy Node PDF", ["PDF legado do fluxo Node."])
         else:
             pdf_bytes = _make_pdf_bytes("SILO PDF", ["PDF usado para relatórios e assistente."])
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
-            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+            headers={
+                "Cache-Control": "private, no-store",
+                "Content-Length": str(len(pdf_bytes)),
+                "X-Content-SHA256": _sha256_hex(pdf_bytes),
+                "X-Content-Type-Options": "nosniff",
+            },
         )
 
     png_bytes = state.png_bytes
@@ -1738,7 +1880,11 @@ def _build_upload_response(kind: str, filename: str) -> Response:
     return Response(
         content=png_bytes,
         media_type=_content_type_for_filename(filename),
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        headers={
+            "Cache-Control": "private, no-store",
+            "Content-Length": str(len(png_bytes)),
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 
@@ -2506,7 +2652,10 @@ async def api_router(path: str, request: Request) -> Response:
     if api_path == "/api/admin/ai-assistant/examples" and method == "GET":
         return _success(
             {
-                "guidance": "Pergunte sobre modelos, pendências, relatórios, problemas, soluções ou projetos.",
+                "guidance": (
+                    "Pergunte sobre modelos, pendências, relatórios, problemas, "
+                    "soluções ou projetos."
+                ),
                 "scopePolicy": "Responda de forma grounded.",
                 "examples": [
                     {
@@ -2647,13 +2796,15 @@ async def api_router(path: str, request: Request) -> Response:
                     "thread": response_payload.get("thread"),
                 }
                 yield b'event: connected\ndata: {"status":"processing"}\n\n'
-                yield f"event: data\ndata: {json.dumps(legacy_payload, ensure_ascii=False)}\n\n".encode()
+                event_data = json.dumps(legacy_payload, ensure_ascii=False)
+                yield f"event: data\ndata: {event_data}\n\n".encode()
                 yield b"event: complete\ndata: {}\n\n"
                 return
 
             yield b'event: connected\ndata: {"status":"processing"}\n\n'
             yield 'event: thinking\ndata: {"content":"Processando solicitação"}\n\n'.encode()
-            yield f"event: result\ndata: {json.dumps(response_payload, ensure_ascii=False)}\n\n".encode()
+            result_data = json.dumps(response_payload, ensure_ascii=False)
+            yield f"event: result\ndata: {result_data}\n\n".encode()
 
         return StreamingResponse(
             stream(),
@@ -2672,7 +2823,9 @@ async def api_router(path: str, request: Request) -> Response:
         filename = parts[5]
         if not _is_safe_filename(filename):
             return _error("Arquivo não encontrado.", status=404)
-        return _build_upload_response(kind, filename)
+        if user is None:
+            return _error("UsuÃ¡rio nÃ£o autenticado.", status=401)
+        return _build_upload_response(state, kind, filename)
 
     if api_path.startswith("/api/upload/") and method == "POST":
         return _success(

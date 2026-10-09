@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Offcanvas from "@/components/ui/offcanvas";
 import Button from "@/components/ui/button";
 import Dialog from "@/components/ui/dialog";
@@ -36,14 +36,7 @@ export default function IncidentManagementOffcanvas({
   );
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Carregar incidentes quando o offcanvas abre
-  useEffect(() => {
-    if (open) {
-      loadIncidents();
-    }
-  }, [open]);
-
-  const loadIncidents = async () => {
+  const loadIncidents = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(config.getApiUrl("/api/admin/incidents"));
@@ -63,7 +56,14 @@ export default function IncidentManagementOffcanvas({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Carregar incidentes quando o offcanvas abre
+  useEffect(() => {
+    if (open) {
+      void loadIncidents();
+    }
+  }, [loadIncidents, open]);
 
   const handleCreateIncident = () => {
     setEditingIncident(null);

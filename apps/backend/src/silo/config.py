@@ -8,7 +8,7 @@ from ipaddress import ip_network
 from pathlib import Path
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, ValidationError
 
 
 def _load_dotenv() -> None:
@@ -116,6 +116,7 @@ class VLLMSettings(BaseModel):
     embedding_url: str = ""
     timeout_ms: int = 180_000
     max_concurrent_requests: int = 4
+    concurrency_acquire_timeout_ms: int = 500
 
 
 class AiAgentMode(StrEnum):
@@ -147,6 +148,9 @@ class Settings(BaseModel):
     langsmith_tracing: bool = False
     langsmith_tracing_approved: bool = False
     ai_agent_mode: AiAgentMode = AiAgentMode.DETERMINISTIC
+    ai_agent_max_rounds: int = Field(default=2, ge=1, le=8)
+    ai_agent_max_tool_calls: int = Field(default=4, ge=1, le=16)
+    ai_agent_tool_timeout_ms: int = Field(default=20_000, ge=100, le=120_000)
     smtp: SmtpSettings
     google: GoogleSettings
     kafka: KafkaSettings
@@ -254,6 +258,15 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
         "langsmith_tracing": langsmith_tracing,
         "langsmith_tracing_approved": langsmith_tracing_approved,
         "ai_agent_mode": ai_agent_mode,
+        "ai_agent_max_rounds": _parse_int(
+            environ, ("AI_AGENT_MAX_ROUNDS",), 2, minimum=1, maximum=8
+        ),
+        "ai_agent_max_tool_calls": _parse_int(
+            environ, ("AI_AGENT_MAX_TOOL_CALLS",), 4, minimum=1, maximum=16
+        ),
+        "ai_agent_tool_timeout_ms": _parse_int(
+            environ, ("AI_AGENT_TOOL_TIMEOUT_MS",), 20_000, minimum=100, maximum=120_000
+        ),
         "smtp": {
             "host": _first_non_empty(environ, ("SMTP_HOST",)),
             "port": _parse_int(environ, ("SMTP_PORT",), 587, minimum=1, maximum=65_535),
@@ -319,6 +332,13 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
                 ("VLLM_MAX_CONCURRENT_REQUESTS",),
                 4,
                 minimum=1,
+            ),
+            "concurrency_acquire_timeout_ms": _parse_int(
+                environ,
+                ("VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS",),
+                500,
+                minimum=1,
+                maximum=120_000,
             ),
         },
     }

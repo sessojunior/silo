@@ -310,7 +310,7 @@ async def patch_project_activity_tasks(
         db, projectId, activityId, current_user.id, before, after
     )
     if is_service_error(result):
-        status = int(result.get("status") or 400)
+        status = int(str(result.get("status") or 400))
         if status == 409:
             conflict_tasks = []
             data = result.get("data")

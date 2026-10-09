@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.formparsers import MultiPartException
@@ -30,6 +33,11 @@ KIND_ALIASES: dict[str, str] = {
     "problem": "problems",
     "solution": "solutions",
 }
+
+
+def _sha256_file(file_path: Path) -> str:
+    with file_path.open("rb") as file_handle:
+        return hashlib.file_digest(file_handle, "sha256").hexdigest()
 
 
 def _normalize_kind(kind: str) -> str:
@@ -98,7 +106,12 @@ async def serve_upload(
     return FileResponse(
         file_path,
         media_type=get_content_type_from_filename(filename),
-        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+        headers={
+            "Cache-Control": "private, no-store",
+            "Content-Length": str(file_path.stat().st_size),
+            "X-Content-SHA256": _sha256_file(file_path),
+            "X-Content-Type-Options": "nosniff",
+        },
         filename=filename,
     )
 

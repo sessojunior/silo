@@ -65,6 +65,8 @@ def test_fastapi_route_surface_matches_frontend_gateway_contract(
         "/api/ai-assistant/status",
         "/api/ai-assistant/messages",
         "/api/ai-assistant/messages/stream",
+        "/api/internal/ai/metrics",
+        "/api/internal/ai/metrics/prometheus",
         "/api/chat/messages",
         "/api/chat/messages/count",
         "/api/chat/messages/read",

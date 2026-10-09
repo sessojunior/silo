@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy import and_, select
 from sqlalchemy.engine import Connection
+from sqlalchemy.sql.elements import ColumnElement
 
 from silo.api.dependencies import get_db, require_permission
 from silo.api.responses import ApiResponse, build_success_payload
@@ -93,7 +94,7 @@ async def delete_contact(
 def _list_contacts(db: Connection, *, search: str | None, status: str | None) -> dict[str, object]:
     contact_table = legacy_tables["contact"]
 
-    conditions = []
+    conditions: list[ColumnElement[bool]] = []
     if search:
         pattern = f"%{search.strip()}%"
         conditions.append(

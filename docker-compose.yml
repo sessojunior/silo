@@ -24,10 +24,8 @@ services:
     restart: unless-stopped
 
   vllm:
-    # Imagem CPU oficial: roda em qualquer maquina, sem GPU (mais lento).
-    # Para GPU NVIDIA, defina no .env a imagem vLLM 0.29.0 ou superior.
-    # e descomente o bloco `deploy` abaixo.
-    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}
+    # Perfil CPU: roda em qualquer maquina, sem GPU (mais lento).
+    image: ${SILO_VLLM_CPU_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}
     container_name: silo-vllm
     networks:
       - inference
@@ -47,6 +45,10 @@ services:
       - "${VLLM_MAX_MODEL_LEN:-16384}"
       - "--dtype"
       - "${VLLM_DTYPE:-bfloat16}"
+      # Necessario para que o vLLM aceite tool_choice=auto do Agentic RAG.
+      - "--enable-auto-tool-choice"
+      - "--tool-call-parser"
+      - "hermes"
     volumes:
       - silo-vllm-cache:/root/.cache/huggingface
       - silo-vllm-compile-cache:/root/.cache/vllm
@@ -56,20 +58,14 @@ services:
       timeout: 5s
       retries: 30
       start_period: 120s
+    mem_limit: "8g"
+    cpus: "6.0"
     restart: unless-stopped
-    # Descomente para usar GPU NVIDIA:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
 
   vllm-embed:
     # vLLM serve um modelo por instancia; este servico dedicado atende o
     # modelo de embedding (cache semantico do assistente de IA).
-    image: ${SILO_VLLM_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}
+    image: ${SILO_VLLM_CPU_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}
     container_name: silo-vllm-embed
     networks:
       - inference
@@ -96,6 +92,8 @@ services:
       timeout: 5s
       retries: 30
       start_period: 120s
+    mem_limit: "4g"
+    cpus: "2.0"
     restart: unless-stopped
 
   migrate:
@@ -143,9 +141,10 @@ services:
       KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
       VLLM_URL: http://vllm:8000/v1
       VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
-      VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
       VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-30000}
       VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-4}
+      VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS: ${VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS:-500}
       TZ: America/Sao_Paulo
     depends_on:
       db:
@@ -153,6 +152,50 @@ services:
     networks:
       - backend
     restart: "no"
+
+  embedding-backfill:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: api
+    image: silo-api-python
+    container_name: silo-embedding-backfill
+    command:
+      [
+        "sh",
+        "-c",
+        "while true; do python -m silo.ai.backfill_embeddings; sleep \"$${EMBEDDING_BACKFILL_INTERVAL_SECONDS}\"; done",
+      ]
+    environment:
+      SILO_ENV: ${SILO_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://silo:silo@db:5432/silo}
+      VLLM_URL: http://vllm:8000/v1
+      VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
+      VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
+      VLLM_EMBEDDING_URL: http://vllm-embed:8000/v1
+      VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-180000}
+      VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-2}
+      VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS: ${VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS:-500}
+      EMBEDDING_BACKFILL_INTERVAL_SECONDS: ${EMBEDDING_BACKFILL_INTERVAL_SECONDS:-300}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TZ: America/Sao_Paulo
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      vllm:
+        condition: service_healthy
+      vllm-embed:
+        condition: service_healthy
+    networks:
+      - backend
+      - inference
+    stop_grace_period: 30s
+    mem_limit: 1g
+    cpus: "1.0"
+    restart: unless-stopped
 
   api:
     build:
@@ -167,7 +210,10 @@ services:
     environment:
       SILO_ENV: ${SILO_ENV:-development}
       NODE_ENV: ${NODE_ENV:-production}
-      AI_AGENT_MODE: ${AI_AGENT_MODE:-deterministic}
+      AI_AGENT_MODE: ${AI_AGENT_MODE:-hybrid}
+      AI_AGENT_MAX_ROUNDS: ${AI_AGENT_MAX_ROUNDS:-2}
+      AI_AGENT_MAX_TOOL_CALLS: ${AI_AGENT_MAX_TOOL_CALLS:-4}
+      AI_AGENT_TOOL_TIMEOUT_MS: ${AI_AGENT_TOOL_TIMEOUT_MS:-60000}
       PORT: "4000"
       DATABASE_URL: ${DATABASE_URL:-postgresql://silo:silo@db:5432/silo}
       APP_URL_DEV: ${APP_URL_DEV:-http://localhost}
@@ -208,6 +254,7 @@ services:
       VLLM_EMBEDDING_URL: http://vllm-embed:8000/v1
       VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-180000}
       VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-4}
+      VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS: ${VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS:-500}
       TZ: America/Sao_Paulo
     volumes:
       - silo-storage-data:/app/uploads

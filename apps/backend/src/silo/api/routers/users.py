@@ -6,6 +6,7 @@ import logging
 import secrets
 from dataclasses import asdict
 from datetime import datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
@@ -71,7 +72,7 @@ async def list_users(
     groupId: str | None = Query(default=None),
     _current_user: object = Depends(require_permission("users", "view")),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     items = _list_users(db, search=search, status=status, group_id=groupId)
     return build_success_payload(items)
 
@@ -83,7 +84,7 @@ async def create_user(
     request: Request,
     _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _create_user(db, payload, request)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao criar usuário.")
@@ -101,7 +102,7 @@ async def update_user(
     payload: dict[str, object],
     _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _update_user(db, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar usuário.")
@@ -116,7 +117,7 @@ async def delete_user(
     id: str | None = Query(default=None),
     _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not id:
         return service_error_response(
             service_failure("ID é obrigatório.", 400, field="id"), "Erro ao excluir usuário."
@@ -135,7 +136,7 @@ async def resend_password_setup(
     request: Request,
     _current_user: object = Depends(require_admin),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _resend_password_setup(db, id, request)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao reenviar setup de senha.")
@@ -148,7 +149,7 @@ async def resend_password_setup(
 async def get_profile(
     current_user: CurrentUser = Depends(get_current_user),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _get_current_user_profile(db, current_user.id)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao carregar perfil.")
@@ -162,7 +163,7 @@ async def update_profile(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(get_current_user),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _update_current_user_profile(db, current_user.id, payload)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar perfil.")
@@ -176,7 +177,7 @@ async def upload_profile_image(
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     if not is_multipart_content_type(request.headers.get("content-type")):
         return service_error_response(
             service_failure("Arquivo não enviado", 400), "Erro ao atualizar imagem"
@@ -219,7 +220,7 @@ async def upload_profile_image(
 async def delete_profile_image(
     current_user: CurrentUser = Depends(get_current_user),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     result = _delete_current_user_profile_image(db, current_user.id)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao remover imagem.")
@@ -232,7 +233,7 @@ async def delete_profile_image(
 async def get_preferences(
     current_user: CurrentUser = Depends(get_current_user),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     prefs = _get_current_user_preferences(db, current_user.id)
     return build_success_payload(prefs)
 
@@ -242,7 +243,7 @@ async def update_preferences(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(get_current_user),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     chat_enabled = payload.get("chatEnabled")
     if not isinstance(chat_enabled, bool):
         return service_error_response(
@@ -261,7 +262,7 @@ async def update_email(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_recent_auth),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     email = _normalize_email(payload.get("email"))
     if email is None:
         return service_error_response(
@@ -280,7 +281,7 @@ async def request_email_change(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_recent_auth),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     email = _normalize_email(payload.get("email"))
     if email is None:
         return service_error_response(
@@ -300,7 +301,7 @@ async def confirm_email_change(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_recent_auth),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     code = _optional_str(payload.get("code"))
     new_email = _normalize_email(payload.get("newEmail"))
     if not code or new_email is None:
@@ -320,7 +321,7 @@ async def change_password(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(require_recent_auth),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     try:
         password = validate_strong_password(payload.get("password"))
     except AuthInputError:
@@ -340,7 +341,7 @@ async def update_profile_image_url(
     payload: dict[str, object],
     current_user: CurrentUser = Depends(get_current_user),
     db: Connection = Depends(get_db),
-):
+) -> Any:
     image_url = _optional_str(payload.get("imageUrl"))
     if not image_url:
         return service_error_response(

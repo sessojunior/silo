@@ -1024,3 +1024,372 @@ def test_resolution_remaining_branches_cover_search_rendering_and_helpers(
         period_label="2026-08-01 a 2026-08-04",
     )
     assert generated_pdf["filename"] == "executive.pdf"
+
+
+def test_search_knowledge_uses_problem_and_solution_embeddings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    metadata = MetaData()
+    tables = {
+        "help": Table(
+            "help",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("description", String, nullable=False),
+            Column("embedding", JSON, nullable=True),
+            Column("created_at", DateTime, nullable=True),
+            Column("updated_at", DateTime, nullable=True),
+        ),
+        "product_manual_chunk": Table(
+            "product_manual_chunk",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("content", String, nullable=False),
+            Column("product_id", String, nullable=True),
+            Column("embedding", JSON, nullable=True),
+            Column("created_at", DateTime, nullable=True),
+            Column("updated_at", DateTime, nullable=True),
+        ),
+        "product": Table(
+            "product",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("name", String, nullable=False),
+        ),
+        "product_problem": Table(
+            "product_problem",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("product_id", String, nullable=False),
+            Column("title", String, nullable=False),
+            Column("description", String, nullable=False),
+            Column("embedding", JSON, nullable=True),
+            Column("created_at", DateTime, nullable=True),
+            Column("updated_at", DateTime, nullable=True),
+        ),
+        "product_solution": Table(
+            "product_solution",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("description", String, nullable=False),
+            Column("embedding", JSON, nullable=True),
+            Column("created_at", DateTime, nullable=True),
+            Column("updated_at", DateTime, nullable=True),
+        ),
+    }
+    metadata.create_all(engine)
+    monkeypatch.setattr(assistant_tools, "legacy_tables", tables)
+    monkeypatch.setattr(
+        assistant_tools,
+        "_generate_query_embedding_for_search",
+        lambda query: (1.0,) * 768,
+    )
+
+    with engine.begin() as connection:
+        connection.execute(tables["product"].insert(), {"id": "p1", "name": "Modelo"})
+        connection.execute(
+            tables["product_problem"].insert(),
+            {
+                "id": "problem-1",
+                "product_id": "p1",
+                "title": "Falha sem relação lexical",
+                "description": "Texto operacional diferente da pergunta.",
+                "embedding": [1.0] * 768,
+            },
+        )
+        connection.execute(
+            tables["product_solution"].insert(),
+            {
+                "id": "solution-1",
+                "description": "Procedimento operacional diferente da pergunta.",
+                "embedding": [1.0] * 768,
+            },
+        )
+
+        result = assistant_tools.search_silo_knowledge(
+            connection,
+            query="consulta sem relação lexical",
+            limit=5,
+        )
+
+    by_id = {item["id"]: item for item in result["items"]}
+    assert by_id["problem-1"]["vectorSimilarity"] == pytest.approx(1.0)
+    assert by_id["solution-1"]["vectorSimilarity"] == pytest.approx(1.0)
+
+
+def test_search_knowledge_merges_lexical_candidates_when_vector_store_is_partial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vector_candidate = {
+        "source": "problem",
+        "sourceKind": "problem",
+        "id": "problem-vector",
+        "content": "Problema indexado",
+        "similarity": 0.9,
+        "baseSimilarity": 0.9,
+        "contentSimilarity": 0.2,
+        "vectorSimilarity": 0.95,
+    }
+    lexical_candidate = {
+        "source": "solution",
+        "sourceKind": "solution",
+        "id": "solution-unindexed",
+        "content": "Solução ainda sem embedding",
+        "similarity": 0.8,
+        "baseSimilarity": 0.8,
+        "contentSimilarity": 0.9,
+        "vectorSimilarity": 0.0,
+    }
+    monkeypatch.setattr(
+        assistant_tools,
+        "_search_pgvector_candidates",
+        lambda *args, **kwargs: [vector_candidate],
+    )
+    monkeypatch.setattr(
+        assistant_tools,
+        "_search_knowledge_lexical_fallback",
+        lambda *args, **kwargs: [lexical_candidate],
+    )
+    monkeypatch.setattr(
+        assistant_tools,
+        "_generate_query_embedding_for_search",
+        lambda query: (1.0,) * 768,
+    )
+
+    result = assistant_tools.search_silo_knowledge(
+        object(), query="procedimento operacional", limit=5
+    )
+
+    assert {item["id"] for item in result["items"]} == {
+        "problem-vector",
+        "solution-unindexed",
+    }
+
+
+def test_query_embedding_uses_runtime_provider() -> None:
+    class Provider:
+        async def embed(self, text: str) -> tuple[float, ...]:
+            assert text == "consulta"
+            return (0.75,) * 768
+
+    assert assistant_tools._generate_query_embedding_for_search("consulta", Provider()) == (
+        0.75,
+    ) * 768
+
+
+def test_search_knowledge_uses_pgvector_queries_when_postgresql_is_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeResult:
+        def mappings(self) -> FakeResult:
+            return self
+
+        def all(self) -> list[dict[str, object]]:
+            return []
+
+    class FakeConnection:
+        dialect = SimpleNamespace(name="postgresql")
+
+        def __init__(self) -> None:
+            self.statements: list[str] = []
+
+        def execute(self, statement: object, parameters: object | None = None) -> FakeResult:
+            del parameters
+            self.statements.append(str(statement))
+            return FakeResult()
+
+    monkeypatch.setattr(
+        assistant_tools,
+        "_generate_query_embedding_for_search",
+        lambda query: (0.25,) * 768,
+    )
+    connection = FakeConnection()
+
+    result = assistant_tools.search_silo_knowledge(
+        connection,  # type: ignore[arg-type]
+        query="problema de produção",
+        limit=3,
+    )
+
+    assert result["items"] == []
+    assert len(connection.statements) == 8
+    assert all("<=>" in statement for statement in connection.statements[:4])
+    assert all(
+        "ORDER BY" in statement and "LIMIT" in statement
+        for statement in connection.statements[:4]
+    )
+    assert all("LIMIT" in statement.upper() for statement in connection.statements[4:])
+
+
+def test_lexical_fallback_limits_each_source_before_materializing_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    metadata = MetaData()
+    tables = {
+        "help": Table(
+            "help",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("title", String),
+            Column("description", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product_manual_chunk": Table(
+            "product_manual_chunk",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("product_id", String),
+            Column("content", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product_problem": Table(
+            "product_problem",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("product_id", String),
+            Column("title", String),
+            Column("description", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product_solution": Table(
+            "product_solution",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("description", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product": Table(
+            "product",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("name", String),
+        ),
+    }
+    monkeypatch.setattr(assistant_tools, "legacy_tables", tables)
+
+    class _EmptyResult:
+        def mappings(self) -> _EmptyResult:
+            return self
+
+        def all(self) -> list[dict[str, object]]:
+            return []
+
+    class _RecordingConnection:
+        def __init__(self) -> None:
+            self.statements: list[str] = []
+
+        def execute(self, statement: object) -> _EmptyResult:
+            self.statements.append(str(statement))
+            return _EmptyResult()
+
+    connection = _RecordingConnection()
+    candidates = assistant_tools._search_knowledge_lexical_fallback(
+        connection,  # type: ignore[arg-type]
+        query="consulta operacional",
+        query_embedding=(0.1,),
+        limit=2,
+    )
+
+    assert candidates == []
+    assert len(connection.statements) == 4
+    assert all("LIMIT" in statement.upper() for statement in connection.statements)
+
+
+def test_lexical_fallback_prioritizes_matching_old_document_over_recent_noise(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    metadata = MetaData()
+    tables = {
+        "help": Table(
+            "help",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("description", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product_manual_chunk": Table(
+            "product_manual_chunk",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("product_id", String),
+            Column("content", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product_problem": Table(
+            "product_problem",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("product_id", String),
+            Column("title", String),
+            Column("description", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product_solution": Table(
+            "product_solution",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("description", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product": Table(
+            "product",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("name", String),
+        ),
+    }
+    metadata.create_all(engine)
+    monkeypatch.setattr(assistant_tools, "legacy_tables", tables)
+    monkeypatch.setattr(
+        assistant_tools,
+        "_generate_query_embedding_for_search",
+        lambda _query: (0.0,) * 768,
+    )
+
+    recent = datetime(2026, 9, 1, tzinfo=UTC)
+    old = datetime(2020, 1, 1, tzinfo=UTC)
+    with engine.begin() as connection:
+        connection.execute(
+            tables["help"].insert(),
+            [
+                {
+                    "id": f"recent-{index}",
+                    "description": f"Conteúdo recente sem relação {index}",
+                    "updated_at": recent,
+                }
+                for index in range(20)
+            ]
+            + [
+                {
+                    "id": "old-relevant",
+                    "description": "Manual operacional especial de ingestão",
+                    "updated_at": old,
+                }
+            ],
+        )
+
+        result = assistant_tools.search_silo_knowledge(
+            connection,
+            query="manual operacional especial",
+            limit=1,
+        )
+
+    assert result["items"][0]["id"] == "old-relevant"

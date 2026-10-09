@@ -519,13 +519,14 @@ export function MenuBuilder({
     offset: offsetLeft,
   });
 
-  const [coordinateGetter] = useState(() =>
-    sortableTreeKeyboardCoordinates(
+  const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
+    const getter = sortableTreeKeyboardCoordinates(
       sensorContext,
       style == "bordered",
       indentationWidth,
-    ),
-  );
+    );
+    return getter(event, args);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
