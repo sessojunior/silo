@@ -21,7 +21,7 @@ O SILO centraliza informações sobre produtos meteorológicos, incidentes opera
 | **IA — Servidor** | vLLM — OpenAI-compatible API (PagedAttention, continuous batching) |
 | **IA — Modelos** | Qwen2.5 0.5B (chat) + BGE-base (embeddings, 768 dimensões) |
 | **Mensageria** | Kafka REST Proxy |
-| **Infraestrutura** | Docker Compose (7 serviços no desenvolvimento) |
+| **Infraestrutura** | Docker Compose (8 serviços no desenvolvimento) |
 
 ---
 
@@ -50,6 +50,7 @@ silo/
 | `vllm` | 8000 | Servidor de IA (OpenAI-compatible API) |
 | `vllm-embed` | 8001 | Servidor dedicado de embeddings |
 | `migrate` | — | Roda migrations e encerra (one-shot) |
+| `embedding-backfill` | — | Reconcilia embeddings ausentes ou obsoletos |
 | `api` | 4000 | Backend FastAPI |
 | `worker` | — | Consumer Kafka |
 | `web` | 80 | Frontend Next.js |

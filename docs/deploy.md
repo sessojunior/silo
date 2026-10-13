@@ -17,7 +17,9 @@ O SILO usa dois arquivos de orquestração:
 |---|---|---|
 | `db` | `pgvector/pgvector:pg17` | 5432 |
 | `vllm` | `vllm/vllm-openai-cpu:v0.29.0-x86_64` | 8000 (CPU) |
+| `vllm-embed` | `vllm/vllm-openai-cpu:v0.29.0-x86_64` | 8001 (CPU) |
 | `migrate` | `silo-api-python` (one-shot) | — |
+| `embedding-backfill` | `silo-api-python` | — |
 | `api` | `silo-api-python` | 4000 |
 | `worker` | `silo-worker-python` | — |
 | `web` | `silo-web` | 80 |
@@ -27,10 +29,11 @@ O SILO usa dois arquivos de orquestração:
 | Serviço | Imagem | Nota |
 |---|---|---|
 | `vllm` | `${SILO_VLLM_GPU_IMAGE}` | GPU NVIDIA |
+| `vllm-embed` | `${SILO_VLLM_GPU_IMAGE}` | GPU NVIDIA, embeddings |
 | `migrate` | `${SILO_IMAGE}` (one-shot) | Imagem publicada |
+| `embedding-backfill` | `${SILO_IMAGE}` | Reconcilia embeddings ausentes ou obsoletos |
 | `api` | `${SILO_IMAGE}` | Imagem publicada |
 | `worker` | `${SILO_IMAGE}` | Imagem publicada |
-| `embedding-backfill` | `${SILO_IMAGE}` | Reconcilia embeddings ausentes ou obsoletos |
 
 O banco de dados e o frontend em produção são gerenciados externamente (PostgreSQL gerenciado, Nginx/CDN).
 

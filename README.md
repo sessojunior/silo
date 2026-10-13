@@ -28,7 +28,7 @@ Desenvolvido para o **CPTEC/INPE**, o SILO resolve um problema comum em organiza
 | **IA — Servidor de modelos** | vLLM (OpenAI-compatible, PagedAttention, continuous batching) |
 | **IA — Modelos** | Qwen2.5 0.5B (chat) + BGE-base (embeddings, 768 dimensões) |
 | **Mensageria** | Kafka REST Proxy (dados de data-flow) |
-| **Infraestrutura** | Docker Compose (7 serviços no desenvolvimento) |
+| **Infraestrutura** | Docker Compose (8 serviços no desenvolvimento) |
 
 ---
 
@@ -89,9 +89,10 @@ docker compose up -d --build
 ```
 
 Esse comando único sobe **tudo**: `db` (PostgreSQL), `vllm` (IA), `vllm-embed`
-(embeddings), `migrate` (migrations), `api` (backend FastAPI), `worker` (Kafka)
-e `web` (frontend Next.js). Não é preciso subir os serviços separadamente — o
-Docker resolve a ordem de inicialização e os healthchecks por conta própria.
+(embeddings), `migrate` (migrations), `embedding-backfill` (reconciliação de
+embeddings), `api` (backend FastAPI), `worker` (Kafka) e `web` (frontend
+Next.js). Não é preciso subir os serviços separadamente — o Docker resolve a
+ordem de inicialização e os healthchecks por conta própria.
 
 Na primeira execução, o Docker vai:
 1. Baixar as imagens (PostgreSQL, vLLM CPU)
@@ -191,11 +192,12 @@ Todos os serviços devem estar com status `healthy` ou `Up`. O serviço `migrate
 ### Ordem de inicialização
 
 1. **db** — Banco PostgreSQL + pgvector
-2. **vllm** — Servidor de IA (baixa o modelo no primeiro boot)
+2. **vllm** e **vllm-embed** — Servidores de chat e embeddings (baixam os modelos no primeiro boot)
 3. **migrate** — Cria/atualiza tabelas do banco e encerra
-4. **api** — Backend FastAPI (depende de db + vllm)
+4. **api** — Backend FastAPI (depende de db, vllm e vllm-embed)
 5. **worker** — Processa mensagens do Kafka
-6. **web** — Frontend Next.js (depende da API)
+6. **embedding-backfill** — Reconcilia embeddings ausentes ou obsoletos
+7. **web** — Frontend Next.js (depende da API)
 
 ### Por que dois arquivos docker-compose?
 
@@ -207,7 +209,7 @@ O projeto tem dois arquivos de orquestração com propósitos diferentes:
 | **Como constrói** | Compila imagens na hora (`build:`) | Usa imagens prontas do registry (`image:`) |
 | **Banco de dados** | Container PostgreSQL incluso | Banco externo (gerenciado separadamente) |
 | **Frontend** | Container `web` incluso | Servido por proxy/Nginx externo |
-| **Serviços** | 6 (db, vllm, migrate, api, worker, web) | 4 (vllm, migrate, api, worker) |
+| **Serviços** | 8 (db, vllm, vllm-embed, migrate, embedding-backfill, api, worker, web) | 6 (vllm, vllm-embed, migrate, embedding-backfill, api, worker) |
 | **Comando** | `docker compose up -d --build` | `docker compose -f docker-compose.deploy.yml up -d` |
 
 **Por que separar?** O deploy nunca deve compilar código no servidor — ele usa a imagem já testada e publicada. E o banco de produção precisa de backup, réplicas e monitoramento que um container simples não oferece. Já no desenvolvimento, tudo é self-contained para subir com um comando.
