@@ -177,6 +177,7 @@ class AiAssistantMessageRequestDto(CamelModel):
 
 class AiAssistantMessageResponseDto(CamelModel):
     thread_id: str
+    user_message_id: str | None = None
     thread: AiAssistantThreadSummaryDto | None = None
     message_content: str | None = None
     scope: AiAssistantScope

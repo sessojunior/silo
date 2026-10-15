@@ -31,7 +31,10 @@ export default function MessageBubble({
   const isOwnMessageFinal = Boolean(isOwnMessage);
 
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
-  const hasThinking = Boolean(message.assistantThinking);
+  const suppressThinking =
+    message.assistantGeneration?.status === "fallback" ||
+    message.assistantGeneration?.status === "error";
+  const hasThinking = !suppressThinking && Boolean(message.assistantThinking);
   const isStreaming = !message.content && !message.assistantGeneration && hasThinking;
   const isError = message.assistantGeneration?.status === "error";
 
@@ -217,11 +220,6 @@ export default function MessageBubble({
           <p className="text-xs text-red-700 dark:text-red-300">
             ⚠️ {message.content || "Erro ao gerar resposta."}
           </p>
-          {showAssistantFooter && (
-            <p className="mt-1 text-[10px] text-red-500 dark:text-red-400">
-              {formatAssistantFooter(message.assistantGeneration, hasThinking)}
-            </p>
-          )}
         </div>
       </div>
     );

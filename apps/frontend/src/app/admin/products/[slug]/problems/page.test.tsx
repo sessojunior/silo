@@ -20,6 +20,17 @@ interface ProblemFormMockProps {
   onDeleteProblem: () => void;
 }
 
+interface SolutionFormMockProps {
+  isOpen: boolean;
+  editingSolution: { id: string } | null;
+  onDeleteSolution: (solution: { id: string }) => void;
+}
+
+interface DeleteSolutionDialogMockProps {
+  open: boolean;
+  onConfirmDelete: () => Promise<void>;
+}
+
 interface SimpleMockProps {
   open?: boolean;
   title?: ReactNode;
@@ -115,14 +126,33 @@ vi.mock("@/components/admin/products/problem-form-offcanvas", () => ({
 }));
 
 vi.mock("@/components/admin/products/solution-form-modal", () => ({
-  default: function MockSolutionFormModal() {
-    return null;
+  default: function MockSolutionFormModal({
+    isOpen,
+    editingSolution,
+    onDeleteSolution,
+  }: SolutionFormMockProps) {
+    if (!isOpen || !editingSolution) return null;
+    return (
+      <section role="dialog" aria-label="Editar solução">
+        <button type="button" onClick={() => onDeleteSolution(editingSolution)}>
+          Excluir resposta no modal
+        </button>
+      </section>
+    );
   },
 }));
 
 vi.mock("@/components/admin/products/delete-solution-dialog", () => ({
-  default: function MockDeleteSolutionDialog() {
-    return null;
+  default: function MockDeleteSolutionDialog({
+    open,
+    onConfirmDelete,
+  }: DeleteSolutionDialogMockProps) {
+    if (!open) return null;
+    return (
+      <button type="button" onClick={() => void onConfirmDelete()}>
+        Confirmar exclusão da resposta
+      </button>
+    );
   },
 }));
 
@@ -188,7 +218,7 @@ function parseJsonBody(body: BodyInit | null | undefined): Record<string, unknow
   throw new Error("Expected JSON string or FormData body");
 }
 
-function createProblemsFetchMock() {
+function createProblemsFetchMock(initialSolutions: Array<Record<string, unknown>> = []) {
   const problemsPathname = new URL(
     config.getApiUrl("/api/admin/products/problems"),
     "http://localhost",
@@ -223,6 +253,7 @@ function createProblemsFetchMock() {
       updatedAt: "2025-05-01T00:00:00.000Z",
     },
   ];
+  let solutions = [...initialSolutions];
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const requestUrl = new URL(String(input), "http://localhost");
@@ -248,8 +279,15 @@ function createProblemsFetchMock() {
     }
 
     if (requestUrl.pathname === solutionsPathname) {
-      expect(method).toBe("GET");
-      return jsonResponse({ items: [] });
+      if (method === "GET") {
+        return jsonResponse({ items: solutions });
+      }
+
+      if (method === "DELETE") {
+        const body = parseJsonBody(init?.body);
+        solutions = solutions.filter((solution) => solution.id !== body.id);
+        return jsonResponse({ success: true, message: "Solução excluída" });
+      }
     }
 
     if (requestUrl.pathname === imagesPathname) {
@@ -417,5 +455,125 @@ describe("ProblemsPage", () => {
     await waitFor(() => {
       expect(screen.queryAllByText("Problema Alfa Ajustado")).toHaveLength(0);
     });
+  });
+
+  it("deletes only a reply and closes its edit modal", async () => {
+    const { fetchMock } = createProblemsFetchMock([
+      {
+        id: "solution-root",
+        replyId: null,
+        isMine: true,
+        date: "2025-05-01T00:00:00.000Z",
+        description: "Solução raiz",
+        verified: false,
+        user: { id: "user-1", name: "Usuário", image: "" },
+        image: null,
+        images: [],
+      },
+      {
+        id: "solution-reply",
+        replyId: "solution-root",
+        date: "2025-05-02T00:00:00.000Z",
+        description: "Resposta a excluir",
+        verified: false,
+        user: { id: "user-1", name: "Usuário", image: "" },
+        image: null,
+        images: [],
+      },
+    ]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProblemsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Solução raiz")).toBeInTheDocument();
+      expect(screen.getByText("Resposta a excluir")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Editar" })[1]);
+    const solutionModal = await screen.findByRole("dialog", {
+      name: "Editar solução",
+    });
+    fireEvent.click(
+      within(solutionModal).getByRole("button", {
+        name: "Excluir resposta no modal",
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Confirmar exclusão da resposta",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([url, init]) =>
+            new URL(String(url), "http://localhost").pathname ===
+              new URL(
+                config.getApiUrl("/api/admin/products/solutions"),
+                "http://localhost",
+              ).pathname &&
+            init?.method === "DELETE" &&
+            parseJsonBody(init.body).id === "solution-reply",
+        ),
+      ).toBe(true);
+    });
+
+    expect(screen.getByText("Solução raiz")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Resposta a excluir")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("dialog", { name: "Editar solução" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows replies at the root level and does not allow replying to a reply", async () => {
+    const { fetchMock } = createProblemsFetchMock([
+      {
+        id: "solution-root",
+        replyId: null,
+        isMine: true,
+        date: "2025-05-01T00:00:00.000Z",
+        description: "Solução raiz",
+        verified: false,
+        user: { id: "user-2", name: "Outro usuário", image: "" },
+        image: null,
+        images: [],
+      },
+      {
+        id: "solution-reply",
+        replyId: "solution-root",
+        date: "2025-05-02T00:00:00.000Z",
+        description: "Resposta direta",
+        verified: false,
+        user: { id: "user-1", name: "Usuário", image: "" },
+        image: null,
+        images: [],
+      },
+      {
+        id: "legacy-nested-reply",
+        replyId: "solution-reply",
+        date: "2025-05-03T00:00:00.000Z",
+        description: "Resposta legada",
+        verified: false,
+        user: { id: "user-1", name: "Usuário", image: "" },
+        image: null,
+        images: [],
+      },
+    ]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProblemsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Resposta direta")).toBeInTheDocument();
+      expect(screen.getByText("Resposta legada")).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByRole("button", { name: "Responder" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Editar" })).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: "Excluir" })).toHaveLength(3);
   });
 });

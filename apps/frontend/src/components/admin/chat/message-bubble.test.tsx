@@ -63,6 +63,83 @@ describe("message bubble assistant artifacts dedupe", () => {
     expect(screen.getByText("Resposta de contingência")).toBeInTheDocument();
   });
 
+  it("does not render execution thinking for fallback responses", () => {
+    const message: ChatMessage = {
+      id: "55555555-5555-4555-8555-555555555555",
+      content: "Resposta baseada nos dados autorizados.",
+      senderUserId: "ai-assistant",
+      senderName: "Assistente de IA",
+      receiverGroupId: null,
+      receiverUserId: null,
+      createdAt: new Date("2026-07-28T12:00:00Z"),
+      readAt: null,
+      deletedAt: null,
+      messageType: "userMessage",
+      assistantGeneration: {
+        provider: "vllm",
+        model: "Qwen/Qwen2.5-0.5B-Instruct",
+        status: "fallback",
+        latencyMs: 1200,
+        generatedTokens: null,
+        thinkingTimeMs: null,
+        errorMessage: "O modelo respondeu em formato inválido.",
+      },
+      assistantThinking: "O modelo vLLM está redigindo a resposta final.",
+    };
+
+    render(
+      <MessageBubble
+        message={message}
+        isOwnMessage={false}
+        showAvatar={false}
+        showAssistantFooter
+      />,
+    );
+
+    expect(screen.queryByText("Raciocínio de Qwen/Qwen2.5-0.5B-Instruct")).not.toBeInTheDocument();
+    expect(screen.queryByText("O modelo vLLM está redigindo a resposta final.")).not.toBeInTheDocument();
+  });
+
+  it("does not repeat the error in the assistant failure footer", () => {
+    const errorMessage = "O assistente de IA não está disponível no momento.";
+    const message: ChatMessage = {
+      id: "66666666-6666-4666-8666-666666666666",
+      content: errorMessage,
+      senderUserId: "ai-assistant",
+      senderName: "Assistente de IA",
+      receiverGroupId: null,
+      receiverUserId: null,
+      createdAt: new Date("2026-07-28T12:00:00Z"),
+      readAt: null,
+      deletedAt: null,
+      messageType: "userMessage",
+      assistantGeneration: {
+        provider: "vllm",
+        model: "indisponível",
+        status: "error",
+        latencyMs: 0,
+        generatedTokens: null,
+        thinkingTimeMs: null,
+        errorMessage,
+      },
+      assistantThinking: null,
+    };
+
+    render(
+      <MessageBubble
+        message={message}
+        isOwnMessage={false}
+        showAvatar={false}
+        showAssistantFooter
+      />,
+    );
+
+    expect(
+      screen.getAllByText((content) => content.includes(errorMessage)),
+    ).toHaveLength(1);
+    expect(screen.queryByText("Pensando...")).not.toBeInTheDocument();
+  });
+
   it("renders assistant Markdown without enabling raw HTML", () => {
     const message: ChatMessage = {
       id: "33333333-3333-3333-8333-333333333333",

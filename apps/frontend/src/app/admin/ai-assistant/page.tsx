@@ -32,6 +32,31 @@ import {
 
 const ASSISTANT_SENDER_ID = "ai-assistant";
 const ASSISTANT_SENDER_NAME = "Assistente de IA";
+export const ASSISTANT_STATUS_TEXT = "Consultando o modelo de IA...";
+
+export const resolveAssistantThinking = (
+  generation: Pick<NonNullable<ChatMessage["assistantGeneration"]>, "status"> | null | undefined,
+  resultThinking: string | null | undefined,
+  streamedThinking: string,
+): string | null => {
+  if (generation?.status === "fallback" || generation?.status === "error") {
+    return null;
+  }
+
+  return resultThinking?.trim() || streamedThinking.trim() || null;
+};
+
+export const buildAssistantErrorGeneration = (
+  errorMessage: string,
+): NonNullable<ChatMessage["assistantGeneration"]> => ({
+  provider: "vllm",
+  model: "indisponível",
+  status: "error",
+  latencyMs: 0,
+  generatedTokens: null,
+  thinkingTimeMs: null,
+  errorMessage,
+});
 
 const FALLBACK_EXAMPLES: AiAssistantExampleDto[] = [
   {
@@ -551,6 +576,7 @@ export default function AiAssistantPage() {
       sendingStartTimeRef.current = Date.now();
       let hasReceivedResult = false;
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      let streamedContent = "";
 
       try {
         const apiUrl = config.getAssistantApiUrl("/api/admin/ai-assistant/messages/stream");
@@ -583,7 +609,6 @@ export default function AiAssistantPage() {
         const decoder = new TextDecoder();
         const parser = new AssistantSseStreamParser();
         let currentThinking = "";
-        let streamedContent = "";
         let legacyData: Partial<AiAssistantMessageResponseDto> | null = null;
 
         const updatePlaceholder = (
@@ -617,13 +642,23 @@ export default function AiAssistantPage() {
               assistantCitations: data.citations,
               assistantVisualization: data.visualization,
               assistantArtifacts: data.artifacts,
-              assistantThinking: data.thinking ?? currentThinking,
+              assistantThinking: resolveAssistantThinking(
+                data.generation,
+                data.thinking,
+                currentThinking,
+              ),
             },
           );
 
           setMessagesByThread((current) => {
             const msgs = [...(current[threadId] ?? [])];
             if (msgs.length >= 2) {
+              if (data.userMessageId) {
+                msgs[msgs.length - 2] = {
+                  ...msgs[msgs.length - 2],
+                  id: data.userMessageId,
+                };
+              }
               msgs[msgs.length - 1] = assistantMessage;
             }
             return { ...current, [threadId]: msgs };
@@ -694,19 +729,26 @@ export default function AiAssistantPage() {
 
         const isAbortError = error instanceof DOMException && error.name === "AbortError";
 
-        // Remove o placeholder
+        const errorMsg = isAbortError
+          ? "O assistente de IA não está disponível no momento. Tente novamente em instantes."
+          : "Não foi possível consultar o assistente. Verifique sua conexão e tente novamente.";
+
+        // Mantém o balão no histórico para que uma falha não pareça uma resposta vazia.
         setMessagesByThread((current) => {
           const msgs = [...(current[threadId] ?? [])];
-          if (msgs.length >= 2) {
-            msgs.pop();
+          const lastMessage = msgs.at(-1);
+          if (lastMessage?.senderUserId === ASSISTANT_SENDER_ID) {
+            msgs[msgs.length - 1] = {
+              ...lastMessage,
+              content: streamedContent || errorMsg,
+              assistantGeneration: buildAssistantErrorGeneration(errorMsg),
+              assistantThinking: null,
+            };
           }
           return { ...current, [threadId]: msgs };
         });
 
         // Mostra toast de erro
-        const errorMsg = isAbortError
-          ? "O assistente de IA não está disponível no momento. Tente novamente em instantes."
-          : "Não foi possível consultar o assistente. Verifique sua conexão e tente novamente.";
         setAssistantError(errorMsg);
         setRetryableAssistantRequest({ threadId, content: trimmedMessage });
 
@@ -763,17 +805,44 @@ export default function AiAssistantPage() {
   const confirmDelete = useCallback(async () => {
     if (!selectedThreadId || !confirmDeleteId) return;
 
+    const threadId = selectedThreadId;
     const messageId = confirmDeleteId;
     setConfirmDeleteId(null);
 
+    const removeMessagesLocally = () => {
+      setMessagesByThread((current) => {
+        const threadMessages = current[threadId] ?? [];
+        const deletedMessageIndex = threadMessages.findIndex((message) => message.id === messageId);
+        if (deletedMessageIndex < 0) return current;
+
+        return {
+          ...current,
+          [threadId]: threadMessages.slice(0, deletedMessageIndex),
+        };
+      });
+    };
+
     try {
-      const url = config.getApiUrl(`/api/admin/ai-assistant/threads/${selectedThreadId}/messages/${messageId}`);
+      const url = config.getApiUrl(`/api/admin/ai-assistant/threads/${threadId}/messages/${messageId}`);
       const response = await fetch(url, {
         method: "DELETE",
         credentials: "include",
       });
 
       const apiResponse = await readApiResponse(response);
+      if (response.status === 404) {
+        // Mensagens temporárias de uma consulta que falhou antes da persistência
+        // existem apenas no navegador. Nesse caso, o 404 significa que não há
+        // registro no servidor para excluir; remova o balão e os posteriores localmente.
+        removeMessagesLocally();
+        toast({
+          type: "success",
+          title: "Mensagem removida",
+          description: "A mensagem e todas as mensagens posteriores foram removidas.",
+        });
+        void loadThreads();
+        return;
+      }
       if (!response.ok || !apiResponse.success) {
         throw new Error(apiResponse.error || "Erro ao excluir mensagem");
       }
@@ -781,13 +850,12 @@ export default function AiAssistantPage() {
       toast({
         type: "success",
         title: "Mensagem excluída",
-        description: "A mensagem e as respostas seguintes foram removidas.",
+        description: "A mensagem e todas as mensagens posteriores foram removidas.",
       });
 
-      // Recarrega a thread inteira para refletir as exclusões em cascata
-      if (selectedThreadId) {
-        void loadThreadDetail(selectedThreadId);
-      }
+      // Atualiza o chat localmente para não reintroduzir mensagens de uma leitura
+      // anterior da thread enquanto o snapshot de leitura ainda não refletiu o DELETE.
+      removeMessagesLocally();
       void loadThreads();
     } catch (error) {
       console.error("❌ [AI_ASSISTANT] Erro ao excluir mensagem:", serializeClientError(error));
@@ -797,7 +865,7 @@ export default function AiAssistantPage() {
         description: error instanceof Error ? error.message : "Erro interno ao excluir mensagem.",
       });
     }
-  }, [selectedThreadId, confirmDeleteId, loadThreadDetail, loadThreads]);
+  }, [selectedThreadId, confirmDeleteId, loadThreads]);
 
   // Abre confirmação para excluir thread inteiro da sidebar
   const handleDeleteThread = useCallback(
@@ -971,7 +1039,7 @@ export default function AiAssistantPage() {
               currentUserId={currentUserId}
               activeTargetId={selectedThreadId ?? undefined}
               variant="assistant"
-              assistantStatusText={isSending ? "Consultando o modelo vLLM..." : null}
+              assistantStatusText={isSending ? ASSISTANT_STATUS_TEXT : null}
               onLoadOlderMessages={() => undefined}
               onLoadNewerMessages={() => undefined}
               onDeleteMessage={handleDeleteMessage}
@@ -994,7 +1062,7 @@ export default function AiAssistantPage() {
               currentUserId={currentUserId}
               activeTargetId={selectedThreadId ?? undefined}
               variant="assistant"
-              assistantStatusText={isSending ? "Consultando o modelo vLLM..." : null}
+              assistantStatusText={isSending ? ASSISTANT_STATUS_TEXT : null}
               onLoadOlderMessages={() => undefined}
               onLoadNewerMessages={() => undefined}
               onDeleteMessage={handleDeleteMessage}
@@ -1019,7 +1087,8 @@ export default function AiAssistantPage() {
       >
         <div className="p-6">
           <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
-            Esta ação vai apagar sua mensagem e todas as respostas do assistente a partir dela.
+            Esta ação vai apagar sua mensagem e todas as respostas, perguntas e mensagens
+            posteriores desta conversa.
           </p>
           {confirmDeleteHasArtifacts && (
             <div className="flex items-start gap-2 mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">

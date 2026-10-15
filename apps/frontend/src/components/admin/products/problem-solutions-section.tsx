@@ -57,9 +57,18 @@ export function ProblemSolutionsSection({
   selectedProblemId = null,
 }: ProblemSolutionsSectionProps) {
   // Função para encontrar a mensagem pai
-  const findParentMessage = (replyId: string | null) => {
-    if (!replyId) return null;
-    return solutions.find((s) => s.id === replyId) || null;
+  const getRootReplyId = (solution: SolutionWithDetails): string | null => {
+    if (!solution.replyId) return null;
+
+    const visited = new Set<string>();
+    let parentId = solution.replyId;
+    while (!visited.has(parentId)) {
+      visited.add(parentId);
+      const parent = solutions.find((item) => item.id === parentId);
+      if (!parent || !parent.replyId) return parentId;
+      parentId = parent.replyId;
+    }
+    return solution.replyId;
   };
 
   // Função para truncar texto para o indicador de contexto
@@ -70,12 +79,9 @@ export function ProblemSolutionsSection({
   };
 
   // Função para renderizar respostas de forma recursiva (cada resposta seguida de suas sub-respostas)
-  const renderReplies = (
-    parentId: string,
-    depth: number = 0,
-  ): React.ReactElement[] => {
+  const renderReplies = (parentId: string): React.ReactElement[] => {
     const replies = solutions
-      .filter((s) => s.replyId === parentId)
+      .filter((s) => getRootReplyId(s) === parentId)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const result: React.ReactElement[] = [];
@@ -84,7 +90,7 @@ export function ProblemSolutionsSection({
       const isReplyExpanded = expandedSolutionIds.includes(reply.id);
       const shouldReplyTruncate = reply.description.length > 300;
       const marginLeft = "ml-4"; // Todas as respostas no mesmo nível visual
-      const parentMessage = findParentMessage(reply.replyId);
+      const parentMessage = solutions.find((solution) => solution.id === parentId);
 
       // Adicionar a resposta atual
       result.push(
@@ -174,46 +180,33 @@ export function ProblemSolutionsSection({
               )}
             </div>
             {/* Botões de ação para replies */}
-            <div className="flex gap-2 py-2">
-              <Button
-                type="button"
-                icon="icon-[lucide--plus]"
-                style="unstyled"
-                className="py-2 text-blue-600 hover:bg-blue-100 hover:text-blue-800 focus:bg-blue-100 focus:text-blue-800 dark:text-blue-500 dark:hover:bg-blue-800/30 dark:hover:text-blue-400"
-                onClick={() => onOpenSolutionModal("reply", reply)}
-              >
-                Responder
-              </Button>
-              {reply.isMine && (
-                <>
-                  <Button
-                    type="button"
-                    icon="icon-[lucide--edit]"
-                    style="unstyled"
-                    className="py-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
-                    onClick={() => onOpenSolutionModal("edit", reply)}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    type="button"
-                    icon="icon-[lucide--trash]"
-                    style="unstyled"
-                    className="py-2 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-800/30 dark:hover:text-red-300"
-                    onClick={() => onOpenDeleteSolutionDialog(reply)}
-                  >
-                    Excluir
-                  </Button>
-                </>
-              )}
-            </div>
+            {reply.isMine && (
+              <div className="flex gap-2 py-2">
+                <Button
+                  type="button"
+                  icon="icon-[lucide--edit]"
+                  style="unstyled"
+                  className="py-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
+                  onClick={() => onOpenSolutionModal("edit", reply)}
+                >
+                  Editar
+                </Button>
+                <Button
+                  type="button"
+                  icon="icon-[lucide--trash]"
+                  style="unstyled"
+                  className="py-2 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-800/30 dark:hover:text-red-300"
+                  onClick={() => onOpenDeleteSolutionDialog(reply)}
+                >
+                  Excluir
+                </Button>
+              </div>
+            )}
           </div>
         </div>,
       );
 
       // IMEDIATAMENTE após cada resposta, adicionar suas sub-respostas
-      const nestedReplies = renderReplies(reply.id, depth + 1);
-      result.push(...nestedReplies);
     });
 
     return result;

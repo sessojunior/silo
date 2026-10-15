@@ -1211,25 +1211,36 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
             ),
         )
     )
-    _success_data(
-        _call(
-            connection,
-            product_portal.create_product_solution,
+    nested_reply_id = next(
+        row["id"]
+        for row in connection.execute(
+            select(tables["product_solution"].c.id).where(
+                tables["product_solution"].c.product_problem_id == problem_beta_id,
+                tables["product_solution"].c.reply_id.is_not(None),
+            )
+        )
+        .mappings()
+        .all()
+        if True
+    )
+    nested_reply_result = _call(
+        connection,
+        product_portal.create_product_solution,
+        user_id=ids.user_active_1,
+        problem_id=problem_beta_id,
+        description="Resposta Beta Grandchild",
+        reply_id=nested_reply_id,
+    )
+    assert nested_reply_result["ok"] is False
+    connection.execute(
+        insert(tables["product_solution"]).values(
+            id="legacy-beta-grandchild",
             user_id=ids.user_active_1,
-            problem_id=problem_beta_id,
+            product_problem_id=problem_beta_id,
             description="Resposta Beta Grandchild",
-            reply_id=next(
-                row["id"]
-                for row in connection.execute(
-                    select(tables["product_solution"].c.id).where(
-                        tables["product_solution"].c.product_problem_id == problem_beta_id,
-                        tables["product_solution"].c.reply_id.is_not(None),
-                    )
-                )
-                .mappings()
-                .all()
-                if True
-            ),
+            reply_id=nested_reply_id,
+            created_at=FIXED_NOW,
+            updated_at=FIXED_NOW,
         )
     )
 
@@ -1391,7 +1402,22 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
     beta_solutions = {item["id"]: item for item in beta_solution_map["items"]}
     assert beta_solutions[beta_root_id]["verified"] is True
     assert beta_solutions[beta_child_id]["replyId"] == beta_root_id
-    assert beta_solutions[beta_grandchild_id]["replyId"] == beta_child_id
+    assert beta_solutions[beta_grandchild_id]["replyId"] == beta_root_id
+
+    beta_solutions_for_child_owner = _success_data(
+        _call(
+            connection,
+            product_portal.list_product_solutions,
+            problem_beta_id,
+            user_id=ids.user_active_2,
+        )
+    )
+    beta_solutions_for_child_owner_by_id = {
+        item["id"]: item for item in beta_solutions_for_child_owner["items"]
+    }
+    assert beta_solutions_for_child_owner_by_id[beta_root_id]["isMine"] is False
+    assert beta_solutions_for_child_owner_by_id[beta_child_id]["isMine"] is True
+    assert beta_solutions_for_child_owner_by_id[beta_grandchild_id]["isMine"] is False
 
     assert _call(connection, product_portal._collect_solution_descendants, beta_root_id) == [
         beta_child_id,
@@ -1447,6 +1473,59 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
         )
     ).all()
     assert remaining_beta_solutions == []
+
+    nested_gamma_result = _call(
+        connection,
+        product_portal.create_product_solution,
+        user_id=ids.user_active_2,
+        problem_id=problem_gamma_id,
+        description="Resposta Gamma Neta",
+        reply_id=_gamma_child_id,
+    )
+    assert nested_gamma_result["ok"] is False
+    connection.execute(
+        insert(tables["product_solution"]).values(
+            id="legacy-gamma-grandchild",
+            user_id=ids.user_active_2,
+            product_problem_id=problem_gamma_id,
+            description="Resposta Gamma Neta",
+            reply_id=_gamma_child_id,
+            created_at=FIXED_NOW,
+            updated_at=FIXED_NOW,
+        )
+    )
+    gamma_grandchild_id = next(
+        row["id"]
+        for row in connection.execute(
+            select(tables["product_solution"].c.id).where(
+                tables["product_solution"].c.description == "Resposta Gamma Neta"
+            )
+        )
+        .mappings()
+        .all()
+    )
+
+    _success_data(
+        _call(
+            connection,
+            product_portal.delete_product_solution,
+            user_id=ids.user_active_1,
+            id=_gamma_child_id,
+        )
+    )
+    remaining_gamma_after_reply_delete = connection.execute(
+        select(
+            tables["product_solution"].c.id,
+            tables["product_solution"].c.reply_id,
+        ).where(tables["product_solution"].c.product_problem_id == problem_gamma_id)
+    ).mappings().all()
+    remaining_gamma_ids = {row["id"] for row in remaining_gamma_after_reply_delete}
+    assert remaining_gamma_ids == {_gamma_root_id, gamma_grandchild_id}
+    assert next(
+        row["reply_id"]
+        for row in remaining_gamma_after_reply_delete
+        if row["id"] == gamma_grandchild_id
+    ) == _gamma_root_id
 
     missing_problem_delete = _call(connection, product_portal.delete_product_problem, "missing")
     assert missing_problem_delete["ok"] is False

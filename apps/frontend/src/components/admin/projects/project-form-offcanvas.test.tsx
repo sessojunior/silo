@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Project } from "@/types/projects";
 import ProjectFormOffcanvas from "./project-form-offcanvas";
+import { toast } from "@silo/engine/format/toast";
 
 interface OffcanvasMockProps {
   open: boolean;
@@ -156,6 +157,34 @@ describe("ProjectFormOffcanvas", () => {
       status: "paused",
     });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the complete description validation next to the markdown editor", async () => {
+    const onSubmit = vi.fn();
+
+    render(
+      <ProjectFormOffcanvas
+        isOpen
+        onClose={vi.fn()}
+        project={null}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Nome do Projeto *"), {
+      target: { value: "Projeto sem descrição completa" },
+    });
+    fireEvent.submit(document.getElementById("project-form") as HTMLFormElement);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Descrição completa é obrigatória",
+    );
+    expect(toast).toHaveBeenCalledWith({
+      type: "error",
+      title: "Erro na validação",
+      description: "Descrição completa é obrigatória",
+    });
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("invokes delete callback from the form when editing", () => {

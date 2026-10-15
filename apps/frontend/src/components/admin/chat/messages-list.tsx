@@ -173,9 +173,16 @@ export function MessagesList({
         )}
 
         {/* Lista de mensagens */}
-        {messages.map((message) => {
+        {messages.map((message, messageIndex) => {
           // Usar mapa estável para evitar mudanças de lado
           const isOwnMessage = messageOwnershipMap.get(message.id) || false;
+          const firstUserMessageIndex = messages.findIndex(
+            (candidate) => candidate.senderUserId === currentUserId,
+          );
+          const canDeleteMessage =
+            isAssistantVariant &&
+            firstUserMessageIndex >= 0 &&
+            messageIndex > firstUserMessageIndex;
 
           return (
             <MessageBubble
@@ -184,7 +191,7 @@ export function MessagesList({
               isOwnMessage={isOwnMessage}
               showAvatar={true}
               showAssistantFooter={isAssistantVariant && !isOwnMessage}
-              onDelete={isAssistantVariant ? onDeleteMessage : undefined}
+              onDelete={canDeleteMessage ? onDeleteMessage : undefined}
             />
           );
         })}

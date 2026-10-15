@@ -11,6 +11,7 @@ import Image from "next/image";
 import UploadButtonLocal from "@/components/ui/upload-button-local";
 import { toPublicUploadsSrc, toStoredUploadsSrc } from "@/lib/uploads";
 import { config } from "@/lib/config";
+import { compactMarkdownEditorOptions } from "@/components/ui/markdown-editor-config";
 
 // Tipo customizado para soluções retornadas pela API
 interface SolutionWithDetails {
@@ -134,6 +135,7 @@ export default function SolutionFormModal({
             <MarkdownEditor
               value={solutionDescription}
               onChange={setSolutionDescription}
+              options={compactMarkdownEditorOptions}
             />
           </div>
         </div>

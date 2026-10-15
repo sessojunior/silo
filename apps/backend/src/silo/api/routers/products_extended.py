@@ -809,12 +809,17 @@ async def delete_problem_image(
 @router.get("/solutions")
 async def get_solutions(
     problemId: str | None = Query(default=None),
-    _current_user: object = Depends(require_permission("productSolutions", "view")),
+    _current_user: CurrentUser = Depends(require_permission("productSolutions", "view")),
     db: Connection = Depends(get_db),
 ) -> Any:
     if not _required_text(problemId):
         return json_error_response(400, "Parâmetro problemId é obrigatório.")
-    result = _call_product_service(db, list_product_solutions, problemId)
+    result = _call_product_service(
+        db,
+        list_product_solutions,
+        problemId,
+        user_id=getattr(_current_user, "id", None),
+    )
     if is_service_error(result):
         response = service_error_response(result, "Erro ao buscar soluções.")
         assert response is not None

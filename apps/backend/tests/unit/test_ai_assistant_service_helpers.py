@@ -307,6 +307,17 @@ def test_assistant_message_and_thread_row_helpers() -> None:
     assert len(message.citations) == 1
     assert message.citations[0].source_id == "manual-models"
     assert assistant_service._safe_model_validate_generation({"generation": generation}) is not None
+
+    fallback_message = assistant_service._thread_message_from_row(
+        {
+            **message_row,
+            "metadata": {
+                **message_row["metadata"],
+                "generation": {**generation, "status": "fallback"},
+            },
+        }
+    )
+    assert fallback_message.thinking is None
     assert (
         assistant_service._safe_model_validate_generation({"generation": {"provider": "vllm"}})
         is None
@@ -1436,6 +1447,17 @@ def test_assistant_thread_crud_and_state_helpers(monkeypatch: pytest.MonkeyPatch
                     "byte_size": 222,
                 },
                 {
+                    "id": "artifact-3",
+                    "thread_id": "thread-1",
+                    "message_id": "message-3",
+                    "kind": "pdf",
+                    "filename": "third.pdf",
+                    "url": "/uploads/reports/third.pdf",
+                    "reportType": "pending",
+                    "file_sha256": "abc333",
+                    "byte_size": 333,
+                },
+                {
                     "id": "artifact-prune",
                     "thread_id": "thread-prune",
                     "message_id": "message-prune-00",
@@ -1620,11 +1642,94 @@ def test_assistant_thread_crud_and_state_helpers(monkeypatch: pytest.MonkeyPatch
             )
 
         assistant_service.delete_assistant_message(connection, "user-1", "thread-1", "message-2")
-        assert delete_calls == [("reports", "second.pdf")]
+        assert delete_calls == [("reports", "second.pdf"), ("reports", "third.pdf")]
         updated_thread = assistant_service._load_thread_row_by_id(connection, "thread-1")
         assert updated_thread is not None
-        assert updated_thread["message_count"] == 2
-        assert updated_thread["last_message_preview"] == "Mais detalhes"
+        assert updated_thread["message_count"] == 1
+        assert updated_thread["last_message_preview"] == "Quero ver os modelos"
+        remaining_after_message_delete = connection.execute(
+            select(message_table.c.id)
+            .where(message_table.c.thread_id == "thread-1")
+            .order_by(message_table.c.created_at, message_table.c.id)
+        ).all()
+        assert remaining_after_message_delete == [("message-1",)]
+        remaining_artifacts_after_message_delete = connection.execute(
+            select(artifact_table.c.id)
+            .where(artifact_table.c.thread_id == "thread-1")
+            .order_by(artifact_table.c.id)
+        ).all()
+        assert remaining_artifacts_after_message_delete == [("artifact-1",)]
+
+        connection.execute(
+            thread_table.insert().values(
+                id="thread-user-delete",
+                user_id="user-1",
+                title="Excluir pergunta posterior",
+                last_message_preview="Resposta posterior",
+                message_count=4,
+                last_message_at=thread_base.replace(minute=13),
+                created_at=thread_base.replace(minute=10),
+                updated_at=thread_base.replace(minute=13),
+            )
+        )
+        connection.execute(
+            message_table.insert(),
+            [
+                {
+                    "id": "user-delete-1",
+                    "thread_id": "thread-user-delete",
+                    "sender_type": "user",
+                    "sender_user_id": "user-1",
+                    "sender_name": "User One",
+                    "content": "Primeira pergunta",
+                    "metadata": {},
+                    "created_at": thread_base.replace(minute=10),
+                    "updated_at": thread_base.replace(minute=10),
+                },
+                {
+                    "id": "user-delete-2",
+                    "thread_id": "thread-user-delete",
+                    "sender_type": "assistant",
+                    "sender_user_id": None,
+                    "sender_name": "Assistente",
+                    "content": "Primeira resposta",
+                    "metadata": {},
+                    "created_at": thread_base.replace(minute=11),
+                    "updated_at": thread_base.replace(minute=11),
+                },
+                {
+                    "id": "user-delete-3",
+                    "thread_id": "thread-user-delete",
+                    "sender_type": "user",
+                    "sender_user_id": "user-1",
+                    "sender_name": "User One",
+                    "content": "Pergunta que será excluída",
+                    "metadata": {},
+                    "created_at": thread_base.replace(minute=12),
+                    "updated_at": thread_base.replace(minute=12),
+                },
+                {
+                    "id": "user-delete-4",
+                    "thread_id": "thread-user-delete",
+                    "sender_type": "assistant",
+                    "sender_user_id": None,
+                    "sender_name": "Assistente",
+                    "content": "Resposta que também deve ser excluída",
+                    "metadata": {},
+                    "created_at": thread_base.replace(minute=13),
+                    "updated_at": thread_base.replace(minute=13),
+                },
+            ],
+        )
+        assistant_service.delete_assistant_message(
+            connection, "user-1", "thread-user-delete", "user-delete-3"
+        )
+        remaining_after_user_delete = connection.execute(
+            select(message_table.c.id)
+            .where(message_table.c.thread_id == "thread-user-delete")
+            .order_by(message_table.c.created_at, message_table.c.id)
+        ).all()
+        assert remaining_after_user_delete == [("user-delete-1",), ("user-delete-2",)]
 
         delete_calls.clear()
         with pytest.raises(assistant_service.AssistantThreadNotFoundError):
@@ -1778,6 +1883,13 @@ def test_assistant_persistence_helpers_cover_message_and_pdf_artifact_writes(
             select(message_table.c.id).where(message_table.c.thread_id == "thread-persist")
         ).all()
         assert len(message_rows) == 2
+        persisted_user_message_id = connection.execute(
+            select(message_table.c.id).where(
+                message_table.c.thread_id == "thread-persist",
+                message_table.c.sender_type == "user",
+            )
+        ).scalar_one()
+        assert state["final_response"]["userMessageId"] == persisted_user_message_id
 
         assert len(FakeArtifactRepository.instances) == 1
         repo = FakeArtifactRepository.instances[0]

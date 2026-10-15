@@ -38,6 +38,31 @@ EMBEDDING_VECTOR_SIZE = 768
 EMBEDDING_CACHE_MAX_SIZE = 256
 # The OpenAI SDK requires a value even when this local vLLM server has no auth.
 VLLM_OPENAI_COMPAT_PLACEHOLDER = "not-needed"
+MODEL_RECONNECT_ATTEMPTS = 1
+
+
+def _is_retryable_transport_error(error: BaseException) -> bool:
+    """Identifica falhas de transporte que podem ser resolvidas recriando o cliente."""
+    retryable_names = {
+        "APIConnectionError",
+        "APITimeoutError",
+        "ConnectError",
+        "ConnectTimeout",
+        "PoolTimeout",
+        "ReadError",
+        "ReadTimeout",
+        "RemoteProtocolError",
+    }
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, (ConnectionError, TimeoutError, OSError, httpx.TransportError)):
+            return True
+        if type(current).__name__ in retryable_names:
+            return True
+        current = current.__cause__ or current.__context__
+    return False
 
 
 async def _aclose_langchain_openai_client(wrapper: object) -> None:
@@ -147,11 +172,16 @@ def _extract_prompt_eval_count(message: AIMessage) -> int | None:
 class VLLMModelRuntime(ChatModelRuntime):
     settings: VLLMSettings
     semaphore: asyncio.Semaphore = field(init=False)
+    _model_reset_lock: asyncio.Lock = field(init=False, repr=False)
     _model: ChatOpenAI = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.semaphore = asyncio.Semaphore(max(1, int(self.settings.max_concurrent_requests)))
-        self._model = cast(Any, ChatOpenAI)(
+        self._model_reset_lock = asyncio.Lock()
+        self._model = self._create_model()
+
+    def _create_model(self) -> ChatOpenAI:
+        return cast(Any, ChatOpenAI)(
             model=self.settings.model,
             base_url=self.settings.url,
             api_key=VLLM_OPENAI_COMPAT_PLACEHOLDER,
@@ -160,6 +190,18 @@ class VLLMModelRuntime(ChatModelRuntime):
             # espaço excessivo; 256 mantém respostas completas e limita a espera.
             max_tokens=256,
         )
+
+    async def _recreate_model_after_failure(self, failed_model: object) -> None:
+        async with self._model_reset_lock:
+            if self._model is not failed_model:
+                return
+            previous_model = self._model
+            self._model = self._create_model()
+            try:
+                await _aclose_langchain_openai_client(previous_model)
+            except Exception:
+                # A client whose server disappeared may already be unclosable.
+                pass
 
     async def complete(self, messages: Sequence[ChatMessage]) -> ChatResponse:
         response, _telemetry = await self.complete_with_metadata(messages)
@@ -174,18 +216,32 @@ class VLLMModelRuntime(ChatModelRuntime):
     ) -> AsyncIterator[str]:
         await self._acquire_slot()
         try:
-            bind_kwargs: dict[str, Any] = {}
-            if max_tokens is not None:
-                bind_kwargs["max_tokens"] = max_tokens
-            if response_format is not None:
-                bind_kwargs["response_format"] = response_format
-            model = self._model.bind(**bind_kwargs) if bind_kwargs else self._model
-            stream = model.astream([_message_to_langchain(message) for message in messages])
-            async for chunk in stream:
-                if isinstance(chunk, AIMessageChunk):
-                    yield _coerce_text(chunk.content)
-                else:
-                    yield _coerce_text(getattr(chunk, "content", chunk))
+            for attempt in range(MODEL_RECONNECT_ATTEMPTS + 1):
+                failed_model = self._model
+                emitted_chunk = False
+                try:
+                    bind_kwargs: dict[str, Any] = {}
+                    if max_tokens is not None:
+                        bind_kwargs["max_tokens"] = max_tokens
+                    if response_format is not None:
+                        bind_kwargs["response_format"] = response_format
+                    model = failed_model.bind(**bind_kwargs) if bind_kwargs else failed_model
+                    stream = model.astream([_message_to_langchain(message) for message in messages])
+                    async for chunk in stream:
+                        emitted_chunk = True
+                        if isinstance(chunk, AIMessageChunk):
+                            yield _coerce_text(chunk.content)
+                        else:
+                            yield _coerce_text(getattr(chunk, "content", chunk))
+                    return
+                except Exception as exc:
+                    if (
+                        attempt >= MODEL_RECONNECT_ATTEMPTS
+                        or emitted_chunk
+                        or not _is_retryable_transport_error(exc)
+                    ):
+                        raise
+                    await self._recreate_model_after_failure(failed_model)
         finally:
             self.semaphore.release()
 
@@ -198,18 +254,29 @@ class VLLMModelRuntime(ChatModelRuntime):
     ) -> tuple[ChatResponse, ChatCompletionTelemetry]:
         await self._acquire_slot()
         try:
-            started_at = time.perf_counter()
-            bind_kwargs: dict[str, Any] = {}
-            if max_tokens is not None:
-                bind_kwargs["max_tokens"] = max_tokens
-            if response_format is not None:
-                bind_kwargs["response_format"] = response_format
-            model = self._model.bind(**bind_kwargs) if bind_kwargs else self._model
-            ai_message = await asyncio.wait_for(
-                model.ainvoke([_message_to_langchain(message) for message in messages]),
-                timeout=self._timeout_seconds(DEFAULT_CHAT_TIMEOUT_SECONDS),
-            )
-            elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+            for attempt in range(MODEL_RECONNECT_ATTEMPTS + 1):
+                failed_model = self._model
+                started_at = time.perf_counter()
+                try:
+                    bind_kwargs: dict[str, Any] = {}
+                    if max_tokens is not None:
+                        bind_kwargs["max_tokens"] = max_tokens
+                    if response_format is not None:
+                        bind_kwargs["response_format"] = response_format
+                    model = failed_model.bind(**bind_kwargs) if bind_kwargs else failed_model
+                    ai_message = await asyncio.wait_for(
+                        model.ainvoke([_message_to_langchain(message) for message in messages]),
+                        timeout=self._timeout_seconds(DEFAULT_CHAT_TIMEOUT_SECONDS),
+                    )
+                    elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+                    break
+                except Exception as exc:
+                    if (
+                        attempt >= MODEL_RECONNECT_ATTEMPTS
+                        or not _is_retryable_transport_error(exc)
+                    ):
+                        raise
+                    await self._recreate_model_after_failure(failed_model)
         finally:
             self.semaphore.release()
         response = ChatResponse(content=_coerce_text(ai_message.content))
@@ -236,14 +303,25 @@ class VLLMModelRuntime(ChatModelRuntime):
         """Invoke a tool-enabled model call through the runtime budget."""
         await self._acquire_slot()
         try:
-            bind_kwargs: dict[str, Any] = (
-                {"tool_choice": tool_choice} if tool_choice is not None else {}
-            )
-            bound_model = self._model.bind_tools(cast(Any, tools), **bind_kwargs)
-            return await asyncio.wait_for(
-                bound_model.ainvoke(list(messages)),
-                timeout=self._timeout_seconds(DEFAULT_CHAT_TIMEOUT_SECONDS),
-            )
+            for attempt in range(MODEL_RECONNECT_ATTEMPTS + 1):
+                failed_model = self._model
+                try:
+                    bind_kwargs: dict[str, Any] = (
+                        {"tool_choice": tool_choice} if tool_choice is not None else {}
+                    )
+                    bound_model = failed_model.bind_tools(cast(Any, tools), **bind_kwargs)
+                    return await asyncio.wait_for(
+                        bound_model.ainvoke(list(messages)),
+                        timeout=self._timeout_seconds(DEFAULT_CHAT_TIMEOUT_SECONDS),
+                    )
+                except Exception as exc:
+                    if (
+                        attempt >= MODEL_RECONNECT_ATTEMPTS
+                        or not _is_retryable_transport_error(exc)
+                    ):
+                        raise
+                    await self._recreate_model_after_failure(failed_model)
+            raise RuntimeError("Modelo vLLM não respondeu após reconectar.")
         finally:
             self.semaphore.release()
 

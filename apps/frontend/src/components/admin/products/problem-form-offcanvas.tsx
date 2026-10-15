@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { NO_INCIDENTS_CATEGORY_ID } from "@silo/engine/constants";
 import { toPublicUploadsSrc, toStoredUploadsSrc } from "@/lib/uploads";
 import { config } from "@/lib/config";
+import { compactMarkdownEditorOptions } from "@/components/ui/markdown-editor-config";
 
 interface ProblemFormOffcanvasProps {
   open: boolean;
@@ -192,6 +193,7 @@ export default function ProblemFormOffcanvas({
               <MarkdownEditor
                 value={formDescription}
                 onChange={setFormDescription}
+                options={compactMarkdownEditorOptions}
               />
             </div>
           </div>

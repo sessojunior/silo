@@ -1116,7 +1116,7 @@ def delete_product_problem_category(id: str) -> dict[str, object]:
     return service_success(None)
 
 
-def list_product_solutions(problem_id: str) -> dict[str, object]:
+def list_product_solutions(problem_id: str, *, user_id: str | None = None) -> dict[str, object]:
     solution_table = legacy_tables["product_solution"]
     checked_table = legacy_tables["product_solution_checked"]
     image_table = legacy_tables["product_solution_image"]
@@ -1131,6 +1131,25 @@ def list_product_solutions(problem_id: str) -> dict[str, object]:
         return service_success({"items": []})
 
     solution_ids = [str(row["id"]) for row in solutions]
+    solutions_by_id = {str(row["id"]): row for row in solutions}
+
+    def canonical_reply_id(solution_row: dict[str, object]) -> str | None:
+        parent_id = solution_row.get("reply_id")
+        if parent_id is None:
+            return None
+
+        visited: set[str] = set()
+        candidate = str(parent_id)
+        while candidate not in visited:
+            visited.add(candidate)
+            parent = solutions_by_id.get(candidate)
+            if parent is None:
+                return str(parent_id)
+            ancestor_id = parent.get("reply_id")
+            if ancestor_id is None:
+                return candidate
+            candidate = str(ancestor_id)
+        return str(parent_id)
     users = _connection_select_rows(
         select(user_table).where(
             user_table.c.id.in_(tuple({str(row["user_id"]) for row in solutions}))
@@ -1161,7 +1180,7 @@ def list_product_solutions(problem_id: str) -> dict[str, object]:
         items.append(
             {
                 "id": str(solution_row["id"]),
-                "replyId": solution_row.get("reply_id"),
+                "replyId": canonical_reply_id(solution_row),
                 "date": serialize_legacy_row(solution_row)["createdAt"],
                 "description": solution_row["description"],
                 "verified": str(solution_row["id"]) in checked_ids,
@@ -1171,7 +1190,7 @@ def list_product_solutions(problem_id: str) -> dict[str, object]:
                     "image": PROFILE_IMAGE_FALLBACK,
                 },
                 "images": images_by_solution.get(str(solution_row["id"]), []),
-                "isMine": False,
+                "isMine": user_id is not None and str(solution_row["user_id"]) == user_id,
             }
         )
 
@@ -1188,6 +1207,18 @@ def create_product_solution(
 ) -> dict[str, object]:
     solution_table = legacy_tables["product_solution"]
     image_table = legacy_tables["product_solution_image"]
+    if reply_id:
+        parent = _connection_select_first(
+            select(solution_table).where(solution_table.c.id == reply_id)
+        )
+        if parent is None or str(parent["product_problem_id"]) != problem_id:
+            return service_failure("Resposta inválida para este problema.", 400)
+        if parent.get("reply_id") is not None:
+            return service_failure(
+                "Só é possível responder a uma solução principal.",
+                400,
+            )
+
     solution_id = new_uuid()
     now = now_naive()
 
@@ -1287,8 +1318,32 @@ def delete_product_solution(*, user_id: str, id: str) -> dict[str, object]:
     removed_image_urls: list[str] = []
     _begin()
     try:
-        child_ids = _collect_solution_descendants(id)
-        all_ids = [id, *child_ids]
+        parent_id = existing.get("reply_id")
+        if parent_id is None:
+            # Excluir uma solução-raiz remove toda a conversa associada.
+            child_ids = _collect_solution_descendants(id)
+            all_ids = [id, *child_ids]
+        else:
+            # Ao excluir uma resposta, preserve suas sub-respostas e reanexe-as
+            # diretamente à solução-raiz para manter todas no mesmo nível.
+            root_id = str(parent_id)
+            visited: set[str] = set()
+            while root_id not in visited:
+                visited.add(root_id)
+                parent_row = _connection_select_first(
+                    select(solution_table.c.reply_id).where(solution_table.c.id == root_id)
+                )
+                if parent_row is None or parent_row.get("reply_id") is None:
+                    break
+                root_id = str(parent_row["reply_id"])
+
+            descendant_ids = _collect_solution_descendants(id)
+            _connection_execute(
+                update(solution_table)
+                .where(solution_table.c.id.in_(tuple(descendant_ids)))
+                .values(reply_id=root_id)
+            )
+            all_ids = [id]
         if all_ids:
             image_rows = _connection_select_rows(
                 select(image_table.c.image).where(

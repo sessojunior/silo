@@ -223,18 +223,19 @@ export type AiAssistantArtifactDto = z.infer<typeof AiAssistantArtifactSchema>;
 
 export const AiAssistantMessageResponseSchema = z.object({
   threadId: z.string(),
-  thread: AiAssistantThreadSummarySchema.optional(),
-  messageContent: z.string().optional(),
+  userMessageId: z.string().uuid().optional().nullable(),
+  thread: AiAssistantThreadSummarySchema.optional().nullable(),
+  messageContent: z.string().optional().nullable(),
   scope: AiAssistantScopeSchema,
   isInScope: z.boolean(),
   refusalReason: z.string().optional().nullable(),
   answer: z.string(),
-  thinking: z.string().optional(),
+  thinking: z.string().optional().nullable(),
   suggestedQuestions: z.array(z.string()),
   citations: z.array(AiAssistantCitationSchema),
-  visualization: AiAssistantVisualizationSchema.optional(),
+  visualization: AiAssistantVisualizationSchema.optional().nullable(),
   artifacts: z.array(AiAssistantArtifactSchema).optional().nullable(),
-  generation: AiAssistantGenerationSchema.optional(),
+  generation: AiAssistantGenerationSchema.optional().nullable(),
   contextSummary: z.string(),
 });
 

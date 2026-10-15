@@ -13,15 +13,11 @@ import { config } from "@/lib/config";
 import { toPublicUploadsSrc } from "@/lib/uploads";
 import Image from "next/image";
 import Lightbox from "@/components/ui/lightbox";
+import { defaultMarkdownEditorOptions } from "./markdown-editor-config";
 
 const SimpleMdeReact = dynamic(() => import("react-simplemde-editor"), {
   ssr: false,
 });
-
-const defaultOptions: SimpleMdeOptions = {
-  autofocus: true,
-  spellChecker: false,
-};
 
 const markdownEditorStyles = `
 .EasyMDEContainer .CodeMirror{font-size:1rem;line-height:1.6}
@@ -250,6 +246,9 @@ const insertGalleryButton = (
 interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
+  id?: string;
+  ariaDescribedBy?: string;
+  ariaInvalid?: boolean;
   options?: SimpleMdeOptions;
   className?: string;
   uploadConfig?: MarkdownEditorUploadConfig;
@@ -258,6 +257,9 @@ interface MarkdownEditorProps {
 export default function MarkdownEditor({
   value,
   onChange,
+  id,
+  ariaDescribedBy,
+  ariaInvalid,
   options,
   className,
   uploadConfig,
@@ -309,7 +311,7 @@ export default function MarkdownEditor({
       : null;
     const toolbar = insertGalleryButton(toolbarBase, galleryButton);
     return {
-      ...defaultOptions,
+      ...defaultMarkdownEditorOptions,
       ...(options ?? {}),
       toolbar,
     };
@@ -342,6 +344,11 @@ export default function MarkdownEditor({
     <>
       <style dangerouslySetInnerHTML={{ __html: markdownEditorStyles }} />
       <SimpleMdeReact
+        id={id}
+        textareaProps={{
+          "aria-describedby": ariaDescribedBy,
+          "aria-invalid": ariaInvalid,
+        }}
         value={value}
         onChange={(val: string) => onChange(val || "")}
         options={mergedOptions}

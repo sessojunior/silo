@@ -492,16 +492,39 @@ def delete_assistant_message(
     if message_row is None:
         raise AssistantThreadNotFoundError("Mensagem não encontrada.")
 
+    ordered_message_rows = (
+        connection.execute(
+            select(message_table.c.id)
+            .where(message_table.c.thread_id == thread_id)
+            .order_by(
+                message_table.c.created_at.asc(),
+                case((message_table.c.sender_type == "user", 0), else_=1).asc(),
+                message_table.c.id.asc(),
+            )
+        )
+        .all()
+    )
+    ordered_message_ids = [str(row[0]) for row in ordered_message_rows]
+    try:
+        first_deleted_index = ordered_message_ids.index(str(message_row["id"]))
+    except ValueError:
+        raise AssistantThreadNotFoundError("Mensagem não encontrada.") from None
+
+    deleted_message_ids = ordered_message_ids[first_deleted_index:]
     artifact_rows = (
-        connection.execute(select(artifact_table).where(artifact_table.c.message_id == message_id))
+        connection.execute(
+            select(artifact_table).where(artifact_table.c.message_id.in_(deleted_message_ids))
+        )
         .mappings()
         .all()
     )
     for artifact_row in artifact_rows:
         _delete_artifact_file_if_present(artifact_row)
 
-    connection.execute(delete(artifact_table).where(artifact_table.c.message_id == message_id))
-    connection.execute(delete(message_table).where(message_table.c.id == message_id))
+    connection.execute(
+        delete(artifact_table).where(artifact_table.c.message_id.in_(deleted_message_ids))
+    )
+    connection.execute(delete(message_table).where(message_table.c.id.in_(deleted_message_ids)))
     _recalculate_thread_state(connection, thread_id)
     connection.commit()
 
@@ -640,7 +663,7 @@ async def stream_assistant_message(
             data={
                 "content": (
                     "Estou consultando os dados autorizados do SILO e preparando a resposta "
-                    "com o modelo vLLM..."
+                    "com o modelo de IA..."
                 )
             },
         )
@@ -864,6 +887,8 @@ def _thread_message_from_row(row: Mapping[Any, Any]) -> AiAssistantThreadMessage
     visualization = _safe_model_validate_visualization(metadata)
     artifacts = _safe_model_validate_artifacts(metadata)
     thinking = _optional_text(_safe_nested_value(metadata, "thinking"))
+    if generation is not None and generation.status != "success":
+        thinking = None
     return AiAssistantThreadMessageDto(
         id=str(payload["id"]),
         thread_id=str(payload["threadId"]),
@@ -2701,6 +2726,14 @@ def _build_response_from_state(
         runtime_context.current_user.id,
         str(state.get("thread_id") or ""),
     )
+    generation = (
+        AiAssistantGenerationDto.model_validate(state["generation"])
+        if isinstance(state.get("generation"), dict) and state["generation"]
+        else None
+    )
+    thinking = _humanize_progress(state.get("progress", []))
+    if generation is not None and generation.status != "success":
+        thinking = None
     final_response = AiAssistantMessageResponseDto(
         thread_id=str(state.get("thread_id") or ""),
         thread=thread_summary,
@@ -2709,7 +2742,7 @@ def _build_response_from_state(
         is_in_scope=not refusal,
         refusal_reason=str(state.get("refusal_reason")) if refusal else None,
         answer=answer,
-        thinking=_humanize_progress(state.get("progress", [])),
+        thinking=thinking,
         suggested_questions=list(
             state.get("suggested_questions") or _suggested_questions_for_scope(scope)
         ),
@@ -2719,9 +2752,7 @@ def _build_response_from_state(
         ],
         visualization=_current_visualization(state),
         artifacts=_current_artifacts(state),
-        generation=AiAssistantGenerationDto.model_validate(state["generation"])
-        if state.get("generation")
-        else None,
+        generation=generation,
         context_summary=str(
             state.get("synthesis_context_summary") or _build_context_summary(state)
         ),
@@ -4301,6 +4332,9 @@ def _persist_user_and_assistant_messages(
         )
     connection.execute(insert(message_table).values(user_message))
     connection.execute(insert(message_table).values(assistant_message))
+    final_response = state.get("final_response")
+    if isinstance(final_response, dict):
+        final_response["userMessageId"] = user_message_id
     try:
         _attach_artifact_if_needed(runtime_context, state, assistant_message_id)
     except Exception:

@@ -14,7 +14,7 @@ services:
       - "--model"
       - "${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}"
       - "--max-model-len"
-      - "${VLLM_MAX_MODEL_LEN:-16384}"
+      - "${VLLM_MAX_MODEL_LEN:-8192}"
       - "--gpu-memory-utilization"
       - "${SILO_VLLM_GPU_MEM_UTIL:-0.70}"
       - "--enable-prefix-caching"

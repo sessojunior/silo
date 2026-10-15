@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import SolutionFormModal from "./solution-form-modal";
 
+let lastMarkdownEditorOptions:
+  | { minHeight?: string; maxHeight?: string }
+  | undefined;
+
 vi.mock("@/components/ui/modal", () => ({
   default: function MockModal({
     isOpen,
@@ -44,9 +48,12 @@ vi.mock("@/components/ui/button", () => ({
 vi.mock("@/components/ui/markdown-editor", () => ({
   default: function MockMarkdownEditor({
     value,
+    options,
   }: {
     value: string;
+    options?: { minHeight?: string; maxHeight?: string };
   }) {
+    lastMarkdownEditorOptions = options;
     return <textarea aria-label="Descrição da solução" value={value} readOnly />;
   },
 }));
@@ -138,6 +145,15 @@ function renderModal(
 }
 
 describe("SolutionFormModal", () => {
+  it("uses a compact description editor", () => {
+    renderModal();
+
+    expect(lastMarkdownEditorOptions).toMatchObject({
+      minHeight: "180px",
+      maxHeight: "180px",
+    });
+  });
+
   it("exibe o uploader ao criar uma solução e guarda a imagem enviada", () => {
     const setSolutionImagePreview = vi.fn();
 

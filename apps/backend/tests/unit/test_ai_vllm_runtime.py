@@ -85,6 +85,31 @@ class _FakeOpenAIEmbeddings:
         return [0.75 for _ in range(assistant_runtime.EMBEDDING_VECTOR_SIZE)]
 
 
+class _FailOnceChatOpenAI:
+    instances = 0
+
+    def __init__(self, **kwargs) -> None:
+        type(self).instances += 1
+        self.instance_number = type(self).instances
+        self.kwargs = kwargs
+
+    def bind(self, **_kwargs):
+        return self
+
+    async def ainvoke(self, _messages):
+        if self.instance_number == 1:
+            raise ConnectionError("Connection error.")
+        return AIMessage(
+            content="resposta após reconectar",
+            usage_metadata={"input_tokens": 2, "output_tokens": 4, "total_tokens": 6},
+        )
+
+    async def astream(self, _messages):
+        if self.instance_number == 1:
+            raise ConnectionError("Connection error.")
+        yield AIMessageChunk(content="resposta após reconectar")
+
+
 class _ClosableOpenAIEmbeddings(_FakeOpenAIEmbeddings):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -158,6 +183,37 @@ async def test_vllm_model_runtime_complete() -> None:
     assert telemetry.prompt_eval_count == 5
     assert telemetry.latency_ms is not None
     assert telemetry.latency_ms >= 0
+
+
+@pytest.mark.asyncio
+async def test_vllm_model_runtime_recreates_client_after_connection_failure() -> None:
+    _FailOnceChatOpenAI.instances = 0
+    settings = VLLMSettings(url="http://vllm.local:8000/v1", model="m", embedding_model="emb")
+    with patch.object(assistant_runtime, "ChatOpenAI", _FailOnceChatOpenAI):
+        runtime = assistant_runtime.VLLMModelRuntime(settings)
+
+        response, _telemetry = await runtime.complete_with_metadata(
+            [ChatMessage(role="user", content="pergunta")]
+        )
+
+    assert response.content == "resposta após reconectar"
+    assert _FailOnceChatOpenAI.instances == 2
+
+
+@pytest.mark.asyncio
+async def test_vllm_model_runtime_recreates_client_before_streaming_after_connection_failure(
+) -> None:
+    _FailOnceChatOpenAI.instances = 0
+    settings = VLLMSettings(url="http://vllm.local:8000/v1", model="m", embedding_model="emb")
+    with patch.object(assistant_runtime, "ChatOpenAI", _FailOnceChatOpenAI):
+        runtime = assistant_runtime.VLLMModelRuntime(settings)
+        chunks = [
+            chunk
+            async for chunk in runtime.stream([ChatMessage(role="user", content="pergunta")])
+        ]
+
+    assert chunks == ["resposta após reconectar"]
+    assert _FailOnceChatOpenAI.instances == 2
 
 
 @pytest.mark.asyncio

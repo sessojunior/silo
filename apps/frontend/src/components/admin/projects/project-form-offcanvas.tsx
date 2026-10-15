@@ -19,6 +19,11 @@ interface ProjectFormOffcanvasProps {
   onDelete?: (project: Project) => void;
 }
 
+type ProjectValidationError = {
+  field: "name" | "description" | "dateRange";
+  message: string;
+};
+
 export default function ProjectFormOffcanvas({
   isOpen,
   onClose,
@@ -36,6 +41,8 @@ export default function ProjectFormOffcanvas({
     status: "active",
   });
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] =
+    useState<ProjectValidationError | null>(null);
   const uploadConfig = useMemo(
     () => ({
       enabled: true,
@@ -67,6 +74,7 @@ export default function ProjectFormOffcanvas({
 
   // Carregar dados do projeto para edição
   useEffect(() => {
+    setValidationError(null);
     if (project) {
       setFormData({
         name: project.name,
@@ -95,26 +103,30 @@ export default function ProjectFormOffcanvas({
     }
   }, [project, isOpen]);
 
+  const showValidationError = (
+    field: ProjectValidationError["field"],
+    message: string,
+  ) => {
+    setValidationError({ field, message });
+    toast({
+      type: "error",
+      title: "Erro na validação",
+      description: message,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validações básicas
     if (!formData.name.trim()) {
-      toast({
-        type: "error",
-        title: "Erro na validação",
-        description: "Nome do projeto é obrigatório",
-      });
+      showValidationError("name", "Nome do projeto é obrigatório");
       return;
     }
 
     // A API exige descrição completa com ao menos 1 caractere.
     if (!formData.description.trim()) {
-      toast({
-        type: "error",
-        title: "Erro na validação",
-        description: "Descrição completa é obrigatória",
-      });
+      showValidationError("description", "Descrição completa é obrigatória");
       return;
     }
 
@@ -123,11 +135,10 @@ export default function ProjectFormOffcanvas({
       formData.endDate &&
       formData.startDate > formData.endDate
     ) {
-      toast({
-        type: "error",
-        title: "Erro na validação",
-        description: "Data de início deve ser anterior à data de fim",
-      });
+      showValidationError(
+        "dateRange",
+        "Data de início deve ser anterior à data de fim",
+      );
       return;
     }
 
@@ -160,6 +171,16 @@ export default function ProjectFormOffcanvas({
       ...prev,
       [field]: value,
     }));
+    setValidationError((previous) => {
+      if (!previous) return null;
+      if (
+        previous.field === "dateRange" &&
+        (field === "startDate" || field === "endDate")
+      ) {
+        return null;
+      }
+      return previous.field === field ? null : previous;
+    });
   };
 
   const handleDelete = () => {
@@ -234,6 +255,11 @@ export default function ProjectFormOffcanvas({
             disabled={saving}
             required
           />
+          {validationError?.field === "name" && (
+            <p className="mt-2 text-sm text-red-600" role="alert">
+              {validationError.message}
+            </p>
+          )}
         </div>
 
         {/* Descrição Resumida */}
@@ -315,13 +341,31 @@ export default function ProjectFormOffcanvas({
         {/* Descrição Completa com Markdown Editor */}
         <div>
           <Label htmlFor="description">Descrição Completa *</Label>
-          <div className="mt-2">
+          <div
+            className={`mt-2 rounded-lg ${
+              validationError?.field === "description"
+                ? "ring-2 ring-red-500 ring-offset-1"
+                : ""
+            }`}
+          >
             <MarkdownEditor
+              id="description"
+              ariaDescribedBy="description-error"
+              ariaInvalid={validationError?.field === "description"}
               value={formData.description}
               onChange={(value) => handleFieldChange("description", value)}
               uploadConfig={uploadConfig}
             />
           </div>
+          {validationError?.field === "description" && (
+            <p
+              id="description-error"
+              className="mt-2 text-sm text-red-600"
+              role="alert"
+            >
+              {validationError.message}
+            </p>
+          )}
         </div>
       </form>
     </Offcanvas>

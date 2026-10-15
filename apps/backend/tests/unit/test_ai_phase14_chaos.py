@@ -399,7 +399,7 @@ async def test_stream_assistant_message_emits_expected_events(monkeypatch) -> No
     assert events[0].data == {
         "content": (
             "Estou consultando os dados autorizados do SILO e preparando a resposta "
-            "com o modelo vLLM..."
+            "com o modelo de IA..."
         )
     }
     assert events[1].data == {"scope": "general", "isInScope": True}

@@ -527,6 +527,39 @@ def test_build_response_usa_context_summary_da_sintese(monkeypatch: pytest.Monke
     assert response["contextSummary"] == state["synthesis_context_summary"]
 
 
+def test_build_response_nao_expoe_thinking_em_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    runtime_context = _fake_runtime_context(
+        engine.connect(),
+        model_runtime=FakeChatPort(response="ok"),
+        embedding_provider=_RaisingEmbeddingProvider(),
+    )
+    monkeypatch.setattr(assistant_service, "_current_thread_summary", lambda *args, **kwargs: None)
+    state = {
+        "thread_id": "thread-fallback",
+        "scope": "reports",
+        "answer": "Resposta baseada nos dados autorizados.",
+        "progress": ["execute_required_data_tools", "synthesize_once"],
+        "suggested_questions": [],
+        "citations": [],
+        "visualization": {},
+        "generation": {
+            "provider": "vllm",
+            "model": "mistral",
+            "status": "fallback",
+            "latencyMs": 1200,
+            "generatedTokens": None,
+            "thinkingTimeMs": None,
+            "errorMessage": "O modelo respondeu em formato inválido.",
+        },
+    }
+
+    response = assistant_service._build_response_from_state(state, runtime_context)
+
+    assert response["generation"]["status"] == "fallback"
+    assert response["thinking"] is None
+
+
 def test_canonical_trajectory_mapeia_plano_publico() -> None:
     state = {
         "scope": "reports",

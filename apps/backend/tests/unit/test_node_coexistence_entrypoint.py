@@ -55,6 +55,22 @@ def test_compose_uses_the_768_dimension_embedding_service_for_api_and_vllm_embed
     assert '"${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}"' in embedding
 
 
+def test_api_waits_for_both_ai_models_before_starting() -> None:
+    compose = COMPOSE.read_text(encoding="utf-8")
+    api = _service_block(compose, "api")
+    dependencies = re.search(
+        r"^    depends_on:\n(?P<body>.*?)(?=^    networks:)",
+        api,
+        re.MULTILINE | re.DOTALL,
+    )
+    assert dependencies is not None
+    dependency_block = dependencies.group("body")
+
+    assert "vllm:" in dependency_block
+    assert "vllm-embed:" in dependency_block
+    assert dependency_block.count("condition: service_healthy") == 3
+
+
 def test_deploy_compose_keeps_the_dedicated_embedding_service_contract() -> None:
     deploy_compose = (REPOSITORY_ROOT / "docker-compose.deploy.yml").read_text(encoding="utf-8")
 

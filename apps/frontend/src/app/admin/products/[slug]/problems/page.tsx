@@ -202,7 +202,9 @@ export default function ProblemsPage() {
         // Sobrescreve isMine para cada solução
         const solutionsWithIsMine = solutionItems.map((sol) => ({
           ...sol,
-          isMine: sol.user?.id === currentUser?.id,
+          // O backend calcula a propriedade com base na sessão autenticada.
+          // Preserve esse valor enquanto o contexto do usuário termina de carregar.
+          isMine: Boolean(sol.isMine) || sol.user?.id === currentUser?.id,
         }));
 
         // A API já retorna as soluções ordenadas por data de criação (mais recentes primeiro)
@@ -727,6 +729,7 @@ export default function ProblemsPage() {
         toast({ type: "success", title: "Solução excluída" });
         setDeleteSolutionDialogOpen(false);
         setSolutionToDelete(null);
+        closeSolutionModal();
         // Atualiza lista de soluções
         if (problem) {
           await atualizarSolucoes(problem.id);
@@ -781,7 +784,9 @@ export default function ProblemsPage() {
       getItemsFromApiResponse<SolutionWithDetails>(solutionsData);
     const solutionsWithIsMine = solutionItems.map((sol) => ({
       ...sol,
-      isMine: sol.user?.id === currentUser?.id,
+      // O backend calcula a propriedade com base na sessão autenticada.
+      // Preserve esse valor enquanto o contexto do usuário termina de carregar.
+      isMine: Boolean(sol.isMine) || sol.user?.id === currentUser?.id,
     }));
 
     // A API já retorna as soluções ordenadas por data de criação (mais recentes primeiro)

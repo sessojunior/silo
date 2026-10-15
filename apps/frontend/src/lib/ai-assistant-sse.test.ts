@@ -66,6 +66,56 @@ describe("AI assistant SSE compatibility parser", () => {
     expect(AiAssistantMessageResponseSchema.safeParse(payload).success).toBe(true);
   });
 
+  it("accepts the full result emitted by the running API", () => {
+    const payload = {
+      threadId: "73e5e1d6-5de4-456b-8c03-ff0a94e3f20b",
+      userMessageId: "6af51e58-97ac-49ee-93c0-d952e03ff136",
+      thread: {
+        id: "73e5e1d6-5de4-456b-8c03-ff0a94e3f20b",
+        title: "teste",
+        lastMessagePreview: "O recorte 2026-09-16 a 2026-10-15 mostra 4 projetos.",
+        messageCount: 2,
+        lastMessageAt: "2026-10-15T12:13:55.232Z",
+        createdAt: "2026-09-01T19:05:15.127Z",
+        updatedAt: "2026-10-15T12:13:55.239Z",
+      },
+      messageContent: null,
+      scope: "products" as const,
+      isInScope: true,
+      refusalReason: null,
+      answer: "O SILO possui 5 produtos cadastrados.",
+      thinking: "Preparei a resposta final.",
+      suggestedQuestions: ["Quais produtos estão ativos no momento?"],
+      citations: [
+        {
+          label: "Catálogo de produtos",
+          detail: "2026-09-16 a 2026-10-15",
+          source: null,
+          sourceId: null,
+          snippet: null,
+          score: null,
+        },
+      ],
+      visualization: null,
+      artifacts: null,
+      generation: {
+        provider: "vllm",
+        model: "Qwen/Qwen2.5-0.5B-Instruct",
+        status: "fallback" as const,
+        latencyMs: 1441,
+        generatedTokens: null,
+        thinkingTimeMs: null,
+        errorMessage: "Não foi possível acessar o modelo vLLM neste momento.",
+      },
+      contextSummary: "scope=products; range=2026-09-16..2026-10-15",
+    };
+
+    expect(parseAssistantSseEvent("result", payload)).toMatchObject({
+      type: "result",
+      data: payload,
+    });
+  });
+
   it("accepts legacy data followed by complete as a final answer", () => {
     const legacyData: Partial<AiAssistantMessageResponseDto> = {
       answer: "Resposta cacheada",

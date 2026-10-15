@@ -30,6 +30,10 @@ const nextConfig: NextConfig = {
   // O proxy do Next limita requisições reescritas a 30s por padrão; o
   // assistente de IA (vLLM em CPU) pode levar mais de 30s por geração.
   experimental: {
+    // Keep production builds predictable in the constrained Docker builder.
+    // Without this, Next.js may spawn one worker per reported host CPU and
+    // stall while compiling the monorepo.
+    cpus: 1,
     proxyTimeout: 300_000,
   },
   async redirects() {
