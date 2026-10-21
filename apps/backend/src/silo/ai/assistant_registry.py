@@ -7,11 +7,12 @@ import re
 import uuid
 from collections.abc import Callable, MutableMapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal, TypedDict, TypeVar
+from typing import Any, Literal, Protocol, TypedDict, TypeVar
 
 from sqlalchemy.engine import Connection
 
 from silo.ai.assistant_contracts import AiAssistantScope
+from silo.ai.assistant_security import AssistantSecurityPolicy
 from silo.ai.ports import ChatModelRuntime, EmbeddingPort
 from silo.api.dependencies import CurrentUser
 from silo.clock import SYSTEM_CLOCK, Clock
@@ -229,6 +230,36 @@ class AgentState(TypedDict, total=False):
     mode: Literal["deterministic", "hybrid"]
 
 
+class AssistantReadGateway(Protocol):
+    def search_silo_knowledge(self, *, query: str, limit: int) -> Any: ...
+
+    def compare_model_run_periods(
+        self, *, start_date: str | None, end_date: str | None, product_ids: tuple[str, ...]
+    ) -> Any: ...
+
+    def get_model_run_history(self, *, product_id_or_slug: str) -> Any: ...
+
+    def list_model_interventions(self, *, product_ids: tuple[str, ...], limit: int) -> Any: ...
+
+    def compare_problem_periods(
+        self,
+        *,
+        start_date: str | None,
+        end_date: str | None,
+        product_id: str | None,
+        problem_category_id: str | None,
+    ) -> Any: ...
+
+    def list_problematic_runs(
+        self,
+        *,
+        start_date: str | None,
+        end_date: str | None,
+        product_ids: tuple[str, ...],
+        limit: int,
+    ) -> Any: ...
+
+
 @dataclass(slots=True)
 class AgentRuntimeContext:
     connection: Connection
@@ -238,6 +269,10 @@ class AgentRuntimeContext:
     settings: Settings
     model_runtime: ChatModelRuntime
     embedding_provider: EmbeddingPort
+    security_policy: AssistantSecurityPolicy = field(
+        default_factory=lambda: AssistantSecurityPolicy(frozenset(), frozenset())
+    )
+    read_gateway: AssistantReadGateway | None = None
     dataset_registry: DatasetRegistry = field(default_factory=DatasetRegistry)
     clock: Clock = SYSTEM_CLOCK
     connection_factory: Callable[[], Connection] | None = None

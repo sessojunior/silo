@@ -2,20 +2,16 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Mapping
-from copy import copy
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Any
 
 from pydantic import Field
 
-from silo.ai.assistant_registry import AgentRuntimeContext, AgentState
-from silo.ai.assistant_tools import (
-    compare_model_run_periods,
-    compare_problem_periods,
-    get_model_run_history,
-    list_model_interventions,
-    list_problematic_runs,
-    search_silo_knowledge,
+from silo.ai.assistant_registry import AgentRuntimeContext, AgentState, AssistantReadGateway
+from silo.ai.assistant_security import (
+    AssistantCapability,
+    AssistantSecurityError,
+    require_capability,
 )
 from silo.api.schemas import CamelModel
 
@@ -60,7 +56,7 @@ class HybridToolSpec:
     description: str
     scopes: tuple[str, ...]
     args_model: type[CamelModel]
-    executor: Callable[[AgentRuntimeContext, AgentState, dict[str, Any]], Any]
+    executor: Callable[[AssistantReadGateway, AgentState, dict[str, Any]], Any]
 
     def to_openai_tool(self) -> dict[str, Any]:
         schema = self.args_model.model_json_schema(by_alias=True)
@@ -86,11 +82,9 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
         description="Busca trechos relevantes da base de conhecimento do SILO. Leitura apenas.",
         scopes=("models", "pending", "reports", "problems", "solutions", "projects", "general"),
         args_model=SearchSiloKnowledgeArgs,
-        executor=lambda runtime_context, state, args: search_silo_knowledge(
-            runtime_context.connection,
+        executor=lambda read_gateway, state, args: read_gateway.search_silo_knowledge(
             query=str(args["query"] or state.get("question") or ""),
             limit=int(args.get("limit") or 5),
-            embedding_provider=getattr(runtime_context, "embedding_provider", None),
         ),
     ),
     HybridToolSpec(
@@ -98,8 +92,7 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
         description="Compara rodadas de modelo entre dois períodos adjacentes. Leitura apenas.",
         scopes=("models", "general", "reports"),
         args_model=CompareModelRunPeriodsArgs,
-        executor=lambda runtime_context, state, args: compare_model_run_periods(
-            runtime_context.connection,
+        executor=lambda read_gateway, state, args: read_gateway.compare_model_run_periods(
             start_date=_optional_text(args.get("start_date"))
             or _optional_text(dict(state.get("ranges") or {}).get("start")),
             end_date=_optional_text(args.get("end_date"))
@@ -112,8 +105,7 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
         description="Recupera o histórico de execuções de um modelo específico. Leitura apenas.",
         scopes=("models",),
         args_model=GetModelRunHistoryArgs,
-        executor=lambda runtime_context, state, args: get_model_run_history(
-            runtime_context.connection,
+        executor=lambda read_gateway, state, args: read_gateway.get_model_run_history(
             product_id_or_slug=str(args["product_id_or_slug"]),
         ),
     ),
@@ -122,8 +114,7 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
         description="Lista intervenções registradas para modelos informados. Leitura apenas.",
         scopes=("models",),
         args_model=ListModelInterventionsArgs,
-        executor=lambda runtime_context, state, args: list_model_interventions(
-            runtime_context.connection,
+        executor=lambda read_gateway, state, args: read_gateway.list_model_interventions(
             product_ids=tuple(args.get("product_ids") or ()),
             limit=int(args.get("limit") or 20),
         ),
@@ -133,8 +124,7 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
         description="Compara problemas entre dois períodos adjacentes. Leitura apenas.",
         scopes=("problems", "solutions", "general", "reports"),
         args_model=CompareProblemPeriodsArgs,
-        executor=lambda runtime_context, state, args: compare_problem_periods(
-            runtime_context.connection,
+        executor=lambda read_gateway, state, args: read_gateway.compare_problem_periods(
             start_date=_optional_text(args.get("start_date"))
             or _optional_text(dict(state.get("ranges") or {}).get("start")),
             end_date=_optional_text(args.get("end_date"))
@@ -148,8 +138,7 @@ _HYBRID_TOOL_SPECS: tuple[HybridToolSpec, ...] = (
         description="Lista rodadas problemáticas para investigação. Leitura apenas.",
         scopes=("problems", "solutions", "general", "reports"),
         args_model=ListProblematicRunsArgs,
-        executor=lambda runtime_context, state, args: list_problematic_runs(
-            runtime_context.connection,
+        executor=lambda read_gateway, state, args: read_gateway.list_problematic_runs(
             start_date=_optional_text(args.get("start_date"))
             or _optional_text(dict(state.get("ranges") or {}).get("start")),
             end_date=_optional_text(args.get("end_date"))
@@ -177,6 +166,12 @@ def execute_hybrid_tool(
     state: AgentState,
     args: Mapping[str, Any],
 ) -> tuple[HybridToolSpec, Any]:
+    require_capability(
+        getattr(runtime_context, "security_policy", None), AssistantCapability.DATABASE_READ
+    )
+    read_gateway = getattr(runtime_context, "read_gateway", None)
+    if read_gateway is None:
+        raise AssistantSecurityError("Gateway de leitura indisponível.")
     if not runtime_context.has_reports_permission:
         raise PermissionError("reports:view é obrigatório para tools híbridas do assistente.")
 
@@ -188,14 +183,7 @@ def execute_hybrid_tool(
 
     validated = spec.args_model.model_validate(dict(args))
     payload = validated.model_dump(mode="python")
-    if runtime_context.connection_factory is None:
-        result = spec.executor(runtime_context, state, payload)
-        return spec, result
-
-    with runtime_context.connection_factory() as connection:
-        scoped_context = _runtime_context_with_connection(runtime_context, connection)
-        result = spec.executor(scoped_context, state, payload)
-        return spec, result
+    return spec, spec.executor(read_gateway, state, payload)
 
 
 async def execute_hybrid_tool_async(
@@ -204,35 +192,11 @@ async def execute_hybrid_tool_async(
     state: AgentState,
     args: Mapping[str, Any],
 ) -> tuple[HybridToolSpec, Any]:
-    """Execute a synchronous read tool without blocking the event loop.
-
-    The synchronous catalog remains available for deterministic callers. Hybrid
-    graph nodes must use this boundary because retrieval may perform embedding
-    I/O and database work, and its connection factory creates a thread-local
-    SQLAlchemy connection when available.
-    """
-    if runtime_context.connection_factory is None:
-        engine = getattr(runtime_context.connection, "engine", None)
-        connect = getattr(engine, "connect", None)
-        if callable(connect):
-            def _execute_with_engine() -> tuple[HybridToolSpec, Any]:
-                with connect() as connection:
-                    scoped_context = _runtime_context_with_connection(runtime_context, connection)
-                    return execute_hybrid_tool(tool_name, scoped_context, state, args)
-
-            return await asyncio.to_thread(_execute_with_engine)
+    """Execute a gateway-backed read tool outside the event loop."""
+    require_capability(
+        getattr(runtime_context, "security_policy", None), AssistantCapability.DATABASE_READ
+    )
     return await asyncio.to_thread(execute_hybrid_tool, tool_name, runtime_context, state, args)
-
-
-def _runtime_context_with_connection(
-    runtime_context: AgentRuntimeContext, connection: Any
-) -> AgentRuntimeContext:
-    try:
-        return replace(runtime_context, connection=connection)
-    except TypeError:
-        scoped_context = copy(runtime_context)
-        scoped_context.connection = connection
-        return scoped_context
 
 
 def _optional_text(value: object | None) -> str | None:

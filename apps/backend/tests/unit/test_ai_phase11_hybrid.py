@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import get_ident
 from types import SimpleNamespace
 from urllib.parse import unquote
 
@@ -1154,6 +1155,8 @@ def test_build_chart_spec_permite_dataset_vazio() -> None:
 
 
 def test_execute_hybrid_tool_rejeita_sem_reports_view() -> None:
+    from silo.ai.assistant_security import AssistantCapability, AssistantSecurityPolicy
+
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     runtime_context = _fake_runtime_context(
         engine.connect(),
@@ -1161,6 +1164,10 @@ def test_execute_hybrid_tool_rejeita_sem_reports_view() -> None:
         embedding_provider=_RaisingEmbeddingProvider(),
     )
     runtime_context.has_reports_permission = False
+    runtime_context.security_policy = AssistantSecurityPolicy(
+        frozenset({AssistantCapability.DATABASE_READ}), frozenset()
+    )
+    runtime_context.read_gateway = object()  # type: ignore[assignment]
     state = {"scope": "general"}
 
     with pytest.raises(PermissionError, match="reports:view"):
@@ -1175,9 +1182,9 @@ def test_execute_hybrid_tool_rejeita_sem_reports_view() -> None:
 
 
 def test_assistant_tool_catalog_helpers_cover_remaining_branches(
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from silo.ai import assistant_tool_catalog
+    from silo.ai.assistant_security import AssistantCapability, AssistantSecurityPolicy
 
     specs = assistant_tool_catalog.get_hybrid_tool_specs("models")
     assert {spec.name for spec in specs} >= {"search_silo_knowledge", "get_model_run_history"}
@@ -1188,16 +1195,16 @@ def test_assistant_tool_catalog_helpers_cover_remaining_branches(
         "get_model_run_history",
     }
 
-    monkeypatch.setattr(
-        assistant_tool_catalog,
-        "search_silo_knowledge",
-        lambda connection, **kwargs: {"connection": connection, "kwargs": kwargs},
-    )
+    class _ReadGateway:
+        def search_silo_knowledge(self, **kwargs):
+            return {"kwargs": kwargs}
 
     runtime_context = SimpleNamespace(
-        connection="db",
+        security_policy=AssistantSecurityPolicy(
+            frozenset({AssistantCapability.DATABASE_READ}), frozenset()
+        ),
+        read_gateway=_ReadGateway(),
         has_reports_permission=True,
-        connection_factory=None,
     )
     state = {
         "scope": "general",
@@ -1212,7 +1219,6 @@ def test_assistant_tool_catalog_helpers_cover_remaining_branches(
         {"query": "manual", "limit": 1},
     )
     assert spec.name == "search_silo_knowledge"
-    assert result["connection"] == "db"
     assert result["kwargs"]["query"] == "manual"
 
     with pytest.raises(ValueError, match="não permitida"):
@@ -1231,67 +1237,26 @@ def test_assistant_tool_catalog_helpers_cover_remaining_branches(
             {"product_id_or_slug": "produto-1"},
         )
 
-    class _ScopedConnection:
-        def __init__(self, connection: str) -> None:
-            self._connection = connection
-
-        def __enter__(self) -> str:
-            return self._connection
-
-        def __exit__(self, exc_type, exc, tb) -> bool:
-            del exc_type, exc, tb
-            return False
-
-    monkeypatch.setattr(
-        assistant_tool_catalog,
-        "replace",
-        lambda runtime_context, **kwargs: SimpleNamespace(**{**runtime_context.__dict__, **kwargs}),
-    )
-
-    runtime_context_with_factory = SimpleNamespace(
-        connection="db",
-        has_reports_permission=True,
-        connection_factory=lambda: _ScopedConnection("scoped-db"),
-    )
-    spec, result = assistant_tool_catalog.execute_hybrid_tool(
-        "search_silo_knowledge",
-        runtime_context_with_factory,
-        state,  # type: ignore[arg-type]
-        {"query": "manual", "limit": 1},
-    )
-    assert spec.name == "search_silo_knowledge"
-    assert result["connection"] == "scoped-db"
     assert assistant_tool_catalog._optional_text("  texto  ") == "texto"
     assert assistant_tool_catalog._optional_text(123) is None
 
 
 @pytest.mark.asyncio
-async def test_execute_hybrid_tool_async_abre_conexao_da_thread_quando_sem_factory(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_execute_hybrid_tool_async_usa_gateway_fora_do_event_loop() -> None:
     from silo.ai import assistant_tool_catalog
+    from silo.ai.assistant_security import AssistantCapability, AssistantSecurityPolicy
 
-    class _ConnectionScope:
-        def __enter__(self):
-            return "thread-db"
+    class _ReadGateway:
+        def search_silo_knowledge(self, **kwargs):
+            return {"thread_id": get_ident(), "kwargs": kwargs}
 
-        def __exit__(self, exc_type, exc, tb) -> bool:
-            del exc_type, exc, tb
-            return False
-
-    class _Engine:
-        def connect(self):
-            return _ConnectionScope()
-
-    monkeypatch.setattr(
-        assistant_tool_catalog,
-        "search_silo_knowledge",
-        lambda connection, **kwargs: {"connection": connection, "kwargs": kwargs},
-    )
+    event_loop_thread_id = get_ident()
     runtime_context = SimpleNamespace(
-        connection=SimpleNamespace(engine=_Engine()),
+        security_policy=AssistantSecurityPolicy(
+            frozenset({AssistantCapability.DATABASE_READ}), frozenset()
+        ),
+        read_gateway=_ReadGateway(),
         has_reports_permission=True,
-        connection_factory=None,
     )
     state = {"scope": "general", "question": "manual"}
 
@@ -1302,7 +1267,8 @@ async def test_execute_hybrid_tool_async_abre_conexao_da_thread_quando_sem_facto
         {"query": "manual", "limit": 1},
     )
 
-    assert result["connection"] == "thread-db"
+    assert result["thread_id"] != event_loop_thread_id
+    assert result["kwargs"]["query"] == "manual"
 
 
 def test_build_mermaid_diagram_bloqueia_conteudo_hostil() -> None:

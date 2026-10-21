@@ -55,6 +55,11 @@ from silo.ai.assistant_runtime import (
 from silo.ai.assistant_runtime import (
     VLLMModelRuntime as _VLLMModelRuntime,
 )
+from silo.ai.assistant_security import (
+    AssistantCapability,
+    AssistantSecurityError,
+    AssistantSecurityPolicy,
+)
 from silo.ai.assistant_tool_catalog import (
     execute_hybrid_tool_async,
     get_hybrid_tool_schemas,
@@ -775,6 +780,15 @@ def _build_runtime_context(
     effective_settings = settings or load_settings()
     runtime = AgentRuntimeContext(
         connection=connection,
+        security_policy=AssistantSecurityPolicy(
+            capabilities=frozenset(
+                {
+                    AssistantCapability.CONVERSATION_READ,
+                    AssistantCapability.CONVERSATION_PERSIST,
+                }
+            ),
+            allowed_model_hosts=frozenset({"vllm", "vllm-embed"}),
+        ),
         current_user=current_user,
         request_id=request_id,
         run_id=str(uuid.uuid4()),
@@ -2283,6 +2297,8 @@ async def _node_agent_decide(
                 )
                 state.setdefault("errors", []).append(f"Timeout da tool hÃ­brida: {tool_name}.")
                 continue
+            except AssistantSecurityError:
+                raise
             except Exception as exc:
                 _record_observability_event(
                     state,
@@ -4219,6 +4235,15 @@ def _build_runtime_context_from_cache(
     settings = load_settings()
     return AgentRuntimeContext(
         connection=connection,
+        security_policy=AssistantSecurityPolicy(
+            capabilities=frozenset(
+                {
+                    AssistantCapability.CONVERSATION_READ,
+                    AssistantCapability.CONVERSATION_PERSIST,
+                }
+            ),
+            allowed_model_hosts=frozenset({"vllm", "vllm-embed"}),
+        ),
         current_user=CurrentUser(id="", email=None, name=None, is_active=True),
         request_id=str(state.get("request_id") or uuid.uuid4()),
         run_id=str(state.get("run_id") or uuid.uuid4()),
