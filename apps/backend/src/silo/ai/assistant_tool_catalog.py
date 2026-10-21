@@ -7,10 +7,11 @@ from typing import Any
 
 from pydantic import Field
 
-from silo.ai.assistant_registry import AgentRuntimeContext, AgentState, AssistantReadGateway
+from silo.ai.assistant_registry import AgentState, AssistantReadGateway
 from silo.ai.assistant_security import (
     AssistantCapability,
     AssistantSecurityError,
+    AssistantSecurityPolicy,
     require_capability,
 )
 from silo.api.schemas import CamelModel
@@ -48,6 +49,13 @@ class ListProblematicRunsArgs(CamelModel):
     end_date: str | None = None
     product_ids: list[str] = Field(default_factory=list)
     limit: int = Field(default=20, ge=1, le=50)
+
+
+@dataclass(frozen=True, slots=True)
+class AssistantToolContext:
+    security_policy: AssistantSecurityPolicy | None
+    read_gateway: AssistantReadGateway | None
+    has_reports_permission: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,17 +170,19 @@ def get_hybrid_tool_schemas(scope: str) -> list[dict[str, Any]]:
 
 def execute_hybrid_tool(
     tool_name: str,
-    runtime_context: AgentRuntimeContext,
+    tool_context: AssistantToolContext,
     state: AgentState,
     args: Mapping[str, Any],
 ) -> tuple[HybridToolSpec, Any]:
+    if not isinstance(tool_context, AssistantToolContext):
+        raise AssistantSecurityError("Contexto de ferramenta inválido.")
     require_capability(
-        getattr(runtime_context, "security_policy", None), AssistantCapability.DATABASE_READ
+        tool_context.security_policy, AssistantCapability.DATABASE_READ
     )
-    read_gateway = getattr(runtime_context, "read_gateway", None)
+    read_gateway = tool_context.read_gateway
     if read_gateway is None:
         raise AssistantSecurityError("Gateway de leitura indisponível.")
-    if not runtime_context.has_reports_permission:
+    if not tool_context.has_reports_permission:
         raise PermissionError("reports:view é obrigatório para tools híbridas do assistente.")
 
     spec = _HYBRID_TOOL_INDEX.get(tool_name)
@@ -188,15 +198,17 @@ def execute_hybrid_tool(
 
 async def execute_hybrid_tool_async(
     tool_name: str,
-    runtime_context: AgentRuntimeContext,
+    tool_context: AssistantToolContext,
     state: AgentState,
     args: Mapping[str, Any],
 ) -> tuple[HybridToolSpec, Any]:
     """Execute a gateway-backed read tool outside the event loop."""
+    if not isinstance(tool_context, AssistantToolContext):
+        raise AssistantSecurityError("Contexto de ferramenta inválido.")
     require_capability(
-        getattr(runtime_context, "security_policy", None), AssistantCapability.DATABASE_READ
+        tool_context.security_policy, AssistantCapability.DATABASE_READ
     )
-    return await asyncio.to_thread(execute_hybrid_tool, tool_name, runtime_context, state, args)
+    return await asyncio.to_thread(execute_hybrid_tool, tool_name, tool_context, state, args)
 
 
 def _optional_text(value: object | None) -> str | None:

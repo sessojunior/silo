@@ -61,6 +61,7 @@ from silo.ai.assistant_security import (
     AssistantSecurityPolicy,
 )
 from silo.ai.assistant_tool_catalog import (
+    AssistantToolContext,
     execute_hybrid_tool_async,
     get_hybrid_tool_schemas,
 )
@@ -2159,6 +2160,11 @@ async def _node_agent_decide(
     tool_schemas = get_hybrid_tool_schemas(scope)
     if not tool_schemas:
         return state
+    tool_context = AssistantToolContext(
+        security_policy=getattr(runtime.context, "security_policy", None),
+        read_gateway=getattr(runtime.context, "read_gateway", None),
+        has_reports_permission=getattr(runtime.context, "has_reports_permission", False),
+    )
 
     model_runtime = runtime.context.model_runtime
     protected_tool_invoker = getattr(model_runtime, "ainvoke_with_tools", None)
@@ -2276,7 +2282,7 @@ async def _node_agent_decide(
             try:
                 tool_started_at = time.perf_counter()
                 spec, result = await asyncio.wait_for(
-                    execute_hybrid_tool_async(tool_name, runtime.context, state, tool_args),
+                    execute_hybrid_tool_async(tool_name, tool_context, state, tool_args),
                     timeout=tool_timeout_seconds,
                 )
                 is_relevant = _hybrid_result_is_relevant(spec.name, result)

@@ -14,7 +14,11 @@ from silo.ai.assistant_security import (
     require_capability,
 )
 from silo.ai.assistant_service import _build_runtime_context, _node_agent_decide
-from silo.ai.assistant_tool_catalog import execute_hybrid_tool, execute_hybrid_tool_async
+from silo.ai.assistant_tool_catalog import (
+    AssistantToolContext,
+    execute_hybrid_tool,
+    execute_hybrid_tool_async,
+)
 
 
 @pytest.mark.parametrize("capability", ["SHELL", "DATABASE_READ"])
@@ -74,6 +78,11 @@ def test_security_policy_rejects_mutable_or_invalid_fields(capabilities, hosts) 
         AssistantSecurityPolicy(capabilities, hosts)
 
 
+def test_security_policy_rejects_host_string() -> None:
+    with pytest.raises(AssistantSecurityError, match="host"):
+        AssistantSecurityPolicy(frozenset(), "vllm")  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize("asynchronous", [False, True])
 @pytest.mark.asyncio
 async def test_tool_rejects_missing_policy_before_touching_gateway(asynchronous: bool) -> None:
@@ -123,7 +132,9 @@ def test_tool_requires_read_gateway_even_with_database_capability() -> None:
         capabilities=frozenset({AssistantCapability.DATABASE_READ}),
         allowed_model_hosts=frozenset(),
     )
-    context = SimpleNamespace(security_policy=policy, read_gateway=None)
+    context = AssistantToolContext(
+        security_policy=policy, read_gateway=None, has_reports_permission=True
+    )
 
     with pytest.raises(AssistantSecurityError):
         execute_hybrid_tool("search_silo_knowledge", context, {"scope": "general"}, {"query": "x"})  # type: ignore[arg-type]
@@ -134,17 +145,12 @@ def test_tool_uses_only_read_gateway() -> None:
         def search_silo_knowledge(self, *, query: str, limit: int) -> dict[str, object]:
             return {"query": query, "limit": limit}
 
-    class ForbiddenConnection:
-        def __getattr__(self, name: str) -> object:
-            raise AssertionError(f"Tool touched generic connection: {name}")
-
-    context = SimpleNamespace(
+    context = AssistantToolContext(
         security_policy=AssistantSecurityPolicy(
             capabilities=frozenset({AssistantCapability.DATABASE_READ}),
             allowed_model_hosts=frozenset(),
         ),
         read_gateway=ReadGateway(),
-        connection=ForbiddenConnection(),
         has_reports_permission=True,
     )
 
@@ -156,6 +162,20 @@ def test_tool_uses_only_read_gateway() -> None:
     )
     assert spec.name == "search_silo_knowledge"
     assert result == {"query": "manual", "limit": 2}
+
+
+def test_tool_rejects_generic_runtime_context_even_with_database_capability() -> None:
+    context = SimpleNamespace(
+        security_policy=AssistantSecurityPolicy(
+            frozenset({AssistantCapability.DATABASE_READ}), frozenset()
+        ),
+        read_gateway=object(),
+        connection=object(),
+        has_reports_permission=True,
+    )
+
+    with pytest.raises(AssistantSecurityError, match="Contexto de ferramenta"):
+        execute_hybrid_tool("search_silo_knowledge", context, {"scope": "general"}, {"query": "x"})  # type: ignore[arg-type]
 
 
 def test_service_context_does_not_grant_database_read_without_gateway() -> None:
@@ -215,3 +235,63 @@ async def test_agent_stops_when_tool_capability_is_denied() -> None:
 
         with pytest.raises(AssistantSecurityError):
             await _node_agent_decide(state, SimpleNamespace(context=context))  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_agent_exposes_only_policy_gateway_and_permission_to_tool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ModelRuntime:
+        async def ainvoke_with_tools(self, messages, tools, *, tool_choice=None):
+            return AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "id": "call-1",
+                        "name": "search_silo_knowledge",
+                        "args": {"query": "manual", "limit": 1},
+                        "type": "tool_call",
+                    }
+                ],
+            )
+
+    seen_contexts = []
+
+    async def inspect_tool_context(tool_name, tool_context, state, args):
+        seen_contexts.append(tool_context)
+        return SimpleNamespace(name=tool_name), {"items": [{"id": "manual-1"}]}
+
+    monkeypatch.setattr(
+        "silo.ai.assistant_service.execute_hybrid_tool_async", inspect_tool_context
+    )
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    with engine.connect() as connection:
+        context = _build_runtime_context(
+            connection,
+            SimpleNamespace(id="user-1"),  # type: ignore[arg-type]
+            request_id="request-1",
+            settings=SimpleNamespace(ai_agent_mode=SimpleNamespace(value="hybrid")),  # type: ignore[arg-type]
+            model_runtime=ModelRuntime(),  # type: ignore[arg-type]
+            embedding_provider=object(),  # type: ignore[arg-type]
+        )
+        state = {
+            "question": "Preciso do manual",
+            "scope": "general",
+            "mode": "hybrid",
+            "supplemental_results": {},
+            "required_results": {},
+            "final_response": {},
+            "remaining_steps": 24,
+            "progress": [],
+        }
+
+        await _node_agent_decide(state, SimpleNamespace(context=context))  # type: ignore[arg-type]
+
+    assert seen_contexts
+    for tool_context in seen_contexts:
+        assert tool_context.security_policy == context.security_policy
+        assert tool_context.read_gateway is None
+        assert tool_context.has_reports_permission is True
+        assert not hasattr(tool_context, "connection")
+        assert not hasattr(tool_context, "connection_factory")
+        assert not hasattr(tool_context, "engine")

@@ -1156,18 +1156,15 @@ def test_build_chart_spec_permite_dataset_vazio() -> None:
 
 def test_execute_hybrid_tool_rejeita_sem_reports_view() -> None:
     from silo.ai.assistant_security import AssistantCapability, AssistantSecurityPolicy
+    from silo.ai.assistant_tool_catalog import AssistantToolContext
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
-    runtime_context = _fake_runtime_context(
-        engine.connect(),
-        model_runtime=FakeChatPort(response="ok"),
-        embedding_provider=_RaisingEmbeddingProvider(),
+    tool_context = AssistantToolContext(
+        security_policy=AssistantSecurityPolicy(
+            frozenset({AssistantCapability.DATABASE_READ}), frozenset()
+        ),
+        read_gateway=object(),  # type: ignore[arg-type]
+        has_reports_permission=False,
     )
-    runtime_context.has_reports_permission = False
-    runtime_context.security_policy = AssistantSecurityPolicy(
-        frozenset({AssistantCapability.DATABASE_READ}), frozenset()
-    )
-    runtime_context.read_gateway = object()  # type: ignore[assignment]
     state = {"scope": "general"}
 
     with pytest.raises(PermissionError, match="reports:view"):
@@ -1175,7 +1172,7 @@ def test_execute_hybrid_tool_rejeita_sem_reports_view() -> None:
 
         execute_hybrid_tool(
             "search_silo_knowledge",
-            runtime_context,
+            tool_context,
             state,  # type: ignore[arg-type]
             {"query": "teste", "limit": 1},
         )
@@ -1199,7 +1196,7 @@ def test_assistant_tool_catalog_helpers_cover_remaining_branches(
         def search_silo_knowledge(self, **kwargs):
             return {"kwargs": kwargs}
 
-    runtime_context = SimpleNamespace(
+    runtime_context = assistant_tool_catalog.AssistantToolContext(
         security_policy=AssistantSecurityPolicy(
             frozenset({AssistantCapability.DATABASE_READ}), frozenset()
         ),
@@ -1251,7 +1248,7 @@ async def test_execute_hybrid_tool_async_usa_gateway_fora_do_event_loop() -> Non
             return {"thread_id": get_ident(), "kwargs": kwargs}
 
     event_loop_thread_id = get_ident()
-    runtime_context = SimpleNamespace(
+    runtime_context = assistant_tool_catalog.AssistantToolContext(
         security_policy=AssistantSecurityPolicy(
             frozenset({AssistantCapability.DATABASE_READ}), frozenset()
         ),
