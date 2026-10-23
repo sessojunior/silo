@@ -25,6 +25,7 @@ UploadKind = Literal[
     "help",
     "projects",
     "reports",
+    "procedures",
 ]
 
 UPLOAD_KINDS: Final[tuple[UploadKind, ...]] = (
@@ -38,6 +39,7 @@ UPLOAD_KINDS: Final[tuple[UploadKind, ...]] = (
     "help",
     "projects",
     "reports",
+    "procedures",
 )
 
 MAX_FILE_SIZE_BYTES: Final[int] = 4 * 1024 * 1024
@@ -160,6 +162,14 @@ def get_content_type_from_filename(filename: str) -> str:
         return "image/gif"
     if ext == ".pdf":
         return "application/pdf"
+    if ext == ".txt":
+        return "text/plain"
+    if ext == ".md":
+        return "text/markdown"
+    if ext == ".docx":
+        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    if ext == ".pptx":
+        return "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     return "application/octet-stream"
 
 
