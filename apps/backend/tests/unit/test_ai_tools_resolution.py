@@ -1213,13 +1213,13 @@ def test_search_knowledge_uses_pgvector_queries_when_postgresql_is_available(
     )
 
     assert result["items"] == []
-    assert len(connection.statements) == 8
-    assert all("<=>" in statement for statement in connection.statements[:4])
+    assert len(connection.statements) == 12
+    assert all("<=>" in statement for statement in connection.statements[:6])
     assert all(
         "ORDER BY" in statement and "LIMIT" in statement
-        for statement in connection.statements[:4]
+        for statement in connection.statements[:6]
     )
-    assert all("LIMIT" in statement.upper() for statement in connection.statements[4:])
+    assert all("LIMIT" in statement.upper() for statement in connection.statements[6:])
 
 
 def test_lexical_fallback_limits_each_source_before_materializing_rows(

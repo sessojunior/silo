@@ -2515,7 +2515,8 @@ async def _node_synthesize_once(
         return state
     if _graph_budget_guard(state, note="synthesize_once"):
         generation_error_message = (
-            "N\u00e3o foi poss\u00edvel concluir a resposta do modelo dentro do limite de execu\u00e7\u00e3o. "
+            "N\u00e3o foi poss\u00edvel concluir a resposta do modelo dentro do limite de "
+            "execu\u00e7\u00e3o. "
             "Aguarde e tente novamente."
         )
         state["answer"] = generation_error_message
@@ -3099,13 +3100,15 @@ _KNOWLEDGE_SOURCE_LABELS = {
     "manual": "Manual do produto",
     "problem": "Problema registrado",
     "solution": "Solução registrada",
+    "procedure": "Procedimento geral",
+    "procedure_attachment": "Anexo de procedimento",
 }
 
 _KNOWLEDGE_SOURCES_BY_SCOPE = {
-    "models": frozenset({"help", "manual"}),
-    "pending": frozenset({"help", "manual"}),
-    "projects": frozenset({"help", "manual"}),
-    "products": frozenset({"help", "manual"}),
+    "models": frozenset({"help", "manual", "procedure", "procedure_attachment"}),
+    "pending": frozenset({"help", "manual", "procedure", "procedure_attachment"}),
+    "projects": frozenset({"help", "manual", "procedure", "procedure_attachment"}),
+    "products": frozenset({"help", "manual", "procedure", "procedure_attachment"}),
     "problems": frozenset(_KNOWLEDGE_SOURCE_LABELS),
     "solutions": frozenset(_KNOWLEDGE_SOURCE_LABELS),
     "reports": frozenset(_KNOWLEDGE_SOURCE_LABELS),
@@ -3137,7 +3140,18 @@ def _authorized_knowledge_item(scope: str, item: object) -> dict[str, Any] | Non
         "similarity": score,
         **{
             key: item[key]
-            for key in ("baseSimilarity", "contentSimilarity", "vectorSimilarity", "recencyScore")
+            for key in (
+                "baseSimilarity",
+                "contentSimilarity",
+                "vectorSimilarity",
+                "recencyScore",
+                "priorityBoost",
+                "procedureTitle",
+                "attachmentName",
+                "pageNumber",
+                "slideNumber",
+                "extractionStatus",
+            )
             if key in item
         },
     }
@@ -3182,10 +3196,19 @@ def _knowledge_citations(
             continue
         score = item.get("similarity")
         score_text = f"{score:.3f}" if isinstance(score, float) else "n/d"
+        detail_parts = [f"ID {item['id']}", f"relevância {score_text}"]
+        if item.get("procedureTitle"):
+            detail_parts.append(f"procedimento: {item['procedureTitle']}")
+        if item.get("attachmentName"):
+            detail_parts.append(f"arquivo: {item['attachmentName']}")
+        if item.get("pageNumber") is not None:
+            detail_parts.append(f"página {item['pageNumber']}")
+        if item.get("slideNumber") is not None:
+            detail_parts.append(f"slide {item['slideNumber']}")
         citations.append(
             AiAssistantCitationDto(
                 label=_KNOWLEDGE_SOURCE_LABELS[item["source"]],
-                detail=f"ID {item['id']} · relevância {score_text}",
+                detail=" · ".join(detail_parts),
                 source=item["source"],
                 source_id=item["id"],
                 snippet=item["content"][:320],

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+import asyncio
+import logging
+from collections.abc import Callable, Mapping
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.engine import Connection
@@ -8,6 +10,10 @@ from sqlalchemy.engine import Connection
 from silo.db.models import legacy_tables
 from silo.db.serialization import serialize_legacy_row
 from silo.services.common import service_failure, service_success
+from silo.services.embedding_write import (
+    upsert_procedure_attachment_embeddings,
+    upsert_procedure_embedding,
+)
 from silo.services.legacy_utils import new_uuid, now_naive, required_text
 from silo.services.procedure_attachment_storage import (
     delete_procedure_attachment_file,
@@ -15,6 +21,8 @@ from silo.services.procedure_attachment_storage import (
 )
 from silo.services.procedure_extraction import extract_document
 from silo.storage.uploads import get_uploads_root
+
+logger = logging.getLogger(__name__)
 
 
 def list_general_procedures(
@@ -91,6 +99,13 @@ def create_general_procedure(
         select(procedure_table).where(procedure_table.c.id == procedure_id).limit(1)
     ).mappings().first()
     assert created is not None
+    _schedule_embedding(
+        lambda: upsert_procedure_embedding(
+            procedure_id,
+            str(created["title"]),
+            str(created["content"]),
+        )
+    )
     return service_success({"procedure": _procedure_payload(db, created)})
 
 
@@ -126,6 +141,13 @@ def update_general_procedure(
     if updated is None:
         return service_failure("Procedimento não encontrado.", 404)
     db.commit()
+    _schedule_embedding(
+        lambda: upsert_procedure_embedding(
+            id,
+            str(updated["title"]),
+            str(updated["content"]),
+        )
+    )
     return service_success({"procedure": _procedure_payload(db, updated)})
 
 
@@ -240,12 +262,32 @@ def process_general_procedure_attachment(
                         updated_at=now_naive(),
                     )
                 )
+        elif str(attachment.get("image_description") or "").strip():
+            description = str(attachment["image_description"]).strip()
+            db.execute(delete(chunk_table).where(chunk_table.c.attachment_id == attachment_id))
+            db.execute(
+                insert(chunk_table).values(
+                    id=new_uuid(),
+                    attachment_id=attachment_id,
+                    chunk_index=0,
+                    content=description,
+                    token_count=max(1, len(description.split())),
+                    created_at=now_naive(),
+                    updated_at=now_naive(),
+                )
+            )
         db.execute(
             update(attachment_table)
             .where(attachment_table.c.id == attachment_id)
             .values(extraction_status="ready", extraction_error=None, updated_at=now_naive())
         )
         db.commit()
+        chunks = db.execute(
+            select(chunk_table).where(chunk_table.c.attachment_id == attachment_id)
+        ).mappings().all()
+        _schedule_embedding(
+            lambda: upsert_procedure_attachment_embeddings(attachment_id, chunks)
+        )
         return service_success(None)
     except Exception as exc:
         db.rollback()
@@ -291,3 +333,23 @@ def _attachment_payload(row: Mapping[str, object]) -> dict[str, object]:
     payload = serialize_legacy_row(row)
     payload["url"] = f"/uploads/procedures/{row['stored_filename']}"
     return payload
+
+
+def _schedule_embedding(factory: Callable[[], object]) -> None:
+    """Start indexing without delaying the CRUD response."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    task = loop.create_task(factory())  # type: ignore[arg-type]
+    task.add_done_callback(_log_embedding_failure)
+
+
+def _log_embedding_failure(task: asyncio.Task[object]) -> None:
+    try:
+        result = task.result()
+    except Exception:
+        logger.exception("Falha inesperada ao indexar procedimento")
+        return
+    if getattr(result, "status", None) in {"failed", "partial"}:
+        logger.warning("Indexação de procedimento incompleta: %s", result)

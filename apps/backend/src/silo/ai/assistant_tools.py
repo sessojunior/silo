@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from silo.ai.embeddings import cosine_similarity, generate_embedding
 from silo.ai.ports import EmbeddingPort
+from silo.ai.procedure_knowledge import prioritize_knowledge_candidates
 from silo.clock import SYSTEM_CLOCK
 from silo.date import TIMEZONE
 from silo.db.models import legacy_tables
@@ -1163,7 +1164,7 @@ def search_silo_knowledge(
         filtered, key=lambda item: (-item["baseSimilarity"], item["source"], str(item["id"]))
     )
     candidate_pool = primary_ranked[: normalized_limit * AI_RAG_CANDIDATE_MULTIPLIER]
-    candidate_pool.sort(key=lambda item: (-item["similarity"], item["source"], str(item["id"])))
+    candidate_pool = prioritize_knowledge_candidates(candidate_pool)
     items = candidate_pool[:normalized_limit]
     return {
         "query": query,
@@ -1211,6 +1212,9 @@ def _search_knowledge_lexical_fallback(
     problem_table = legacy_tables["product_problem"]
     solution_table = legacy_tables["product_solution"]
     product_table = legacy_tables["product"]
+    procedure_table = legacy_tables.get("general_procedure")
+    attachment_table = legacy_tables.get("general_procedure_attachment")
+    attachment_chunk_table = legacy_tables.get("general_procedure_attachment_chunk")
     candidates: list[dict[str, Any]] = []
 
     for row in connection.execute(
@@ -1339,6 +1343,113 @@ def _search_knowledge_lexical_fallback(
                 created_at=row.get("created_at") or row.get("updated_at"),
             )
         )
+
+    if procedure_table is not None:
+        try:
+            for row in connection.execute(
+                select(procedure_table)
+                .where(procedure_table.c.active.is_(True))
+                .order_by(
+                    *_lexical_fallback_order(
+                        [
+                            procedure_table.c.title,
+                            procedure_table.c.category,
+                            procedure_table.c.content,
+                        ],
+                        query,
+                        procedure_table.c.updated_at,
+                        procedure_table.c.id,
+                    )
+                )
+                .limit(candidate_limit)
+            ).mappings().all():
+                content = " ".join(
+                    str(part)
+                    for part in (row.get("title"), row.get("category"), row.get("content"))
+                    if part
+                )
+                candidates.extend(
+                    _score_knowledge_candidate(
+                        query=query,
+                        query_embedding=query_embedding,
+                        source="procedure",
+                        identifier=str(row["id"]),
+                        content=content,
+                        embedding=row.get("embedding"),
+                        created_at=row.get("created_at") or row.get("updated_at"),
+                        extra={
+                            "procedureTitle": row.get("title"),
+                            "active": row.get("active"),
+                        },
+                    )
+                )
+        except SQLAlchemyError:
+            pass
+
+    if (
+        attachment_table is not None
+        and attachment_chunk_table is not None
+        and procedure_table is not None
+    ):
+        try:
+            for row in connection.execute(
+                select(
+                    attachment_chunk_table,
+                    attachment_table.c.original_name.label("attachment_name"),
+                    attachment_table.c.extraction_status,
+                    procedure_table.c.title.label("procedure_title"),
+                    procedure_table.c.active,
+                )
+                .select_from(
+                    attachment_chunk_table
+                    .join(
+                        attachment_table,
+                        attachment_table.c.id == attachment_chunk_table.c.attachment_id,
+                    )
+                    .join(
+                        procedure_table,
+                        procedure_table.c.id == attachment_table.c.procedure_id,
+                    )
+                )
+                .where(
+                    procedure_table.c.active.is_(True),
+                    attachment_table.c.extraction_status == "ready",
+                )
+                .order_by(
+                    *_lexical_fallback_order(
+                        [
+                            attachment_chunk_table.c.content,
+                            attachment_table.c.original_name,
+                            procedure_table.c.title,
+                        ],
+                        query,
+                        attachment_chunk_table.c.updated_at,
+                        attachment_chunk_table.c.id,
+                    )
+                )
+                .limit(candidate_limit)
+            ).mappings().all():
+                candidates.extend(
+                    _score_knowledge_candidate(
+                        query=query,
+                        query_embedding=query_embedding,
+                        source="procedure_attachment",
+                        identifier=str(row["id"]),
+                        content=str(row.get("content") or ""),
+                        embedding=row.get("embedding"),
+                        created_at=row.get("created_at") or row.get("updated_at"),
+                        extra={
+                            "procedureTitle": row.get("procedure_title"),
+                            "attachmentName": row.get("attachment_name"),
+                            "pageNumber": row.get("page_number"),
+                            "slideNumber": row.get("slide_number"),
+                            "extractionStatus": row.get("extraction_status"),
+                            "active": row.get("active"),
+                        },
+                    )
+                )
+        except SQLAlchemyError:
+            pass
     return candidates
 
 
@@ -1373,6 +1484,15 @@ def _search_pgvector_candidates(
                 "product",
             )
         }
+        for optional_table in (
+            "general_procedure",
+            "general_procedure_attachment",
+            "general_procedure_attachment_chunk",
+        ):
+            if optional_table in tables:
+                table_names[optional_table] = _quote_pgvector_identifier(
+                    tables[optional_table].name
+                )
         vector = "[" + ",".join(format(float(value), ".9g") for value in query_embedding) + "]"
         candidate_limit = max(1, min(int(limit), AI_RAG_LIMIT)) * AI_RAG_CANDIDATE_MULTIPLIER
         specs = (
@@ -1428,6 +1548,51 @@ def _search_pgvector_candidates(
                 """,
             ),
         )
+        if {
+            "general_procedure",
+            "general_procedure_attachment",
+            "general_procedure_attachment_chunk",
+        }.issubset(table_names):
+            specs = (
+                *specs,
+                (
+                    "procedure",
+                    f"""
+                    SELECT gp.id::text AS id, gp.title,
+                           gp.content, gp.created_at, gp.updated_at,
+                           gp.active,
+                           1 - (gp.embedding <=> CAST(:query_embedding AS vector))
+                           AS vector_similarity
+                    FROM {table_names['general_procedure']} AS gp
+                    WHERE gp.active IS TRUE AND gp.embedding IS NOT NULL
+                    ORDER BY gp.embedding <=> CAST(:query_embedding AS vector)
+                    LIMIT :candidate_limit
+                    """,
+                ),
+                (
+                    "procedure_attachment",
+                    f"""
+                    SELECT chunk.id::text AS id, chunk.content,
+                           chunk.page_number, chunk.slide_number,
+                           gp.title AS procedure_title,
+                           attachment.original_name AS attachment_name,
+                           attachment.extraction_status, gp.active,
+                           chunk.created_at, chunk.updated_at,
+                           1 - (chunk.embedding <=> CAST(:query_embedding AS vector))
+                           AS vector_similarity
+                    FROM {table_names['general_procedure_attachment_chunk']} AS chunk
+                    JOIN {table_names['general_procedure_attachment']} AS attachment
+                      ON attachment.id = chunk.attachment_id
+                    JOIN {table_names['general_procedure']} AS gp
+                      ON gp.id = attachment.procedure_id
+                    WHERE gp.active IS TRUE
+                      AND attachment.extraction_status = 'ready'
+                      AND chunk.embedding IS NOT NULL
+                    ORDER BY chunk.embedding <=> CAST(:query_embedding AS vector)
+                    LIMIT :candidate_limit
+                    """,
+                ),
+            )
         candidates: list[dict[str, Any]] = []
         parameters = {"query_embedding": vector, "candidate_limit": candidate_limit}
         for source, sql in specs:
@@ -1444,6 +1609,26 @@ def _search_pgvector_candidates(
                         if part
                     )
                     extra: dict[str, Any] | None = {"productName": row.get("product_name")}
+                elif source == "procedure":
+                    content = " ".join(
+                        part
+                        for part in (row.get("title"), row.get("content"))
+                        if part
+                    )
+                    extra = {
+                        "procedureTitle": row.get("title"),
+                        "active": row.get("active"),
+                    }
+                elif source == "procedure_attachment":
+                    content = str(row.get("content") or "")
+                    extra = {
+                        "procedureTitle": row.get("procedure_title"),
+                        "attachmentName": row.get("attachment_name"),
+                        "pageNumber": row.get("page_number"),
+                        "slideNumber": row.get("slide_number"),
+                        "extractionStatus": row.get("extraction_status"),
+                        "active": row.get("active"),
+                    }
                 else:
                     content = str(row.get("content") or row.get("description") or "")
                     extra = (

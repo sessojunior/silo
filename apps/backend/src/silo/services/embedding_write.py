@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal, TypedDict
@@ -82,6 +82,75 @@ async def upsert_help_embedding(description: str) -> EmbeddingWriteResult:
     except Exception as exc:  # pragma: no cover - fire-and-forget logging path
         logger.warning("Falha ao gerar embedding da ajuda: %s", exc)
         return EmbeddingWriteResult(status="failed", failed_count=1, errors=(str(exc),))
+
+
+async def upsert_procedure_embedding(
+    procedure_id: str, title: str, content: str
+) -> EmbeddingWriteResult:
+    try:
+        payload = "\n".join(part for part in (title.strip(), content.strip()) if part)
+        if not payload:
+            return EmbeddingWriteResult(status="skipped")
+        embedding = await generate_embedding(payload)
+        table = legacy_tables["general_procedure"]
+        _execute_statement(
+            update(table)
+            .where(table.c.id == procedure_id)
+            .values(**_embedding_values(table, payload, embedding))
+        )
+        return EmbeddingWriteResult(status="updated", updated_count=1)
+    except Exception as exc:  # pragma: no cover - fire-and-forget logging path
+        logger.warning("Falha ao gerar embedding do procedimento %s: %s", procedure_id, exc)
+        return EmbeddingWriteResult(status="failed", failed_count=1, errors=(str(exc),))
+
+
+async def upsert_procedure_attachment_embeddings(
+    attachment_id: str, chunks: Iterable[Mapping[str, object]]
+) -> EmbeddingWriteResult:
+    errors: list[str] = []
+    generated_count = 0
+    table = legacy_tables["general_procedure_attachment_chunk"]
+    statements: list[Executable] = [delete(table).where(table.c.attachment_id == attachment_id)]
+    try:
+        for index, chunk in enumerate(chunks):
+            content = str(chunk.get("content") or "").strip()
+            if not content:
+                continue
+            try:
+                embedding = await generate_embedding(content)
+                statements.append(
+                    insert(table).values(
+                        **_embedding_values(
+                            table,
+                            content,
+                            embedding,
+                            extra_values={
+                                "id": str(chunk.get("id") or f"{attachment_id}_chunk_{index}"),
+                                "attachment_id": attachment_id,
+                                "chunk_index": int(chunk.get("chunk_index") or index),
+                                "content": content,
+                                "page_number": chunk.get("page_number"),
+                                "slide_number": chunk.get("slide_number"),
+                                "token_count": int(chunk.get("token_count") or 0),
+                            },
+                        )
+                    )
+                )
+                generated_count += 1
+            except Exception as chunk_exc:  # pragma: no cover - service failure path
+                errors.append(f"chunk {index}: {chunk_exc}")
+        _execute_statements(statements)
+    except Exception as exc:  # pragma: no cover - fire-and-forget logging path
+        errors.append(f"persistência: {exc}")
+
+    if errors:
+        return EmbeddingWriteResult(
+            status="partial" if generated_count else "failed",
+            updated_count=generated_count,
+            failed_count=len(errors),
+            errors=tuple(errors),
+        )
+    return EmbeddingWriteResult(status="updated", updated_count=generated_count)
 
 
 async def upsert_manual_chunks(
