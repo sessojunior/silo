@@ -35,7 +35,7 @@ def test_live_health_response_shape_is_operational() -> None:
 
     assert response.model_dump() == {
         "status": "ok",
-        "service": "silo-api-python",
+        "service": "silo-api",
         "timestamp": "2026-07-22T15:45:30Z",
         "checks": {"app": "ok"},
     }
@@ -74,12 +74,12 @@ def test_fastapi_app_exposes_health_routes_and_lifespan(
 
     assert live.status_code == 200
     assert live.json()["status"] == "ok"
-    assert live.json()["service"] == "silo-api-python"
+    assert live.json()["service"] == "silo-api"
     assert live.json()["checks"] == {"app": "ok"}
 
     assert ready.status_code == 200
     assert ready.json()["status"] == "ok"
-    assert ready.json()["service"] == "silo-api-python"
+    assert ready.json()["service"] == "silo-api"
     assert ready.json()["checks"]["config"]["status"] == "ok"
     assert ready.json()["checks"]["database"]["status"] == "ok"
     assert ready.json()["checks"]["vllm"]["status"] == "ok"
@@ -108,7 +108,7 @@ async def test_ready_validates_config_database_and_nonblocking_dependencies() ->
     assert status_code == 200
     assert response.model_dump() == {
         "status": "ok",
-        "service": "silo-api-python",
+        "service": "silo-api",
         "timestamp": "2026-07-22T15:45:30Z",
         "checks": {
             "config": {"status": "ok", "blocking": True, "detail": None},

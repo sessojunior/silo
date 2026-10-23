@@ -130,9 +130,9 @@ streaming incremental, fallback, retry e procedimentos de teste, está em
 LangGraph (orquestração)
   └─ StateGraph, agentes, ferramentas, RAG, cache semântico
        └─ LangChain (langchain-openai)
-            ├─ ChatOpenAI(base_url="http://vllm:8000/v1")
+            ├─ ChatOpenAI(base_url="http://ai:8000/v1")
             │    └─ vLLM chat (Qwen2.5 0.5B)
-            └─ OpenAIEmbeddings(base_url="http://vllm-embed:8000/v1")
+            └─ OpenAIEmbeddings(base_url="http://embeddings:8000/v1")
                  └─ vLLM embeddings (BAAI/bge-base-en-v1.5, 768 dimensões)
 ```
 
@@ -160,8 +160,8 @@ O vLLM substituiu o Ollama como servidor de modelos. Ele expõe uma API OpenAI-c
 - **Continuous batching:** Múltiplos usuários simultâneos
 - **Prefix caching:** Reuso de prompts comuns
 
-O LangChain conecta o chat via `ChatOpenAI(base_url="http://vllm:8000/v1")`.
-Embeddings usam a instância dedicada `http://vllm-embed:8000/v1`; o backend
+O LangChain conecta o chat via `ChatOpenAI(base_url="http://ai:8000/v1")`.
+Embeddings usam a instância dedicada `http://embeddings:8000/v1`; o backend
 injeta essa URL automaticamente nos containers. Fora do Docker, use
 `VLLM_URL=http://localhost:8000/v1` e `VLLM_EMBEDDING_URL=http://localhost:8001/v1`.
 
@@ -203,7 +203,7 @@ AI_AGENT_MAX_TOOL_CALLS=4
 AI_AGENT_TOOL_TIMEOUT_MS=60000
 ```
 
-O serviço `embedding-backfill` executa a reconciliação a cada
+O serviço `indexer` executa a reconciliação a cada
 `EMBEDDING_BACKFILL_INTERVAL_SECONDS` (padrão: 300 segundos). Ele preenche
 embeddings ausentes ou obsoletos e grava o modelo, digest, hash do conteúdo e
 data da indexação para impedir mistura silenciosa de versões.

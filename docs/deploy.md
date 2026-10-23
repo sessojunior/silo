@@ -16,11 +16,11 @@ O SILO usa dois arquivos de orquestração:
 | Serviço | Imagem | Porta |
 |---|---|---|
 | `db` | `pgvector/pgvector:pg17` | 5432 |
-| `vllm` | `vllm/vllm-openai-cpu:v0.29.0-x86_64` | 8000 (CPU) |
-| `vllm-embed` | `vllm/vllm-openai-cpu:v0.29.0-x86_64` | 8001 (CPU) |
-| `migrate` | `silo-api-python` (one-shot) | — |
-| `embedding-backfill` | `silo-api-python` | — |
-| `api` | `silo-api-python` | 4000 |
+| `ai` (`silo-ai`) | `vllm/vllm-openai-cpu:v0.29.0-x86_64` | 8000 (CPU) |
+| `embeddings` (`silo-embeddings`) | `vllm/vllm-openai-cpu:v0.29.0-x86_64` | 8001 (CPU) |
+| `migrate` (`silo-migrate`) | `silo-api` (one-shot) | — |
+| `indexer` (`silo-indexer`) | `silo-api` | — |
+| `api` (`silo-api`) | `silo-api` | 4000 |
 | `worker` | `silo-worker` | — |
 | `web` | `silo-web` | 80 |
 
@@ -28,14 +28,19 @@ O SILO usa dois arquivos de orquestração:
 
 | Serviço | Imagem | Nota |
 |---|---|---|
-| `vllm` | `${SILO_VLLM_GPU_IMAGE}` | GPU NVIDIA |
-| `vllm-embed` | `${SILO_VLLM_GPU_IMAGE}` | GPU NVIDIA, embeddings |
-| `migrate` | `${SILO_IMAGE}` (one-shot) | Imagem publicada |
-| `embedding-backfill` | `${SILO_IMAGE}` | Reconcilia embeddings ausentes ou obsoletos |
-| `api` | `${SILO_IMAGE}` | Imagem publicada |
-| `worker` | `${SILO_IMAGE}` | Imagem publicada |
+| `ai` (`silo-ai`) | `${SILO_VLLM_GPU_IMAGE}` | GPU NVIDIA |
+| `embeddings` (`silo-embeddings`) | `${SILO_VLLM_GPU_IMAGE}` | GPU NVIDIA, embeddings |
+| `migrate` (`silo-migrate`) | `${SILO_IMAGE}` (one-shot) | Imagem publicada |
+| `indexer` (`silo-indexer`) | `${SILO_IMAGE}` | Reconcilia embeddings ausentes ou obsoletos |
+| `api` (`silo-api`) | `${SILO_IMAGE}` | Imagem publicada |
+| `worker` (`silo-worker`) | `${SILO_IMAGE}` | Imagem publicada |
 
 O banco de dados e o frontend em produção são gerenciados externamente (PostgreSQL gerenciado, Nginx/CDN).
+
+O container `silo-migrate` é one-shot: depois de concluir com código 0, ele pode
+permanecer como `exited (0)` ou ser removido. Isso não afeta os serviços ativos;
+uma nova execução com `docker compose -f docker-compose.deploy.yml run --rm
+migrate` recria o container.
 
 ### Comandos
 
@@ -43,7 +48,7 @@ O banco de dados e o frontend em produção são gerenciados externamente (Postg
 # Desenvolvimento
 docker compose up -d --build        # Subir stack
 docker compose down                 # Parar
-docker compose logs -f vllm api     # Logs
+docker compose logs -f ai embeddings api indexer     # Logs
 
 # Verificação do assistente após atualizar a API
 docker compose ps
@@ -55,6 +60,13 @@ docker compose -f docker-compose.deploy.yml up -d
 docker compose -f docker-compose.deploy.yml down
 docker compose -f docker-compose.deploy.yml logs -f
 ```
+
+### Limpeza segura
+
+Remova somente containers one-shot concluídos ou redes comprovadamente vazias.
+Não remova os volumes `silo-vllm-cache`, `silo-vllm-compile-cache`,
+`silo-postgres-data` ou `silo-storage-data`, pois eles contêm modelos, banco e
+uploads. Evite `docker system prune -a` no servidor sem uma auditoria prévia.
 
 Depois de um deploy, valide também o fluxo do assistente conforme
 [`ai-assistant.md`](ai-assistant.md): login, envio sem `threadId`, eventos SSE

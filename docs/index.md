@@ -46,14 +46,14 @@ silo/
 
 | Serviço | Porta | Descrição |
 |---|---|---|
-| `db` | 5432 | PostgreSQL + pgvector |
-| `vllm` | 8000 | Servidor de IA (OpenAI-compatible API) |
-| `vllm-embed` | 8001 | Servidor dedicado de embeddings |
-| `migrate` | — | Roda migrations e encerra (one-shot) |
-| `embedding-backfill` | — | Reconcilia embeddings ausentes ou obsoletos |
-| `api` | 4000 | Backend FastAPI |
-| `worker` | — | Consumer Kafka |
-| `web` | 80 | Frontend Next.js |
+| `db` (`silo-db`) | 5432 | PostgreSQL + pgvector |
+| `ai` (`silo-ai`) | 8000 | Servidor de geração de respostas |
+| `embeddings` (`silo-embeddings`) | 8001 | Servidor dedicado de embeddings |
+| `migrate` (`silo-migrate`) | — | Roda migrations e encerra (one-shot) |
+| `indexer` (`silo-indexer`) | — | Reconcilia embeddings ausentes ou obsoletos |
+| `api` (`silo-api`) | 4000 | Backend FastAPI |
+| `worker` (`silo-worker`) | — | Consumer Kafka |
+| `web` (`silo-web`) | 80 | Frontend Next.js |
 
 ---
 
@@ -62,15 +62,28 @@ silo/
 ```
 Browser → Next.js (web :80) → FastAPI (api :4000) → PostgreSQL (db :5432)
                                    ↕
-                              vLLM (vllm :8000)
+                              IA (ai :8000)
                                    ↕
-                         vLLM embeddings (:8001)
+                         Embeddings (embeddings :8001)
 ```
 
 - O frontend **nunca** acessa o banco diretamente
 - A persistência é exclusiva do backend Python
 - A IA roda localmente via vLLM — nenhum dado sai do servidor
 - O worker processa mensagens do Kafka de forma assíncrona
+
+### Nomes e limpeza do ambiente Docker
+
+Os nomes oficiais dos containers são `silo-db`, `silo-ai`, `silo-embeddings`,
+`silo-migrate`, `silo-indexer`, `silo-api`, `silo-worker` e `silo-web`. Os nomes
+antigos `silo-api-python`, `silo-worker-python`, `silo-vllm`,
+`silo-vllm-embed`, `silo-search` e `silo-embedding-backfill` não fazem mais
+parte da arquitetura.
+
+O `silo-migrate` é um container one-shot e pode ser removido depois de terminar
+com código 0. Ele será recriado quando necessário por `docker compose run --rm
+migrate`. Os volumes de PostgreSQL, uploads e cache dos modelos não devem ser
+removidos durante essa limpeza.
 
 ---
 

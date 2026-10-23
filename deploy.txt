@@ -23,13 +23,14 @@
 
  Serviços de produção:
 
-   | Serviço      | Função                                      | Porta interna |
-   |--------------|---------------------------------------------|---------------|
-   | vllm         | Modelo de chat (Qwen)                       | 8000          |
-   | vllm-embed   | Modelo de embeddings (busca semântica)      | 8001          |
-   | migrate      | Aplica migrations no banco e encerra        | --            |
-   | api          | Backend FastAPI                             | 4000          |
-   | worker       | Consumer Kafka (fluxo de dados)             | --            |
+   | Serviço      | Função                                      | Porta interna | Container       |
+   |--------------|---------------------------------------------|---------------|-----------------|
+   | ai           | Modelo de chat (Qwen)                       | 8000          | silo-ai         |
+   | embeddings   | Modelo de embeddings (busca semântica)      | 8001          | silo-embeddings |
+   | migrate      | Aplica migrations no banco e encerra        | --            | silo-migrate    |
+   | indexer      | Reconcilia embeddings periodicamente        | --            | silo-indexer    |
+   | api          | Backend FastAPI                             | 4000          | silo-api        |
+   | worker       | Consumer Kafka (fluxo de dados)             | --            | silo-worker     |
 
  Gerenciados fora do compose:
    - Banco de dados: PostgreSQL gerenciado (backup, réplica e monitoramento
@@ -39,7 +40,7 @@
      a API.
 
  Ordem de inicialização (resolvida automaticamente pelo compose):
-   vllm -> migrate -> api -> worker
+   ai + embeddings -> migrate -> api -> indexer -> worker
 
  ------------------------------------------------------------------------------
  3. PRÉ-REQUISITOS
@@ -93,7 +94,7 @@
      npm run py:build
 
    Gera as imagens:
-     - silo-api-python:migration     (API)
+     - silo-api:migration             (API)
      - silo-worker:migration  (consumer Kafka)
 
  5.2 Frontend
@@ -113,8 +114,8 @@
 
    Publicar com a tag do commit para rastreabilidade:
 
-     docker tag silo-api-python:migration ghcr.io/<org>/silo-api-python:<sha>
-     docker push ghcr.io/<org>/silo-api-python:<sha>
+     docker tag silo-api:migration ghcr.io/<org>/silo-api:<sha>
+     docker push ghcr.io/<org>/silo-api:<sha>
 
    Repetir para a imagem do worker e do frontend.
 
@@ -182,11 +183,11 @@
 
    IA (vLLM) e Kafka:
 
-     SILO_IMAGE=ghcr.io/<org>/silo-api-python:<sha> # [prod] .env local usa silo-api-python:latest
+     SILO_IMAGE=ghcr.io/<org>/silo-api:<sha> # [prod] .env local usa silo-api:latest
      SILO_VLLM_GPU_IMAGE=vllm/vllm-openai:v0.29.0   # [prod] imagem CUDA; independente do .env local CPU
      VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct          # [.env]
      VLLM_EMBEDDING_MODEL=BAAI/bge-base-en-v1.5     # [.env]
-     VLLM_EMBEDDING_URL=http://vllm-embed:8000/v1   # [prod] compose injeta esta URL dentro do Docker
+     VLLM_EMBEDDING_URL=http://embeddings:8000/v1   # [prod] compose injeta esta URL dentro do Docker
      SILO_VLLM_GPU_MEM_UTIL=0.70                    # [prod] chat; perfil GPU compartilhado
      SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20              # [prod] embedding; perfil GPU compartilhado
      SILO_VLLM_GPU_ID=0                              # [prod] GPU do chat
@@ -280,8 +281,9 @@
    # 4. Status
    docker compose -f docker-compose.deploy.yml ps
 
-   Esperado: vllm, api e worker em "Up"/"healthy"; migrate em "exited (0)"
-   (executa a tarefa e encerra - normal).
+   Esperado: ai, embeddings, api, indexer e worker em "Up"/"healthy"; migrate
+   em "exited (0)" (executa a tarefa e encerra - normal). O container
+   silo-migrate também pode não aparecer se tiver sido removido após o sucesso.
 
    # 5. Healthcheck da API e do worker
    docker compose -f docker-compose.deploy.yml exec -T api python -c \
@@ -358,7 +360,7 @@
  Para voltar à versão anterior:
 
    # 1. No .env, apontar SILO_IMAGE para a versão anterior
-   #    (ex.: ghcr.io/<org>/silo-api-python:<sha-anterior>)
+   #    (ex.: ghcr.io/<org>/silo-api:<sha-anterior>)
 
    # 2. Baixar e subir
    docker compose -f docker-compose.deploy.yml pull
@@ -391,8 +393,8 @@
    - Acompanhar o lag do Kafka e a fila de erros (dlq.*) diariamente
 
    Erros comuns nas primeiras 24h:
-     - migrate "Exited (1)": problema de conexão com o banco (DATABASE_URL)
-     - vllm sem responder: modelo ainda carregando ou sem RAM/VRAM
+     - migrate/silo-migrate "Exited (1)": problema de conexão com o banco (DATABASE_URL)
+     - ai sem responder: modelo ainda carregando ou sem RAM/VRAM
      - API "Application startup failed": variável obrigatória faltando
 
  ------------------------------------------------------------------------------

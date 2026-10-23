@@ -45,13 +45,13 @@ def test_final_compose_uses_python_targets_and_no_longer_exposes_node_skip_flags
     assert "SKIP_DB_SEED" not in compose
 
 
-def test_compose_uses_the_768_dimension_embedding_service_for_api_and_vllm_embed() -> None:
+def test_compose_uses_the_768_dimension_embedding_service_for_api_and_embeddings() -> None:
     compose = COMPOSE.read_text(encoding="utf-8")
     api = _service_block(compose, "api")
-    embedding = _service_block(compose, "vllm-embed")
+    embedding = _service_block(compose, "embeddings")
 
     assert "VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}" in api
-    assert "VLLM_EMBEDDING_URL: http://vllm-embed:8000/v1" in api
+    assert "VLLM_EMBEDDING_URL: http://embeddings:8000/v1" in api
     assert '"${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}"' in embedding
 
 
@@ -66,8 +66,8 @@ def test_api_waits_for_both_ai_models_before_starting() -> None:
     assert dependencies is not None
     dependency_block = dependencies.group("body")
 
-    assert "vllm:" in dependency_block
-    assert "vllm-embed:" in dependency_block
+    assert "ai:" in dependency_block
+    assert "embeddings:" in dependency_block
     assert dependency_block.count("condition: service_healthy") == 3
 
 
@@ -75,13 +75,13 @@ def test_deploy_compose_keeps_the_dedicated_embedding_service_contract() -> None
     deploy_compose = (REPOSITORY_ROOT / "docker-compose.deploy.yml").read_text(encoding="utf-8")
 
     assert "VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}" in deploy_compose
-    assert "VLLM_EMBEDDING_URL: http://vllm-embed:8000/v1" in deploy_compose
+    assert "VLLM_EMBEDDING_URL: http://embeddings:8000/v1" in deploy_compose
 
 
 def test_development_compose_declares_bounded_cpu_inference_resources() -> None:
     compose = COMPOSE.read_text(encoding="utf-8")
-    vllm = _service_block(compose, "vllm")
-    embedding = _service_block(compose, "vllm-embed")
+    vllm = _service_block(compose, "ai")
+    embedding = _service_block(compose, "embeddings")
 
     assert "image: ${SILO_VLLM_CPU_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}" in vllm
     assert "SILO_VLLM_IMAGE" not in vllm
@@ -95,8 +95,8 @@ def test_development_compose_declares_bounded_cpu_inference_resources() -> None:
 
 def test_deploy_compose_declares_shared_or_separate_gpu_device_selection() -> None:
     deploy_compose = (REPOSITORY_ROOT / "docker-compose.deploy.yml").read_text(encoding="utf-8")
-    vllm = _service_block(deploy_compose, "vllm")
-    embedding = _service_block(deploy_compose, "vllm-embed")
+    vllm = _service_block(deploy_compose, "ai")
+    embedding = _service_block(deploy_compose, "embeddings")
 
     assert "image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}" in vllm
     assert "image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}" in embedding
@@ -113,8 +113,8 @@ def test_deploy_compose_declares_shared_or_separate_gpu_device_selection() -> No
 
 def test_deploy_compose_uses_separate_gpu_memory_budgets() -> None:
     deploy_compose = (REPOSITORY_ROOT / "docker-compose.deploy.yml").read_text(encoding="utf-8")
-    vllm = _service_block(deploy_compose, "vllm")
-    embedding = _service_block(deploy_compose, "vllm-embed")
+    vllm = _service_block(deploy_compose, "ai")
+    embedding = _service_block(deploy_compose, "embeddings")
 
     assert '"${SILO_VLLM_GPU_MEM_UTIL:-0.70}"' in vllm
     assert '"${SILO_VLLM_EMBED_GPU_MEM_UTIL:-0.20}"' in embedding

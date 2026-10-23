@@ -30,7 +30,7 @@ class HealthCheckResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     status: Literal["ok"]
-    service: Literal["silo-api-python"]
+    service: Literal["silo-api"]
     timestamp: str
     checks: dict[str, Literal["ok"]]
 
@@ -47,7 +47,7 @@ class ReadinessResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     status: Literal["ok", "not_ready"]
-    service: Literal["silo-api-python"]
+    service: Literal["silo-api"]
     timestamp: str
     checks: dict[str, ComponentHealth]
 
@@ -79,7 +79,7 @@ def build_health_check_response(
 ) -> HealthCheckResponse:
     return HealthCheckResponse(
         status="ok",
-        service="silo-api-python",
+        service="silo-api",
         timestamp=_iso_utc(clock.now()),
         checks=checks,
     )
@@ -160,7 +160,7 @@ def _readiness_response(
 ) -> ReadinessResponse:
     return ReadinessResponse(
         status=status,
-        service="silo-api-python",
+        service="silo-api",
         timestamp=_iso_utc(clock.now()),
         checks=checks,
     )

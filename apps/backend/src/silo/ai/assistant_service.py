@@ -818,7 +818,7 @@ def _build_runtime_context(
                     AssistantCapability.CONVERSATION_PERSIST,
                 }
             ),
-            allowed_model_hosts=frozenset({"vllm", "vllm-embed"}),
+            allowed_model_hosts=frozenset({"ai", "embeddings"}),
         ),
         current_user=current_user,
         request_id=request_id,
@@ -4271,7 +4271,7 @@ def _build_runtime_context_from_cache(
                     AssistantCapability.CONVERSATION_PERSIST,
                 }
             ),
-            allowed_model_hosts=frozenset({"vllm", "vllm-embed"}),
+            allowed_model_hosts=frozenset({"ai", "embeddings"}),
         ),
         current_user=CurrentUser(id="", email=None, name=None, is_active=True),
         request_id=str(state.get("request_id") or uuid.uuid4()),

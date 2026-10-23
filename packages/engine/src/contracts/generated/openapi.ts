@@ -66,7 +66,7 @@ export const siloPythonOpenApi = {
             "type": "object"
           },
           "service": {
-            "const": "silo-api-python",
+            "const": "silo-api",
             "title": "Service",
             "type": "string"
           },
@@ -124,7 +124,7 @@ export const siloPythonOpenApi = {
             "type": "object"
           },
           "service": {
-            "const": "silo-api-python",
+            "const": "silo-api",
             "title": "Service",
             "type": "string"
           },
@@ -205,7 +205,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Examples Api Ai Assistant Examples Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -224,7 +226,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Message Api Ai Assistant Messages Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -243,7 +247,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Message Stream Api Ai Assistant Messages Stream Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -262,7 +268,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Status Api Ai Assistant Status Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -281,7 +289,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Threads Api Ai Assistant Threads Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -298,7 +308,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Thread Api Ai Assistant Threads Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -328,7 +340,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Thread Api Ai Assistant Threads  Thread Id  Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -366,7 +380,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Thread Api Ai Assistant Threads  Thread Id  Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -415,7 +431,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Message Api Ai Assistant Threads  Thread Id  Messages  Message Id  Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -758,7 +776,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Messages Api Chat Messages Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -775,7 +795,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Message Api Chat Messages Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -794,7 +816,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Messages Count Route Api Chat Messages Count Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -813,7 +837,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Messages Read Api Chat Messages Read Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -843,7 +869,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Message Route Api Chat Messages  Messageid  Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -881,7 +909,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Patch Message Read Api Chat Messages  Messageid  Patch"
+                }
               }
             },
             "description": "Successful Response"
@@ -921,7 +951,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Message Read Api Chat Messages  Messageid  Read Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -950,7 +982,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Presence Api Chat Presence Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -967,7 +1001,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Patch Presence Api Chat Presence Patch"
+                }
               }
             },
             "description": "Successful Response"
@@ -984,7 +1020,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Presence Api Chat Presence Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -1003,7 +1041,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Sidebar Api Chat Sidebar Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -1022,7 +1062,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Status Api Chat Status Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -1041,7 +1083,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Unread Messages Route Api Chat Unread Messages Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -1615,7 +1659,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Group Api Groups Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -1676,7 +1722,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response List Groups Api Groups Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -1715,7 +1763,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Create Group Api Groups Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -1754,7 +1804,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update Group Api Groups Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -1801,7 +1853,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Group Api Groups  Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -1862,7 +1916,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response List Groups Api Groups  Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -1901,7 +1957,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Create Group Api Groups  Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -1940,7 +1998,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update Group Api Groups  Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -1987,7 +2047,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Group Permissions Api Groups Permissions Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -2026,7 +2088,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update Group Permission Api Groups Permissions Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -2089,7 +2153,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Remove User From Group Api Groups Users Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -2761,6 +2827,50 @@ export const siloPythonOpenApi = {
         ]
       }
     },
+    "/api/internal/ai/metrics": {
+      "get": {
+        "operationId": "get_ai_metrics_api_internal_ai_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Ai Metrics Api Internal Ai Metrics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Ai Metrics",
+        "tags": [
+          "ai-observability"
+        ]
+      }
+    },
+    "/api/internal/ai/metrics/prometheus": {
+      "get": {
+        "operationId": "get_ai_metrics_prometheus_api_internal_ai_metrics_prometheus_get",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Ai Metrics Prometheus",
+        "tags": [
+          "ai-observability"
+        ]
+      }
+    },
     "/api/monitoring/picture-links": {
       "delete": {
         "operationId": "delete_picture_link_route_api_monitoring_picture_links_delete",
@@ -3324,6 +3434,544 @@ export const siloPythonOpenApi = {
         ]
       }
     },
+    "/api/procedures": {
+      "get": {
+        "operationId": "get_procedures_api_procedures_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": true,
+              "title": "Active"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Procedures",
+        "tags": [
+          "procedures"
+        ]
+      },
+      "post": {
+        "operationId": "post_procedure_api_procedures_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Procedure",
+        "tags": [
+          "procedures"
+        ]
+      }
+    },
+    "/api/procedures/": {
+      "get": {
+        "operationId": "get_procedures_api_procedures__get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": true,
+              "title": "Active"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Procedures",
+        "tags": [
+          "procedures"
+        ]
+      },
+      "post": {
+        "operationId": "post_procedure_api_procedures__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Procedure",
+        "tags": [
+          "procedures"
+        ]
+      }
+    },
+    "/api/procedures/{id}": {
+      "delete": {
+        "operationId": "delete_procedure_api_procedures__id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Procedure",
+        "tags": [
+          "procedures"
+        ]
+      },
+      "get": {
+        "operationId": "get_procedure_api_procedures__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Procedure",
+        "tags": [
+          "procedures"
+        ]
+      },
+      "put": {
+        "operationId": "put_procedure_api_procedures__id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Procedure",
+        "tags": [
+          "procedures"
+        ]
+      }
+    },
+    "/api/procedures/{procedure_id}/attachments": {
+      "post": {
+        "operationId": "upload_procedure_attachment_api_procedures__procedure_id__attachments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "procedure_id",
+            "required": true,
+            "schema": {
+              "title": "Procedure Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Procedure Attachment",
+        "tags": [
+          "procedures"
+        ]
+      }
+    },
+    "/api/procedures/{procedure_id}/attachments/{attachment_id}": {
+      "delete": {
+        "operationId": "delete_procedure_attachment_api_procedures__procedure_id__attachments__attachment_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "procedure_id",
+            "required": true,
+            "schema": {
+              "title": "Procedure Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Procedure Attachment",
+        "tags": [
+          "procedures"
+        ]
+      }
+    },
+    "/api/procedures/{procedure_id}/attachments/{attachment_id}/reprocess": {
+      "post": {
+        "operationId": "reprocess_procedure_attachment_api_procedures__procedure_id__attachments__attachment_id__reprocess_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "procedure_id",
+            "required": true,
+            "schema": {
+              "title": "Procedure Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reprocess Procedure Attachment",
+        "tags": [
+          "procedures"
+        ]
+      }
+    },
     "/api/product-flow/receive": {
       "post": {
         "operationId": "receive_product_flow_api_product_flow_receive_post",
@@ -3410,7 +4058,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Product Api Products Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -3519,7 +4169,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response List Products Api Products Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -3558,7 +4210,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Create Product Api Products Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -3597,7 +4251,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update Product Api Products Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -3644,7 +4300,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Product Api Products  Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -3753,7 +4411,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response List Products Api Products  Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -3792,7 +4452,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Create Product Api Products  Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -3831,7 +4493,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update Product Api Products  Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -3872,7 +4536,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Activity Api Products Activities Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -3911,7 +4577,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Put Activity Api Products Activities Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -4006,7 +4674,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Activity Availability Api Products Activities Availability Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -4035,7 +4705,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Pending Email Recipients Api Products Activities Pending Email Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -4064,7 +4736,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Pending Email Api Products Activities Pending Email Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -4111,7 +4785,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Availability Exception Api Products Availability Exceptions Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -4188,7 +4864,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Availability Exceptions Api Products Availability Exceptions Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -4227,7 +4905,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Availability Exception Api Products Availability Exceptions Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -4268,7 +4948,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Contact Api Products Contacts Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -4313,7 +4995,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Contacts Api Products Contacts Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -4352,7 +5036,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Contacts Api Products Contacts Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -4393,7 +5079,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Dependency Api Products Dependencies Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -4438,7 +5126,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Dependencies Api Products Dependencies Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -4477,7 +5167,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Dependency Api Products Dependencies Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -4516,7 +5208,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Put Dependency Api Products Dependencies Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -4557,7 +5251,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Reorder Dependencies Api Products Dependencies Reorder Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -4598,7 +5294,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Problem Image Api Products Images Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -4643,7 +5341,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Problem Images Api Products Images Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -4682,7 +5382,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Problem Image Api Products Images Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -4745,7 +5447,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Manual Api Products Manual Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -4784,7 +5488,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Put Manual Api Products Manual Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -4825,7 +5531,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Manual Image Api Products Manual Images Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -4852,7 +5560,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Manual Images Api Products Manual Images Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -4883,7 +5593,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Problem Api Products Problems Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -4960,7 +5672,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Problems Api Products Problems Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -4999,7 +5713,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Problem Api Products Problems Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -5038,7 +5754,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Put Problem Api Products Problems Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -5085,7 +5803,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Problem Category Api Products Problems Categories Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -5130,7 +5850,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Problem Categories Api Products Problems Categories Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -5169,7 +5891,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Problem Category Api Products Problems Categories Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -5208,7 +5932,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Put Problem Category Api Products Problems Categories Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -5249,7 +5975,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Solution Api Products Solutions Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -5294,7 +6022,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Solutions Api Products Solutions Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -5333,7 +6063,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Solution Api Products Solutions Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -5372,7 +6104,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Put Solution Api Products Solutions Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -5413,7 +6147,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Count Solutions Api Products Solutions Count Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -5454,7 +6190,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Solution Image Api Products Solutions Images Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -5499,7 +6237,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Solution Images Api Products Solutions Images Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -5538,7 +6278,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Post Solution Image Api Products Solutions Images Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -5585,7 +6327,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Solutions Summary Api Products Solutions Summary Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -5657,7 +6401,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Data Flow Api Products  Productid  Data Flow Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -5729,7 +6475,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get History Api Products  Productid  History Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -7251,7 +7999,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete User Api Users Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -7328,7 +8078,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response List Users Api Users Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -7367,7 +8119,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Create User Api Users Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -7406,7 +8160,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update User Api Users Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -7453,7 +8209,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete User Api Users  Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -7530,7 +8288,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response List Users Api Users  Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -7569,7 +8329,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Create User Api Users  Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -7608,7 +8370,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update User Api Users  Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -7649,7 +8413,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update Email Api Users Email Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -7690,7 +8456,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Request Email Change Api Users Email Change Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -7729,7 +8497,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Confirm Email Change Api Users Email Change Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -7770,7 +8540,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Change Password Api Users Password Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -7799,7 +8571,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Preferences Api Users Preferences Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -7828,7 +8602,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update Preferences Api Users Preferences Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -7857,7 +8633,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Get Profile Api Users Profile Get"
+                }
               }
             },
             "description": "Successful Response"
@@ -7886,7 +8664,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update Profile Api Users Profile Put"
+                }
               }
             },
             "description": "Successful Response"
@@ -7915,7 +8695,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Delete Profile Image Api Users Profile Image Delete"
+                }
               }
             },
             "description": "Successful Response"
@@ -7932,7 +8714,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Upload Profile Image Api Users Profile Image Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -7963,7 +8747,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Update Profile Image Url Api Users Profile Image Update Post"
+                }
               }
             },
             "description": "Successful Response"
@@ -8003,7 +8789,9 @@ export const siloPythonOpenApi = {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "title": "Response Resend Password Setup Api Users  Id  Resend Password Setup Post"
+                }
               }
             },
             "description": "Successful Response"

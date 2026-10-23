@@ -23,10 +23,10 @@ services:
       retries: 12
     restart: unless-stopped
 
-  vllm:
+  ai:
     # Perfil CPU: roda em qualquer maquina, sem GPU (mais lento).
     image: ${SILO_VLLM_CPU_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}
-    container_name: silo-vllm
+    container_name: silo-ai
     networks:
       - inference
     # vLLM usa /dev/shm para comunicao entre processos; o padrao do
@@ -62,11 +62,11 @@ services:
     cpus: "6.0"
     restart: unless-stopped
 
-  vllm-embed:
+  embeddings:
     # vLLM serve um modelo por instancia; este servico dedicado atende o
     # modelo de embedding (cache semantico do assistente de IA).
     image: ${SILO_VLLM_CPU_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}
-    container_name: silo-vllm-embed
+    container_name: silo-embeddings
     networks:
       - inference
     shm_size: "2gb"
@@ -101,8 +101,8 @@ services:
       context: .
       dockerfile: apps/backend/Dockerfile
       target: api
-    image: silo-api-python
-    container_name: silo-api-python-migrate
+    image: silo-api
+    container_name: silo-migrate
     command: ["python", "-m", "silo.db.migrate"]
     environment:
       SILO_ENV: ${SILO_ENV:-development}
@@ -139,7 +139,7 @@ services:
       KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
       KAFKA_PROCESS_RETRY_COUNT: ${KAFKA_PROCESS_RETRY_COUNT:-3}
       KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
-      VLLM_URL: http://vllm:8000/v1
+      VLLM_URL: http://ai:8000/v1
       VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
       VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
       VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-30000}
@@ -153,13 +153,13 @@ services:
       - backend
     restart: "no"
 
-  embedding-backfill:
+  indexer:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
       target: api
-    image: silo-api-python
-    container_name: silo-embedding
+    image: silo-api
+    container_name: silo-indexer
     command:
       [
         "sh",
@@ -170,10 +170,10 @@ services:
       SILO_ENV: ${SILO_ENV:-development}
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL: ${DATABASE_URL:-postgresql://silo:silo@db:5432/silo}
-      VLLM_URL: http://vllm:8000/v1
+      VLLM_URL: http://ai:8000/v1
       VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
       VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
-      VLLM_EMBEDDING_URL: http://vllm-embed:8000/v1
+      VLLM_EMBEDDING_URL: http://embeddings:8000/v1
       VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-180000}
       VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-2}
       VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS: ${VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS:-500}
@@ -185,9 +185,9 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
-      vllm:
+      ai:
         condition: service_healthy
-      vllm-embed:
+      embeddings:
         condition: service_healthy
     networks:
       - backend
@@ -202,8 +202,8 @@ services:
       context: .
       dockerfile: apps/backend/Dockerfile
       target: api
-    image: silo-api-python
-    container_name: silo-api-python
+    image: silo-api
+    container_name: silo-api
     ports:
       - "${SILO_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-4000}:4000"
     command: ["uvicorn", "silo.api.main:app", "--host", "0.0.0.0", "--port", "4000"]
@@ -247,11 +247,11 @@ services:
       KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
       KAFKA_PROCESS_RETRY_COUNT: ${KAFKA_PROCESS_RETRY_COUNT:-3}
       KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
-      VLLM_URL: http://vllm:8000/v1
+      VLLM_URL: http://ai:8000/v1
       VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
       VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
       # O backend roda na rede Docker; nao herdar localhost do .env do host.
-      VLLM_EMBEDDING_URL: http://vllm-embed:8000/v1
+      VLLM_EMBEDDING_URL: http://embeddings:8000/v1
       VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-180000}
       VLLM_MAX_CONCURRENT_REQUESTS: ${VLLM_MAX_CONCURRENT_REQUESTS:-4}
       VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS: ${VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS:-500}
@@ -263,9 +263,9 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
-      vllm:
+      ai:
         condition: service_healthy
-      vllm-embed:
+      embeddings:
         condition: service_healthy
     networks:
       - frontend

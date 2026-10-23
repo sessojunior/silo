@@ -88,7 +88,10 @@ def test_deploy_compose_and_script_exist_for_gitlab_release_flow() -> None:
     script = DEPLOY_SCRIPT.read_text(encoding="utf-8")
 
     assert "SILO_IMAGE" in compose
-    assert "container_name: silo-api-python" in compose
+    assert "container_name: silo-api" in compose
+    assert "container_name: silo-ai" in compose
+    assert "container_name: silo-embeddings" in compose
+    assert "container_name: silo-indexer" in compose
     assert "container_name: silo-worker" in compose
     assert 'command: ["python", "-m", "silo.worker.main"]' in compose
     assert (

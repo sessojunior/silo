@@ -312,10 +312,10 @@ export default function MessageBubble({
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/40 duration-1000" />
                     <span className="icon-[lucide--brain] size-4 relative text-amber-500 animate-[spin_3s_linear_infinite]" />
                   </span>
-                  <span className="font-medium text-amber-600 dark:text-amber-400">
+                  <span className="font-bold text-amber-600 dark:text-amber-400">
                     Processando
                   </span>
-                  <span className="flex gap-0.5">
+                  <span className="flex gap-0.5 mt-1.5">
                     <span className="size-1 animate-bounce rounded-full bg-amber-500 [animation-delay:0ms]" />
                     <span className="size-1 animate-bounce rounded-full bg-amber-500 [animation-delay:150ms]" />
                     <span className="size-1 animate-bounce rounded-full bg-amber-500 [animation-delay:300ms]" />

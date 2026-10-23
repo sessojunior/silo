@@ -502,7 +502,7 @@ def _smtp_from_address(environ: Mapping[str, str], username: str) -> str:
 
 def _default_vllm_url(silo_env: str) -> str:
     if silo_env == SiloEnvironment.PRODUCTION:
-        return "http://vllm:8000/v1"
+        return "http://ai:8000/v1"
     return "http://localhost:8000/v1"
 
 

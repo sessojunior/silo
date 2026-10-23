@@ -13,6 +13,7 @@ Desenvolvido para o **CPTEC/INPE**, o SILO resolve um problema comum em organiza
 - **Kanban de projetos:** Organiza atividades em quadros com prioridades, prazos e responsáveis.
 - **Dashboard e relatórios:** Visualiza indicadores, disponibilidade e saúde dos produtos.
 - **Assistente de IA:** Chat que responde perguntas sobre a operação, gera gráficos, relatórios em PDF e busca informações nos dados do sistema.
+- **Procedimentos gerais:** Mantém soluções avulsas, manuais operacionais e anexos consultáveis pela IA.
 - **Busca semântica:** Encontra informações por significado, não apenas por palavras-chave.
 
 ---
@@ -88,8 +89,8 @@ AI_AGENT_MODE=hybrid
 docker compose up -d --build
 ```
 
-Esse comando único sobe **tudo**: `db` (PostgreSQL), `vllm` (IA), `vllm-embed`
-(embeddings), `migrate` (migrations), `embedding-backfill` (reconciliação de
+Esse comando único sobe **tudo**: `db` (PostgreSQL), `ai` (IA), `embeddings`
+(modelo vetorial), `migrate` (migrations), `indexer` (reconciliação de
 embeddings), `api` (backend FastAPI), `worker` (Kafka) e `web` (frontend
 Next.js). Não é preciso subir os serviços separadamente — o Docker resolve a
 ordem de inicialização e os healthchecks por conta própria.
@@ -104,7 +105,7 @@ Na primeira execução, o Docker vai:
 ### 4. Acompanhe o progresso
 
 ```bash
-docker compose logs -f vllm api
+docker compose logs -f ai embeddings api indexer
 ```
 
 O vLLM mostra `Uvicorn running on http://0.0.0.0:8000` quando o modelo estiver carregado.
@@ -118,11 +119,11 @@ Um único comando (`docker compose up -d --build`) já sobe tudo o que você pre
 
 | O que subiu no container | Porta interna | Porta no host | Como acessar no localhost |
 |---|---|---|---|
-| `web` (frontend Next.js) | 3000 | `SILO_HOST_PORT` (padrão 80) | `http://localhost/silo` — ex.: `/silo/admin/ai-assistant` |
-| `api` (backend FastAPI) | 4000 | `API_PORT` (padrão 4000) | `http://localhost:4000/docs` |
-| `vllm` (IA) | 8000 | `VLLM_PORT` (padrão 8000) | `http://localhost:8000/v1/models` |
-| `vllm-embed` (embeddings) | 8000 | `VLLM_EMBED_PORT` (padrão 8001) | `http://localhost:8001/v1/models` |
-| `db` (PostgreSQL) | 5432 | `POSTGRES_PORT` (padrão 5432) | `localhost:5432` |
+| `web` (`silo-web`, frontend Next.js) | 3000 | `SILO_HOST_PORT` (padrão 80) | `http://localhost/silo` — ex.: `/silo/admin/ai-assistant` |
+| `api` (`silo-api`, backend FastAPI) | 4000 | `API_PORT` (padrão 4000) | `http://localhost:4000/docs` |
+| `ai` (`silo-ai`) | 8000 | `VLLM_PORT` (padrão 8000) | `http://localhost:8000/v1/models` |
+| `embeddings` (`silo-embeddings`, modelo vetorial) | 8000 | `VLLM_EMBED_PORT` (padrão 8001) | `http://localhost:8001/v1/models` |
+| `db` (`silo-db`, PostgreSQL) | 5432 | `POSTGRES_PORT` (padrão 5432) | `localhost:5432` |
 
 > O prefixo `/silo` vem de `NEXT_PUBLIC_BASE_PATH`. Se trocar para `/`, acesse `http://localhost/`.
 > O `api` e o `worker` só sobem depois que o `migrate` terminar com sucesso, e o
@@ -151,7 +152,9 @@ Depois é só fazer login em `http://localhost/silo/login`.
 docker compose ps
 ```
 
-Todos os serviços devem estar com status `healthy` ou `Up`. O serviço `migrate` aparece como `exited (0)` — é normal (executa uma tarefa e encerra).
+Todos os serviços devem estar com status `healthy` ou `Up`. O serviço `migrate` usa o container `silo-migrate` e é one-shot: pode aparecer como `exited (0)` — é normal — ou não aparecer se o container concluído tiver sido removido.
+
+> O container `silo-migrate` não é um serviço permanente. Para executar a migração novamente, use `docker compose run --rm migrate`; o Compose recria o container automaticamente.
 
 > Se `api`, `worker` ou `web` aparecerem como `Created` e o `migrate` como
 > `Exited (1)`, a migração falhou (normalmente `DATABASE_URL` errado no `.env`).
@@ -175,7 +178,7 @@ Todos os serviços devem estar com status `healthy` ou `Up`. O serviço `migrate
 │       │        └────┬─────┘               │              │
 │       │             │                     │              │
 │       │     ChatOpenAI(base_url=          │              │
-│       │    "http://vllm:8000/v1")         │              │
+│       │    "http://ai:8000/v1")           │              │
 │       │             └─────────────────────┘              │
 │       │                                                 │
 │       └─────────────────────────────────┘                │
@@ -192,11 +195,11 @@ Todos os serviços devem estar com status `healthy` ou `Up`. O serviço `migrate
 ### Ordem de inicialização
 
 1. **db** — Banco PostgreSQL + pgvector
-2. **vllm** e **vllm-embed** — Servidores de chat e embeddings (baixam os modelos no primeiro boot)
+2. **ai** e **embeddings** — Servidores de chat e embeddings (baixam os modelos no primeiro boot)
 3. **migrate** — Cria/atualiza tabelas do banco e encerra
-4. **api** — Backend FastAPI (depende de db, vllm e vllm-embed)
+4. **api** — Backend FastAPI (depende de db, ai e embeddings)
 5. **worker** — Processa mensagens do Kafka
-6. **embedding-backfill** — Reconcilia embeddings ausentes ou obsoletos
+6. **indexer** — Reconcilia embeddings ausentes ou obsoletos
 7. **web** — Frontend Next.js (depende da API)
 
 ### Por que dois arquivos docker-compose?
@@ -209,7 +212,7 @@ O projeto tem dois arquivos de orquestração com propósitos diferentes:
 | **Como constrói** | Compila imagens na hora (`build:`) | Usa imagens prontas do registry (`image:`) |
 | **Banco de dados** | Container PostgreSQL incluso | Banco externo (gerenciado separadamente) |
 | **Frontend** | Container `web` incluso | Servido por proxy/Nginx externo |
-| **Serviços** | 8 (db, vllm, vllm-embed, migrate, embedding-backfill, api, worker, web) | 6 (vllm, vllm-embed, migrate, embedding-backfill, api, worker) |
+| **Serviços** | 8 (db, ai, embeddings, migrate, indexer, api, worker, web) | 6 (ai, embeddings, migrate, indexer, api, worker) |
 | **Comando** | `docker compose up -d --build` | `docker compose -f docker-compose.deploy.yml up -d` |
 
 **Por que separar?** O deploy nunca deve compilar código no servidor — ele usa a imagem já testada e publicada. E o banco de produção precisa de backup, réplicas e monitoramento que um container simples não oferece. Já no desenvolvimento, tudo é self-contained para subir com um comando.
@@ -241,7 +244,7 @@ Para hot-reload, rode infraestrutura no Docker e o código diretamente:
 ### Terminal 1 — Banco de dados + vLLM
 
 ```bash
-docker compose up -d db vllm
+docker compose up -d db ai embeddings
 docker compose run --rm migrate
 ```
 
@@ -352,7 +355,7 @@ uv run --locked silo-db-seed               # Dados iniciais
 # Desenvolvimento
 docker compose up -d --build               # Subir stack completa
 docker compose ps                          # Status dos serviços
-docker compose logs -f vllm                # Logs do servidor de IA
+docker compose logs -f ai                 # Logs do servidor de IA
 docker compose logs -f api                 # Logs do backend
 docker compose exec api bash               # Entrar no container
 docker compose down                        # Parar tudo
@@ -363,6 +366,26 @@ docker compose -f docker-compose.deploy.yml ps
 docker compose -f docker-compose.deploy.yml logs -f
 docker compose -f docker-compose.deploy.yml down
 ```
+
+### Limpeza segura de artefatos Docker antigos
+
+Os nomes oficiais dos containers do Silo são `silo-db`, `silo-ai`,
+`silo-embeddings`, `silo-migrate`, `silo-indexer`, `silo-api`, `silo-worker` e
+`silo-web`. Não existem mais os nomes legados `silo-api-python`,
+`silo-worker-python`, `silo-vllm`, `silo-vllm-embed`, `silo-search` ou
+`silo-embedding-backfill`.
+
+Para remover apenas o container one-shot concluído, sem apagar dados:
+
+```bash
+docker compose rm -f migrate
+```
+
+Não remova as imagens `vllm/vllm-openai-cpu` ou `pgvector/pgvector` nem os
+volumes `silo-postgres-data`, `silo-storage-data`, `silo-vllm-cache` e
+`silo-vllm-compile-cache`: eles são usados pelo banco, uploads e modelos. Evite
+`docker system prune -a` sem revisar o impacto, pois o cache de build é global
+e pode pertencer a outros projetos.
 
 ### Segurança e carga
 
@@ -403,6 +426,22 @@ novamente sem duplicar a solicitação. O frontend renderiza Markdown do
 assistente sem habilitar HTML arbitrário. O contrato detalhado está em
 [`docs/ai-assistant.md`](docs/ai-assistant.md).
 
+### Procedimentos gerais
+
+A página **Procedimentos** (`/admin/procedures`) usa o mesmo padrão mestre–detalhe
+das páginas de produtos: a lista fica em uma coluna contínua e o procedimento
+selecionado é editado e consultado no painel ao lado. É possível cadastrar,
+editar, ativar/desativar e excluir procedimentos, além de anexar imagens e
+arquivos PDF, TXT/MD, DOCX e PPTX.
+
+Os arquivos originais ficam no volume persistente `/uploads/procedures/`; o
+PostgreSQL guarda metadados, hash, estado de extração e o texto derivado para
+busca. A IA consulta primeiro o manual do produto em perguntas específicas de
+produto/modelo, com prioridade preferencial (não absoluta), e usa problemas,
+soluções, intervenções e procedimentos gerais como contexto complementar. A
+política detalhada está em [`docs/ai-assistant.md`](docs/ai-assistant.md) e os
+detalhes de armazenamento/API em [`docs/backend.md`](docs/backend.md).
+
 ### Tecnologias da IA
 
 ```
@@ -437,7 +476,7 @@ assistente sem habilitar HTML arbitrário. O contrato detalhado está em
 | `BAAI/bge-base-en-v1.5` | Busca semântica (embeddings, 768 dimensões) | ~440 MB |
 
 O modelo padrão é o **Qwen2.5 0.5B** — leve para rodar em CPU, capaz para perguntas operacionais.
-O embedding roda em uma segunda instância dedicada (`vllm-embed`) com
+O embedding roda em uma segunda instância dedicada (`embeddings`) com
 `BAAI/bge-base-en-v1.5`; esse modelo gera vetores de 768 dimensões, compatíveis
 com a coluna `pgvector` do banco.
 
@@ -492,7 +531,7 @@ O arquivo já contém a reserva de GPU e usa `SILO_VLLM_GPU_IMAGE`, separado da
 imagem CPU do desenvolvimento:
 
 ```yaml
-vllm:
+ai:
   image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}
   # ...
   deploy:
@@ -588,14 +627,14 @@ Consulte [`env.example`](env.example) para a lista completa.
 
 | Problema | Solução |
 |---|---|
-| **"O container `vllm` demora para iniciar"** | O modelo está sendo baixado (~400 MB). Acompanhe com `docker compose logs -f vllm`. Aguarde `Uvicorn running`. |
+| **"O container `silo-ai` demora para iniciar"** | O modelo está sendo baixado (~400 MB). Acompanhe com `docker compose logs -f ai`. Aguarde `Uvicorn running`. |
 | **"Erro de memória no vLLM"** | O modelo é grande para sua RAM/VRAM. Use `VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct`. |
 | **"A API não sobe"** | Verifique o banco: `docker compose ps db`. Rode `docker compose run --rm migrate` se necessário. |
 | **"Login retorna 401 com `teste@inpe.br`"** | O banco local está sem usuários. Rode o seed: `docker compose run --rm --no-deps migrate python -m silo.db.seed` e tente de novo. |
 | **"`api`/`web` ficam em `Created` e `migrate` em `Exited (1)`"** | O `DATABASE_URL` no `.env` aponta para um host que o container não alcança. Use `postgresql://silo:silo@db:5432/silo` (ou remova a variável) e rode `docker compose up -d`. Veja `docker compose logs migrate`. |
 | **"O frontend não carrega"** | O frontend depende da API. Aguarde o healthcheck: `docker compose ps api`. Confira o prefixo: com `NEXT_PUBLIC_BASE_PATH=/silo`, acesse `http://localhost/silo`. |
 | **"GPU não detectada"** | No desenvolvimento, o vLLM roda em CPU pela imagem `vllm/vllm-openai-cpu` (`SILO_VLLM_CPU_IMAGE`). No deploy GPU, instale o NVIDIA Container Toolkit e defina `SILO_VLLM_GPU_IMAGE`. |
-| **"`vllm` reinicia com `Failed to infer device type`"** | Você está usando a imagem CUDA sem GPU. Use a imagem CPU (`vllm/vllm-openai-cpu`, padrão) ou ative o passthrough de GPU no Docker Desktop. |
+| **"`silo-ai` reinicia com `Failed to infer device type`"** | Você está usando a imagem CUDA sem GPU. Use a imagem CPU (`vllm/vllm-openai-cpu`, padrão) ou ative o passthrough de GPU no Docker Desktop. |
 | **"Porta 5432/8000/4000/80 já em uso"** | Altere no `.env` (`POSTGRES_PORT`, `VLLM_PORT`, `API_PORT`, `SILO_HOST_PORT`). |
 | **"Modelo não encontrado"** | Verifique o nome em https://huggingface.co/models. Para modelos restritos, configure `HF_TOKEN`. |
 | **"Sem espaço em disco"** | Modelos ocupam ~500 MB. Limpe com `docker compose down -v` (apaga banco também). |

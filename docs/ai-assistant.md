@@ -185,6 +185,17 @@ As citações preservam o procedimento, o nome do arquivo e página ou slide
 quando disponíveis. A consulta é somente leitura: cadastrar, editar,
 reprocessar e remover procedimentos exige `procedures:manage`.
 
+Essa prioridade é preferencial, não absoluta: o sistema pode combinar manual,
+problema, solução, intervenção e procedimento quando a pergunta envolver uma
+rodada, uma alteração de modelo ou um incidente histórico. Assim, a resposta
+mantém o manual como referência principal sem esconder evidências operacionais
+mais recentes ou diretamente relacionadas.
+
+Na interface, a página segue o padrão mestre–detalhe das páginas de produtos:
+a lista usa linhas contínuas com divisores e o detalhe concentra edição,
+anexos e pré-visualização no painel ao lado. Isso evita espaços artificiais
+entre colunas e facilita a leitura de procedimentos longos.
+
 ## Runtime e configuração
 
 Variáveis principais:
@@ -246,7 +257,7 @@ O frontend fica em `http://localhost/silo/admin/ai-assistant` quando
 Para acompanhar o runtime:
 
 ```bash
-docker compose logs -f api vllm worker
+docker compose logs -f api ai embeddings indexer worker
 ```
 
 O smoke test deve verificar login, envio sem `threadId`, eventos `delta`,

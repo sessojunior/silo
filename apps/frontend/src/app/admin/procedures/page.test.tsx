@@ -11,6 +11,23 @@ vi.mock("@/context/user-context", () => ({
 vi.mock("@/components/ui/loading-spinner", () => ({
   default: () => <div data-testid="loading-spinner" />,
 }));
+vi.mock("@/components/ui/markdown-editor", () => ({
+  default: function MockMarkdownEditor({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+  }) {
+    return (
+      <textarea
+        aria-label="procedure-content-markdown"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    );
+  },
+}));
 
 const procedure: GeneralProcedureDto = {
   id: "procedure-1",
@@ -55,11 +72,11 @@ describe("ProceduresPage", () => {
 
     render(<ProceduresPage />);
     await waitFor(() => expect(screen.getByText("Nenhum procedimento encontrado.")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Novo procedimento" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Adicionar procedimento" })[0]);
     fireEvent.change(screen.getByRole("textbox", { name: /Título/ }), { target: { value: "Novo procedimento" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Categoria" }), { target: { value: "Operação" } });
-    fireEvent.change(screen.getByRole("textbox", { name: /Conteúdo/ }), { target: { value: "## Passos" } });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar procedimento" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "procedure-content-markdown" }), { target: { value: "## Passos" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Adicionar$/ }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/procedures"),

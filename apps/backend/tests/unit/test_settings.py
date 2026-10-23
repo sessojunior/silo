@@ -42,7 +42,7 @@ def test_node_env_is_controlled_fallback_when_silo_env_is_absent() -> None:
     assert (
         settings.database_url.get_secret_value() == "postgresql://prod-user:prod-pass@db:5432/silo"
     )
-    assert settings.vllm.url == "http://vllm:8000/v1"
+    assert settings.vllm.url == "http://ai:8000/v1"
 
 
 def test_database_url_is_used_directly() -> None:

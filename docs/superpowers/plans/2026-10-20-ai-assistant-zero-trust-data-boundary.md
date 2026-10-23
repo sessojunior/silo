@@ -123,7 +123,7 @@
 **Interfaces:**
 - Criar `validate_internal_model_url(value: str, allowed_hosts: frozenset[str]) -> str`.
 - O runtime HTTP deve usar `httpx.AsyncClient(..., trust_env=False)`.
-- Hosts permitidos em produção: `vllm` e `vllm-embed`; hosts de desenvolvimento devem ser explicitamente opt-in.
+- Hosts permitidos em produção: `ai` e `embeddings`; hosts de desenvolvimento devem ser explicitamente opt-in.
 
 - [ ] Escrever testes para rejeitar `http://example.com`, IPs não permitidos, URLs com credenciais, redirecionamentos externos e proxies de ambiente.
 - [ ] Implementar validação no carregamento da configuração e antes de criar clientes.

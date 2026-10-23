@@ -148,7 +148,7 @@ function ListProblems({
             className={`flex flex-col border-b border-zinc-200 dark:border-zinc-700 cursor-pointer ${selectedId === problem.id ? "bg-zinc-100 dark:bg-zinc-800" : ""} ${loadingDetail ? "opacity-50 pointer-events-none" : ""}`}
             onClick={() => !loadingDetail && onSelect(problem)}
           >
-            <div className="flex w-full flex-col gap-y-1 p-8 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            <div className="flex w-full flex-col gap-y-1 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800">
               {/* Nome da categoria */}
               {problem.categoryName && (
                 <div className="mb-1">
