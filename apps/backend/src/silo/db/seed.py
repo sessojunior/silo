@@ -142,6 +142,7 @@ DEFAULT_GROUP_PERMISSIONS: tuple[PermissionSeed, ...] = (
     PermissionSeed("projects", "view"),
     PermissionSeed("products", "view"),
     PermissionSeed("help", "view"),
+    PermissionSeed("procedures", "view"),
 )
 
 ADMIN_GROUP_PERMISSIONS: tuple[PermissionSeed, ...] = tuple(
@@ -178,6 +179,8 @@ ADMIN_GROUP_PERMISSIONS: tuple[PermissionSeed, ...] = tuple(
             PermissionSeed("reports", "view"),
             PermissionSeed("help", "view"),
             PermissionSeed("help", "manage"),
+            PermissionSeed("procedures", "view"),
+            PermissionSeed("procedures", "manage"),
             PermissionSeed("chat", "view_private"),
             PermissionSeed("chat", "view_group"),
             PermissionSeed("chat", "send_private"),
