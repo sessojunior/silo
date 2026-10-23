@@ -129,6 +129,7 @@ def require_upload_access(
         "solution": "products",
         "manual": "products",
         "help": "help",
+        "procedures": "procedures",
     }
     resource = resources.get(kind)
     if resource is not None:

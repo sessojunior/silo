@@ -50,14 +50,16 @@ SUPPORTED_DRIZZLE_BUILDERS: Final = (
     "vector768",
 )
 EXPECTED_TABLE_COUNT = 40
-EXPECTED_POST_ARTIFACT_TABLE_COUNT = 41
-EXPECTED_POST_ARTIFACT_COLUMN_COUNT = 362
+EXPECTED_POST_ARTIFACT_TABLE_COUNT = 44
+EXPECTED_POST_ARTIFACT_COLUMN_COUNT = 404
 EXPECTED_VECTOR_COLUMNS = {
     ("product_problem", "embedding"),
     ("product_solution", "embedding"),
     ("product_manual_chunk", "embedding"),
     ("ai_assistant_message", "embedding"),
     ("help", "embedding"),
+    ("general_procedure", "embedding"),
+    ("general_procedure_attachment_chunk", "embedding"),
 }
 
 
@@ -147,7 +149,7 @@ def test_sqlalchemy_models_map_timestamp_and_special_types_for_phase_3_8_and_3_9
     assert len(jsonb_columns) == 4
     assert len(uuid_columns) == 23
     assert len(date_columns) == 8
-    assert len(vector_columns) == 5
+    assert len(vector_columns) == 7
     assert PGVECTOR_DIMENSIONS == 768
     assert str(Vector768().compile(dialect=postgresql.dialect())) == "vector(768)"
 

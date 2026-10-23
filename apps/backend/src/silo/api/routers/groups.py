@@ -27,6 +27,7 @@ DEFAULT_GROUP_PERMISSIONS: tuple[tuple[str, str], ...] = (
     ("projectActivities", "view"),
     ("projectTasks", "view"),
     ("productActivities", "view"),
+    ("procedures", "view"),
 )
 
 
