@@ -94,7 +94,7 @@
 
    Gera as imagens:
      - silo-api-python:migration     (API)
-     - silo-worker-python:migration  (consumer Kafka)
+     - silo-worker:migration  (consumer Kafka)
 
  5.2 Frontend
 

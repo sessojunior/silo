@@ -293,7 +293,7 @@ services:
       context: .
       dockerfile: apps/backend/Dockerfile
       target: worker
-    image: silo-worker-python
+    image: silo-worker
     container_name: silo-worker
     environment:
       SILO_ENV: ${SILO_ENV:-development}
