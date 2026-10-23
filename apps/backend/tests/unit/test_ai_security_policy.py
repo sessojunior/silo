@@ -20,6 +20,15 @@ from silo.ai.assistant_tool_catalog import (
     execute_hybrid_tool_async,
 )
 
+_READ_TOOL_NAMES = (
+    "search_silo_knowledge",
+    "compare_model_run_periods",
+    "get_model_run_history",
+    "list_model_interventions",
+    "compare_problem_periods",
+    "list_problematic_runs",
+)
+
 
 @pytest.mark.parametrize("capability", ["SHELL", "DATABASE_READ"])
 def test_security_policy_rejects_unknown_capability(capability: str) -> None:
@@ -102,7 +111,8 @@ async def test_tool_rejects_missing_policy_before_touching_gateway(asynchronous:
             )  # type: ignore[arg-type]
 
 
-def test_sync_tool_rejects_missing_database_read_before_accessing_context() -> None:
+@pytest.mark.parametrize("tool_name", _READ_TOOL_NAMES)
+def test_sync_tool_rejects_missing_database_read_before_accessing_context(tool_name: str) -> None:
     policy = AssistantSecurityPolicy(
         capabilities=frozenset({AssistantCapability.CONVERSATION_READ}),
         allowed_model_hosts=frozenset(),
@@ -110,11 +120,14 @@ def test_sync_tool_rejects_missing_database_read_before_accessing_context() -> N
     context = SimpleNamespace(security_policy=policy)
 
     with pytest.raises(AssistantSecurityError):
-        execute_hybrid_tool("search_silo_knowledge", context, {"scope": "general"}, {"query": "x"})  # type: ignore[arg-type]
+        execute_hybrid_tool(tool_name, context, {"scope": "general"}, {"query": "x"})  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize("tool_name", _READ_TOOL_NAMES)
 @pytest.mark.asyncio
-async def test_async_tool_rejects_missing_database_read_before_accessing_context() -> None:
+async def test_async_tool_rejects_missing_database_read_before_accessing_context(
+    tool_name: str,
+) -> None:
     policy = AssistantSecurityPolicy(
         capabilities=frozenset(),
         allowed_model_hosts=frozenset(),
@@ -122,9 +135,7 @@ async def test_async_tool_rejects_missing_database_read_before_accessing_context
     context = SimpleNamespace(security_policy=policy)
 
     with pytest.raises(AssistantSecurityError):
-        await execute_hybrid_tool_async(
-            "search_silo_knowledge", context, {"scope": "general"}, {"query": "x"}
-        )  # type: ignore[arg-type]
+        await execute_hybrid_tool_async(tool_name, context, {"scope": "general"}, {"query": "x"})  # type: ignore[arg-type]
 
 
 def test_tool_requires_read_gateway_even_with_database_capability() -> None:

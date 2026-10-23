@@ -190,7 +190,6 @@ async def test_stream_assistant_message_forwards_model_deltas_before_result(monk
     ]
 
     assert [event.event for event in events] == [
-        "thinking",
         "delta",
         "delta",
         "scope",
@@ -297,7 +296,7 @@ def test_assistant_message_and_thread_row_helpers() -> None:
     assert message.id == "message-1"
     assert message.thread_id == "thread-1"
     assert message.sender_type == "assistant"
-    assert message.thinking == "cadeia interna"
+    assert message.thinking is None
     assert message.generation is not None
     assert message.generation.model == "mistral"
     assert message.visualization is not None
@@ -1546,7 +1545,7 @@ def test_assistant_thread_crud_and_state_helpers(monkeypatch: pytest.MonkeyPatch
             "message-2",
             "message-3",
         ]
-        assert details.messages[1].thinking == "cadeia interna"
+        assert details.messages[1].thinking is None
         assert details.messages[1].visualization is not None
         assert details.messages[1].artifacts is not None
         assert details.messages[1].artifacts[0].filename == "second.pdf"
@@ -2887,8 +2886,8 @@ async def test_assistant_node_runtime_helpers_cover_remaining_branches(
     token_limited_state = await assistant_service._node_synthesize_once(
         token_limited_state, runtime
     )
-    assert token_limited_state["answer"] == token_limited_state["response_base"]
-    assert token_limited_state["generation"]["status"] == "fallback"
+    assert token_limited_state["answer"] == token_limited_state["generation"]["errorMessage"]
+    assert token_limited_state["generation"]["status"] == "error"
     assert "limite" in token_limited_state["generation"]["errorMessage"]
 
     class _SimpleRuntime:

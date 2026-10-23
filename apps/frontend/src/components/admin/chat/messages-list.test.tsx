@@ -78,7 +78,7 @@ describe("MessagesList do assistente", () => {
     expect(screen.getByTestId("message-first-user-message")).toHaveTextContent("Primeira pergunta");
   });
 
-  it("exibe a mensagem genérica enquanto consulta o modelo de IA", () => {
+  it("não exibe um segundo loading fora do balão da mensagem", () => {
     Object.defineProperty(HTMLElement.prototype, "scrollTo", {
       configurable: true,
       value: vi.fn(),
@@ -96,12 +96,11 @@ describe("MessagesList do assistente", () => {
         newerMessagesRemaining={0}
         currentUserId="user-1"
         variant="assistant"
-        assistantStatusText="Consultando o modelo de IA..."
         onLoadOlderMessages={vi.fn()}
         onLoadNewerMessages={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("Consultando o modelo de IA...")).toBeInTheDocument();
+    expect(screen.queryByText("Consultando o modelo de IA...")).not.toBeInTheDocument();
   });
 });

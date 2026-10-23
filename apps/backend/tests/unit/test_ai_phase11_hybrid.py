@@ -422,8 +422,8 @@ async def test_synthesize_once_respeita_orcamento_de_prompt_sem_chamar_modelo() 
 
     await assistant_service._node_synthesize_once(state, runtime)
 
-    assert state["answer"] == state["response_base"]
-    assert state["generation"]["status"] == "fallback"
+    assert state["answer"] == state["generation"]["errorMessage"]
+    assert state["generation"]["status"] == "error"
     assert "limite de contexto" in state["generation"]["errorMessage"]
 
 
@@ -496,8 +496,8 @@ async def test_synthesize_once_rejeita_saida_estruturada_que_altera_numeros() ->
 
     await assistant_service._node_synthesize_once(state, runtime)
 
-    assert state["answer"] == state["response_base"]
-    assert state["generation"]["status"] == "fallback"
+    assert state["answer"] == state["generation"]["errorMessage"]
+    assert state["generation"]["status"] == "error"
     assert "formato inválido" in state["generation"]["errorMessage"]
 
 
@@ -526,6 +526,40 @@ def test_build_response_usa_context_summary_da_sintese(monkeypatch: pytest.Monke
     response = assistant_service._build_response_from_state(state, runtime_context)
 
     assert response["contextSummary"] == state["synthesis_context_summary"]
+
+
+def test_build_response_nao_publica_etapas_de_execucao_como_raciocinio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    runtime_context = _fake_runtime_context(
+        engine.connect(),
+        model_runtime=FakeChatPort(response="ok"),
+        embedding_provider=_RaisingEmbeddingProvider(),
+    )
+    monkeypatch.setattr(assistant_service, "_current_thread_summary", lambda *args, **kwargs: None)
+    state = {
+        "thread_id": "thread-success",
+        "scope": "reports",
+        "answer": "Resposta gerada pelo modelo.",
+        "progress": ["execute_required_data_tools", "synthesize_once", "emit_result"],
+        "suggested_questions": [],
+        "citations": [],
+        "visualization": {},
+        "generation": {
+            "provider": "vllm",
+            "model": "mistral",
+            "status": "success",
+            "latencyMs": 1200,
+            "generatedTokens": 64,
+            "thinkingTimeMs": None,
+            "errorMessage": None,
+        },
+    }
+
+    response = assistant_service._build_response_from_state(state, runtime_context)
+
+    assert response["thinking"] is None
 
 
 def test_build_response_nao_expoe_thinking_em_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1178,8 +1212,7 @@ def test_execute_hybrid_tool_rejeita_sem_reports_view() -> None:
         )
 
 
-def test_assistant_tool_catalog_helpers_cover_remaining_branches(
-) -> None:
+def test_assistant_tool_catalog_helpers_cover_remaining_branches() -> None:
     from silo.ai import assistant_tool_catalog
     from silo.ai.assistant_security import AssistantCapability, AssistantSecurityPolicy
 

@@ -310,6 +310,7 @@ _REPORT_TYPE_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
 MAX_THREAD_MESSAGES = 25
 _SEMANTIC_CACHE_MAX_SIZE = 64
 _SEMANTIC_CACHE_TTL_SECONDS = 6 * 60 * 60
+DEFAULT_ASSISTANT_STREAM_TIMEOUT_SECONDS = 300.0
 _SEMANTIC_CACHE: OrderedDict[str, dict[str, Any]] = OrderedDict()
 
 
@@ -649,6 +650,13 @@ async def stream_assistant_message(
     model_runtime: ChatModelRuntime | None = None,
     embedding_provider: EmbeddingPort | None = None,
 ) -> AsyncIterator[AssistantStreamEvent]:
+    vllm_settings = getattr(settings, "vllm", None)
+    configured_timeout_ms = getattr(vllm_settings, "timeout_ms", None)
+    if isinstance(configured_timeout_ms, (int, float)) and configured_timeout_ms > 0:
+        stream_timeout_seconds = max(1.0, min(300.0, configured_timeout_ms / 1000.0))
+    else:
+        stream_timeout_seconds = DEFAULT_ASSISTANT_STREAM_TIMEOUT_SECONDS
+
     response: AiAssistantMessageResponseDto | None = None
     stream_queue: asyncio.Queue[str] = asyncio.Queue()
     execution = asyncio.create_task(
@@ -663,16 +671,9 @@ async def stream_assistant_message(
             stream_queue=stream_queue,
         )
     )
+    queue_get: asyncio.Task[str] | None = None
+    deadline = asyncio.get_running_loop().time() + stream_timeout_seconds
     try:
-        yield AssistantStreamEvent(
-            event="thinking",
-            data={
-                "content": (
-                    "Estou consultando os dados autorizados do SILO e preparando a resposta "
-                    "com o modelo de IA..."
-                )
-            },
-        )
         while not execution.done() or not stream_queue.empty():
             if not stream_queue.empty():
                 delta = stream_queue.get_nowait()
@@ -680,10 +681,17 @@ async def stream_assistant_message(
                     yield AssistantStreamEvent(event="delta", data={"content": delta})
                 continue
 
+            remaining_seconds = deadline - asyncio.get_running_loop().time()
+            if remaining_seconds <= 0:
+                raise TimeoutError
             queue_get = asyncio.create_task(stream_queue.get())
             done, _pending = await asyncio.wait(
-                {execution, queue_get}, return_when=asyncio.FIRST_COMPLETED
+                {execution, queue_get},
+                timeout=remaining_seconds,
+                return_when=asyncio.FIRST_COMPLETED,
             )
+            if not done:
+                raise TimeoutError
             if queue_get in done:
                 delta = queue_get.result()
                 if delta:
@@ -699,6 +707,9 @@ async def stream_assistant_message(
         )
         yield AssistantStreamEvent(event="result", data=response.model_dump(mode="json"))
     except asyncio.CancelledError:
+        if queue_get is not None and not queue_get.done():
+            queue_get.cancel()
+            await asyncio.gather(queue_get, return_exceptions=True)
         execution.cancel()
         await asyncio.gather(execution, return_exceptions=True)
         record_runtime_metric(
@@ -709,7 +720,26 @@ async def stream_assistant_message(
             },
         )
         raise
+    except TimeoutError:
+        if queue_get is not None and not queue_get.done():
+            queue_get.cancel()
+            await asyncio.gather(queue_get, return_exceptions=True)
+        if not execution.done():
+            execution.cancel()
+            await asyncio.gather(execution, return_exceptions=True)
+        yield AssistantStreamEvent(
+            event="error",
+            data={
+                "content": (
+                    "O modelo de IA não respondeu dentro do tempo limite; não foi possível "
+                    "obter uma resposta final. Tente novamente."
+                )
+            },
+        )
     except Exception:
+        if queue_get is not None and not queue_get.done():
+            queue_get.cancel()
+            await asyncio.gather(queue_get, return_exceptions=True)
         if not execution.done():
             execution.cancel()
             await asyncio.gather(execution, return_exceptions=True)
@@ -901,9 +931,6 @@ def _thread_message_from_row(row: Mapping[Any, Any]) -> AiAssistantThreadMessage
     citations = _safe_model_validate_citations(metadata)
     visualization = _safe_model_validate_visualization(metadata)
     artifacts = _safe_model_validate_artifacts(metadata)
-    thinking = _optional_text(_safe_nested_value(metadata, "thinking"))
-    if generation is not None and generation.status != "success":
-        thinking = None
     return AiAssistantThreadMessageDto(
         id=str(payload["id"]),
         thread_id=str(payload["threadId"]),
@@ -911,7 +938,7 @@ def _thread_message_from_row(row: Mapping[Any, Any]) -> AiAssistantThreadMessage
         sender_user_id=_optional_text(payload.get("senderUserId")),
         sender_name=str(payload["senderName"]),
         content=str(payload["content"]),
-        thinking=thinking,
+        thinking=None,
         citations=citations,
         generation=generation,
         visualization=visualization,
@@ -2487,17 +2514,19 @@ async def _node_synthesize_once(
     if state.get("final_response"):
         return state
     if _graph_budget_guard(state, note="synthesize_once"):
-        response_base = _optional_text(state.get("response_base")) or ""
-        has_base_response = bool(response_base)
-        state["answer"] = response_base
+        generation_error_message = (
+            "N\u00e3o foi poss\u00edvel concluir a resposta do modelo dentro do limite de execu\u00e7\u00e3o. "
+            "Aguarde e tente novamente."
+        )
+        state["answer"] = generation_error_message
         state["generation"] = {
             "provider": "vllm",
             "model": runtime.context.settings.vllm.model,
-            "status": "fallback" if has_base_response else "error",
+            "status": "error",
             "latencyMs": 0,
             "generatedTokens": None,
             "thinkingTimeMs": None,
-            "errorMessage": "Orçamento de execução esgotado.",
+            "errorMessage": generation_error_message,
         }
         return state
 
@@ -2646,12 +2675,7 @@ async def _node_synthesize_once(
             "Não foi possível acessar o modelo vLLM neste momento. Aguarde e tente novamente."
         )
     if generation_status == "error" and not answer:
-        response_base = _optional_text(state.get("response_base")) or ""
-        if response_base:
-            answer = response_base
-            generation_status = "fallback"
-        else:
-            answer = generation_error_message
+        answer = generation_error_message
     latency_ms = int((time.perf_counter() - started_at) * 1000)
     state["answer"] = answer
     state["generation"] = {
@@ -2753,9 +2777,10 @@ def _build_response_from_state(
         if isinstance(state.get("generation"), dict) and state["generation"]
         else None
     )
-    thinking = _humanize_progress(state.get("progress", []))
-    if generation is not None and generation.status != "success":
-        thinking = None
+    # `progress` descreve etapas internas do grafo, não o raciocínio do modelo.
+    # Não o publique como `thinking`: isso fazia a interface apresentar um
+    # status operacional como se fosse uma explicação produzida pela LLM.
+    thinking = None
     final_response = AiAssistantMessageResponseDto(
         thread_id=str(state.get("thread_id") or ""),
         thread=thread_summary,
@@ -2780,31 +2805,6 @@ def _build_response_from_state(
         ),
     )
     return final_response.model_dump(mode="json")
-
-
-_HUMANIZED_PROGRESS: dict[str, str] = {
-    "guard_and_normalize": "Entendi a pergunta e preparei a consulta.",
-    "classify_and_plan": "Identifiquei o tipo de análise e o período solicitado.",
-    "claim_pdf_idempotency_if_needed": "Preparei a geração segura do relatório.",
-    "load_persisted_result": "Recuperei o resultado já preparado para esta solicitação.",
-    "semantic_cache_if_text_only": "Verifiquei se havia uma resposta recente reutilizável.",
-    "resolve_entities": "Confirmei os modelos, projetos e categorias envolvidos.",
-    "execute_required_data_tools": "Consultei os dados autorizados do SILO.",
-    "agent_decide": "Avaliei quais ferramentas adicionais eram necessárias.",
-    "analyze_and_register_datasets": "Organizei os dados e as fontes da resposta.",
-    "presentation_router": "Preparei a apresentação solicitada.",
-    "synthesize_once": "O modelo vLLM está redigindo a resposta final.",
-    "validate_output_citations_and_artifacts": "Validei números, fontes e arquivos gerados.",
-    "persist_transaction": "Registrei a resposta e os artefatos da conversa.",
-    "emit_result": "Resposta pronta.",
-}
-
-
-def _humanize_progress(progress: object) -> str | None:
-    if not isinstance(progress, list):
-        return None
-    readable = [_HUMANIZED_PROGRESS.get(str(item)) for item in progress[-4:]]
-    return " ".join(message for message in readable if message) or None
 
 
 def _build_context_summary(state: AgentState) -> str:
@@ -4307,7 +4307,7 @@ def _persist_user_and_assistant_messages(
             (assistant_response.get("generation") or {}).get("status") or "fallback"
         ),
         "latency_ms": int((assistant_response.get("generation") or {}).get("latencyMs") or 0),
-        "error_message": None,
+        "error_message": (assistant_response.get("generation") or {}).get("errorMessage"),
         "content": str(
             assistant_response.get("answer") or assistant_response.get("messageContent") or ""
         ),

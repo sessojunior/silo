@@ -395,15 +395,9 @@ async def test_stream_assistant_message_emits_expected_events(monkeypatch) -> No
     ):
         events.append(event)
 
-    assert [event.event for event in events] == ["thinking", "scope", "result"]
-    assert events[0].data == {
-        "content": (
-            "Estou consultando os dados autorizados do SILO e preparando a resposta "
-            "com o modelo de IA..."
-        )
-    }
-    assert events[1].data == {"scope": "general", "isInScope": True}
-    assert events[2].data["answer"] == "Resposta final objetiva."
+    assert [event.event for event in events] == ["scope", "result"]
+    assert events[0].data == {"scope": "general", "isInScope": True}
+    assert events[1].data["answer"] == "Resposta final objetiva."
 
 
 def test_dataset_registration_records_success_and_error_status(monkeypatch) -> None:
@@ -548,7 +542,6 @@ async def test_stream_assistant_message_records_client_disconnect(monkeypatch) -
         current_user=SimpleNamespace(id="user-1"),
         request=AiAssistantMessageRequestDto(content="Oi"),
     )
-    assert (await stream.__anext__()).event == "thinking"
     pending = asyncio.create_task(stream.__anext__())
     await asyncio.sleep(0)
     pending.cancel()
@@ -560,3 +553,27 @@ async def test_stream_assistant_message_records_client_disconnect(monkeypatch) -
         "ai_graph_sse_disconnect_total",
         {"reason": "client_disconnect", "scope": "unknown"},
     ) in metric_calls
+
+
+@pytest.mark.asyncio
+async def test_stream_assistant_message_emits_terminal_error_when_execution_times_out(
+    monkeypatch,
+) -> None:
+    release = asyncio.Event()
+
+    async def blocked_send(*_args, **_kwargs):
+        await release.wait()
+        return _make_response()
+
+    monkeypatch.setattr(assistant_service, "send_assistant_message", blocked_send)
+    stream = assistant_service.stream_assistant_message(
+        connection=SimpleNamespace(),
+        current_user=SimpleNamespace(id="user-1"),
+        request=AiAssistantMessageRequestDto(content="Oi"),
+        settings=SimpleNamespace(vllm=SimpleNamespace(timeout_ms=1)),
+    )
+
+    events = [await stream.__anext__()]
+
+    assert [event.event for event in events] == ["error"]
+    assert "tempo limite" in events[0].data["content"].lower()

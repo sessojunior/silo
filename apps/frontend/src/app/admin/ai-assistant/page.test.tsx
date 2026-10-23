@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 import AiAssistantPage, {
-  ASSISTANT_STATUS_TEXT,
   buildAssistantErrorGeneration,
   resolveAssistantThinking,
 } from "./page";
@@ -186,8 +185,14 @@ describe("AiAssistantPage", () => {
       ),
     ).toBeNull();
   });
-  it("usa um texto genérico para indicar a consulta ao modelo", () => {
-    expect(ASSISTANT_STATUS_TEXT).toBe("Consultando o modelo de IA...");
+  it("descarta o status transitório quando a resposta do modelo termina", () => {
+    expect(
+      resolveAssistantThinking(
+        { status: "success" } as never,
+        null,
+        "Estou consultando os dados autorizados do SILO e preparando a resposta com o modelo de IA...",
+      ),
+    ).toBeNull();
   });
 
   beforeEach(() => {
@@ -448,9 +453,7 @@ describe("AiAssistantPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Perguntar" }));
 
     const retryButton = await screen.findByRole("button", { name: "Tentar novamente" });
-    expect(screen.getByTestId("messages-list")).toHaveTextContent(
-      "Não foi possível consultar o assistente.",
-    );
+    expect(screen.getByTestId("messages-list")).toHaveTextContent("Falha temporária");
     expect(screen.getByTestId("messages-list")).toHaveTextContent("error");
     fireEvent.click(retryButton);
 

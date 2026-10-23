@@ -32,18 +32,17 @@ import {
 
 const ASSISTANT_SENDER_ID = "ai-assistant";
 const ASSISTANT_SENDER_NAME = "Assistente de IA";
-export const ASSISTANT_STATUS_TEXT = "Consultando o modelo de IA...";
 
 export const resolveAssistantThinking = (
   generation: Pick<NonNullable<ChatMessage["assistantGeneration"]>, "status"> | null | undefined,
   resultThinking: string | null | undefined,
   streamedThinking: string,
 ): string | null => {
-  if (generation?.status === "fallback" || generation?.status === "error") {
-    return null;
-  }
-
-  return resultThinking?.trim() || streamedThinking.trim() || null;
+  void generation;
+  void resultThinking;
+  void streamedThinking;
+  // O texto recebido durante o stream é status operacional, não raciocínio da LLM.
+  return null;
 };
 
 export const buildAssistantErrorGeneration = (
@@ -633,7 +632,11 @@ export default function AiAssistantPage() {
 
         const finalizeAssistantResult = (data: AiAssistantMessageResponseDto) => {
           hasReceivedResult = true;
-          setRetryableAssistantRequest(null);
+          if (data.generation?.status === "error" || data.generation?.status === "fallback") {
+            setRetryableAssistantRequest({ threadId, content: trimmedMessage });
+          } else {
+            setRetryableAssistantRequest(null);
+          }
           legacyData = null;
           const assistantMessage = buildAssistantMessage(
             buildAssistantMessageContent(data),
@@ -676,7 +679,6 @@ export default function AiAssistantPage() {
               return;
             case "thinking":
               currentThinking = action.content;
-              updatePlaceholder(action.content);
               return;
             case "delta":
               streamedContent += action.content;
@@ -729,9 +731,11 @@ export default function AiAssistantPage() {
 
         const isAbortError = error instanceof DOMException && error.name === "AbortError";
 
+        const streamErrorMessage = error instanceof Error ? error.message : "";
         const errorMsg = isAbortError
           ? "O assistente de IA não está disponível no momento. Tente novamente em instantes."
-          : "Não foi possível consultar o assistente. Verifique sua conexão e tente novamente.";
+          : streamErrorMessage ||
+            "Não foi possível consultar o assistente. Verifique sua conexão e tente novamente.";
 
         // Mantém o balão no histórico para que uma falha não pareça uma resposta vazia.
         setMessagesByThread((current) => {
@@ -781,6 +785,13 @@ export default function AiAssistantPage() {
     },
     [handleAssistantMessage],
   );
+
+  const handleRetryAssistantMessage = useCallback(() => {
+    if (!retryableAssistantRequest || isSending) return;
+
+    setAssistantError(null);
+    void handleAssistantMessage(retryableAssistantRequest.content, { retry: true });
+  }, [handleAssistantMessage, isSending, retryableAssistantRequest]);
 
   // Handler de exclusão de mensagem — verifica artefatos e abre confirmação
   const handleDeleteMessage = useCallback(
@@ -1039,10 +1050,14 @@ export default function AiAssistantPage() {
               currentUserId={currentUserId}
               activeTargetId={selectedThreadId ?? undefined}
               variant="assistant"
-              assistantStatusText={isSending ? ASSISTANT_STATUS_TEXT : null}
               onLoadOlderMessages={() => undefined}
               onLoadNewerMessages={() => undefined}
               onDeleteMessage={handleDeleteMessage}
+              onRetryAssistantMessage={
+                retryableAssistantRequest?.threadId === selectedThreadId
+                  ? handleRetryAssistantMessage
+                  : undefined
+              }
             />
           ) : activeMessages.length === 0 ? (
             <AssistantEmptyState
@@ -1062,10 +1077,14 @@ export default function AiAssistantPage() {
               currentUserId={currentUserId}
               activeTargetId={selectedThreadId ?? undefined}
               variant="assistant"
-              assistantStatusText={isSending ? ASSISTANT_STATUS_TEXT : null}
               onLoadOlderMessages={() => undefined}
               onLoadNewerMessages={() => undefined}
               onDeleteMessage={handleDeleteMessage}
+              onRetryAssistantMessage={
+                retryableAssistantRequest?.threadId === selectedThreadId
+                  ? handleRetryAssistantMessage
+                  : undefined
+              }
             />
           )}
 

@@ -79,7 +79,7 @@ def test_dataset_registry_project_missing_raises() -> None:
 
 
 @pytest.mark.asyncio
-async def test_synthesize_once_rejects_malformed_structured_output() -> None:
+async def test_synthesize_once_exposes_error_for_malformed_structured_output() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     with engine.connect() as connection:
         runtime_context = _fake_runtime_context(
@@ -107,13 +107,13 @@ async def test_synthesize_once_rejects_malformed_structured_output() -> None:
 
         await assistant_service._node_synthesize_once(state, runtime)
 
-    assert state["answer"] == state["response_base"]
-    assert state["generation"]["status"] == "fallback"
+    assert state["answer"] == state["generation"]["errorMessage"]
+    assert state["generation"]["status"] == "error"
     assert "formato inválido" in state["generation"]["errorMessage"]
 
 
 @pytest.mark.asyncio
-async def test_synthesize_once_preserves_deterministic_response_when_vllm_fails() -> None:
+async def test_synthesize_once_exposes_error_when_vllm_fails() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
     with engine.connect() as connection:
         runtime_context = _fake_runtime_context(
@@ -141,8 +141,8 @@ async def test_synthesize_once_preserves_deterministic_response_when_vllm_fails(
 
         await assistant_service._node_synthesize_once(state, runtime)
 
-    assert state["answer"] == "Resposta determinística fundamentada"
-    assert state["generation"]["status"] == "fallback"
+    assert state["answer"] == state["generation"]["errorMessage"]
+    assert state["generation"]["status"] == "error"
     assert "acessar o modelo" in state["generation"]["errorMessage"]
 
 

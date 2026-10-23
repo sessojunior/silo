@@ -8,7 +8,6 @@ import MessageBubble from "./message-bubble";
 import { LoadMessagesButton } from "./load-messages-button";
 import type { ChatMessage } from "@/context/chat-context";
 import { config as appConfig } from "@/lib/config";
-import LoadingSpinner from "@/components/ui/loading-spinner";
 
 interface MessagesListProps {
   messages: ChatMessage[];
@@ -22,10 +21,10 @@ interface MessagesListProps {
   currentUserId?: string;
   activeTargetId?: string;
   variant?: "default" | "assistant";
-  assistantStatusText?: string | null;
   onLoadOlderMessages: () => void;
   onLoadNewerMessages: () => void;
   onDeleteMessage?: (messageId: string) => void;
+  onRetryAssistantMessage?: () => void;
 }
 
 export function MessagesList({
@@ -39,10 +38,10 @@ export function MessagesList({
   newerMessagesRemaining,
   currentUserId,
   variant = "default",
-  assistantStatusText,
   onLoadOlderMessages,
   onLoadNewerMessages,
   onDeleteMessage,
+  onRetryAssistantMessage,
 }: MessagesListProps) {
   const isAssistantVariant = variant === "assistant";
 
@@ -192,17 +191,17 @@ export function MessagesList({
               showAvatar={true}
               showAssistantFooter={isAssistantVariant && !isOwnMessage}
               onDelete={canDeleteMessage ? onDeleteMessage : undefined}
+              onRetry={
+                isAssistantVariant &&
+                messageIndex === messages.length - 1 &&
+                (message.assistantGeneration?.status === "error" ||
+                  message.assistantGeneration?.status === "fallback")
+                  ? onRetryAssistantMessage
+                  : undefined
+              }
             />
           );
         })}
-
-        {assistantStatusText ? (
-          <div className="flex justify-start py-3">
-            <div className="rounded-full border border-white/60 bg-white/80 px-4 py-2 shadow-sm backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-800/80">
-              <LoadingSpinner text={assistantStatusText} size="sm" />
-            </div>
-          </div>
-        ) : null}
 
         {/* Botão para carregar mensagens mais recentes */}
         <LoadMessagesButton
