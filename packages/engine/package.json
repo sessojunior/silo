@@ -44,6 +44,7 @@
     "./contracts/dto/dashboard": "./src/contracts/dto/dashboard.ts",
     "./contracts/dto/monitoring": "./src/contracts/dto/monitoring.ts",
     "./contracts/dto/reports": "./src/contracts/dto/reports.ts",
+    "./contracts/dto/procedures": "./src/contracts/dto/procedures.ts",
     "./domain": "./src/domain/index.ts",
     "./domain/scheduling": "./src/domain/scheduling/index.ts",
     "./domain/product-status": "./src/domain/product-status.ts",

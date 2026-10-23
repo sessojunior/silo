@@ -35,6 +35,7 @@ export default function Sidebar() {
   const canSeeProducts = isAdmin || hasPermission("products", "view");
   const canSeeProjects = isAdmin || hasPermission("projects", "view");
   const canSeeReports = isAdmin || hasPermission("reports", "view");
+  const canSeeProcedures = isAdmin || hasPermission("procedures", "view");
   const canSeeGroups = isAdmin || hasPermission("groups", "view") || hasPermission("users", "view");
   const canSeeChat = isAdmin || hasAnyPermission("chat", ["view_private", "view_group"]);
   const canSeeContacts = isAdmin || hasPermission("contacts", "view");
@@ -333,6 +334,17 @@ export default function Sidebar() {
                       items: null,
                     },
                   ],
+                },
+              ]
+            : []),
+          ...(canSeeProcedures
+            ? [
+                {
+                  id: "1.7",
+                  title: "Procedimentos gerais",
+                  icon: "icon-[lucide--book-open-check]",
+                  url: "/admin/procedures",
+                  items: null,
                 },
               ]
             : []),

@@ -80,7 +80,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["procedure_id"],
             ["general_procedure.id"],
-            name="general_procedure_attachment_procedure_id_general_procedure_id_fk",
+            name="general_procedure_attachment_procedure_fk",
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_general_procedure_attachment")),
@@ -110,7 +110,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["attachment_id"],
             ["general_procedure_attachment.id"],
-            name="general_procedure_attachment_chunk_attachment_id_general_procedure_attachment_id_fk",
+            name="general_procedure_attachment_chunk_attachment_fk",
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_general_procedure_attachment_chunk")),
