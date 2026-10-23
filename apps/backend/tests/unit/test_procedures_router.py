@@ -29,7 +29,9 @@ class _FakeRequest:
     def __init__(self, form: dict[str, object]) -> None:
         self._form = form
 
-    async def form(self) -> dict[str, object]:
+    async def form(self, **kwargs: object) -> dict[str, object]:
+        assert kwargs["max_files"] == 1
+        assert kwargs["max_fields"] == 4
         return self._form
 
 

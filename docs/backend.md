@@ -76,6 +76,26 @@ uv run --locked silo-db-schema-capture   # Capturar schema atual
 - Migrations são sempre revisadas e testadas
 - Nomes de tabelas e colunas em snake_case
 
+### Procedimentos gerais e anexos
+
+Os procedimentos gerais usam as tabelas `general_procedure`,
+`general_procedure_attachment` e `general_procedure_attachment_chunk`. O
+conteúdo binário não é gravado no PostgreSQL: os arquivos originais ficam em
+`/uploads/procedures/`, no mesmo volume persistente que deve entrar na rotina
+de backup junto com o banco.
+
+O limite atual é 20 MiB por anexo. A API aceita imagens, PDF, TXT/MD, DOCX e
+PPTX; os documentos são extraídos em chunks com página/slide quando aplicável.
+O banco guarda metadados, hash SHA-256, estado de extração e texto derivado.
+Os estados são `pending`, `processing`, `ready` e `error`. O indexador grava
+embeddings e metadados de proveniência em segundo plano; uma falha de
+indexação é registrada e não bloqueia o cadastro do procedimento.
+
+A permissão `procedures:view` controla a consulta e a abertura dos anexos;
+`procedures:manage` controla CRUD, upload, reprocessamento e exclusão. A
+exclusão em cascata remove chunks e embeddings, e a camada de serviço remove
+também o arquivo físico.
+
 ---
 
 ## Autenticação

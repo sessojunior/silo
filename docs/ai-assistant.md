@@ -167,6 +167,24 @@ O backend continua responsável por decidir se a pergunta está dentro do
 escopo, quais ferramentas podem ser usadas e quais evidências podem aparecer
 na resposta.
 
+## Procedimentos gerais e prioridade das fontes
+
+A página `/admin/procedures` mantém procedimentos avulsos que podem ser
+consultados pelo assistente. Para perguntas específicas de produto, o manual
+do produto continua recebendo prioridade preferencial. Para resolução
+operacional geral, o ranking promove trechos de anexos de procedimentos e o
+texto do procedimento, sem descartar uma evidência muito mais específica de
+problema, solução ou intervenção registrada.
+
+Os formatos com extração textual são PDF, TXT/MD, DOCX e PPTX. Imagens são
+armazenadas no volume de uploads e podem receber descrição/OCR manual; o
+modelo textual só usa essa descrição derivada até que um runtime multimodal
+seja configurado. Anexos com falha de extração não entram na busca.
+
+As citações preservam o procedimento, o nome do arquivo e página ou slide
+quando disponíveis. A consulta é somente leitura: cadastrar, editar,
+reprocessar e remover procedimentos exige `procedures:manage`.
+
 ## Runtime e configuração
 
 Variáveis principais:

@@ -5,10 +5,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.engine import Connection
+from starlette.formparsers import MultiPartException
 
 from silo.api.dependencies import get_db, require_permission
 from silo.api.responses import ApiResponse, build_success_payload
 from silo.services.common import is_service_error, service_error_response
+from silo.services.procedure_attachment_storage import MAX_PROCEDURE_ATTACHMENT_SIZE_BYTES
 from silo.services.procedure_portal import (
     create_general_procedure,
     create_general_procedure_attachment,
@@ -114,7 +116,17 @@ async def upload_procedure_attachment(
     _current_user: object = Depends(require_permission("procedures", "manage")),
     db: Connection = Depends(get_db),
 ) -> ApiResponse:
-    form = await request.form()
+    try:
+        form = await request.form(
+            max_files=1,
+            max_fields=4,
+            max_part_size=MAX_PROCEDURE_ATTACHMENT_SIZE_BYTES,
+        )
+    except MultiPartException:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": "Não foi possível ler o anexo enviado."},
+        )
     upload = form.get("file") or form.get("fileToUpload")
     if upload is None or not hasattr(upload, "read"):
         return JSONResponse(
