@@ -5,7 +5,7 @@ from silo.db.migration_state import EXPECTED_ALEMBIC_HEADS, MIGRATION_ADVISORY_L
 
 
 def test_migration_state_declares_single_expected_head() -> None:
-    assert EXPECTED_ALEMBIC_HEADS == ("phase4_embedding_metadata",)
+    assert EXPECTED_ALEMBIC_HEADS == ("phase6_procedure_permissions",)
 
 
 def test_migration_uses_stable_postgres_advisory_lock_id() -> None:
