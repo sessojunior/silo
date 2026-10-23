@@ -29,6 +29,7 @@ from silo.api.routers.health import router as health_router
 from silo.api.routers.help import router as help_router
 from silo.api.routers.incidents import router as incidents_router
 from silo.api.routers.monitoring import router as monitoring_router
+from silo.api.routers.procedures import router as procedures_router
 from silo.api.routers.product_flow import router as product_flow_router
 from silo.api.routers.products import router as products_router
 from silo.api.routers.products_extended import router as products_extended_router
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     application.include_router(reports_router)
     application.include_router(monitoring_router)
     application.include_router(products_extended_router)
+    application.include_router(procedures_router)
     application.include_router(chat_router)
     application.include_router(ai_assistant_router)
     application.include_router(ai_observability_router)
