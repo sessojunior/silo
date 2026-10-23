@@ -89,7 +89,7 @@ def test_deploy_compose_and_script_exist_for_gitlab_release_flow() -> None:
 
     assert "SILO_IMAGE" in compose
     assert "container_name: silo-api-python" in compose
-    assert "container_name: silo-worker-python" in compose
+    assert "container_name: silo-worker" in compose
     assert 'command: ["python", "-m", "silo.worker.main"]' in compose
     assert (
         'docker compose -f "$DEPLOY_COMPOSE_FILE" up -d --remove-orphans --wait --wait-timeout 300'

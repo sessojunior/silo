@@ -159,7 +159,7 @@ services:
       dockerfile: apps/backend/Dockerfile
       target: api
     image: silo-api-python
-    container_name: silo-embedding-backfill
+    container_name: silo-embedding
     command:
       [
         "sh",
@@ -294,7 +294,7 @@ services:
       dockerfile: apps/backend/Dockerfile
       target: worker
     image: silo-worker-python
-    container_name: silo-worker-python
+    container_name: silo-worker
     environment:
       SILO_ENV: ${SILO_ENV:-development}
       NODE_ENV: ${NODE_ENV:-production}

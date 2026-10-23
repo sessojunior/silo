@@ -133,7 +133,7 @@ services:
 
   embedding-backfill:
     image: ${SILO_IMAGE:-silo-api-python:latest}
-    container_name: silo-embedding-backfill
+    container_name: silo-embedding
     networks:
       - backend
       - inference
@@ -249,7 +249,7 @@ services:
 
   worker:
     image: ${SILO_IMAGE:-silo-api-python:latest}
-    container_name: silo-worker-python
+    container_name: silo-worker
     networks:
       - backend
       - inference

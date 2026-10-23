@@ -21,7 +21,7 @@ O SILO usa dois arquivos de orquestração:
 | `migrate` | `silo-api-python` (one-shot) | — |
 | `embedding-backfill` | `silo-api-python` | — |
 | `api` | `silo-api-python` | 4000 |
-| `worker` | `silo-worker-python` | — |
+| `worker` | `silo-worker` | — |
 | `web` | `silo-web` | 80 |
 
 ### Serviços (produção)
