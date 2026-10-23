@@ -290,44 +290,55 @@ export default function Sidebar() {
                 },
               ]
             : []),
-          ...(canSeeReports
+          ...(canSeeProcedures
             ? [
                 {
                   id: "1.4",
+                  title: "Procedimentos",
+                  icon: "icon-[lucide--book-open-check]",
+                  url: "/admin/procedures",
+                  items: null,
+                },
+              ]
+            : []),
+          ...(canSeeReports
+            ? [
+                {
+                  id: "1.5",
                   title: "Assistente de IA",
                   icon: "icon-[lucide--bot]",
                   url: "/admin/ai-assistant",
                   items: null,
                 },
                 {
-                  id: "1.5",
+                  id: "1.6",
                   title: "Relatórios",
                   icon: "icon-[lucide--bar-chart-3]",
                   url: "#",
                   items: [
                     {
-                      id: "1.5.1",
+                      id: "1.6.1",
                       title: "Disponibilidade por Produto",
                       icon: null,
                       url: "/admin/reports/availability",
                       items: null,
                     },
                     {
-                      id: "1.5.2",
+                      id: "1.6.2",
                       title: "Problemas Mais Frequentes",
                       icon: null,
                       url: "/admin/reports/problems",
                       items: null,
                     },
                     {
-                      id: "1.5.3",
+                      id: "1.6.3",
                       title: "Projetos e Atividades",
                       icon: null,
                       url: "/admin/reports/projects",
                       items: null,
                     },
                     {
-                      id: "1.5.4",
+                      id: "1.6.4",
                       title: "Resumo Executivo",
                       icon: null,
                       url: "/admin/reports/executive",
@@ -337,21 +348,10 @@ export default function Sidebar() {
                 },
               ]
             : []),
-          ...(canSeeProcedures
-            ? [
-                {
-                  id: "1.7",
-                  title: "Procedimentos gerais",
-                  icon: "icon-[lucide--book-open-check]",
-                  url: "/admin/procedures",
-                  items: null,
-                },
-              ]
-            : []),
           ...(canSeeGroups
             ? [
                 {
-                  id: "1.6",
+                  id: "1.7",
                   title: "Grupos & usuários",
                   icon: "icon-[lucide--users-round]",
                   url: "/admin/groups",
