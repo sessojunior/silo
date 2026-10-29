@@ -789,7 +789,14 @@ async def test_execute_required_data_tools_usa_duas_conexoes_em_paralelo_para_re
     [
         (
             "models",
-            {"modelRuns", "modelSummary", "modelComparison", "modelHistory", "modelInterventions"},
+            {
+                "modelRuns",
+                "modelSummary",
+                "modelComparison",
+                "modelHistory",
+                "modelInterventions",
+                "knowledgeSearch",
+            },
             {"models": {"matches": [{"id": "model-1"}]}},
             True,
         ),
@@ -914,6 +921,65 @@ async def test_execute_required_data_tools_covers_scope_branches(
     assert set(state["required_results"]) == expected_keys
     assert state["errors"] == []
     assert state["dataset_manifests"] == []
+
+
+@pytest.mark.asyncio
+async def test_model_questions_consult_active_procedure_knowledge(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    connection = engine.connect()
+    runtime_context = _fake_runtime_context(
+        connection,
+        model_runtime=FakeChatPort(response='{"scope":"models","confidence":0.9}'),
+        embedding_provider=_RaisingEmbeddingProvider(),
+    )
+    runtime_context.connection_factory = lambda: engine.connect()
+    runtime = SimpleNamespace(context=runtime_context)
+    state = {
+        "question": "O que fazer quando uma rodada do modelo falhar?",
+        "scope": "models",
+        "mode": "deterministic",
+        "required_results": {},
+        "supplemental_results": {},
+        "final_response": {},
+        "ranges": {"start": "2026-07-01", "end": "2026-07-23"},
+        "entities": {},
+        "execution_plan": {"includeComparison": False},
+        "progress": [],
+        "errors": [],
+    }
+
+    monkeypatch.setattr(
+        assistant_service,
+        "list_model_runs",
+        lambda *args, **kwargs: {"items": []},
+    )
+    monkeypatch.setattr(
+        assistant_service,
+        "summarize_model_runs",
+        lambda *args, **kwargs: {"totalRuns": 0},
+    )
+    monkeypatch.setattr(
+        assistant_service,
+        "search_silo_knowledge",
+        lambda *args, **kwargs: {
+            "items": [
+                {
+                    "id": "procedure-attachment-chunk-1",
+                    "source": "procedure_attachment",
+                    "content": "Reinicie a rodada e valide os logs.",
+                    "active": True,
+                }
+            ]
+        },
+    )
+
+    await assistant_service._node_execute_required_data_tools(state, runtime)
+
+    assert state["required_results"]["knowledgeSearch"]["items"][0]["source"] == (
+        "procedure_attachment"
+    )
 
 
 def test_list_model_interventions_ignora_intervencoes_em_branco(

@@ -191,6 +191,17 @@ rodada, uma alteração de modelo ou um incidente histórico. Assim, a resposta
 mantém o manual como referência principal sem esconder evidências operacionais
 mais recentes ou diretamente relacionadas.
 
+O campo **Disponivel para consulta da IA** (`active`) e aplicado no momento da
+busca. Quando desmarcado, o texto do procedimento e todos os chunks dos seus
+anexos ficam fora tanto da recuperacao lexical quanto da vetorial. Os
+embeddings podem permanecer armazenados para evitar reprocessamento e voltam a
+ser elegiveis se o procedimento for reativado.
+
+Perguntas classificadas como rodadas/modelos tambem executam a busca de
+conhecimento automaticamente, para que manuais, problemas, solucoes e
+procedimentos ativos possam orientar a resposta sem depender de uma decisao
+eventual do modelo.
+
 Na interface, a página segue o padrão mestre–detalhe das páginas de produtos:
 a lista usa linhas contínuas com divisores e o detalhe concentra edição,
 anexos e pré-visualização no painel ao lado. Isso evita espaços artificiais

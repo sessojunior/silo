@@ -1,5 +1,19 @@
 from __future__ import annotations
 
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+    update,
+)
+
 from silo.ai import assistant_service, assistant_tools
 from silo.ai.procedure_knowledge import prioritize_knowledge_candidates
 
@@ -123,3 +137,147 @@ def test_authorized_procedure_citation_keeps_attachment_location() -> None:
     assert authorized is not None
     assert authorized["attachmentName"] == "operacao.pdf"
     assert authorized["pageNumber"] == 3
+
+
+def test_procedure_attachment_follows_parent_ai_availability(monkeypatch) -> None:
+    metadata = MetaData()
+    tables = {
+        "help": Table(
+            "help",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("description", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product_manual_chunk": Table(
+            "product_manual_chunk",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("content", String),
+            Column("product_id", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product": Table(
+            "product",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("name", String),
+        ),
+        "product_problem": Table(
+            "product_problem",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("product_id", String),
+            Column("title", String),
+            Column("description", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "product_solution": Table(
+            "product_solution",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("description", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "general_procedure": Table(
+            "general_procedure",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("title", String),
+            Column("category", String),
+            Column("content", String),
+            Column("active", Boolean),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+        "general_procedure_attachment": Table(
+            "general_procedure_attachment",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("procedure_id", String),
+            Column("original_name", String),
+            Column("extraction_status", String),
+        ),
+        "general_procedure_attachment_chunk": Table(
+            "general_procedure_attachment_chunk",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("attachment_id", String),
+            Column("content", String),
+            Column("page_number", String),
+            Column("slide_number", String),
+            Column("embedding", JSON),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        ),
+    }
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    metadata.create_all(engine)
+    monkeypatch.setattr(assistant_tools, "legacy_tables", tables)
+    monkeypatch.setattr(assistant_tools, "_generate_query_embedding_for_search", lambda query: ())
+    monkeypatch.setattr(
+        assistant_tools, "_search_pgvector_candidates", lambda *args, **kwargs: None
+    )
+    timestamp = datetime(2026, 10, 28, 12, 0)
+
+    with engine.begin() as connection:
+        connection.execute(
+            tables["general_procedure"].insert(),
+            {
+                "id": "procedure-1",
+                "title": "Reinício de serviço",
+                "category": "infraestrutura",
+                "content": "Procedimento de reinício.",
+                "active": True,
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            },
+        )
+        connection.execute(
+            tables["general_procedure_attachment"].insert(),
+            {
+                "id": "attachment-1",
+                "procedure_id": "procedure-1",
+                "original_name": "passos.txt",
+                "extraction_status": "ready",
+            },
+        )
+        connection.execute(
+            tables["general_procedure_attachment_chunk"].insert(),
+            {
+                "id": "chunk-1",
+                "attachment_id": "attachment-1",
+                "content": "Pare o serviço, valide os logs e reinicie o serviço.",
+                "page_number": "1",
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            },
+        )
+
+        enabled = assistant_tools.search_silo_knowledge(
+            connection,
+            query="como reiniciar o serviço e validar os logs",
+            limit=5,
+        )
+        assert any(item["id"] == "chunk-1" for item in enabled["items"])
+
+        connection.execute(
+            update(tables["general_procedure"])
+            .where(tables["general_procedure"].c.id == "procedure-1")
+            .values(active=False)
+        )
+        disabled = assistant_tools.search_silo_knowledge(
+            connection,
+            query="como reiniciar o serviço e validar os logs",
+            limit=5,
+        )
+        assert all(item["id"] != "chunk-1" for item in disabled["items"])

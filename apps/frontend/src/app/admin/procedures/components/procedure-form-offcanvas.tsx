@@ -13,6 +13,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import MarkdownEditor from "@/components/ui/markdown-editor";
 import { compactMarkdownEditorOptions } from "@/components/ui/markdown-editor-config";
 import Offcanvas from "@/components/ui/offcanvas";
+import { toPublicUploadsSrc } from "@/lib/uploads";
 
 export type ProcedureForm = {
   title: string;
@@ -216,7 +217,7 @@ export function ProcedureFormOffcanvas({
                   <div className="min-w-0">
                     <a
                       className="flex items-center gap-2 truncate text-sm font-medium text-blue-600 hover:underline"
-                      href={attachment.url}
+                      href={toPublicUploadsSrc(attachment.url)}
                       target="_blank"
                       rel="noreferrer"
                     >

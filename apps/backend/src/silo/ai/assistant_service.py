@@ -1481,7 +1481,7 @@ async def _plan_from_question(
         token in normalize_text(question)
         for token in ("compar", "antes", "depois", "delta", "variação", "variacao")
     )
-    include_knowledge_search = scope in {"problems", "solutions", "general"}
+    include_knowledge_search = scope in {"models", "problems", "solutions", "general"}
     # Cada pergunta deve passar pelo vLLM para manter geração, metadados e
     # validação atuais; cache semântico não pode substituir uma chamada de IA.
     cache_eligible = False
@@ -1502,7 +1502,7 @@ async def _plan_from_question(
 
 def _required_sources_for_scope(scope: str) -> tuple[str, ...]:
     mapping = {
-        "models": ("model_runs", "availability_report"),
+        "models": ("model_runs", "availability_report", "knowledge_search"),
         "pending": ("projects_snapshot", "projects_report"),
         "reports": (
             "executive_report",
@@ -1845,6 +1845,12 @@ async def _node_execute_required_data_tools(
                         connection,
                         start_date=date_range["start"],
                         end_date=date_range["end"],
+                    ),
+                ),
+                (
+                    "knowledgeSearch",
+                    lambda connection: search_silo_knowledge(
+                        connection, query=str(state["question"]), limit=5
                     ),
                 ),
             ]

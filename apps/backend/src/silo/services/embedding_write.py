@@ -110,12 +110,23 @@ async def upsert_procedure_attachment_embeddings(
     errors: list[str] = []
     generated_count = 0
     table = legacy_tables["general_procedure_attachment_chunk"]
+    # Rebuild only this attachment's chunks. The FK and predicate keep the
+    # operation isolated from every other attachment and procedure.
     statements: list[Executable] = [delete(table).where(table.c.attachment_id == attachment_id)]
     try:
         for index, chunk in enumerate(chunks):
             content = str(chunk.get("content") or "").strip()
             if not content:
                 continue
+            chunk_values = {
+                "id": str(chunk.get("id") or f"{attachment_id}_chunk_{index}"),
+                "attachment_id": attachment_id,
+                "chunk_index": int(chunk.get("chunk_index") or index),
+                "content": content,
+                "page_number": chunk.get("page_number"),
+                "slide_number": chunk.get("slide_number"),
+                "token_count": int(chunk.get("token_count") or 0),
+            }
             try:
                 embedding = await generate_embedding(content)
                 statements.append(
@@ -124,21 +135,16 @@ async def upsert_procedure_attachment_embeddings(
                             table,
                             content,
                             embedding,
-                            extra_values={
-                                "id": str(chunk.get("id") or f"{attachment_id}_chunk_{index}"),
-                                "attachment_id": attachment_id,
-                                "chunk_index": int(chunk.get("chunk_index") or index),
-                                "content": content,
-                                "page_number": chunk.get("page_number"),
-                                "slide_number": chunk.get("slide_number"),
-                                "token_count": int(chunk.get("token_count") or 0),
-                            },
+                            extra_values=chunk_values,
                         )
                     )
                 )
                 generated_count += 1
             except Exception as chunk_exc:  # pragma: no cover - service failure path
                 errors.append(f"chunk {index}: {chunk_exc}")
+                # Keep the extracted source available for lexical retrieval and
+                # future reprocessing even when this chunk cannot be embedded.
+                statements.append(insert(table).values(**chunk_values))
         _execute_statements(statements)
     except Exception as exc:  # pragma: no cover - fire-and-forget logging path
         errors.append(f"persistência: {exc}")

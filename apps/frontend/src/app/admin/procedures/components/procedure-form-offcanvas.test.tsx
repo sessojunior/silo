@@ -80,7 +80,21 @@ describe("ProcedureFormOffcanvas", () => {
       userId: "user-1",
       createdAt: "2026-10-23T10:00:00Z",
       updatedAt: "2026-10-23T10:00:00Z",
-      attachments: [],
+      attachments: [
+        {
+          id: "attachment-1",
+          procedureId: "procedure-1",
+          kind: "document",
+          originalName: "passos.txt",
+          url: "/uploads/procedures/passos.txt",
+          mimeType: "text/plain",
+          sizeBytes: 12,
+          sortOrder: 0,
+          extractionStatus: "ready",
+          extractionError: null,
+          imageDescription: null,
+        },
+      ],
     };
 
     render(
@@ -114,6 +128,10 @@ describe("ProcedureFormOffcanvas", () => {
     expect(
       screen.queryByText("Choose File No file chosen"),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /passos\.txt/i })).toHaveAttribute(
+      "href",
+      "/silo/uploads/procedures/passos.txt",
+    );
     expect(screen.getByTestId("procedure-active-checkbox")).toBeInTheDocument();
     expect(lastCheckboxProps).toMatchObject({
       id: "procedure-active",
