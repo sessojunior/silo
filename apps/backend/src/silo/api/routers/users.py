@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import logging
 import secrets
+from collections.abc import Mapping
 from dataclasses import asdict
 from datetime import datetime, timedelta
 from typing import Any
@@ -244,12 +245,13 @@ async def update_preferences(
     current_user: CurrentUser = Depends(get_current_user),
     db: Connection = Depends(get_db),
 ) -> Any:
-    chat_enabled = payload.get("chatEnabled")
-    if not isinstance(chat_enabled, bool):
+    try:
+        updates = _parse_preference_updates(payload)
+    except ValueError as error:
         return service_error_response(
-            service_failure("chatEnabled inválido.", 400), "Erro ao atualizar preferências"
+            service_failure(str(error), 400), "Erro ao atualizar preferências"
         )
-    result = _update_current_user_preferences(db, current_user.id, chat_enabled)
+    result = _update_current_user_preferences(db, current_user.id, updates)
     if is_service_error(result):
         response = service_error_response(result, "Erro ao atualizar preferências.")
         assert response is not None
@@ -878,30 +880,63 @@ def _get_current_user_preferences(db: Connection, user_id: str) -> dict[str, obj
 
 
 def _update_current_user_preferences(
-    db: Connection, user_id: str, chat_enabled: bool
+    db: Connection, user_id: str, updates: Mapping[str, bool]
 ) -> dict[str, object]:
     prefs_table = legacy_tables["user_preferences"]
     existing = db.execute(
         select(prefs_table.c.id).where(prefs_table.c.user_id == user_id).limit(1)
     ).first()
-    db.rollback()
-    db.rollback()
     with db.begin():
         if existing is None:
+            values = {
+                "id": _new_uuid(),
+                "user_id": user_id,
+                "chat_enabled": True,
+                "ai_enabled": True,
+                "mcp_enabled": False,
+                "custom_model_enabled": False,
+            }
+            values.update(updates)
             db.execute(
-                insert(prefs_table).values(
-                    id=_new_uuid(),
-                    user_id=user_id,
-                    chat_enabled=chat_enabled,
-                )
+                insert(prefs_table).values(values)
             )
         else:
             db.execute(
                 update(prefs_table)
                 .where(prefs_table.c.user_id == user_id)
-                .values(chat_enabled=chat_enabled)
+                .values(**dict(updates))
             )
     return service_success(None)
+
+
+_PREFERENCE_FIELDS: dict[str, str] = {
+    "chatEnabled": "chat_enabled",
+    "aiEnabled": "ai_enabled",
+    "mcpEnabled": "mcp_enabled",
+    "customModelEnabled": "custom_model_enabled",
+}
+
+
+def _parse_preference_updates(payload: Mapping[str, object]) -> dict[str, bool]:
+    if not payload:
+        raise ValueError("Informe pelo menos uma preferência.")
+
+    unknown = sorted(set(payload) - set(_PREFERENCE_FIELDS))
+    if unknown:
+        raise ValueError(f"Preferência desconhecida: {unknown[0]}.")
+
+    updates: dict[str, bool] = {}
+    for public_name, physical_name in _PREFERENCE_FIELDS.items():
+        if public_name not in payload:
+            continue
+        value = payload[public_name]
+        if not isinstance(value, bool):
+            raise ValueError(f"{public_name} deve ser booleano.")
+        updates[physical_name] = value
+
+    if not updates:
+        raise ValueError("Informe pelo menos uma preferência.")
+    return updates
 
 
 def _update_current_user_email(db: Connection, user_id: str, new_email: str) -> dict[str, object]:

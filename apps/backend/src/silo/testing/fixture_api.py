@@ -279,7 +279,12 @@ class AuthUserRecord:
         }
 
     def preferences_payload(self) -> dict[str, Any]:
-        return {"userPreferences": self.preferences}
+        defaults = {
+            "aiEnabled": True,
+            "mcpEnabled": False,
+            "customModelEnabled": False,
+        }
+        return {"userPreferences": {**defaults, **self.preferences}}
 
 
 @dataclass(slots=True)
@@ -1996,6 +2001,27 @@ async def api_router(path: str, request: Request) -> Response:
         if user is None:
             return _error("Usuário não autenticado.", status=401)
         return _success(user.preferences_payload())
+
+    if api_path in {"/api/users/preferences", "/api/admin/users/preferences"} and method == "PUT":
+        if user is None:
+            return _error("Usuário não autenticado.", status=401)
+        payload = body if isinstance(body, dict) else {}
+        allowed = {
+            "chatEnabled",
+            "aiEnabled",
+            "mcpEnabled",
+            "customModelEnabled",
+        }
+        unknown = sorted(set(payload) - allowed)
+        if unknown:
+            return _error(f"Preferência desconhecida: {unknown[0]}.", status=400)
+        if not payload:
+            return _error("Informe pelo menos uma preferência.", status=400)
+        for key, value in payload.items():
+            if not isinstance(value, bool):
+                return _error(f"{key} deve ser booleano.", status=400)
+            user.preferences[key] = value
+        return _success({}, message="Preferências atualizadas com sucesso!")
 
     if api_path == "/api/server-time" and method == "GET":
         return _success({"time": _iso(), "timestamp": _iso()})
