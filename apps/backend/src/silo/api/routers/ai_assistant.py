@@ -14,6 +14,7 @@ from sqlalchemy.engine import Connection
 from starlette.types import Receive
 
 from silo.ai.assistant_contracts import AiAssistantMessageRequestDto
+from silo.ai.assistant_capability_policy import AssistantDisabledError
 from silo.ai.assistant_service import (
     AssistantMessageConflictError,
     AssistantStreamEvent,
@@ -176,6 +177,8 @@ async def post_message(request: Request, current_user: AssistantUser, db: Assist
         return json_error_response(404, str(error))
     except AssistantMessageConflictError as error:
         return json_error_response(409, str(error))
+    except AssistantDisabledError as error:
+        return json_error_response(403, str(error), data={"code": error.code})
     except Exception:
         logger.exception(
             "Falha ao processar mensagem do assistente",
@@ -239,6 +242,8 @@ async def post_message_stream(
             yield _stream_event("error", {"content": str(error)})
         except AssistantMessageConflictError as error:
             yield _stream_event("error", {"content": str(error)})
+        except AssistantDisabledError as error:
+            yield _stream_event("error", {"code": error.code, "content": str(error)})
         except asyncio.CancelledError:
             pending_event.cancel()
             await asyncio.gather(pending_event, return_exceptions=True)

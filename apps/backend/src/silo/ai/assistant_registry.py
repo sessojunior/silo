@@ -11,6 +11,7 @@ from typing import Any, Literal, Protocol, TypedDict, TypeVar
 
 from sqlalchemy.engine import Connection
 
+from silo.ai.assistant_capability_policy import AiCapabilityPolicy
 from silo.ai.assistant_contracts import AiAssistantScope
 from silo.ai.assistant_security import AssistantSecurityPolicy
 from silo.ai.ports import ChatModelRuntime, EmbeddingPort
@@ -287,6 +288,7 @@ class AgentRuntimeContext:
     thread_id: str | None = None
     group_permissions: tuple[str, ...] = ()
     has_reports_permission: bool = True
+    capability_policy: AiCapabilityPolicy | None = None
 
     def now_iso(self) -> str:
         return self.clock.now().astimezone().isoformat()

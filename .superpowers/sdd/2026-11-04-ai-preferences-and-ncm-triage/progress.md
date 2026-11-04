@@ -9,3 +9,4 @@ Task 1: Ruling: `uv run --locked pytest` cannot start because the Windows uv tra
 Task 1: complete (commit pending in current checkout, tests: `apps/backend/.venv/Scripts/python.exe -m pytest apps/backend/tests/unit/test_ai_preferences.py apps/backend/tests/unit/test_fixture_api_helpers.py apps/backend/tests/unit/test_sqlalchemy_models.py apps/backend/tests/unit/test_db_migrate.py -q` → 21 passed)
 
 Task 2: complete (tests: focused frontend tests 5 passed; typecheck passed; full frontend suite 116 passed)
+Task 3: complete (focused backend policy, route and service tests: 71 passed; settings and preference regression tests: 96 passed)

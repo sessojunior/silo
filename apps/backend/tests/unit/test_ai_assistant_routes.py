@@ -24,6 +24,7 @@ from silo.ai.assistant_contracts import (
     AiAssistantThreadsResponseDto,
     AiAssistantThreadSummaryDto,
 )
+from silo.ai.assistant_capability_policy import AssistantDisabledError
 from silo.ai.assistant_service import AssistantStreamEvent
 from silo.api.dependencies import (
     CurrentUser,
@@ -328,6 +329,50 @@ def test_ai_assistant_message_routes_return_json_and_sse(monkeypatch) -> None:
     assert "event: thinking" in stream_body
     assert "event: result" in stream_body
     assert "event: complete" in stream_body
+
+
+def test_ai_assistant_disabled_is_403_for_json_and_an_error_event_for_sse(monkeypatch) -> None:
+    class _Request:
+        state = SimpleNamespace()
+
+        async def json(self):
+            return {"content": "teste", "threadId": THREAD_ID}
+
+    async def disabled_send(*_args, **_kwargs):
+        raise AssistantDisabledError()
+
+    async def disabled_stream(*_args, **_kwargs):
+        raise AssistantDisabledError()
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(ai_assistant_router, "send_assistant_message", disabled_send)
+    monkeypatch.setattr(ai_assistant_router, "stream_assistant_message", disabled_stream)
+
+    message_response = asyncio.run(
+        ai_assistant_router.post_message(
+            _Request(),
+            _admin_user(),
+            object(),
+        )
+    )
+
+    async def collect_stream() -> str:
+        response = await ai_assistant_router.post_message_stream(
+            _Request(),
+            _admin_user(),
+            object(),
+        )
+        chunks: list[str] = []
+        async for chunk in response.body_iterator:
+            chunks.append(chunk.decode("utf-8") if isinstance(chunk, bytes) else str(chunk))
+        return "".join(chunks)
+
+    stream_body = asyncio.run(collect_stream())
+
+    assert message_response.status_code == 403
+    assert "Assistente de IA desabilitado" in json.loads(message_response.body)["error"]
+    assert "event: error" in stream_body
+    assert "Assistente de IA desabilitado" in stream_body
 
 
 @pytest.mark.asyncio

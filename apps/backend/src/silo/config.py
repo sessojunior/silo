@@ -148,6 +148,10 @@ class Settings(BaseModel):
     langsmith_tracing: bool = False
     langsmith_tracing_approved: bool = False
     ai_agent_mode: AiAgentMode = AiAgentMode.DETERMINISTIC
+    ai_mcp_enabled: bool = False
+    ai_custom_model_enabled: bool = False
+    ai_custom_model: str = ""
+    ai_mcp_allowed_tools: tuple[str, ...] = ()
     ai_agent_max_rounds: int = Field(default=2, ge=1, le=8)
     ai_agent_max_tool_calls: int = Field(default=4, ge=1, le=16)
     ai_agent_tool_timeout_ms: int = Field(default=20_000, ge=100, le=120_000)
@@ -258,6 +262,12 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
         "langsmith_tracing": langsmith_tracing,
         "langsmith_tracing_approved": langsmith_tracing_approved,
         "ai_agent_mode": ai_agent_mode,
+        "ai_mcp_enabled": _parse_bool(environ, ("AI_MCP_ENABLED",), default=False),
+        "ai_custom_model_enabled": _parse_bool(
+            environ, ("AI_CUSTOM_MODEL_ENABLED",), default=False
+        ),
+        "ai_custom_model": _first_non_empty(environ, ("AI_CUSTOM_MODEL",)),
+        "ai_mcp_allowed_tools": _split_csv_env(environ, ("AI_MCP_ALLOWED_TOOLS",)),
         "ai_agent_max_rounds": _parse_int(
             environ, ("AI_AGENT_MAX_ROUNDS",), 2, minimum=1, maximum=8
         ),
@@ -502,7 +512,7 @@ def _smtp_from_address(environ: Mapping[str, str], username: str) -> str:
 
 def _default_vllm_url(silo_env: str) -> str:
     if silo_env == SiloEnvironment.PRODUCTION:
-        return "http://ai:8000/v1"
+        return "http://qwen:8000/v1"
     return "http://localhost:8000/v1"
 
 

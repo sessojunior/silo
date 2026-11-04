@@ -42,6 +42,10 @@ from silo.ai.assistant_contracts import (
     AiAssistantVisualizationImageDto,
     AiAssistantVisualizationMermaidDto,
 )
+from silo.ai.assistant_capability_policy import (
+    AssistantDisabledError,
+    resolve_ai_capability_policy,
+)
 from silo.ai.assistant_registry import AgentRuntimeContext, AgentState
 from silo.ai.assistant_runtime import (
     ChatCompletionTelemetry,
@@ -809,6 +813,13 @@ def _build_runtime_context(
     stream_queue: asyncio.Queue[str] | None = None,
 ) -> AgentRuntimeContext:
     effective_settings = settings or load_settings()
+    capability_policy = resolve_ai_capability_policy(
+        connection,
+        current_user.id,
+        effective_settings,
+    )
+    if not capability_policy.assistant_enabled:
+        raise AssistantDisabledError()
     runtime = AgentRuntimeContext(
         connection=connection,
         security_policy=AssistantSecurityPolicy(
@@ -831,6 +842,7 @@ def _build_runtime_context(
         mode=effective_settings.ai_agent_mode.value,
         group_permissions=("reports:view",),
         has_reports_permission=True,
+        capability_policy=capability_policy,
     )
     return runtime
 
