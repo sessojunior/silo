@@ -10,3 +10,4 @@ Task 1: complete (commit pending in current checkout, tests: `apps/backend/.venv
 
 Task 2: complete (tests: focused frontend tests 5 passed; typecheck passed; full frontend suite 116 passed)
 Task 3: complete (focused backend policy, route and service tests: 71 passed; settings and preference regression tests: 96 passed)
+Task 4: complete (NCM contract, settings, fallback and observability tests: 88 passed)

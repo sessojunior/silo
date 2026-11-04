@@ -27,6 +27,7 @@ OBSERVABILITY_METRICS: tuple[str, ...] = (
     "ai_graph_abstention_total",
     "ai_graph_model_duration_seconds",
     "ai_graph_retrieval_duration_seconds",
+    "ai_ncm_triage_total",
 )
 
 OBSERVABILITY_SAFE_LABELS: tuple[str, ...] = (

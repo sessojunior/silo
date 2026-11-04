@@ -152,6 +152,10 @@ class Settings(BaseModel):
     ai_custom_model_enabled: bool = False
     ai_custom_model: str = ""
     ai_mcp_allowed_tools: tuple[str, ...] = ()
+    ncm_triage_enabled: bool = False
+    ncm_triage_url: str = ""
+    ncm_triage_timeout_ms: int = Field(default=250, ge=50, le=5000)
+    ncm_triage_min_confidence: float = Field(default=0.6, ge=0.0, le=1.0)
     ai_agent_max_rounds: int = Field(default=2, ge=1, le=8)
     ai_agent_max_tool_calls: int = Field(default=4, ge=1, le=16)
     ai_agent_tool_timeout_ms: int = Field(default=20_000, ge=100, le=120_000)
@@ -268,6 +272,20 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
         ),
         "ai_custom_model": _first_non_empty(environ, ("AI_CUSTOM_MODEL",)),
         "ai_mcp_allowed_tools": _split_csv_env(environ, ("AI_MCP_ALLOWED_TOOLS",)),
+        "ncm_triage_enabled": _parse_bool(
+            environ, ("NCM_TRIAGE_ENABLED",), default=False
+        ),
+        "ncm_triage_url": _parse_http_url(
+            "NCM_TRIAGE_URL",
+            _first_non_empty(environ, ("NCM_TRIAGE_URL",)),
+            required=False,
+        ),
+        "ncm_triage_timeout_ms": _parse_int(
+            environ, ("NCM_TRIAGE_TIMEOUT_MS",), 250, minimum=50, maximum=5000
+        ),
+        "ncm_triage_min_confidence": _parse_float(
+            environ, ("NCM_TRIAGE_MIN_CONFIDENCE",), 0.6, minimum=0.0, maximum=1.0
+        ),
         "ai_agent_max_rounds": _parse_int(
             environ, ("AI_AGENT_MAX_ROUNDS",), 2, minimum=1, maximum=8
         ),
@@ -417,6 +435,24 @@ def _parse_bool(environ: Mapping[str, str], names: tuple[str, ...], *, default: 
     if raw_value in FALSE_VALUES:
         return False
     raise SettingsLoadError(f"{names[0]} deve ser booleano.")
+
+
+def _parse_float(
+    environ: Mapping[str, str],
+    names: tuple[str, ...],
+    default: float,
+    *,
+    minimum: float,
+    maximum: float,
+) -> float:
+    raw_value = _first_non_empty(environ, names, str(default))
+    try:
+        parsed = float(raw_value)
+    except ValueError as exc:
+        raise SettingsLoadError(f"{names[0]} deve ser numerico.") from exc
+    if parsed < minimum or parsed > maximum:
+        raise SettingsLoadError(f"{names[0]} deve estar entre {minimum} e {maximum}.")
+    return parsed
 
 
 def _split_csv_env(

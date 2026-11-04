@@ -69,6 +69,7 @@ from silo.ai.assistant_tool_catalog import (
     execute_hybrid_tool_async,
     get_hybrid_tool_schemas,
 )
+from silo.ai.triage import NcmTriageRuntime, TriageDecision, TriageRoute, disabled_triage
 from silo.ai.assistant_tools import (
     AI_METRIC_VERSION,
     AI_RAG_THRESHOLD,
@@ -344,6 +345,8 @@ class AssistantPlan:
     include_knowledge_search: bool
     resolved_entities: dict[str, Any]
     cache_eligible: bool
+    triage_route: str = TriageRoute.LLM.value
+    triage_source: str = "disabled"
 
 
 _CANONICAL_TRAJECTORY_MAP: dict[str, tuple[str, ...]] = {
@@ -843,6 +846,7 @@ def _build_runtime_context(
         group_permissions=("reports:view",),
         has_reports_permission=True,
         capability_policy=capability_policy,
+        triage=NcmTriageRuntime.from_settings(effective_settings),
     )
     return runtime
 
@@ -1282,7 +1286,35 @@ def _question_is_out_of_scope(
     return not any(token in normalized for token in _DOMAIN_MENTION_TOKENS)
 
 
-async def _detect_scope(question: str, runtime_context: AgentRuntimeContext) -> tuple[str, float]:
+async def _get_triage_decision(
+    question: str, runtime_context: AgentRuntimeContext
+) -> TriageDecision:
+    triage = getattr(runtime_context, "triage", None)
+    if triage is None:
+        return disabled_triage()
+    try:
+        decision = await triage.classify(question)
+        record_runtime_metric(
+            "ai_ncm_triage_total",
+            {"status": decision.source, "reason": decision.reason or decision.route.value},
+        )
+        return decision
+    except Exception:
+        record_runtime_metric("ai_ncm_triage_total", {"status": "fallback", "reason": "error"})
+        return TriageDecision(
+            route=TriageRoute.LLM,
+            confidence=0.0,
+            source="fallback",
+            reason="error",
+        )
+
+
+async def _detect_scope(
+    question: str,
+    runtime_context: AgentRuntimeContext,
+    *,
+    allow_model: bool = True,
+) -> tuple[str, float]:
     if _is_product_incident_question(question):
         return "models", 0.95
     if _is_product_catalog_question(question):
@@ -1298,7 +1330,7 @@ async def _detect_scope(question: str, runtime_context: AgentRuntimeContext) -> 
     if embedding_scope is not None:
         return embedding_scope, 0.7
 
-    if top_score >= 0.25 or runner_up_score >= 0.2:
+    if allow_model and (top_score >= 0.25 or runner_up_score >= 0.2):
         model_scope = await _detect_scope_by_model(question, runtime_context, keyword_scores)
         if model_scope is not None:
             return model_scope, 0.65
@@ -1484,7 +1516,16 @@ def _select_report_type(question: str, scope: str) -> str:
 async def _plan_from_question(
     question: str, runtime_context: AgentRuntimeContext, state: AgentState
 ) -> AssistantPlan:
-    detected_scope, confidence = await _detect_scope(question, runtime_context)
+    triage_decision = await _get_triage_decision(question, runtime_context)
+    if triage_decision.route is TriageRoute.LLM:
+        detected_scope, confidence = await _detect_scope(question, runtime_context)
+    else:
+        detected_scope, confidence = await _detect_scope(
+            question, runtime_context, allow_model=False
+        )
+    if triage_decision.route is TriageRoute.OUT_OF_SCOPE:
+        detected_scope = "general"
+        confidence = triage_decision.confidence
     scope = _coerce_scope(detected_scope)
     presentation_intent = _detect_presentation_intent(question)
     date_range = _detect_date_range(question)
@@ -1509,6 +1550,8 @@ async def _plan_from_question(
         include_knowledge_search=include_knowledge_search,
         resolved_entities=entities,
         cache_eligible=cache_eligible,
+        triage_route=triage_decision.route.value,
+        triage_source=triage_decision.source,
     )
 
 
@@ -1619,6 +1662,8 @@ async def _node_classify_and_plan(
     }
     state["cache_key"] = _semantic_cache_key(state, runtime.context, plan)
     state.setdefault("observability", {})["scope"] = plan.scope
+    state["observability"]["triageRoute"] = plan.triage_route
+    state["observability"]["triageSource"] = plan.triage_source
     state["observability"]["cacheHit"] = False
     state["progress"] = progress
     return state
@@ -2944,6 +2989,8 @@ def _sanitized_observability(state: AgentState) -> dict[str, Any]:
         "mode": state.get("mode"),
         "cacheHit": bool(state.get("cache_hit")),
         "cancelled": bool(observability.get("cancelled")),
+        "triageRoute": observability.get("triageRoute"),
+        "triageSource": observability.get("triageSource"),
         "versions": {
             "graph": ASSISTANT_GRAPH_VERSION,
             "prompt": ASSISTANT_PROMPT_VERSION,
