@@ -33,6 +33,9 @@ interface UserProfile {
 interface UserPreferences {
   chatEnabled?: boolean;
   showWelcome?: boolean;
+  aiEnabled?: boolean;
+  mcpEnabled?: boolean;
+  customModelEnabled?: boolean;
 }
 
 type PermissionAction = string;

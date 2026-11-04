@@ -25,11 +25,19 @@ export type SidebarProps = {
   menu: SidebarMenuProps[];
 };
 
+export function shouldShowAiAssistant(
+  aiEnabled: boolean,
+  canSeeReports: boolean,
+): boolean {
+  return aiEnabled && canSeeReports;
+}
+
 export default function Sidebar() {
   const { isOpenSidebar, closeSidebar } = useSidebar();
   const { currentPresence } = useChat();
   const { isAdmin, hasPermission, hasAnyPermission } = useUser();
   const [chatEnabled, setChatEnabled] = useState(true);
+  const [aiEnabled, setAiEnabled] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const canSeeProducts = isAdmin || hasPermission("products", "view");
@@ -49,7 +57,10 @@ export default function Sidebar() {
         const response = await fetch(config.getApiUrl("/api/admin/users/preferences"));
         if (response.ok) {
           const data = (await response.json()) as ApiResponse<{
-            userPreferences?: { chatEnabled?: boolean } | Record<string, never>;
+            userPreferences?: {
+              chatEnabled?: boolean;
+              aiEnabled?: boolean;
+            } | Record<string, never>;
           }>;
           const enabled =
             data.success && data.data?.userPreferences
@@ -62,6 +73,11 @@ export default function Sidebar() {
           } else {
             setChatEnabled(enabled);
           }
+          setAiEnabled(
+            data.success && data.data?.userPreferences
+              ? data.data.userPreferences.aiEnabled !== false
+              : true,
+          );
         }
       } catch (error) {
         console.error(
@@ -91,12 +107,20 @@ export default function Sidebar() {
       handleChatPreferenceChange,
     );
 
+    const handleAiPreferenceChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ aiEnabled?: boolean }>;
+      setAiEnabled(customEvent.detail.aiEnabled !== false);
+    };
+
+    window.addEventListener("aiPreferenceChanged", handleAiPreferenceChange);
+
     // Cleanup do listener
     return () => {
       window.removeEventListener(
         "chatPreferenceChanged",
         handleChatPreferenceChange,
       );
+      window.removeEventListener("aiPreferenceChanged", handleAiPreferenceChange);
     };
   }, [currentPresence]);
 
@@ -303,13 +327,17 @@ export default function Sidebar() {
             : []),
           ...(canSeeReports
             ? [
-                {
-                  id: "1.5",
-                  title: "Assistente de IA",
-                  icon: "icon-[lucide--bot]",
-                  url: "/admin/ai-assistant",
-                  items: null,
-                },
+                ...(shouldShowAiAssistant(aiEnabled, canSeeReports)
+                  ? [
+                      {
+                        id: "1.5",
+                        title: "Assistente de IA",
+                        icon: "icon-[lucide--bot]",
+                        url: "/admin/ai-assistant",
+                        items: null,
+                      },
+                    ]
+                  : []),
                 {
                   id: "1.6",
                   title: "Relatórios",

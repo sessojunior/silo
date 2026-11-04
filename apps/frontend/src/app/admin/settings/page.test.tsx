@@ -27,6 +27,9 @@ type UserProfile = {
 type UserPreferences = {
   chatEnabled: boolean;
   showWelcome: boolean;
+  aiEnabled?: boolean;
+  mcpEnabled?: boolean;
+  customModelEnabled?: boolean;
 };
 
 type UserContextState = {
@@ -393,6 +396,9 @@ describe("SettingsPage", () => {
       userPreferences: {
         chatEnabled: false,
         showWelcome: true,
+        aiEnabled: true,
+        mcpEnabled: false,
+        customModelEnabled: false,
       },
       updateUser: vi.fn(),
       updateUserProfile: vi.fn(),
@@ -405,7 +411,12 @@ describe("SettingsPage", () => {
       const method = (init?.method ?? "GET").toUpperCase();
 
       if (method === "PUT" && requestUrl.pathname === "/api/admin/users/preferences") {
-        expect(parseJsonBody(init?.body)).toEqual({ chatEnabled: true });
+        expect(parseJsonBody(init?.body)).toEqual({
+          chatEnabled: true,
+          aiEnabled: true,
+          mcpEnabled: true,
+          customModelEnabled: true,
+        });
         return jsonResponse({ success: true, message: "Preferências atualizadas" });
       }
 
@@ -416,6 +427,8 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     fireEvent.click(screen.getByRole("checkbox", { name: /ativar sistema de chat/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /permitir ferramentas externas/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /usar modelo personalizado/i }));
     fireEvent.click(screen.getByRole("button", { name: /salvar prefer/i }));
 
     await waitFor(() => {
@@ -424,6 +437,9 @@ describe("SettingsPage", () => {
 
     expect(userContextState.updateUserPreferences).toHaveBeenCalledWith({
       chatEnabled: true,
+      aiEnabled: true,
+      mcpEnabled: true,
+      customModelEnabled: true,
     });
     expect(localStorage.getItem("hideWelcome")).toBe("false");
     expect(dispatchSpy).toHaveBeenCalledWith(
