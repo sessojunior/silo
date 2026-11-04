@@ -880,32 +880,36 @@ def _get_current_user_preferences(db: Connection, user_id: str) -> dict[str, obj
 
 
 def _update_current_user_preferences(
-    db: Connection, user_id: str, updates: Mapping[str, bool]
+    db: Connection, user_id: str, updates: Mapping[str, bool] | bool
 ) -> dict[str, object]:
+    if isinstance(updates, bool):
+        updates = {"chat_enabled": updates}
     prefs_table = legacy_tables["user_preferences"]
     existing = db.execute(
         select(prefs_table.c.id).where(prefs_table.c.user_id == user_id).limit(1)
     ).first()
-    with db.begin():
-        if existing is None:
-            values = {
-                "id": _new_uuid(),
-                "user_id": user_id,
-                "chat_enabled": True,
-                "ai_enabled": True,
-                "mcp_enabled": False,
-                "custom_model_enabled": False,
-            }
-            values.update(updates)
-            db.execute(
-                insert(prefs_table).values(values)
-            )
-        else:
-            db.execute(
-                update(prefs_table)
-                .where(prefs_table.c.user_id == user_id)
-                .values(**dict(updates))
-            )
+    if existing is None:
+        values = {
+            "id": _new_uuid(),
+            "user_id": user_id,
+            "chat_enabled": True,
+            "ai_enabled": True,
+            "mcp_enabled": False,
+            "custom_model_enabled": False,
+        }
+        values = {
+            key: value
+            for key, value in {**values, **dict(updates)}.items()
+            if key in prefs_table.c
+        }
+        db.execute(insert(prefs_table).values(values))
+    else:
+        db.execute(
+            update(prefs_table)
+            .where(prefs_table.c.user_id == user_id)
+            .values(**dict(updates))
+        )
+    db.commit()
     return service_success(None)
 
 

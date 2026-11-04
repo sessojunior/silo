@@ -20,6 +20,44 @@ O backend é a autoridade para threads, permissões, escopo, persistência e
 resultado final. O frontend apenas exibe o estado recebido e valida os eventos
 SSE antes de alterar a interface.
 
+## Preferencias, politica e triagem NCM
+
+As preferencias simples da aba `/admin/settings?tab=preferences` sao persistidas
+por usuario: `aiEnabled` (padrao `true`), `mcpEnabled` (padrao `false`) e
+`customModelEnabled` (padrao `false`). A preferencia do usuario nunca concede
+permissao por si so.
+
+Antes de criar o runtime do assistente, o backend resolve a politica de
+capacidades usando a linha `user_preferences` e a configuracao global. O
+assistente desabilitado retorna HTTP 403 no endpoint JSON e um evento SSE
+`error`; MCP exige habilitacao global e ferramentas aprovadas; modelo
+personalizado exige um identificador aprovado. Sem capacidade aprovada, o
+modelo Qwen/vLLM configurado continua sendo o fallback.
+
+O NCM (Next-Concept Modeling) e um classificador rapido opcional antes da
+classificacao existente. Ele produz apenas uma rota (`simple`, `knowledge`,
+`agent`, `mcp`, `llm` ou `out_of_scope`) e confianca. O NCM nao responde nem
+executa ferramentas. O padrao e desabilitado; timeout, resposta invalida ou
+baixa confianca encaminham para a classificacao/LLM existente.
+
+Configuracao operacional:
+
+```env
+AI_MCP_ENABLED=false
+AI_MCP_ALLOWED_TOOLS=
+AI_CUSTOM_MODEL_ENABLED=false
+AI_CUSTOM_MODEL=
+NCM_TRIAGE_ENABLED=false
+NCM_TRIAGE_URL=
+NCM_TRIAGE_TIMEOUT_MS=250
+NCM_TRIAGE_MIN_CONFIDENCE=0.6
+```
+
+O fluxo efetivo e: preferencias do usuario -> politica de capacidades ->
+triagem NCM opcional -> classificacao existente -> fontes autorizadas,
+incluindo procedimentos gerais ativos em modo somente leitura -> ferramentas
+permitidas -> sintese e persistencia.
+
 ## Threads e mensagens
 
 ### Criação implícita

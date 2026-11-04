@@ -2784,8 +2784,11 @@ async def api_router(path: str, request: Request) -> Response:
         api_path == "/api/admin/ai-assistant/messages/stream"
         or api_path == "/api/ai-assistant/messages/stream"
     ):
-        if isinstance(_require_admin(request), JSONResponse):
-            return _require_admin(request)  # type: ignore[return-value]
+        assistant_user = _require_admin(request)
+        if isinstance(assistant_user, JSONResponse):
+            return assistant_user
+        if assistant_user.preferences.get("aiEnabled", True) is False:
+            return _error("Assistente de IA desabilitado nas preferências do usuário.", status=403)
         payload = body if isinstance(body, dict) else {}
         prompt = str(payload.get("content") or "").strip()
         stream_thread_id = str(payload.get("threadId") or "") or None

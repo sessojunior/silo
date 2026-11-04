@@ -6,6 +6,20 @@ O backend canônico do SILO está em `apps/backend/`. FastAPI + SQLAlchemy + Lan
 
 ## Estrutura
 
+### Estado atual da IA
+
+O assistente e orquestrado por `assistant_service.py` e recebe uma
+`AiCapabilityPolicy` resolvida por usuario antes de criar o runtime. A politica
+combina preferencias persistidas, configuracao global, modelo aprovado e
+ferramentas MCP aprovadas. O modulo `triage.py` contem o contrato do NCM e o
+adaptador HTTP interno opcional; seu padrao e desligado e todo erro retorna ao
+caminho de classificacao existente.
+
+As preferencias de IA nao substituem autenticacao, grupos ou permissao de
+relatorios/procedimentos. Procedimentos gerais ativos continuam sendo fontes
+de conhecimento somente leitura, com prioridade e metadados de citacao
+preservados quando recuperados.
+
 ```
 apps/backend/
 ├── pyproject.toml         # Dependências (uv)
