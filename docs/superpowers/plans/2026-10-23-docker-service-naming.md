@@ -1,5 +1,10 @@
 # Docker Service Naming Simplification Implementation Plan
 
+> **Status:** superseded for the language-model service by
+> `docs/superpowers/specs/2026-10-29-shared-qwen-compose-design.md`. The current
+> architecture uses the shared container `qwen`; the remaining SILO service
+> naming decisions in this historical plan remain valid.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Renomear os serviços e imagens Docker do SILO por função, removendo a ambiguidade entre API, geração de texto, embeddings e indexação, sem remover capacidades da aplicação.

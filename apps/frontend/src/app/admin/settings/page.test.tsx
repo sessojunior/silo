@@ -28,8 +28,8 @@ type UserPreferences = {
   chatEnabled: boolean;
   showWelcome: boolean;
   aiEnabled?: boolean;
-  mcpEnabled?: boolean;
-  customModelEnabled?: boolean;
+  modelId?: string;
+  availableModels?: { id: string; label: string }[];
 };
 
 type UserContextState = {
@@ -179,13 +179,17 @@ vi.mock("@/components/ui/switch", () => ({
     onChange,
     title,
     description,
+    titleAs = "h3",
   }: {
     id?: string;
     checked?: boolean;
     onChange?: (checked: boolean) => void;
     title?: string;
     description?: string;
+    titleAs?: "h3" | "span";
   }) {
+    const Title = titleAs;
+
     return (
       <label htmlFor={id}>
         <input
@@ -194,7 +198,7 @@ vi.mock("@/components/ui/switch", () => ({
           checked={checked}
           onChange={(event) => onChange?.((event.target as HTMLInputElement).checked)}
         />
-        <span>{title}</span>
+        <Title>{title}</Title>
         {description ? <span>{description}</span> : null}
       </label>
     );
@@ -397,8 +401,11 @@ describe("SettingsPage", () => {
         chatEnabled: false,
         showWelcome: true,
         aiEnabled: true,
-        mcpEnabled: false,
-        customModelEnabled: false,
+        modelId: "qwen",
+        availableModels: [
+          { id: "qwen", label: "Qwen padrão" },
+          { id: "silo-approved-v1", label: "Modelo aprovado" },
+        ],
       },
       updateUser: vi.fn(),
       updateUserProfile: vi.fn(),
@@ -414,8 +421,6 @@ describe("SettingsPage", () => {
         expect(parseJsonBody(init?.body)).toEqual({
           chatEnabled: true,
           aiEnabled: true,
-          mcpEnabled: true,
-          customModelEnabled: true,
         });
         return jsonResponse({ success: true, message: "Preferências atualizadas" });
       }
@@ -427,8 +432,6 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     fireEvent.click(screen.getByRole("checkbox", { name: /ativar sistema de chat/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /permitir ferramentas externas/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /usar modelo personalizado/i }));
     fireEvent.click(screen.getByRole("button", { name: /salvar prefer/i }));
 
     await waitFor(() => {
@@ -438,8 +441,6 @@ describe("SettingsPage", () => {
     expect(userContextState.updateUserPreferences).toHaveBeenCalledWith({
       chatEnabled: true,
       aiEnabled: true,
-      mcpEnabled: true,
-      customModelEnabled: true,
     });
     expect(localStorage.getItem("hideWelcome")).toBe("false");
     expect(dispatchSpy).toHaveBeenCalledWith(
@@ -453,6 +454,45 @@ describe("SettingsPage", () => {
         title: "Preferências alteradas com sucesso.",
       }),
     );
+  });
+
+  it("organizes preference sections and exposes only the AI assistant toggle", () => {
+    searchParamsState = new URLSearchParams("tab=preferences");
+    userContextState = {
+      userProfile: null,
+      userPreferences: {
+        chatEnabled: true,
+        showWelcome: true,
+        aiEnabled: true,
+        modelId: "qwen",
+        availableModels: [
+          { id: "qwen", label: "Qwen padrão" },
+          { id: "silo-approved-v1", label: "Modelo aprovado" },
+        ],
+      },
+      updateUser: vi.fn(),
+      updateUserProfile: vi.fn(),
+      updateUserPreferences: vi.fn(),
+    };
+
+    render(<SettingsPage />);
+
+    expect(
+      screen.getByRole("heading", { name: "Permissões Gerais", level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Preferências da IA", level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /ativar assistente de ia/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Modelo de IA")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: /ferramentas externas \(mcp\)/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: /usar modelo personalizado/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("confirms email changes and updates the password on the security tab", async () => {

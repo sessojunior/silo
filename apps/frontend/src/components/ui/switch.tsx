@@ -12,6 +12,7 @@ interface SwitchProps extends Omit<
   onChange?: (value: boolean) => void;
   size?: "lg" | "md" | "sm" | "xs";
   title?: string;
+  titleAs?: "h3" | "span";
   description?: string;
   isInvalid?: boolean;
   invalidMessage?: string;
@@ -43,21 +44,23 @@ export default function Switch({
   onChange,
   size = "md",
   title,
+  titleAs = "h3",
   description,
   isInvalid,
   invalidMessage,
   ...props
 }: SwitchProps) {
   const selectedSize = sizeClasses[size];
+  const Title = titleAs;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
         <label htmlFor={id} className="flex-1">
           {title && (
-            <h3 className="text-lg font-bold tracking-tight text-zinc-600 dark:text-zinc-200">
+            <Title className="text-lg font-bold tracking-tight text-zinc-600 dark:text-zinc-200">
               {title}
-            </h3>
+            </Title>
           )}
           {description && (
             <p className="text-base text-zinc-400 dark:text-zinc-600">

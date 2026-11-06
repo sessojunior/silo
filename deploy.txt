@@ -25,7 +25,7 @@
 
    | Serviço      | Função                                      | Porta interna | Container       |
    |--------------|---------------------------------------------|---------------|-----------------|
-   | ai           | Modelo de chat (Qwen)                       | 8000          | silo-ai         |
+   | qwen         | Modelo compartilhado (Qwen)                | 8000          | qwen            |
    | embeddings   | Modelo de embeddings (busca semântica)      | 8001          | silo-embeddings |
    | migrate      | Aplica migrations no banco e encerra        | --            | silo-migrate    |
    | indexer      | Reconcilia embeddings periodicamente        | --            | silo-indexer    |
@@ -39,8 +39,8 @@
      e atualizada separadamente; o proxy do Next encaminha /silo/api/* para
      a API.
 
- Ordem de inicialização (resolvida automaticamente pelo compose):
-   ai + embeddings -> migrate -> api -> indexer -> worker
+ Ordem de inicialização:
+   qwen (Compose compartilhado) + embeddings -> migrate -> api -> indexer -> worker
 
  ------------------------------------------------------------------------------
  3. PRÉ-REQUISITOS
@@ -184,15 +184,16 @@
    IA (vLLM) e Kafka:
 
      SILO_IMAGE=ghcr.io/<org>/silo-api:<sha> # [prod] .env local usa silo-api:latest
-     SILO_VLLM_GPU_IMAGE=vllm/vllm-openai:v0.29.0   # [prod] imagem CUDA; independente do .env local CPU
-     VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct          # [.env]
+     QWEN_IMAGE=vllm/vllm-openai:v0.29.0            # [prod] imagem CUDA compartilhada
+     QWEN_MODEL=Qwen/Qwen2.5-0.5B-Instruct          # [prod] modelo carregado
+     QWEN_SERVED_MODEL=qwen                         # [prod] nome usado pelas aplicações
      VLLM_EMBEDDING_MODEL=BAAI/bge-base-en-v1.5     # [.env]
      VLLM_EMBEDDING_URL=http://embeddings:8000/v1   # [prod] compose injeta esta URL dentro do Docker
-     SILO_VLLM_GPU_MEM_UTIL=0.70                    # [prod] chat; perfil GPU compartilhado
      SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20              # [prod] embedding; perfil GPU compartilhado
-     SILO_VLLM_GPU_ID=0                              # [prod] GPU do chat
-     SILO_VLLM_EMBED_GPU_ID=0                        # [prod] 0 compartilhada; 1 separada
-     VLLM_MAX_MODEL_LEN=16384                       # [.env]
+     QWEN_GPU_ID=0                                   # [prod] GPU do Qwen
+     QWEN_GPU_MEMORY_UTILIZATION=0.70               # [prod] limite do Qwen
+     SILO_VLLM_EMBED_GPU_ID=1                        # [prod] GPU dos embeddings do SILO
+     QWEN_MAX_MODEL_LEN=16384                       # [prod]
      VLLM_MAX_CONCURRENT_REQUESTS=4                 # [.env] slots por runtime
      VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS=500        # [.env] espera máxima por slot
      HF_TOKEN=                                      # [.env] vazio; somente para modelos restritos
@@ -221,33 +222,31 @@
 
    O .env não deve ser versionado (já está no .gitignore).
 
- 6.3 vLLM: GPU e CPU
+   6.3 vLLM: GPU e CPU
 
    Com GPU NVIDIA: instalar o NVIDIA Container Toolkit e drivers 525+. O
-   docker-compose.deploy.yml já contém as reservas NVIDIA; não é necessário
-   descomentar blocos manualmente. O deploy usa `SILO_VLLM_GPU_IMAGE`, separado
-   da variável CPU usada no desenvolvimento.
+   docker-compose.inference.yml contém a reserva NVIDIA do Qwen compartilhado;
+   o docker-compose.deploy.yml contém a reserva do serviço de embeddings do
+   SILO.
 
-   O perfil CPU é o docker-compose.yml. Para produção sem GPU, não use o
-   docker-compose.deploy.yml: suba o compose de desenvolvimento com uma imagem
-   CPU e ajuste VLLM_CPU_KVCACHE_SPACE conforme a RAM disponível.
+   O perfil CPU dos embeddings é o docker-compose.yml. Para o Qwen compartilhado
+   sem GPU, configure QWEN_IMAGE com a imagem CPU compatível e ajuste o cache
+   conforme a RAM disponível.
 
    6.4 Perfil de GPU e validar a configuração (não sobe nada)
 
-   O `docker-compose.yml` é o perfil CPU e não solicita GPU. O
-   `docker-compose.deploy.yml` é o perfil NVIDIA: por padrão, chat e embedding
-   compartilham a GPU 0. Para separar as cargas em duas GPUs, configure no `.env`:
+   O `docker-compose.inference.yml` é o perfil NVIDIA do Qwen e o
+   `docker-compose.deploy.yml` reserva a GPU dos embeddings. Configure no `.env`:
 
-     SILO_VLLM_GPU_ID=0
+     QWEN_GPU_ID=0
      SILO_VLLM_EMBED_GPU_ID=1
 
-   Os dois serviços usam reservas explícitas do NVIDIA Container Toolkit. Não
-   use a imagem CUDA no compose de desenvolvimento, nem a imagem CPU no deploy
-   GPU. Os valores 0.70/0.20 mantêm chat e embedding na mesma GPU sem reservar
-   85% duas vezes. Se usar GPUs separadas, defina também
-   `SILO_VLLM_GPU_MEM_UTIL=0.85` e `SILO_VLLM_EMBED_GPU_MEM_UTIL=0.85`. O servidor precisa
-   ter o Docker com suporte NVIDIA configurado.
+   Os dois serviços usam reservas explícitas do NVIDIA Container Toolkit. O
+   Qwen usa `QWEN_GPU_MEMORY_UTILIZATION=0.70` e os embeddings usam
+   `SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20` por padrão. O servidor precisa ter o
+   Docker com suporte NVIDIA configurado.
 
+     docker compose -f docker-compose.inference.yml config
      docker compose -f docker-compose.deploy.yml config
 
    Corrigir qualquer erro de variável ou sintaxe antes de prosseguir.
@@ -262,13 +261,16 @@
    echo "$REGISTRY_DEPLOY_PASSWORD" | docker login ghcr.io \
      -u "$REGISTRY_DEPLOY_USER" --password-stdin
 
-   # 2. Baixar a imagem nova
+   # 2. Subir o Qwen compartilhado (uma vez por servidor/ambiente)
+   docker compose -f docker-compose.inference.yml up -d --wait --wait-timeout 300
+
+   # 3. Baixar a imagem nova do SILO
    docker compose -f docker-compose.deploy.yml pull
 
    (O pull exige que SILO_IMAGE exista no registry. Para testes locais com
    imagem já construída na máquina, esse passo pode ser dispensado.)
 
-   # 3. Subir a stack (migrate primeiro, depois api e worker, aguardando
+   # 4. Subir a stack do SILO (migrate primeiro, depois api e worker, aguardando
    #    os healthchecks)
    docker compose -f docker-compose.deploy.yml up -d --remove-orphans \
      --wait --wait-timeout 300
@@ -278,19 +280,19 @@
    carregando, não é falha: confira o progresso com `ps` e `logs` e aguarde
    o modelo terminar de carregar.
 
-   # 4. Status
+   # 5. Status
    docker compose -f docker-compose.deploy.yml ps
 
-   Esperado: ai, embeddings, api, indexer e worker em "Up"/"healthy"; migrate
+   Esperado: qwen, embeddings, api, indexer e worker em "Up"/"healthy"; migrate
    em "exited (0)" (executa a tarefa e encerra - normal). O container
    silo-migrate também pode não aparecer se tiver sido removido após o sucesso.
 
-   # 5. Healthcheck da API e do worker
+   # 6. Healthcheck da API e do worker
    docker compose -f docker-compose.deploy.yml exec -T api python -c \
      "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health', timeout=5).read()"
    docker compose -f docker-compose.deploy.yml exec -T worker python -m silo.worker.healthcheck
 
-   # 6. Logs
+   # 7. Logs
    docker compose -f docker-compose.deploy.yml logs -f
 
    A API está pronta quando o log mostra "Uvicorn running on

@@ -47,7 +47,7 @@ silo/
 | Serviço | Porta | Descrição |
 |---|---|---|
 | `db` (`silo-db`) | 5432 | PostgreSQL + pgvector |
-| `ai` (`silo-ai`) | 8000 | Servidor de geração de respostas |
+| `qwen` | 8000 | Modelo de geração compartilhado |
 | `embeddings` (`silo-embeddings`) | 8001 | Servidor dedicado de embeddings |
 | `migrate` (`silo-migrate`) | — | Roda migrations e encerra (one-shot) |
 | `indexer` (`silo-indexer`) | — | Reconcilia embeddings ausentes ou obsoletos |
@@ -62,7 +62,7 @@ silo/
 ```
 Browser → Next.js (web :80) → FastAPI (api :4000) → PostgreSQL (db :5432)
                                    ↕
-                              IA (ai :8000)
+                              Qwen (qwen :8000)
                                    ↕
                          Embeddings (embeddings :8001)
 ```
@@ -74,7 +74,7 @@ Browser → Next.js (web :80) → FastAPI (api :4000) → PostgreSQL (db :5432)
 
 ### Nomes e limpeza do ambiente Docker
 
-Os nomes oficiais dos containers são `silo-db`, `silo-ai`, `silo-embeddings`,
+Os nomes oficiais são `qwen` para o modelo compartilhado e `silo-db`, `silo-embeddings`,
 `silo-migrate`, `silo-indexer`, `silo-api`, `silo-worker` e `silo-web`. Os nomes
 antigos `silo-api-python`, `silo-worker-python`, `silo-vllm`,
 `silo-vllm-embed`, `silo-search` e `silo-embedding-backfill` não fazem mais
@@ -88,6 +88,9 @@ removidos durante essa limpeza.
 ---
 
 ## Documentação
+
+- [`shared-inference.md`](shared-inference.md) — contrato para consumir o Qwen
+  compartilhado a partir do SILO ou de outros projetos.
 
 | Documento | Conteúdo |
 |---|---|

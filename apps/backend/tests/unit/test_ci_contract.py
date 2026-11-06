@@ -8,6 +8,8 @@ GITLAB_CI = REPOSITORY_ROOT / ".gitlab-ci.yml"
 README = REPOSITORY_ROOT / "README.md"
 BACKEND_PYPROJECT = REPOSITORY_ROOT / "apps" / "backend" / "pyproject.toml"
 DEPLOY_COMPOSE = REPOSITORY_ROOT / "docker-compose.deploy.yml"
+INFERENCE_COMPOSE = REPOSITORY_ROOT / "docker-compose.inference.yml"
+SHARED_INFERENCE_DOC = REPOSITORY_ROOT / "docs" / "shared-inference.md"
 DEPLOY_SCRIPT = REPOSITORY_ROOT / "scripts" / "gitlab" / "deploy.sh"
 
 
@@ -85,11 +87,11 @@ def test_backend_pyproject_exposes_observability_and_sbom_scripts() -> None:
 
 def test_deploy_compose_and_script_exist_for_gitlab_release_flow() -> None:
     compose = DEPLOY_COMPOSE.read_text(encoding="utf-8")
+    inference_compose = INFERENCE_COMPOSE.read_text(encoding="utf-8")
     script = DEPLOY_SCRIPT.read_text(encoding="utf-8")
 
     assert "SILO_IMAGE" in compose
     assert "container_name: silo-api" in compose
-    assert "container_name: silo-ai" in compose
     assert "container_name: silo-embeddings" in compose
     assert "container_name: silo-indexer" in compose
     assert "container_name: silo-worker" in compose
@@ -103,6 +105,18 @@ def test_deploy_compose_and_script_exist_for_gitlab_release_flow() -> None:
         'docker compose -f "$DEPLOY_COMPOSE_FILE" exec -T worker python -m silo.worker.healthcheck'
         in script
     )
+    assert "container_name: qwen" in inference_compose
+    assert "shared-inference" in inference_compose
+    assert "container_name: silo-ai" not in compose
+
+
+def test_shared_inference_consumer_contract_is_documented() -> None:
+    documentation = SHARED_INFERENCE_DOC.read_text(encoding="utf-8")
+
+    assert "shared-inference" in documentation
+    assert "http://qwen:8000/v1" in documentation
+    assert "external: true" in documentation
+    assert "docker-compose.inference.yml" in documentation
 
 
 def test_deploy_uses_preprovisioned_known_hosts_and_never_discovers_it() -> None:

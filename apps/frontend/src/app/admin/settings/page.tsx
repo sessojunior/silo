@@ -79,12 +79,6 @@ export default function SettingsPage() {
   const [aiEnabled, setAiEnabled] = useState(
     userPreferences?.aiEnabled ?? true,
   );
-  const [mcpEnabled, setMcpEnabled] = useState(
-    userPreferences?.mcpEnabled ?? false,
-  );
-  const [customModelEnabled, setCustomModelEnabled] = useState(
-    userPreferences?.customModelEnabled ?? false,
-  );
 
   // Leitura rápida do localStorage na montagem
   useEffect(() => {
@@ -122,8 +116,6 @@ export default function SettingsPage() {
       setChatEnabled(userPreferences.chatEnabled ?? true);
       setShowWelcome(userPreferences.showWelcome ?? true);
       setAiEnabled(userPreferences.aiEnabled ?? true);
-      setMcpEnabled(userPreferences.mcpEnabled ?? false);
-      setCustomModelEnabled(userPreferences.customModelEnabled ?? false);
     }
   }, [currentUser, userProfile, userPreferences]);
 
@@ -144,8 +136,6 @@ export default function SettingsPage() {
         setChatEnabled(userPreferences.chatEnabled ?? true);
         setShowWelcome(userPreferences.showWelcome ?? true);
         setAiEnabled(userPreferences.aiEnabled ?? true);
-        setMcpEnabled(userPreferences.mcpEnabled ?? false);
-        setCustomModelEnabled(userPreferences.customModelEnabled ?? false);
         setLoadingProfile(false);
         return;
       }
@@ -178,8 +168,6 @@ export default function SettingsPage() {
         setChatEnabled(userPreferences?.chatEnabled ?? true);
         setShowWelcome(userPreferences?.showWelcome ?? true);
         setAiEnabled(userPreferences?.aiEnabled ?? true);
-        setMcpEnabled(userPreferences?.mcpEnabled ?? false);
-        setCustomModelEnabled(userPreferences?.customModelEnabled ?? false);
       }
     } catch (error) {
       console.error("❌ [PAGE_SETTINGS] Erro ao carregar dados do usuário:", {
@@ -298,8 +286,6 @@ export default function SettingsPage() {
         body: JSON.stringify({
           chatEnabled,
           aiEnabled,
-          mcpEnabled,
-          customModelEnabled,
         }),
       });
 
@@ -317,8 +303,6 @@ export default function SettingsPage() {
         updateUserPreferences({
           chatEnabled,
           aiEnabled,
-          mcpEnabled,
-          customModelEnabled,
         });
 
         toast({
@@ -338,7 +322,7 @@ export default function SettingsPage() {
         );
         window.dispatchEvent(
           new CustomEvent("aiPreferenceChanged", {
-            detail: { aiEnabled, mcpEnabled, customModelEnabled },
+            detail: { aiEnabled },
           }),
         );
       }
@@ -731,6 +715,7 @@ export default function SettingsPage() {
             checked={showWelcome}
             onChange={setShowWelcome}
             size="lg"
+            titleAs="span"
             title="Exibir página de boas-vindas"
             description="Mostrar a página de boas-vindas na próxima vez que você acessar o sistema."
           />
@@ -741,15 +726,22 @@ export default function SettingsPage() {
             checked={chatEnabled}
             onChange={setChatEnabled}
             size="lg"
+            titleAs="span"
             title="Ativar sistema de chat"
             description="Permitir o uso do sistema de chat e notificações em tempo real. Desativar reduz o consumo de banco de dados."
           />
 
-          <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6 space-y-4">
+          <section
+            aria-labelledby="ai-preferences-title"
+            className="border-t border-zinc-200 dark:border-zinc-800 pt-6 space-y-4"
+          >
             <div>
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+              <h2
+                id="ai-preferences-title"
+                className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-1"
+              >
                 Prefer&ecirc;ncias da IA
-              </h3>
+              </h2>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 Escolha os recursos de IA dispon&iacute;veis para sua conta.
               </p>
@@ -761,30 +753,12 @@ export default function SettingsPage() {
               checked={aiEnabled}
               onChange={setAiEnabled}
               size="lg"
+              titleAs="span"
               title="Ativar assistente de IA"
               description="Permitir o uso do assistente e dos agentes do Silo."
             />
 
-            <Switch
-              id="mcp-enabled"
-              name="mcpEnabled"
-              checked={mcpEnabled}
-              onChange={setMcpEnabled}
-              size="lg"
-              title="Permitir ferramentas externas (MCP)"
-              description="Permitir que a IA use ferramentas externas aprovadas."
-            />
-
-            <Switch
-              id="custom-model-enabled"
-              name="customModelEnabled"
-              checked={customModelEnabled}
-              onChange={setCustomModelEnabled}
-              size="lg"
-              title="Usar modelo personalizado"
-              description="Permitir o uso do modelo personalizado configurado pelo sistema."
-            />
-          </div>
+          </section>
 
           {/* Submit Button */}
           <div className="flex justify-end pt-4">

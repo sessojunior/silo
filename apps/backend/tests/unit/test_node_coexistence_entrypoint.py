@@ -11,6 +11,7 @@ ENTRYPOINT = REPOSITORY_ROOT / "entrypoint-api.sh"
 API_DOCKERFILE = REPOSITORY_ROOT / "apps/api/Dockerfile"
 WORKER_DOCKERFILE = REPOSITORY_ROOT / "apps/worker/Dockerfile"
 COMPOSE = REPOSITORY_ROOT / "docker-compose.yml"
+INFERENCE_COMPOSE = REPOSITORY_ROOT / "docker-compose.inference.yml"
 
 
 def _service_block(compose: str, service_name: str) -> str:
@@ -55,7 +56,7 @@ def test_compose_uses_the_768_dimension_embedding_service_for_api_and_embeddings
     assert '"${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}"' in embedding
 
 
-def test_api_waits_for_both_ai_models_before_starting() -> None:
+def test_api_waits_for_database_and_silo_embeddings_before_starting() -> None:
     compose = COMPOSE.read_text(encoding="utf-8")
     api = _service_block(compose, "api")
     dependencies = re.search(
@@ -66,9 +67,9 @@ def test_api_waits_for_both_ai_models_before_starting() -> None:
     assert dependencies is not None
     dependency_block = dependencies.group("body")
 
-    assert "ai:" in dependency_block
+    assert "ai:" not in dependency_block
     assert "embeddings:" in dependency_block
-    assert dependency_block.count("condition: service_healthy") == 3
+    assert dependency_block.count("condition: service_healthy") == 2
 
 
 def test_deploy_compose_keeps_the_dedicated_embedding_service_contract() -> None:
@@ -80,31 +81,28 @@ def test_deploy_compose_keeps_the_dedicated_embedding_service_contract() -> None
 
 def test_development_compose_declares_bounded_cpu_inference_resources() -> None:
     compose = COMPOSE.read_text(encoding="utf-8")
-    vllm = _service_block(compose, "ai")
     embedding = _service_block(compose, "embeddings")
 
-    assert "image: ${SILO_VLLM_CPU_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}" in vllm
-    assert "SILO_VLLM_IMAGE" not in vllm
-    assert 'mem_limit: "8g"' in vllm
-    assert 'cpus: "6.0"' in vllm
+    assert "  ai:" not in compose
     assert 'mem_limit: "4g"' in embedding
     assert 'cpus: "2.0"' in embedding
-    assert "    deploy:" not in vllm
     assert "    deploy:" not in embedding
+    assert "shared-inference" in compose
 
 
 def test_deploy_compose_declares_shared_or_separate_gpu_device_selection() -> None:
+    inference_compose = INFERENCE_COMPOSE.read_text(encoding="utf-8")
     deploy_compose = (REPOSITORY_ROOT / "docker-compose.deploy.yml").read_text(encoding="utf-8")
-    vllm = _service_block(deploy_compose, "ai")
     embedding = _service_block(deploy_compose, "embeddings")
+    qwen = _service_block(inference_compose, "qwen")
 
-    assert "image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}" in vllm
+    assert "image: ${QWEN_IMAGE:-vllm/vllm-openai:v0.29.0}" in qwen
     assert "image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}" in embedding
-    assert 'device_ids: ["${SILO_VLLM_GPU_ID:-0}"]' in vllm
-    assert 'device_ids: ["${SILO_VLLM_EMBED_GPU_ID:-0}"]' in embedding
-    assert "capabilities: [gpu]" in vllm
+    assert 'device_ids: ["${QWEN_GPU_ID:-0}"]' in qwen
+    assert 'device_ids: ["${SILO_VLLM_EMBED_GPU_ID:-1}"]' in embedding
+    assert "container_name: qwen" in qwen
+    assert "container_name: silo-ai" not in deploy_compose
     assert "capabilities: [gpu]" in embedding
-    assert 'mem_limit: "8g"' in vllm
     assert 'mem_limit: "4g"' in embedding
     assert "SILO_VLLM_EMBED_GPU_ID=1" in (
         (REPOSITORY_ROOT / "deploy.txt").read_text(encoding="utf-8")
@@ -112,12 +110,15 @@ def test_deploy_compose_declares_shared_or_separate_gpu_device_selection() -> No
 
 
 def test_deploy_compose_uses_separate_gpu_memory_budgets() -> None:
+    inference_compose = INFERENCE_COMPOSE.read_text(encoding="utf-8")
     deploy_compose = (REPOSITORY_ROOT / "docker-compose.deploy.yml").read_text(encoding="utf-8")
-    vllm = _service_block(deploy_compose, "ai")
     embedding = _service_block(deploy_compose, "embeddings")
 
-    assert '"${SILO_VLLM_GPU_MEM_UTIL:-0.70}"' in vllm
+    assert '"${QWEN_GPU_MEMORY_UTILIZATION:-0.70}"' in inference_compose
     assert '"${SILO_VLLM_EMBED_GPU_MEM_UTIL:-0.20}"' in embedding
-    assert "SILO_VLLM_EMBED_GPU_MEM_UTIL=0.85" in (
+    assert "QWEN_GPU_MEMORY_UTILIZATION=0.70" in (
+        (REPOSITORY_ROOT / "deploy.txt").read_text(encoding="utf-8")
+    )
+    assert "SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20" in (
         (REPOSITORY_ROOT / "deploy.txt").read_text(encoding="utf-8")
     )

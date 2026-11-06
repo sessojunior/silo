@@ -63,26 +63,33 @@ def resolve_ai_capability_policy(
         row = None
 
     assistant_enabled = _bool_value(row, "ai_enabled", default=True)
-    user_mcp_enabled = _bool_value(row, "mcp_enabled", default=False)
-    user_custom_model_enabled = _bool_value(row, "custom_model_enabled", default=False)
-
     approved_mcp_tools = frozenset(
         tool.strip()
         for tool in getattr(settings, "ai_mcp_allowed_tools", ())
         if isinstance(tool, str) and tool.strip()
     )
-    mcp_enabled = assistant_enabled and user_mcp_enabled and bool(
-        getattr(settings, "ai_mcp_enabled", False)
+    mcp_enabled = (
+        assistant_enabled
+        and bool(getattr(settings, "ai_mcp_enabled", False))
+        and bool(approved_mcp_tools)
     )
     allowed_mcp_tools = approved_mcp_tools if mcp_enabled else frozenset()
 
-    default_model = str(getattr(getattr(settings, "vllm", None), "model", ""))
+    default_model = str(getattr(getattr(settings, "vllm", None), "model", "")).strip()
     approved_custom_model = str(getattr(settings, "ai_custom_model", "")).strip()
+    selected_model = str(_value(row, "model_id") or "").strip()
+    approved_models = {default_model}
+    if bool(getattr(settings, "ai_custom_model_enabled", False)) and approved_custom_model:
+        approved_models.add(approved_custom_model)
+    model_name = (
+        selected_model
+        if assistant_enabled and selected_model in approved_models
+        else default_model
+    )
     custom_model_enabled = (
-        assistant_enabled
-        and user_custom_model_enabled
-        and bool(getattr(settings, "ai_custom_model_enabled", False))
+        bool(getattr(settings, "ai_custom_model_enabled", False))
         and bool(approved_custom_model)
+        and model_name == approved_custom_model
     )
 
     return AiCapabilityPolicy(
@@ -90,7 +97,7 @@ def resolve_ai_capability_policy(
         mcp_enabled=mcp_enabled,
         custom_model_enabled=custom_model_enabled,
         allowed_mcp_tools=allowed_mcp_tools,
-        model_name=approved_custom_model if custom_model_enabled else default_model,
+        model_name=model_name,
     )
 
 
@@ -99,3 +106,9 @@ def _bool_value(row: object, key: str, *, default: bool) -> bool:
         return default
     value = row.get(key) if hasattr(row, "get") else None
     return value if isinstance(value, bool) else default
+
+
+def _value(row: object, key: str) -> object | None:
+    if row is None:
+        return None
+    return row.get(key) if hasattr(row, "get") else None

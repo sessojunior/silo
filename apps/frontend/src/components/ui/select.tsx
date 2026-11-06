@@ -63,6 +63,7 @@ export default function Select({
   const [dropdownRect, setDropdownRect] = useState<{
     left: number;
     top: number;
+    bottom: number;
     width: number;
     openUpwards: boolean;
   } | null>(null);
@@ -96,7 +97,13 @@ export default function Select({
       const spaceBelow = viewportHeight - rect.bottom;
       const spaceAbove = rect.top;
       const openUp = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
-      setDropdownRect({ left: rect.left + window.scrollX, top: rect.bottom + window.scrollY, width: rect.width, openUpwards: openUp });
+      setDropdownRect({
+        left: rect.left,
+        top: rect.bottom,
+        bottom: viewportHeight - rect.top,
+        width: rect.width,
+        openUpwards: openUp,
+      });
     }
   }, [isOpen]);
 
@@ -106,11 +113,18 @@ export default function Select({
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
-      const dropdownHeight = 240;
+      const dropdownHeight =
+        dropdownRef.current?.getBoundingClientRect().height ?? 240;
       const spaceBelow = viewportHeight - rect.bottom;
       const spaceAbove = rect.top;
       const openUp = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
-      setDropdownRect({ left: rect.left + window.scrollX, top: rect.bottom + window.scrollY, width: rect.width, openUpwards: openUp });
+      setDropdownRect({
+        left: rect.left,
+        top: rect.bottom,
+        bottom: viewportHeight - rect.top,
+        width: rect.width,
+        openUpwards: openUp,
+      });
     };
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onResize, true);
@@ -119,6 +133,24 @@ export default function Select({
       window.removeEventListener("scroll", onResize, true);
     };
   }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !dropdownRect || !containerRef.current || !dropdownRef.current) {
+      return;
+    }
+
+    const selectRect = containerRef.current.getBoundingClientRect();
+    const dropdownHeight = dropdownRef.current.getBoundingClientRect().height;
+    const spaceBelow = window.innerHeight - selectRect.bottom;
+    const spaceAbove = selectRect.top;
+    const openUp = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
+
+    if (openUp === dropdownRect.openUpwards) return;
+
+    setDropdownRect((current) =>
+      current ? { ...current, openUpwards: openUp } : current,
+    );
+  }, [isOpen, dropdownRect, search, filtered.length]);
 
   const toggle = () => setIsOpen((prev) => !prev);
 
@@ -229,9 +261,10 @@ export default function Select({
         <div
           ref={dropdownRef}
           style={{
-            position: "absolute",
+            position: "fixed",
             left: dropdownRect.left,
-            top: dropdownRect.openUpwards ? dropdownRect.top - 240 : dropdownRect.top,
+            top: dropdownRect.openUpwards ? "auto" : dropdownRect.top,
+            bottom: dropdownRect.openUpwards ? dropdownRect.bottom : "auto",
             width: dropdownRect.width,
             zIndex: 100000,
           }}

@@ -79,49 +79,56 @@ AI_AGENT_MODE=hybrid
 > backend rodar **fora** do Docker.
 > Para acessar via localhost, mantenha `APP_URL_PROD=http://localhost` no `.env`
 > (esse valor é embutido na imagem do frontend no build).
-> **vLLM:** por padrão sobe a imagem CPU oficial (`vllm/vllm-openai-cpu`), que
-> roda em qualquer máquina (mais lenta). Com GPU NVIDIA, defina
-> `SILO_VLLM_GPU_IMAGE=vllm/vllm-openai:v0.29.0` no `.env` usado pelo deploy.
+> **Qwen:** o modelo de linguagem fica no Compose compartilhado
+> `docker-compose.inference.yml` e usa a GPU 0. O serviço de embeddings continua
+> dentro da hierarquia do SILO.
 
-### 3. Suba a stack completa (um único comando)
+### 3. Suba primeiro o modelo compartilhado
+
+```bash
+docker compose -f docker-compose.inference.yml up -d
+```
+
+### 4. Suba a stack do SILO
 
 ```bash
 docker compose up -d --build
 ```
 
-Esse comando único sobe **tudo**: `db` (PostgreSQL), `ai` (IA), `embeddings`
+Esse comando sobe os serviços do SILO: `db` (PostgreSQL), `embeddings`
 (modelo vetorial), `migrate` (migrations), `indexer` (reconciliação de
 embeddings), `api` (backend FastAPI), `worker` (Kafka) e `web` (frontend
 Next.js). Não é preciso subir os serviços separadamente — o Docker resolve a
 ordem de inicialização e os healthchecks por conta própria.
 
 Na primeira execução, o Docker vai:
-1. Baixar as imagens (PostgreSQL, vLLM CPU)
+1. Baixar as imagens (PostgreSQL, embeddings e Qwen)
 2. Construir as imagens do backend e frontend
 3. Criar o banco de dados e rodar migrations
-4. **Baixar o modelo de IA** (~500 MB) — o vLLM faz isso automaticamente no primeiro boot
+4. **Baixar o modelo Qwen** — o vLLM compartilhado faz isso automaticamente no primeiro boot
 5. Iniciar todos os serviços
 
-### 4. Acompanhe o progresso
+### 5. Acompanhe o progresso
 
 ```bash
-docker compose logs -f ai embeddings api indexer
+docker compose -f docker-compose.inference.yml logs -f qwen
+docker compose logs -f embeddings api indexer
 ```
 
 O vLLM mostra `Uvicorn running on http://0.0.0.0:8000` quando o modelo estiver carregado.
 O backend mostra `Uvicorn running on http://0.0.0.0:4000` quando estiver pronto.
 
-### 5. Acesse
+### 6. Acesse
 
 Abra **http://localhost/silo** no navegador (a raiz `http://localhost` redireciona para `/silo`).
 
-Um único comando (`docker compose up -d --build`) já sobe tudo o que você precisa. O que cada serviço expõe no host:
+Depois de iniciar o Compose de inferência e o Compose do SILO, os serviços expostos são:
 
 | O que subiu no container | Porta interna | Porta no host | Como acessar no localhost |
 |---|---|---|---|
 | `web` (`silo-web`, frontend Next.js) | 3000 | `SILO_HOST_PORT` (padrão 80) | `http://localhost/silo` — ex.: `/silo/admin/ai-assistant` |
 | `api` (`silo-api`, backend FastAPI) | 4000 | `API_PORT` (padrão 4000) | `http://localhost:4000/docs` |
-| `ai` (`silo-ai`) | 8000 | `VLLM_PORT` (padrão 8000) | `http://localhost:8000/v1/models` |
+| `qwen` | 8000 | `QWEN_PORT` (padrão 8000) | `http://localhost:8000/v1/models` |
 | `embeddings` (`silo-embeddings`, modelo vetorial) | 8000 | `VLLM_EMBED_PORT` (padrão 8001) | `http://localhost:8001/v1/models` |
 | `db` (`silo-db`, PostgreSQL) | 5432 | `POSTGRES_PORT` (padrão 5432) | `localhost:5432` |
 
@@ -129,7 +136,7 @@ Um único comando (`docker compose up -d --build`) já sobe tudo o que você pre
 > O `api` e o `worker` só sobem depois que o `migrate` terminar com sucesso, e o
 > `web` só sobe depois que o `api` estiver saudável — aguarde o healthcheck.
 
-### 6. Crie os usuários de desenvolvimento
+### 7. Crie os usuários de desenvolvimento
 
 O banco sobe vazio. Rode o seed para criar os usuários padrão:
 
@@ -146,7 +153,7 @@ Credenciais padrão:
 
 Depois é só fazer login em `http://localhost/silo/login`.
 
-### 7. Verifique a saúde
+### 8. Verifique a saúde
 
 ```bash
 docker compose ps
@@ -166,20 +173,17 @@ Todos os serviços devem estar com status `healthy` ou `Up`. O serviço `migrate
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                     Docker Compose                        │
+│              Docker Compose do SILO                       │
 ├──────────────────────────────────────────────────────────┤
 │                                                           │
-│  ┌─────────┐   ┌──────────┐   ┌───────────────────────┐ │
-│  │   db    │   │  vllm    │   │         api           │ │
-│  │ :5432   │   │  :8000   │   │         :4000         │ │
-│  │PostgreSQL│  │ Qwen 0.5B│   │  FastAPI + LangChain  │ │
-│  │+pgvector│   │  OpenAI  │   │  + LangGraph          │ │
-│  └────┬────┘   │  API     │   └───────────┬───────────┘ │
-│       │        └────┬─────┘               │              │
-│       │             │                     │              │
-│       │     ChatOpenAI(base_url=          │              │
-│       │    "http://ai:8000/v1")           │              │
-│       │             └─────────────────────┘              │
+│  ┌─────────┐   ┌──────────────┐   ┌───────────────────┐ │
+│  │   db    │   │ embeddings   │   │       api         │ │
+│  │ :5432   │   │   :8000      │   │       :4000       │ │
+│  │PostgreSQL│  │  vetores     │   │ FastAPI + RAG     │ │
+│  │+pgvector│   │ do SILO      │   │                   │ │
+│  └────┬────┘   └──────┬───────┘   └─────────┬─────────┘ │
+│       │               │                    │           │
+│       └───────────────┴────────────────────┘           │
 │       │                                                 │
 │       └─────────────────────────────────┘                │
 │               SQLAlchemy (banco)                         │
@@ -192,19 +196,32 @@ Todos os serviços devem estar com status `healthy` ou `Up`. O serviço `migrate
 └──────────────────────────────────────────────────────────┘
 ```
 
+O Qwen fica fora desse limite, em um Compose de inferência compartilhado:
+
+```
+SILO (api/indexer) ───────────────┐
+                                 ├──> shared-inference ───> qwen:8000
+Outro projeto ───────────────────┘
+```
+
+O Compose compartilhado deve ser iniciado antes do Compose do SILO. Não o desligue
+se houver outro projeto usando o mesmo modelo.
+
 ### Ordem de inicialização
 
 1. **db** — Banco PostgreSQL + pgvector
-2. **ai** e **embeddings** — Servidores de chat e embeddings (baixam os modelos no primeiro boot)
-3. **migrate** — Cria/atualiza tabelas do banco e encerra
-4. **api** — Backend FastAPI (depende de db, ai e embeddings)
-5. **worker** — Processa mensagens do Kafka
-6. **indexer** — Reconcilia embeddings ausentes ou obsoletos
-7. **web** — Frontend Next.js (depende da API)
+2. **qwen** — Modelo de linguagem compartilhado, iniciado pelo Compose de inferência
+3. **embeddings** — Modelo vetorial pertencente ao SILO
+4. **migrate** — Cria/atualiza tabelas do banco e encerra
+5. **api** — Backend FastAPI (depende de db e embeddings; acessa qwen pela rede compartilhada)
+6. **worker** — Processa mensagens do Kafka
+7. **indexer** — Reconcilia embeddings ausentes ou obsoletos
+8. **web** — Frontend Next.js (depende da API)
 
-### Por que dois arquivos docker-compose?
+### Por que separar o Compose de inferência?
 
-O projeto tem dois arquivos de orquestração com propósitos diferentes:
+O Qwen é compartilhado e possui ciclo de vida próprio. Por isso, fica em um
+Compose separado do Compose da aplicação SILO:
 
 | | `docker-compose.yml` | `docker-compose.deploy.yml` |
 |---|---|---|
@@ -212,21 +229,30 @@ O projeto tem dois arquivos de orquestração com propósitos diferentes:
 | **Como constrói** | Compila imagens na hora (`build:`) | Usa imagens prontas do registry (`image:`) |
 | **Banco de dados** | Container PostgreSQL incluso | Banco externo (gerenciado separadamente) |
 | **Frontend** | Container `web` incluso | Servido por proxy/Nginx externo |
-| **Serviços** | 8 (db, ai, embeddings, migrate, indexer, api, worker, web) | 6 (ai, embeddings, migrate, indexer, api, worker) |
-| **Comando** | `docker compose up -d --build` | `docker compose -f docker-compose.deploy.yml up -d` |
+| **Serviços** | `qwen` separado + db, embeddings, migrate, indexer, api, worker, web | `qwen` separado + embeddings, migrate, indexer, api, worker |
+| **Comando** | `docker compose -f docker-compose.inference.yml up -d` e `docker compose up -d --build` | `docker compose -f docker-compose.inference.yml up -d` e `docker compose -f docker-compose.deploy.yml up -d` |
 
 **Por que separar?** O deploy nunca deve compilar código no servidor — ele usa a imagem já testada e publicada. E o banco de produção precisa de backup, réplicas e monitoramento que um container simples não oferece. Já no desenvolvimento, tudo é self-contained para subir com um comando.
+
+O contrato para integrar outros projetos ao mesmo Qwen está em
+[`docs/shared-inference.md`](docs/shared-inference.md). O consumidor usa apenas a
+rede `shared-inference` e a API compatível com OpenAI; não acessa dados,
+embeddings ou volumes do SILO.
 
 ---
 
 ## Parar e reiniciar
 
 ```bash
-# Desenvolvimento (docker-compose.yml)
+# Desenvolvimento
+docker compose -f docker-compose.inference.yml up -d
 docker compose down                          # Parar mantendo dados
 docker compose down -v                       # Parar e apagar tudo
 docker compose up -d --build                 # Subir novamente
 docker compose up -d --build api             # Reconstruir só a API
+# O Qwen compartilhado continua ativo para outros projetos.
+# Apenas o operador da infraestrutura deve executar:
+docker compose -f docker-compose.inference.yml down
 
 # Produção (docker-compose.deploy.yml)
 docker compose -f docker-compose.deploy.yml up -d      # Subir com imagem pronta
@@ -241,10 +267,11 @@ docker compose -f docker-compose.deploy.yml logs -f    # Logs
 
 Para hot-reload, rode infraestrutura no Docker e o código diretamente:
 
-### Terminal 1 — Banco de dados + vLLM
+### Terminal 1 — Banco de dados + inferência
 
 ```bash
-docker compose up -d db ai embeddings
+docker compose -f docker-compose.inference.yml up -d
+docker compose up -d db embeddings
 docker compose run --rm migrate
 ```
 
@@ -355,7 +382,7 @@ uv run --locked silo-db-seed               # Dados iniciais
 # Desenvolvimento
 docker compose up -d --build               # Subir stack completa
 docker compose ps                          # Status dos serviços
-docker compose logs -f ai                 # Logs do servidor de IA
+docker compose -f docker-compose.inference.yml logs -f qwen # Logs do modelo
 docker compose logs -f api                 # Logs do backend
 docker compose exec api bash               # Entrar no container
 docker compose down                        # Parar tudo
@@ -369,9 +396,9 @@ docker compose -f docker-compose.deploy.yml down
 
 ### Limpeza segura de artefatos Docker antigos
 
-Os nomes oficiais dos containers do Silo são `silo-db`, `silo-ai`,
-`silo-embeddings`, `silo-migrate`, `silo-indexer`, `silo-api`, `silo-worker` e
-`silo-web`. Não existem mais os nomes legados `silo-api-python`,
+Os nomes oficiais são `qwen` para o modelo compartilhado e, no SILO,
+`silo-db`, `silo-embeddings`, `silo-migrate`, `silo-indexer`, `silo-api`,
+`silo-worker` e `silo-web`. Não existem mais os nomes legados `silo-api-python`,
 `silo-worker-python`, `silo-vllm`, `silo-vllm-embed`, `silo-search` ou
 `silo-embedding-backfill`.
 
@@ -480,7 +507,7 @@ O embedding roda em uma segunda instância dedicada (`embeddings`) com
 `BAAI/bge-base-en-v1.5`; esse modelo gera vetores de 768 dimensões, compatíveis
 com a coluna `pgvector` do banco.
 
-> Para produção com GPU, use um modelo maior: `VLLM_MODEL=Qwen/Qwen2.5-7B-Instruct` no `.env`. O vLLM suporta qualquer modelo do HuggingFace Hub.
+> Para produção com GPU, use um modelo maior: `QWEN_MODEL=Qwen/Qwen2.5-7B-Instruct` no `.env` do Compose de inferência. O vLLM suporta qualquer modelo do HuggingFace Hub.
 
 ### Modos do assistente
 
@@ -526,35 +553,34 @@ Com uma GPU NVIDIA, o vLLM entrega **10 a 20 vezes mais desempenho** que em CPU.
 
 ### Ativar GPU
 
-Use `docker-compose.deploy.yml` em um servidor com NVIDIA Container Toolkit.
-O arquivo já contém a reserva de GPU e usa `SILO_VLLM_GPU_IMAGE`, separado da
-imagem CPU do desenvolvimento:
+Use `docker-compose.inference.yml` em um servidor com NVIDIA Container
+Toolkit. O serviço compartilhado `qwen` reserva a GPU 0:
 
 ```yaml
-ai:
-  image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}
+qwen:
+  image: ${QWEN_IMAGE:-vllm/vllm-openai:v0.29.0}
   # ...
   deploy:
     resources:
       reservations:
         devices:
           - driver: nvidia
-            device_ids: ["${SILO_VLLM_GPU_ID:-0}"]
+            device_ids: ["${QWEN_GPU_ID:-0}"]
             capabilities: [gpu]
 ```
 
-Por padrão chat e embeddings compartilham a GPU `0`. Para separar as cargas:
+Com duas A2, o Qwen usa a GPU 0 e os embeddings do SILO usam a GPU 1:
 
 ```env
-SILO_VLLM_GPU_ID=0
+QWEN_GPU_ID=0
 SILO_VLLM_EMBED_GPU_ID=1
-SILO_VLLM_GPU_MEM_UTIL=0.85
-SILO_VLLM_EMBED_GPU_MEM_UTIL=0.85
+QWEN_GPU_MEMORY_UTILIZATION=0.70
+SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20
 ```
 
-No perfil compartilhado, os padrões são `SILO_VLLM_GPU_MEM_UTIL=0.70` para chat e
-`SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20` para embeddings, evitando que duas instâncias
-reservem 85% da mesma VRAM.
+O Qwen é compartilhado entre projetos pela rede `shared-inference`, mas os
+embeddings, os documentos e os índices vetoriais permanecem na hierarquia do
+SILO.
 
 No desenvolvimento CPU, mantenha `SILO_VLLM_CPU_IMAGE` e use
 `docker-compose.yml`; não troque essa variável por uma imagem CUDA sem também
@@ -571,10 +597,11 @@ migrar para o compose de deploy.
 | 24+ GB | `Qwen/Qwen2.5-14B-Instruct` ou `Llama-3.1-8B` | Alta qualidade |
 | 48+ GB | `Qwen/Qwen2.5-32B-Instruct` ou `Llama-3.1-70B` (quantizado) | Enterprise |
 
-Defina no `.env`:
+Defina no `.env` do Compose de inferência:
 
 ```env
-VLLM_MODEL=Qwen/Qwen2.5-7B-Instruct
+QWEN_MODEL=Qwen/Qwen2.5-7B-Instruct
+QWEN_SERVED_MODEL=qwen
 ```
 
 ---
@@ -591,10 +618,14 @@ Toda configuração fica no arquivo `.env` na raiz. Principais variáveis:
 | `POSTGRES_PASSWORD` | `silo` | Senha do banco |
 | `BETTER_AUTH_SECRET` | — | Segredo de autenticação **(obrigatório)** |
 | `SESSION_SECRET` | — | Segredo de sessão **(obrigatório)** |
-| `VLLM_MODEL` | `Qwen/Qwen2.5-0.5B-Instruct` | Modelo de IA para chat |
+| `QWEN_MODEL` | `Qwen/Qwen2.5-0.5B-Instruct` | Modelo carregado pelo vLLM compartilhado |
+| `QWEN_SERVED_MODEL` | `qwen` | Nome usado pelas aplicações para chamar o modelo |
 | `VLLM_EMBEDDING_MODEL` | `BAAI/bge-base-en-v1.5` | Modelo para embeddings de 768 dimensões |
-| `SILO_VLLM_GPU_MEM_UTIL` | `0.70` | Fração da VRAM do chat (0 a 1) |
+| `QWEN_GPU_MEMORY_UTILIZATION` | `0.70` | Fração da VRAM reservada para o Qwen (0 a 1) |
 | `SILO_VLLM_EMBED_GPU_MEM_UTIL` | `0.20` | Fração da VRAM do embedding (0 a 1) |
+| `QWEN_GPU_ID` | `0` | GPU usada pelo Qwen compartilhado |
+| `QWEN_BIND_ADDRESS` | `127.0.0.1` | Interface de publicação do Qwen no host |
+| `SILO_VLLM_EMBED_GPU_ID` | `1` | GPU usada pelos embeddings do SILO no deploy |
 | `HF_TOKEN` | — | Token HuggingFace (modelos restritos) |
 | `AI_AGENT_MODE` | `hybrid` | Modo do assistente |
 | `AI_AGENT_MAX_ROUNDS` | `2` | Máximo de rodadas do Agentic RAG |
@@ -627,14 +658,14 @@ Consulte [`env.example`](env.example) para a lista completa.
 
 | Problema | Solução |
 |---|---|
-| **"O container `silo-ai` demora para iniciar"** | O modelo está sendo baixado (~400 MB). Acompanhe com `docker compose logs -f ai`. Aguarde `Uvicorn running`. |
-| **"Erro de memória no vLLM"** | O modelo é grande para sua RAM/VRAM. Use `VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct`. |
+| **"O container `qwen` demora para iniciar"** | O modelo está sendo baixado. Acompanhe com `docker compose -f docker-compose.inference.yml logs -f qwen`. Aguarde `Uvicorn running`. |
+| **"Erro de memória no vLLM"** | O modelo é grande para a VRAM disponível. Ajuste `QWEN_MODEL`, `QWEN_MAX_MODEL_LEN` ou `QWEN_GPU_MEMORY_UTILIZATION`. |
 | **"A API não sobe"** | Verifique o banco: `docker compose ps db`. Rode `docker compose run --rm migrate` se necessário. |
 | **"Login retorna 401 com `teste@inpe.br`"** | O banco local está sem usuários. Rode o seed: `docker compose run --rm --no-deps migrate python -m silo.db.seed` e tente de novo. |
 | **"`api`/`web` ficam em `Created` e `migrate` em `Exited (1)`"** | O `DATABASE_URL` no `.env` aponta para um host que o container não alcança. Use `postgresql://silo:silo@db:5432/silo` (ou remova a variável) e rode `docker compose up -d`. Veja `docker compose logs migrate`. |
 | **"O frontend não carrega"** | O frontend depende da API. Aguarde o healthcheck: `docker compose ps api`. Confira o prefixo: com `NEXT_PUBLIC_BASE_PATH=/silo`, acesse `http://localhost/silo`. |
-| **"GPU não detectada"** | No desenvolvimento, o vLLM roda em CPU pela imagem `vllm/vllm-openai-cpu` (`SILO_VLLM_CPU_IMAGE`). No deploy GPU, instale o NVIDIA Container Toolkit e defina `SILO_VLLM_GPU_IMAGE`. |
-| **"`silo-ai` reinicia com `Failed to infer device type`"** | Você está usando a imagem CUDA sem GPU. Use a imagem CPU (`vllm/vllm-openai-cpu`, padrão) ou ative o passthrough de GPU no Docker Desktop. |
-| **"Porta 5432/8000/4000/80 já em uso"** | Altere no `.env` (`POSTGRES_PORT`, `VLLM_PORT`, `API_PORT`, `SILO_HOST_PORT`). |
+| **"GPU não detectada"** | No Compose de inferência, instale o NVIDIA Container Toolkit e confira `QWEN_IMAGE` e `QWEN_GPU_ID`. |
+| **"`qwen` reinicia com `Failed to infer device type`"** | O serviço está usando imagem CUDA sem GPU disponível. Verifique o passthrough e `docker compose -f docker-compose.inference.yml logs qwen`. |
+| **"Porta 5432/8000/4000/80 já em uso"** | Altere no `.env` (`POSTGRES_PORT`, `QWEN_PORT`, `API_PORT`, `SILO_HOST_PORT`). |
 | **"Modelo não encontrado"** | Verifique o nome em https://huggingface.co/models. Para modelos restritos, configure `HF_TOKEN`. |
 | **"Sem espaço em disco"** | Modelos ocupam ~500 MB. Limpe com `docker compose down -v` (apaga banco também). |

@@ -144,8 +144,8 @@ streaming incremental, fallback, retry e procedimentos de teste, está em
 LangGraph (orquestração)
   └─ StateGraph, agentes, ferramentas, RAG, cache semântico
        └─ LangChain (langchain-openai)
-            ├─ ChatOpenAI(base_url="http://ai:8000/v1")
-            │    └─ vLLM chat (Qwen2.5 0.5B)
+            ├─ ChatOpenAI(base_url="http://qwen:8000/v1")
+            │    └─ vLLM compartilhado (Qwen2.5 0.5B)
             └─ OpenAIEmbeddings(base_url="http://embeddings:8000/v1")
                  └─ vLLM embeddings (BAAI/bge-base-en-v1.5, 768 dimensões)
 ```
@@ -174,16 +174,16 @@ O vLLM substituiu o Ollama como servidor de modelos. Ele expõe uma API OpenAI-c
 - **Continuous batching:** Múltiplos usuários simultâneos
 - **Prefix caching:** Reuso de prompts comuns
 
-O LangChain conecta o chat via `ChatOpenAI(base_url="http://ai:8000/v1")`.
+O LangChain conecta o chat via `ChatOpenAI(base_url="http://qwen:8000/v1")`.
 Embeddings usam a instância dedicada `http://embeddings:8000/v1`; o backend
 injeta essa URL automaticamente nos containers. Fora do Docker, use
 `VLLM_URL=http://localhost:8000/v1` e `VLLM_EMBEDDING_URL=http://localhost:8001/v1`.
 
-No desenvolvimento, o `docker-compose.yml` usa imagens CPU separadas para chat
-e embeddings. Em produção GPU, use `docker-compose.deploy.yml`,
-`SILO_VLLM_GPU_IMAGE` e o NVIDIA Container Toolkit. Os serviços compartilham a
-GPU 0 por padrão; defina `SILO_VLLM_GPU_ID=0` e
-`SILO_VLLM_EMBED_GPU_ID=1` para separar as cargas em duas GPUs.
+O Qwen fica no `docker-compose.inference.yml` e usa a GPU 0. O
+`docker-compose.yml` e o `docker-compose.deploy.yml` mantêm o serviço de
+embeddings do SILO; no deploy, defina `SILO_VLLM_EMBED_GPU_ID=1` para usar a
+segunda GPU. Os embeddings, documentos e índices vetoriais continuam isolados
+na hierarquia do SILO.
 
 ### Agentic RAG e limites operacionais
 

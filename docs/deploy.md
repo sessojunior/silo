@@ -4,10 +4,11 @@
 
 ## Docker
 
-O SILO usa dois arquivos de orquestração:
+O SILO usa um Compose da aplicação e um Compose independente para o Qwen:
 
 | Arquivo | Uso | Build |
 |---|---|---|
+| `docker-compose.inference.yml` | Qwen compartilhado | Usa imagem vLLM e GPU |
 | `docker-compose.yml` | Desenvolvimento local | Constrói imagens (`build:`) |
 | `docker-compose.deploy.yml` | Produção | Usa imagem pronta (`image:`) |
 
@@ -16,7 +17,6 @@ O SILO usa dois arquivos de orquestração:
 | Serviço | Imagem | Porta |
 |---|---|---|
 | `db` | `pgvector/pgvector:pg17` | 5432 |
-| `ai` (`silo-ai`) | `vllm/vllm-openai-cpu:v0.29.0-x86_64` | 8000 (CPU) |
 | `embeddings` (`silo-embeddings`) | `vllm/vllm-openai-cpu:v0.29.0-x86_64` | 8001 (CPU) |
 | `migrate` (`silo-migrate`) | `silo-api` (one-shot) | — |
 | `indexer` (`silo-indexer`) | `silo-api` | — |
@@ -24,16 +24,26 @@ O SILO usa dois arquivos de orquestração:
 | `worker` | `silo-worker` | — |
 | `web` | `silo-web` | 80 |
 
+O serviço `qwen` não aparece nessa tabela porque pertence ao Compose compartilhado
+`docker-compose.inference.yml`. Ele fica na rede externa `shared-inference` e é
+consumido pela API e pelo indexador do SILO.
+
 ### Serviços (produção)
 
 | Serviço | Imagem | Nota |
 |---|---|---|
-| `ai` (`silo-ai`) | `${SILO_VLLM_GPU_IMAGE}` | GPU NVIDIA |
 | `embeddings` (`silo-embeddings`) | `${SILO_VLLM_GPU_IMAGE}` | GPU NVIDIA, embeddings |
 | `migrate` (`silo-migrate`) | `${SILO_IMAGE}` (one-shot) | Imagem publicada |
 | `indexer` (`silo-indexer`) | `${SILO_IMAGE}` | Reconcilia embeddings ausentes ou obsoletos |
 | `api` (`silo-api`) | `${SILO_IMAGE}` | Imagem publicada |
 | `worker` (`silo-worker`) | `${SILO_IMAGE}` | Imagem publicada |
+
+Para integrar outro projeto ao mesmo modelo, siga o contrato em
+[`shared-inference.md`](shared-inference.md). O projeto deve apenas entrar na
+rede externa `shared-inference` e chamar `http://qwen:8000/v1`.
+
+O `qwen` é iniciado separadamente pelo `docker-compose.inference.yml`; não há uma
+segunda instância de vLLM dentro do Compose do SILO.
 
 O banco de dados e o frontend em produção são gerenciados externamente (PostgreSQL gerenciado, Nginx/CDN).
 
@@ -45,10 +55,14 @@ migrate` recria o container.
 ### Comandos
 
 ```bash
-# Desenvolvimento
+# Qwen compartilhado
+docker compose -f docker-compose.inference.yml up -d
+
+# Desenvolvimento do SILO
 docker compose up -d --build        # Subir stack
 docker compose down                 # Parar
-docker compose logs -f ai embeddings api indexer     # Logs
+docker compose -f docker-compose.inference.yml logs -f qwen
+docker compose logs -f embeddings api indexer     # Logs do SILO
 
 # Verificação do assistente após atualizar a API
 docker compose ps
@@ -56,6 +70,7 @@ curl http://localhost:4000/health/live
 curl http://localhost:4000/health/ready
 
 # Produção
+docker compose -f docker-compose.inference.yml up -d
 docker compose -f docker-compose.deploy.yml up -d
 docker compose -f docker-compose.deploy.yml down
 docker compose -f docker-compose.deploy.yml logs -f
@@ -64,6 +79,8 @@ docker compose -f docker-compose.deploy.yml logs -f
 ### Limpeza segura
 
 Remova somente containers one-shot concluídos ou redes comprovadamente vazias.
+Não execute o `down` do Compose de inferência enquanto outro projeto ainda usar o
+Qwen compartilhado.
 Não remova os volumes `silo-vllm-cache`, `silo-vllm-compile-cache`,
 `silo-postgres-data` ou `silo-storage-data`, pois eles contêm modelos, banco e
 uploads. Evite `docker system prune -a` no servidor sem uma auditoria prévia.
@@ -76,11 +93,11 @@ substitui o smoke test do modelo vLLM.
 
 ### GPU (produção)
 
-O deploy já reserva GPU NVIDIA explicitamente. Por padrão, chat e embedding usam
-a GPU 0. Para separar em duas GPUs, defina `SILO_VLLM_GPU_ID=0` e
-`SILO_VLLM_EMBED_GPU_ID=1` no `.env`. O perfil compartilhado usa
-`SILO_VLLM_GPU_MEM_UTIL=0.70` e `SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20`; com GPUs
-separadas, ambos podem ser ajustados para `0.85`.
+O Compose de inferência reserva a GPU NVIDIA 0 para o Qwen compartilhado. O
+Compose do SILO reserva a GPU 1 para embeddings quando
+`SILO_VLLM_EMBED_GPU_ID=1` está definido. O Qwen usa
+`QWEN_GPU_MEMORY_UTILIZATION=0.70` e os embeddings usam
+`SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20` como padrão.
 
 ```yaml
 deploy:
@@ -88,7 +105,7 @@ deploy:
     reservations:
       devices:
         - driver: nvidia
-          device_ids: ["${SILO_VLLM_GPU_ID:-0}"]
+          device_ids: ["${QWEN_GPU_ID:-0}"]
           capabilities: [gpu]
 ```
 
@@ -131,10 +148,14 @@ DATABASE_URL=postgresql://...
 BETTER_AUTH_SECRET=...
 SESSION_SECRET=...
 
-# IA (vLLM)
-VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct
-SILO_VLLM_GPU_MEM_UTIL=0.70
+# Qwen compartilhado (vLLM)
+QWEN_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+QWEN_SERVED_MODEL=qwen
+QWEN_BIND_ADDRESS=127.0.0.1
+QWEN_GPU_ID=0
+QWEN_GPU_MEMORY_UTILIZATION=0.70
 SILO_VLLM_EMBED_GPU_MEM_UTIL=0.20
+SILO_VLLM_EMBED_GPU_ID=1
 HF_TOKEN=              # Para modelos restritos
 
 # Deploy
@@ -142,13 +163,13 @@ SILO_IMAGE=ghcr.io/... # Imagem publicada
 SILO_ENV=production
 ```
 
-O vLLM não usa autenticação por chave. No Compose de produção, os serviços de
-inferência não publicam portas no host e ficam apenas na rede privada `inference`,
-acessível pela API e pelo worker. No Compose local, as portas publicadas ficam em
-`127.0.0.1` por padrão. Não exponha essas portas em uma interface pública. Se um
-proxy estiver em outra máquina, configure `SILO_BIND_ADDRESS` para uma interface
-privada e restrinja o firewall ao proxy; containers autorizados na rede `inference`
-podem chamar o vLLM sem credencial.
+O vLLM não usa autenticação por chave. O Qwen fica na rede privada
+`shared-inference` e, por padrão, publica a porta somente em `127.0.0.1`; os
+embeddings do SILO ficam na rede privada `inference`. Não exponha essas portas em
+uma interface pública. Se um proxy estiver em outra máquina, configure
+`QWEN_BIND_ADDRESS`/`SILO_BIND_ADDRESS` para interfaces privadas e restrinja o
+firewall ao proxy; containers autorizados nas redes correspondentes podem chamar o
+vLLM sem credencial.
 
 Em 16/09/2026, a imagem fixada em `v0.29.0` ainda está no intervalo afetado pelo
 aviso upstream [GHSA-p6g9-7v3x-m8mv](https://github.com/vllm-project/vllm/security/advisories/GHSA-p6g9-7v3x-m8mv),

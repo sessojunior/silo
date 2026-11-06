@@ -256,7 +256,8 @@ AI_AGENT_MAX_TOOL_CALLS=4
 AI_AGENT_TOOL_TIMEOUT_MS=60000
 VLLM_MAX_CONCURRENT_REQUESTS=4
 VLLM_CONCURRENCY_ACQUIRE_TIMEOUT_MS=500
-VLLM_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+QWEN_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+QWEN_SERVED_MODEL=qwen
 VLLM_URL=http://localhost:8000/v1
 VLLM_EMBEDDING_URL=http://localhost:8001/v1
 ```
@@ -306,7 +307,8 @@ O frontend fica em `http://localhost/silo/admin/ai-assistant` quando
 Para acompanhar o runtime:
 
 ```bash
-docker compose logs -f api ai embeddings indexer worker
+docker compose -f docker-compose.inference.yml logs -f qwen
+docker compose logs -f api embeddings indexer worker
 ```
 
 O smoke test deve verificar login, envio sem `threadId`, eventos `delta`,

@@ -214,6 +214,7 @@ TABLE_COLUMN_SPECS: tuple[TableColumnsSpec, ...] = (
             ("ai_enabled", "boolean", False, True),
             ("mcp_enabled", "boolean", False, True),
             ("custom_model_enabled", "boolean", False, True),
+            ("model_id", "text", False, False),
         ),
     ),
     (

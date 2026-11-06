@@ -1,46 +1,4 @@
 services:
-  ai:
-    image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}
-    container_name: silo-ai
-    networks:
-      - inference
-    # vLLM usa /dev/shm para comunicacao entre processos (padrao de 64 MB
-    # e insuficiente -> "Insufficient space in /dev/shm").
-    shm_size: "2gb"
-    environment:
-      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
-      VLLM_LOGGING_LEVEL: ${LOG_LEVEL:-INFO}
-    command:
-      - "--model"
-      - "${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}"
-      - "--max-model-len"
-      - "${VLLM_MAX_MODEL_LEN:-8192}"
-      - "--gpu-memory-utilization"
-      - "${SILO_VLLM_GPU_MEM_UTIL:-0.70}"
-      - "--enable-prefix-caching"
-      - "--enable-auto-tool-choice"
-      - "--tool-call-parser"
-      - "hermes"
-    volumes:
-      - silo-vllm-cache:/root/.cache/huggingface
-      - silo-vllm-compile-cache:/root/.cache/vllm
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 120s
-    mem_limit: "8g"
-    cpus: "4.0"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["${SILO_VLLM_GPU_ID:-0}"]
-              capabilities: [gpu]
-    restart: unless-stopped
-
   embeddings:
     # vLLM serve um modelo por instancia; servico dedicado para o embedding.
     image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}
@@ -75,7 +33,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["${SILO_VLLM_EMBED_GPU_ID:-0}"]
+              device_ids: ["${SILO_VLLM_EMBED_GPU_ID:-1}"]
               capabilities: [gpu]
     restart: unless-stopped
 
@@ -117,8 +75,8 @@ services:
       KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
       KAFKA_PROCESS_RETRY_COUNT: ${KAFKA_PROCESS_RETRY_COUNT:-3}
       KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
-      VLLM_URL: http://ai:8000/v1
-      VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
+      VLLM_URL: http://qwen:8000/v1
+      VLLM_MODEL: ${QWEN_SERVED_MODEL:-qwen}
       VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
       VLLM_EMBEDDING_URL: http://embeddings:8000/v1
       VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-180000}
@@ -137,6 +95,7 @@ services:
     networks:
       - backend
       - inference
+      - shared-inference
     command:
       [
         "sh",
@@ -148,8 +107,8 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL: ${DATABASE_URL:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      VLLM_URL: http://ai:8000/v1
-      VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
+      VLLM_URL: http://qwen:8000/v1
+      VLLM_MODEL: ${QWEN_SERVED_MODEL:-qwen}
       VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
       VLLM_EMBEDDING_URL: http://embeddings:8000/v1
       VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-180000}
@@ -160,8 +119,6 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-      ai:
-        condition: service_healthy
       embeddings:
         condition: service_healthy
     stop_grace_period: 30s
@@ -175,6 +132,7 @@ services:
     networks:
       - backend
       - inference
+      - shared-inference
     ports:
       - "${SILO_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-4000}:4000"
     command: ["uvicorn", "silo.api.main:app", "--host", "0.0.0.0", "--port", "4000"]
@@ -217,8 +175,8 @@ services:
       KAFKA_DLQ_PREFIX: ${KAFKA_DLQ_PREFIX:-dlq.}
       KAFKA_PROCESS_RETRY_COUNT: ${KAFKA_PROCESS_RETRY_COUNT:-3}
       KAFKA_RETRY_BACKOFF_MS: ${KAFKA_RETRY_BACKOFF_MS:-1000}
-      VLLM_URL: http://ai:8000/v1
-      VLLM_MODEL: ${VLLM_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}
+      VLLM_URL: http://qwen:8000/v1
+      VLLM_MODEL: ${QWEN_SERVED_MODEL:-qwen}
       VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
       VLLM_EMBEDDING_URL: http://embeddings:8000/v1
       VLLM_TIMEOUT_MS: ${VLLM_TIMEOUT_MS:-180000}
@@ -298,3 +256,6 @@ networks:
     driver: bridge
   inference:
     driver: bridge
+  shared-inference:
+    external: true
+    name: shared-inference

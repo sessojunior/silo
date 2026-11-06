@@ -36,6 +36,7 @@ def preferences_connection(monkeypatch):
         Column("ai_enabled", Boolean, nullable=False),
         Column("mcp_enabled", Boolean, nullable=False),
         Column("custom_model_enabled", Boolean, nullable=False),
+        Column("model_id", String, nullable=True),
     )
     engine = create_engine("sqlite://")
     metadata.create_all(engine)
@@ -67,7 +68,7 @@ def test_disabled_user_blocks_all_ai_capabilities(preferences_connection) -> Non
     )
 
 
-def test_mcp_requires_user_preference_global_enablement_and_approved_tools(
+def test_mcp_uses_global_enablement_and_approved_tools_without_user_preference(
     preferences_connection,
 ) -> None:
     connection, table = preferences_connection
@@ -75,7 +76,7 @@ def test_mcp_requires_user_preference_global_enablement_and_approved_tools(
         insert(table).values(
             user_id="user-1",
             ai_enabled=True,
-            mcp_enabled=True,
+            mcp_enabled=False,
             custom_model_enabled=False,
         )
     )
@@ -91,7 +92,7 @@ def test_mcp_requires_user_preference_global_enablement_and_approved_tools(
     assert policy.allowed_mcp_tools == frozenset({"procedure.read"})
 
 
-def test_custom_model_falls_back_to_default_until_approved_and_enabled(
+def test_selected_model_falls_back_to_default_until_approved(
     preferences_connection,
 ) -> None:
     connection, table = preferences_connection
@@ -100,7 +101,8 @@ def test_custom_model_falls_back_to_default_until_approved_and_enabled(
             user_id="user-1",
             ai_enabled=True,
             mcp_enabled=False,
-            custom_model_enabled=True,
+            custom_model_enabled=False,
+            model_id="silo-approved-v1",
         )
     )
 

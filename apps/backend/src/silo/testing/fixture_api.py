@@ -283,6 +283,8 @@ class AuthUserRecord:
             "aiEnabled": True,
             "mcpEnabled": False,
             "customModelEnabled": False,
+            "modelId": "qwen",
+            "availableModels": [{"id": "qwen", "label": "qwen"}],
         }
         return {"userPreferences": {**defaults, **self.preferences}}
 
@@ -2011,6 +2013,7 @@ async def api_router(path: str, request: Request) -> Response:
             "aiEnabled",
             "mcpEnabled",
             "customModelEnabled",
+            "modelId",
         }
         unknown = sorted(set(payload) - allowed)
         if unknown:
@@ -2018,6 +2021,11 @@ async def api_router(path: str, request: Request) -> Response:
         if not payload:
             return _error("Informe pelo menos uma preferência.", status=400)
         for key, value in payload.items():
+            if key == "modelId":
+                if not isinstance(value, str) or value != "qwen":
+                    return _error("Modelo de IA desconhecido.", status=400)
+                user.preferences[key] = value
+                continue
             if not isinstance(value, bool):
                 return _error(f"{key} deve ser booleano.", status=400)
             user.preferences[key] = value
