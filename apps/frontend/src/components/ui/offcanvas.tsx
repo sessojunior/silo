@@ -174,7 +174,7 @@ export default function Offcanvas({
     if (!open && lastFocusedRef.current) {
       lastFocusedRef.current.focus();
     }
-  }, [open]);
+  }, [open, rendered]);
 
   if (!mounted || !rendered) return null;
 

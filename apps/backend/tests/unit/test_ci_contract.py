@@ -9,6 +9,7 @@ README = REPOSITORY_ROOT / "README.md"
 BACKEND_PYPROJECT = REPOSITORY_ROOT / "apps" / "backend" / "pyproject.toml"
 DEPLOY_COMPOSE = REPOSITORY_ROOT / "docker-compose.deploy.yml"
 INFERENCE_COMPOSE = REPOSITORY_ROOT / "docker-compose.inference.yml"
+INFERENCE_GPU_COMPOSE = REPOSITORY_ROOT / "docker-compose.inference.gpu.yml"
 SHARED_INFERENCE_DOC = REPOSITORY_ROOT / "docs" / "shared-inference.md"
 DEPLOY_SCRIPT = REPOSITORY_ROOT / "scripts" / "gitlab" / "deploy.sh"
 
@@ -87,7 +88,11 @@ def test_backend_pyproject_exposes_observability_and_sbom_scripts() -> None:
 
 def test_deploy_compose_and_script_exist_for_gitlab_release_flow() -> None:
     compose = DEPLOY_COMPOSE.read_text(encoding="utf-8")
-    inference_compose = INFERENCE_COMPOSE.read_text(encoding="utf-8")
+    inference_compose = (
+        INFERENCE_COMPOSE.read_text(encoding="utf-8")
+        + "\n"
+        + INFERENCE_GPU_COMPOSE.read_text(encoding="utf-8")
+    )
     script = DEPLOY_SCRIPT.read_text(encoding="utf-8")
 
     assert "SILO_IMAGE" in compose

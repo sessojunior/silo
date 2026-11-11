@@ -42,21 +42,21 @@ async def test_procedure_crud_routes_delegate_and_return_api_messages(monkeypatc
     monkeypatch.setattr(
         procedures_router,
         "list_general_procedures",
-        lambda *args, **kwargs: service_success(
-            {"items": [{"id": "procedure-1"}], "total": 1}
-        ),
+        lambda *args, **kwargs: service_success({"items": [{"id": "procedure-1"}], "total": 1}),
     )
     monkeypatch.setattr(
         procedures_router,
         "create_general_procedure",
-        lambda *args, **kwargs: calls.append(("create", kwargs))
-        or service_success({"id": "procedure-1"}),
+        lambda *args, **kwargs: (
+            calls.append(("create", kwargs)) or service_success({"id": "procedure-1"})
+        ),
     )
     monkeypatch.setattr(
         procedures_router,
         "update_general_procedure",
-        lambda *args, **kwargs: calls.append(("update", kwargs))
-        or service_success({"id": "procedure-1"}),
+        lambda *args, **kwargs: (
+            calls.append(("update", kwargs)) or service_success({"id": "procedure-1"})
+        ),
     )
     monkeypatch.setattr(
         procedures_router,
@@ -121,9 +121,11 @@ async def test_attachment_upload_requires_file_and_delegates_original_bytes(monk
     monkeypatch.setattr(
         procedures_router,
         "create_general_procedure_attachment",
-        lambda *args, **kwargs: calls.append(kwargs)
-        or service_success(
-            {"attachment": {"id": "attachment-1", "originalName": "orientacao.pdf"}}
+        lambda *args, **kwargs: (
+            calls.append(kwargs)
+            or service_success(
+                {"attachment": {"id": "attachment-1", "originalName": "orientacao.pdf"}}
+            )
         ),
     )
 
@@ -151,9 +153,7 @@ async def test_route_converts_service_failures_to_http_errors(monkeypatch) -> No
     )
 
     response = _payload(
-        await procedures_router.get_procedure(
-            "missing", SimpleNamespace(id="user-1"), object()
-        )
+        await procedures_router.get_procedure("missing", SimpleNamespace(id="user-1"), object())
     )
 
     assert response["success"] is False

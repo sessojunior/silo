@@ -225,17 +225,17 @@
    6.3 vLLM: GPU e CPU
 
    Com GPU NVIDIA: instalar o NVIDIA Container Toolkit e drivers 525+. O
-   docker-compose.inference.yml contém a reserva NVIDIA do Qwen compartilhado;
+   docker-compose.inference.gpu.yml contém a reserva NVIDIA do Qwen compartilhado;
    o docker-compose.deploy.yml contém a reserva do serviço de embeddings do
    SILO.
 
-   O perfil CPU dos embeddings é o docker-compose.yml. Para o Qwen compartilhado
-   sem GPU, configure QWEN_IMAGE com a imagem CPU compatível e ajuste o cache
-   conforme a RAM disponível.
+   O perfil CPU do Qwen compartilhado é o docker-compose.inference.yml e não
+   declara reserva NVIDIA. O override docker-compose.inference.gpu.yml ativa
+   CUDA explicitamente.
 
    6.4 Perfil de GPU e validar a configuração (não sobe nada)
 
-   O `docker-compose.inference.yml` é o perfil NVIDIA do Qwen e o
+   O `docker-compose.inference.gpu.yml` é o perfil NVIDIA do Qwen e o
    `docker-compose.deploy.yml` reserva a GPU dos embeddings. Configure no `.env`:
 
      QWEN_GPU_ID=0
@@ -247,6 +247,7 @@
    Docker com suporte NVIDIA configurado.
 
      docker compose -f docker-compose.inference.yml config
+     docker compose -f docker-compose.inference.yml -f docker-compose.inference.gpu.yml config
      docker compose -f docker-compose.deploy.yml config
 
    Corrigir qualquer erro de variável ou sintaxe antes de prosseguir.
@@ -262,7 +263,7 @@
      -u "$REGISTRY_DEPLOY_USER" --password-stdin
 
    # 2. Subir o Qwen compartilhado (uma vez por servidor/ambiente)
-   docker compose -f docker-compose.inference.yml up -d --wait --wait-timeout 300
+   docker compose -f docker-compose.inference.yml -f docker-compose.inference.gpu.yml up -d --wait --wait-timeout 300
 
    # 3. Baixar a imagem nova do SILO
    docker compose -f docker-compose.deploy.yml pull

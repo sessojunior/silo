@@ -34,9 +34,6 @@ def preferences_connection(monkeypatch):
         metadata,
         Column("user_id", String, nullable=False),
         Column("ai_enabled", Boolean, nullable=False),
-        Column("mcp_enabled", Boolean, nullable=False),
-        Column("custom_model_enabled", Boolean, nullable=False),
-        Column("model_id", String, nullable=True),
     )
     engine = create_engine("sqlite://")
     metadata.create_all(engine)
@@ -52,8 +49,6 @@ def test_disabled_user_blocks_all_ai_capabilities(preferences_connection) -> Non
         insert(table).values(
             user_id="user-1",
             ai_enabled=False,
-            mcp_enabled=True,
-            custom_model_enabled=True,
         )
     )
 
@@ -76,8 +71,6 @@ def test_mcp_uses_global_enablement_and_approved_tools_without_user_preference(
         insert(table).values(
             user_id="user-1",
             ai_enabled=True,
-            mcp_enabled=False,
-            custom_model_enabled=False,
         )
     )
 
@@ -92,31 +85,23 @@ def test_mcp_uses_global_enablement_and_approved_tools_without_user_preference(
     assert policy.allowed_mcp_tools == frozenset({"procedure.read"})
 
 
-def test_selected_model_falls_back_to_default_until_approved(
-    preferences_connection,
-) -> None:
+def test_user_preferences_cannot_select_a_custom_model(preferences_connection) -> None:
     connection, table = preferences_connection
     connection.execute(
         insert(table).values(
             user_id="user-1",
             ai_enabled=True,
-            mcp_enabled=False,
-            custom_model_enabled=False,
-            model_id="silo-approved-v1",
         )
     )
 
-    disabled = resolve_ai_capability_policy(connection, "user-1", _settings())
-    enabled = resolve_ai_capability_policy(
+    policy = resolve_ai_capability_policy(
         connection,
         "user-1",
         _settings(ai_custom_model_enabled=True, ai_custom_model="silo-approved-v1"),
     )
 
-    assert disabled.custom_model_enabled is False
-    assert disabled.model_name == "Qwen/default"
-    assert enabled.custom_model_enabled is True
-    assert enabled.model_name == "silo-approved-v1"
+    assert policy.custom_model_enabled is True
+    assert policy.model_name == "silo-approved-v1"
 
 
 def test_policy_can_only_reduce_approved_mcp_tools() -> None:

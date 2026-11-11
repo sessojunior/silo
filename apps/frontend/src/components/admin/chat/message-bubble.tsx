@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import type { ChatMessage } from "@/context/chat-context";
 import AssistantVisualizationBlock from "@/components/admin/chat/assistant-visualization";
 import AssistantArtifactsBlock from "@/components/admin/chat/assistant-artifacts";
 import { getSafeAssistantPdfFrameSource } from "@/lib/assistant-media-safety";
+import { config as appConfig } from "@/lib/config";
 
 type MessageBubbleProps = {
   message: ChatMessage;
@@ -171,6 +173,12 @@ export default function MessageBubble({
       : `Mensagem de IA`;
   };
 
+  const formatAttachmentSize = (size: number): string => {
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${Math.ceil(size / 1024)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   // Renderizar ícone de status de leitura
   const renderReadStatus = () => {
     // APENAS para mensagens próprias (como no WhatsApp)
@@ -322,6 +330,44 @@ export default function MessageBubble({
                   </span>
                   <span className="sr-only">Aguardando resultado</span>
                 </div>
+              </div>
+            ) : null}
+
+            {(message.attachments || []).length > 0 ? (
+              <div className="mt-3 space-y-2" data-testid="chat-attachments">
+                {(message.attachments || []).map((attachment) => {
+                  const safeUrl = attachment.url.startsWith("/api/upload/serve/chat/")
+                    ? appConfig.getPublicPath(attachment.url)
+                    : null;
+                  if (!safeUrl) return null;
+
+                  return (
+                    <a
+                      key={attachment.id ?? `${attachment.name}-${attachment.url}`}
+                      href={safeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 rounded-lg border border-current/15 bg-black/5 px-2.5 py-2 text-xs hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+                    >
+                      {attachment.contentType.startsWith("image/") ? (
+                        <Image
+                          src={safeUrl}
+                          alt={attachment.name}
+                          width={48}
+                          height={48}
+                          unoptimized
+                          className="size-12 rounded object-cover"
+                        />
+                      ) : (
+                        <span className="icon-[lucide--file-text] size-6 shrink-0" aria-hidden="true" />
+                      )}
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{attachment.name}</span>
+                        <span className="block opacity-70">{formatAttachmentSize(attachment.size)}</span>
+                      </span>
+                    </a>
+                  );
+                })}
               </div>
             ) : null}
 

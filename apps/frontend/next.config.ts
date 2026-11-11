@@ -69,6 +69,12 @@ const nextConfig: NextConfig = {
         pathname: `${normalizedBasePath}/uploads/**`,
       },
       {
+        pathname: "/api/upload/serve/**",
+      },
+      {
+        pathname: `${normalizedBasePath}/api/upload/serve/**`,
+      },
+      {
         pathname: "/images/**",
       },
       {

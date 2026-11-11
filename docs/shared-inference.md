@@ -53,6 +53,8 @@ O projeto consumidor deve ser iniciado depois do Compose de inferência:
 
 ```bash
 docker compose -f docker-compose.inference.yml up -d
+# GPU NVIDIA:
+# docker compose -f docker-compose.inference.yml -f docker-compose.inference.gpu.yml up -d
 docker compose -f docker-compose.inference.yml ps
 docker compose -f docker-compose.outro-projeto.yml up -d
 ```
@@ -78,7 +80,13 @@ mínima esperada.
 
 ## GPU e capacidade
 
-No cenário padrão com duas A2, o `qwen` usa a GPU 0 e os embeddings do SILO usam
+No perfil CPU local, o Compose limita explicitamente o Qwen a
+`QWEN_CPU_MAX_MODEL_LEN=2048` e `QWEN_CPU_MEMORY_UTILIZATION=0.20`. Esses limites
+evitam que o vLLM reserve a memória padrão de 0.92 e derrube a API, o worker ou
+o serviço de embeddings. Em uma máquina com mais memória, ambos podem ser
+substituídos por variáveis de ambiente.
+
+No cenário GPU com duas A2, o `qwen` usa a GPU 0 e os embeddings do SILO usam
 a GPU 1:
 
 ```env
@@ -107,5 +115,6 @@ curl http://127.0.0.1:8000/health
 ```
 
 O `qwen` só deve ser desligado depois de confirmar que nenhum projeto consumidor
-está em operação. O `docker-compose.inference.yml` é a fonte oficial da
-configuração compartilhada; os Compose do SILO apenas referenciam a rede externa.
+está em operação. O `docker-compose.inference.yml` é o perfil CPU compartilhado;
+`docker-compose.inference.gpu.yml` é o override NVIDIA. Os Compose do SILO apenas
+referenciam a rede externa.

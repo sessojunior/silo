@@ -33,9 +33,7 @@ _MIME_BY_SUFFIX: dict[str, frozenset[str]] = {
     ".pdf": frozenset({"application/pdf"}),
     ".txt": frozenset({"text/plain"}),
     ".md": frozenset({"text/markdown", "text/plain"}),
-    ".docx": frozenset(
-        {"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
-    ),
+    ".docx": frozenset({"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}),
     ".pptx": frozenset(
         {"application/vnd.openxmlformats-officedocument.presentationml.presentation"}
     ),

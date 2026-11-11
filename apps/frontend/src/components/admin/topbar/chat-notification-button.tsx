@@ -18,7 +18,11 @@ export default function ChatNotificationButton() {
     <div className="relative">
       {/* Trigger Button */}
       <button
+        type="button"
         onClick={handleButtonClick}
+        aria-label={`Chat${totalUnread > 0 ? ` (${totalUnread} não lidas)` : ""}`}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
         className="relative inline-flex size-[38px] items-center justify-center gap-x-2 rounded-full border border-transparent text-sm font-semibold text-zinc-800 transition-all duration-500 hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-white dark:hover:bg-zinc-700 dark:focus:bg-zinc-700"
       >
         <span

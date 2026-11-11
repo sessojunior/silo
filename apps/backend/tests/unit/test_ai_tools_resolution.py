@@ -1173,9 +1173,10 @@ def test_query_embedding_uses_runtime_provider() -> None:
             assert text == "consulta"
             return (0.75,) * 768
 
-    assert assistant_tools._generate_query_embedding_for_search("consulta", Provider()) == (
-        0.75,
-    ) * 768
+    assert (
+        assistant_tools._generate_query_embedding_for_search("consulta", Provider())
+        == (0.75,) * 768
+    )
 
 
 def test_search_knowledge_uses_pgvector_queries_when_postgresql_is_available(
@@ -1216,8 +1217,7 @@ def test_search_knowledge_uses_pgvector_queries_when_postgresql_is_available(
     assert len(connection.statements) == 12
     assert all("<=>" in statement for statement in connection.statements[:6])
     assert all(
-        "ORDER BY" in statement and "LIMIT" in statement
-        for statement in connection.statements[:6]
+        "ORDER BY" in statement and "LIMIT" in statement for statement in connection.statements[:6]
     )
     assert all("LIMIT" in statement.upper() for statement in connection.statements[6:])
 

@@ -12,6 +12,7 @@ API_DOCKERFILE = REPOSITORY_ROOT / "apps/api/Dockerfile"
 WORKER_DOCKERFILE = REPOSITORY_ROOT / "apps/worker/Dockerfile"
 COMPOSE = REPOSITORY_ROOT / "docker-compose.yml"
 INFERENCE_COMPOSE = REPOSITORY_ROOT / "docker-compose.inference.yml"
+INFERENCE_GPU_COMPOSE = REPOSITORY_ROOT / "docker-compose.inference.gpu.yml"
 
 
 def _service_block(compose: str, service_name: str) -> str:
@@ -49,10 +50,16 @@ def test_final_compose_uses_python_targets_and_no_longer_exposes_node_skip_flags
 def test_compose_uses_the_768_dimension_embedding_service_for_api_and_embeddings() -> None:
     compose = COMPOSE.read_text(encoding="utf-8")
     api = _service_block(compose, "api")
-    embedding = _service_block(compose, "embeddings")
 
     assert "VLLM_EMBEDDING_MODEL: ${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}" in api
     assert "VLLM_EMBEDDING_URL: http://embeddings:8000/v1" in api
+
+
+def test_cpu_embedding_service_has_a_bounded_kv_cache_budget() -> None:
+    compose = (REPOSITORY_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    embedding = _service_block(compose, "embeddings")
+
+    assert "VLLM_CPU_KVCACHE_SPACE: ${VLLM_CPU_KVCACHE_SPACE:-0.05}" in embedding
     assert '"${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}"' in embedding
 
 
@@ -90,15 +97,25 @@ def test_development_compose_declares_bounded_cpu_inference_resources() -> None:
     assert "shared-inference" in compose
 
 
+def test_indexer_stops_on_backfill_failure_instead_of_looping_silently() -> None:
+    compose = COMPOSE.read_text(encoding="utf-8")
+    indexer = _service_block(compose, "indexer")
+
+    assert "if python -m silo.ai.backfill_embeddings; then" in indexer
+    assert "else exit 1; fi" in indexer
+
+
 def test_deploy_compose_declares_shared_or_separate_gpu_device_selection() -> None:
     inference_compose = INFERENCE_COMPOSE.read_text(encoding="utf-8")
+    inference_gpu_compose = INFERENCE_GPU_COMPOSE.read_text(encoding="utf-8")
     deploy_compose = (REPOSITORY_ROOT / "docker-compose.deploy.yml").read_text(encoding="utf-8")
     embedding = _service_block(deploy_compose, "embeddings")
     qwen = _service_block(inference_compose, "qwen")
+    qwen_gpu = _service_block(inference_gpu_compose, "qwen")
 
-    assert "image: ${QWEN_IMAGE:-vllm/vllm-openai:v0.29.0}" in qwen
+    assert "image: ${QWEN_IMAGE:-vllm/vllm-openai:v0.29.0}" in qwen_gpu
     assert "image: ${SILO_VLLM_GPU_IMAGE:-vllm/vllm-openai:v0.29.0}" in embedding
-    assert 'device_ids: ["${QWEN_GPU_ID:-0}"]' in qwen
+    assert 'device_ids: ["${QWEN_GPU_ID:-0}"]' in qwen_gpu
     assert 'device_ids: ["${SILO_VLLM_EMBED_GPU_ID:-1}"]' in embedding
     assert "container_name: qwen" in qwen
     assert "container_name: silo-ai" not in deploy_compose
@@ -109,8 +126,24 @@ def test_deploy_compose_declares_shared_or_separate_gpu_device_selection() -> No
     )
 
 
+def test_inference_compose_has_explicit_cpu_default_and_gpu_override() -> None:
+    cpu_compose = INFERENCE_COMPOSE.read_text(encoding="utf-8")
+    gpu_compose = INFERENCE_GPU_COMPOSE.read_text(encoding="utf-8")
+
+    assert "image: ${SILO_VLLM_CPU_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}" in cpu_compose
+    assert "deploy:" not in _service_block(cpu_compose, "qwen")
+    assert "--gpu-memory-utilization" in cpu_compose
+    assert '"${QWEN_CPU_MEMORY_UTILIZATION:-0.20}"' in cpu_compose
+    assert '"${QWEN_CPU_MAX_MODEL_LEN:-2048}"' in cpu_compose
+    assert '      - "--enforce-eager"' in cpu_compose
+    assert '      - "--no-enable-prefix-caching"' in cpu_compose
+    assert "image: ${QWEN_IMAGE:-vllm/vllm-openai:v0.29.0}" in gpu_compose
+    assert "--gpu-memory-utilization" in gpu_compose
+    assert 'device_ids: ["${QWEN_GPU_ID:-0}"]' in gpu_compose
+
+
 def test_deploy_compose_uses_separate_gpu_memory_budgets() -> None:
-    inference_compose = INFERENCE_COMPOSE.read_text(encoding="utf-8")
+    inference_compose = INFERENCE_GPU_COMPOSE.read_text(encoding="utf-8")
     deploy_compose = (REPOSITORY_ROOT / "docker-compose.deploy.yml").read_text(encoding="utf-8")
     embedding = _service_block(deploy_compose, "embeddings")
 

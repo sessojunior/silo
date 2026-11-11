@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, asc, desc, func, insert, or_, select, update
+from sqlalchemy import and_, asc, delete, desc, func, insert, or_, select, update
 from sqlalchemy.engine import Connection
 
 from silo.api.dependencies import get_chat_access_state
@@ -22,6 +22,7 @@ CHAT_MESSAGE_DELETED_LABEL = "[Mensagem excluída]"
 CHAT_MESSAGE_MAX_LENGTH = 2000
 CHAT_MESSAGE_DELETE_WINDOW_HOURS = 24
 CHAT_UNREAD_LIMIT = 15
+CHAT_ATTACHMENT_MAX_COUNT = 5
 
 
 @dataclass(slots=True)
@@ -32,6 +33,45 @@ class ChatServiceError(Exception):
 
     def __str__(self) -> str:
         return self.message
+
+
+def _message_attachments(
+    connection: Connection,
+    message_ids: list[object],
+) -> dict[str, list[dict[str, Any]]]:
+    attachment_table = legacy_tables.get("chat_message_attachment")
+    if attachment_table is None or not message_ids:
+        return {}
+
+    rows = (
+        connection.execute(
+            select(
+                attachment_table.c.id,
+                attachment_table.c.message_id,
+                attachment_table.c.original_name,
+                attachment_table.c.stored_filename,
+                attachment_table.c.content_type,
+                attachment_table.c.size,
+            ).where(attachment_table.c.message_id.in_(message_ids))
+        )
+        .mappings()
+        .all()
+    )
+    result: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        item = dict(row)
+        result.setdefault(str(item.pop("message_id")), []).append(item)
+    return result
+
+
+def _include_message_attachments(
+    connection: Connection,
+    messages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    attachments = _message_attachments(connection, [message["id"] for message in messages])
+    for message in messages:
+        message["attachments"] = attachments.get(str(message["id"]), [])
+    return messages
 
 
 def list_messages(
@@ -100,8 +140,9 @@ def list_messages(
         .all()
     )
 
+    messages = [dict(row) for row in rows]
     return {
-        "messages": [dict(row) for row in rows],
+        "messages": _include_message_attachments(connection, messages),
         "count": len(rows),
         "has_more": len(rows) == max(limit, 1),
     }
@@ -113,9 +154,11 @@ def create_message(
     content: str,
     receiver_group_id: str | None = None,
     receiver_user_id: str | None = None,
+    attachments: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     trimmed_content = content.strip()
-    if not trimmed_content:
+    normalized_attachments = attachments or []
+    if not trimmed_content and not normalized_attachments:
         raise ChatServiceError(
             "Conteúdo da mensagem é obrigatório",
             400,
@@ -135,6 +178,17 @@ def create_message(
             400,
             field="receiverGroupId",
         )
+
+    if len(normalized_attachments) > CHAT_ATTACHMENT_MAX_COUNT:
+        raise ChatServiceError(
+            f"VocÃª pode anexar no mÃ¡ximo {CHAT_ATTACHMENT_MAX_COUNT} arquivos.",
+            400,
+            field="attachments",
+        )
+
+    attachment_table = legacy_tables.get("chat_message_attachment")
+    if normalized_attachments and attachment_table is None:
+        raise ChatServiceError("Anexos do chat nÃ£o estÃ£o disponÃ­veis.", 500)
 
     chat_message_table = legacy_tables["chat_message"]
     auth_user_table = legacy_tables["user"]
@@ -175,6 +229,19 @@ def create_message(
             updated_at=now,
         )
     )
+    if attachment_table is not None:
+        for attachment in normalized_attachments:
+            connection.execute(
+                insert(attachment_table).values(
+                    id=new_id(),
+                    message_id=message_id,
+                    original_name=str(attachment["original_name"]),
+                    stored_filename=str(attachment["stored_filename"]),
+                    content_type=str(attachment["content_type"]),
+                    size=int(attachment["size"]),
+                    created_at=now,
+                )
+            )
     connection.commit()
 
     row = (
@@ -204,7 +271,8 @@ def create_message(
     if row is None:
         raise ChatServiceError("Mensagem não encontrada.", 404)
 
-    return dict(row)
+    message = dict(row)
+    return _include_message_attachments(connection, [message])[0]
 
 
 def update_presence(
@@ -699,6 +767,7 @@ def get_unread_messages(
             .all()
         )
         all_messages = [dict(row) for row in [*group_messages, *user_messages]]
+        _include_message_attachments(connection, all_messages)
         return {"messages": all_messages, "count": len(all_messages)}
 
     unread_messages: list[dict[str, Any]] = []
@@ -748,6 +817,7 @@ def get_unread_messages(
         unread_messages = [dict(row) for row in rows if str(row["sender_user_id"]) != user_id]
 
     unread_messages.sort(key=lambda item: item["created_at"])
+    _include_message_attachments(connection, unread_messages)
     return {"messages": unread_messages, "count": len(unread_messages)}
 
 
@@ -957,6 +1027,9 @@ def delete_message(connection: Connection, current_user_id: str, message_id: str
             400,
         )
 
+    attachment_table = legacy_tables.get("chat_message_attachment")
+    attachments = _message_attachments(connection, [record["id"]]).get(str(message_id), [])
+
     connection.execute(
         update(chat_message_table)
         .where(chat_message_table.c.id == message_id)
@@ -966,6 +1039,10 @@ def delete_message(connection: Connection, current_user_id: str, message_id: str
             updated_at=now,
         )
     )
+    if attachment_table is not None:
+        connection.execute(
+            delete(attachment_table).where(attachment_table.c.message_id == message_id)
+        )
     connection.commit()
 
     conversation = _resolve_conversation_target(
@@ -983,6 +1060,7 @@ def delete_message(connection: Connection, current_user_id: str, message_id: str
         "target_id": conversation["target_id"],
         "target_type": conversation["target_type"],
         "deleted_at": now,
+        "attachments": attachments,
     }
 
 

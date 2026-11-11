@@ -34,11 +34,6 @@ interface UserPreferences {
   chatEnabled?: boolean;
   showWelcome?: boolean;
   aiEnabled?: boolean;
-  modelId?: string | null;
-  availableModels?: Array<{ id: string; label: string }>;
-  // Mantidos como campos legados para compatibilidade com respostas antigas.
-  mcpEnabled?: boolean;
-  customModelEnabled?: boolean;
 }
 
 type PermissionAction = string;

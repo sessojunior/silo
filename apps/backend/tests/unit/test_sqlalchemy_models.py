@@ -50,8 +50,8 @@ SUPPORTED_DRIZZLE_BUILDERS: Final = (
     "vector768",
 )
 EXPECTED_TABLE_COUNT = 40
-EXPECTED_POST_ARTIFACT_TABLE_COUNT = 44
-EXPECTED_POST_ARTIFACT_COLUMN_COUNT = 407
+EXPECTED_POST_ARTIFACT_TABLE_COUNT = 45
+EXPECTED_POST_ARTIFACT_COLUMN_COUNT = 412
 EXPECTED_VECTOR_COLUMNS = {
     ("product_problem", "embedding"),
     ("product_solution", "embedding"),
@@ -147,7 +147,7 @@ def test_sqlalchemy_models_map_timestamp_and_special_types_for_phase_3_8_and_3_9
     assert timestamp_columns
     assert all(column.type.timezone is False for column in timestamp_columns)
     assert len(jsonb_columns) == 4
-    assert len(uuid_columns) == 23
+    assert len(uuid_columns) == 25
     assert len(date_columns) == 8
     assert len(vector_columns) == 7
     assert PGVECTOR_DIMENSIONS == 768

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import bcrypt
 import pytest
 
 from silo.auth.password import hash_legacy_bcrypt, legacy_bcrypt_input_bytes, verify_legacy_bcrypt
@@ -34,3 +35,9 @@ def test_legacy_bcrypt_vectors_match_bcryptjs() -> None:
 def test_legacy_bcrypt_rejects_missing_and_invalid_hash_values() -> None:
     assert verify_legacy_bcrypt("secret", None) is False
     assert verify_legacy_bcrypt("secret", "not-a-valid-bcrypt-hash") is False
+
+
+def test_legacy_bcrypt_hash_accepts_an_explicit_salt() -> None:
+    salt = bcrypt.gensalt(rounds=4).decode("ascii")
+    password_hash = hash_legacy_bcrypt("secret", salt=salt)
+    assert verify_legacy_bcrypt("secret", password_hash) is True

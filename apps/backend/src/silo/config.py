@@ -272,9 +272,7 @@ def _settings_data_from_environment(environ: Mapping[str, str]) -> dict[str, obj
         ),
         "ai_custom_model": _first_non_empty(environ, ("AI_CUSTOM_MODEL",)),
         "ai_mcp_allowed_tools": _split_csv_env(environ, ("AI_MCP_ALLOWED_TOOLS",)),
-        "ncm_triage_enabled": _parse_bool(
-            environ, ("NCM_TRIAGE_ENABLED",), default=False
-        ),
+        "ncm_triage_enabled": _parse_bool(environ, ("NCM_TRIAGE_ENABLED",), default=False),
         "ncm_triage_url": _parse_http_url(
             "NCM_TRIAGE_URL",
             _first_non_empty(environ, ("NCM_TRIAGE_URL",)),

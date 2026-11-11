@@ -1,5 +1,6 @@
 {
   "name": "silo",
+  "version": "0.0.0",
   "private": true,
   "packageManager": "npm@10.9.2",
   "workspaces": [
@@ -19,15 +20,15 @@
     "typecheck": "npm run typecheck:web",
     "format": "prettier --write .",
     "py:sync": "uv --directory apps/backend sync --locked --all-groups",
-    "py:lint": "uv --directory apps/backend run --locked ruff check .",
-    "py:format:check": "uv --directory apps/backend run --locked ruff format --check .",
-    "py:typecheck": "uv --directory apps/backend run --locked mypy src",
-    "py:test": "uv --directory apps/backend run --locked pytest -q",
-    "py:test:cov": "uv --directory apps/backend run --locked pytest -q --cov=silo --cov-report=term-missing --cov-report=json:coverage.json",
+    "py:lint": "uv --directory apps/backend run --locked python -m ruff check .",
+    "py:format:check": "uv --directory apps/backend run --locked python -m ruff format --check .",
+    "py:typecheck": "uv --directory apps/backend run --locked python -m mypy src",
+    "py:test": "uv --directory apps/backend run --locked python -m pytest -q",
+    "py:test:cov": "uv --directory apps/backend run --locked python -m pytest -q --cov=silo --cov-report=term-missing --cov-report=json:coverage.json",
     "py:coverage:check": "uv --directory apps/backend run --locked python scripts/check_coverage_thresholds.py coverage.json",
-    "py:backfill-embeddings": "uv --directory apps/backend run --locked silo-backfill-embeddings",
-    "py:openapi": "uv --directory apps/backend run --locked silo-openapi-export",
-    "py:openapi:check": "uv --directory apps/backend run --locked silo-openapi-export --check",
+    "py:backfill-embeddings": "uv --directory apps/backend run --locked python -m silo.ai.backfill_embeddings",
+    "py:openapi": "uv --directory apps/backend run --locked python -m silo.api.openapi_export",
+    "py:openapi:check": "uv --directory apps/backend run --locked python -m silo.api.openapi_export --check",
     "py:capture-schema": "node apps/backend/scripts/run-python-module.mjs silo.db.schema_capture",
     "py:migrate": "node apps/backend/scripts/run-python-module.mjs silo.db.migrate",
     "py:seed": "node apps/backend/scripts/run-python-module.mjs silo.db.seed",
@@ -41,14 +42,16 @@
     "load:soak": "node scripts/load/run-soak-benchmark.mjs",
     "docker:build": "docker compose build",
     "docker:inference:up": "docker compose -f docker-compose.inference.yml up -d",
+    "docker:inference:cpu:up": "docker compose -f docker-compose.inference.yml up -d",
+    "docker:inference:gpu:up": "docker compose -f docker-compose.inference.yml -f docker-compose.inference.gpu.yml up -d",
     "docker:inference:down": "docker compose -f docker-compose.inference.yml down",
     "docker:inference:logs": "docker compose -f docker-compose.inference.yml logs -f qwen",
-    "docker:up": "npm run docker:inference:up && docker compose up -d --build && docker compose ps && docker compose logs -f embeddings api indexer worker web",
+    "docker:up": "npm run docker:inference:cpu:up && docker compose up -d --build && docker compose ps && docker compose logs -f embeddings api indexer worker web",
     "docker:down": "docker compose down",
     "docker:ps": "docker compose ps",
     "docker:logs": "docker compose logs -f api embeddings indexer worker web",
     "docker:deploy:config": "docker compose -f docker-compose.deploy.yml config",
-    "docker:deploy:up": "npm run docker:inference:up && docker compose -f docker-compose.deploy.yml up -d --remove-orphans --wait --wait-timeout 300",
+    "docker:deploy:up": "npm run docker:inference:gpu:up && docker compose -f docker-compose.deploy.yml up -d --remove-orphans --wait --wait-timeout 300",
     "docker:deploy:down": "docker compose -f docker-compose.deploy.yml down",
     "docker:deploy:logs": "docker compose -f docker-compose.deploy.yml logs -f",
     "deploy:runbook": "node scripts/deploy/cutover-runbook.mjs",
@@ -72,11 +75,5 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "typescript": "^5.9.3"
-  },
-  "overrides": {
-    "gantt-task-react": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    }
   }
 }

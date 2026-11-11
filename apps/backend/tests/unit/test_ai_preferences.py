@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from starlette.requests import Request
@@ -16,12 +15,12 @@ def test_user_preferences_declares_ai_capability_columns_and_defaults() -> None:
     table = legacy_tables["user_preferences"]
 
     assert table.c.ai_enabled.type.python_type is bool
-    assert table.c.model_id.type.python_type is str
-    assert table.c.mcp_enabled.type.python_type is bool
-    assert table.c.custom_model_enabled.type.python_type is bool
+    assert "mcp_enabled" not in table.c
+    assert "custom_model_enabled" not in table.c
+    assert "model_id" not in table.c
     assert COLUMN_SERVER_DEFAULTS[("user_preferences", "ai_enabled")] == "true"
-    assert COLUMN_SERVER_DEFAULTS[("user_preferences", "mcp_enabled")] == "false"
-    assert COLUMN_SERVER_DEFAULTS[("user_preferences", "custom_model_enabled")] == "false"
+    assert ("user_preferences", "mcp_enabled") not in COLUMN_SERVER_DEFAULTS
+    assert ("user_preferences", "custom_model_enabled") not in COLUMN_SERVER_DEFAULTS
 
 
 def test_ai_preferences_migration_is_chained_from_procedure_permissions() -> None:
@@ -31,61 +30,59 @@ def test_ai_preferences_migration_is_chained_from_procedure_permissions() -> Non
     assert 'revision: str = "phase7_ai_preferences"' in source
     assert 'down_revision: str | None = "phase6_procedure_permissions"' in source
     assert '"ai_enabled"' in source
+
+
+def test_model_selection_cleanup_migration_is_chained_from_model_selection() -> None:
+    migration = (
+        Path(__file__).parents[2]
+        / "migrations"
+        / "versions"
+        / "phase9_remove_user_model_selection.py"
+    )
+    source = migration.read_text(encoding="utf-8")
+
+    assert 'revision: str = "phase9_remove_user_model_selection"' in source
+    assert 'down_revision: str | None = "phase8_ai_model_selection"' in source
+    assert '"model_id"' in source
     assert '"mcp_enabled"' in source
     assert '"custom_model_enabled"' in source
 
 
-def test_model_selection_migration_is_chained_from_ai_preferences() -> None:
-    migration = Path(__file__).parents[2] / "migrations" / "versions" / "phase8_ai_model_selection.py"
+def test_model_selection_cleanup_migration_expands_alembic_revision_column() -> None:
+    migration = (
+        Path(__file__).parents[2]
+        / "migrations"
+        / "versions"
+        / "phase9_remove_user_model_selection.py"
+    )
     source = migration.read_text(encoding="utf-8")
 
-    assert 'revision: str = "phase8_ai_model_selection"' in source
-    assert 'down_revision: str | None = "phase7_ai_preferences"' in source
-    assert '"model_id"' in source
+    assert '"alembic_version"' in source
+    assert '"version_num"' in source
+    assert "op.alter_column(" in source
+    assert "sa.String(length=64)" in source
 
 
-def test_preference_payload_normalizes_known_boolean_fields_and_preserves_partial_updates() -> None:
+def test_preference_payload_accepts_only_supported_boolean_fields() -> None:
     result = users._parse_preference_updates(
         {
             "chatEnabled": False,
             "aiEnabled": True,
-            "mcpEnabled": False,
-            "customModelEnabled": True,
         }
     )
 
     assert result == {
         "chat_enabled": False,
         "ai_enabled": True,
-        "mcp_enabled": False,
-        "custom_model_enabled": True,
     }
 
     assert users._parse_preference_updates({"aiEnabled": False}) == {"ai_enabled": False}
 
 
-def test_preference_payload_accepts_only_an_approved_model() -> None:
-    assert users._parse_preference_updates(
-        {"modelId": "qwen"}, approved_model_ids={"qwen", "silo-approved-v1"}
-    ) == {"model_id": "qwen"}
-
-    with pytest.raises(ValueError, match="Modelo de IA desconhecido"):
-        users._parse_preference_updates(
-            {"modelId": "arbitrary-model"}, approved_model_ids={"qwen"}
-        )
-
-
-def test_available_model_options_use_only_backend_configuration() -> None:
-    settings = SimpleNamespace(
-        vllm=SimpleNamespace(model="qwen"),
-        ai_custom_model_enabled=True,
-        ai_custom_model="silo-approved-v1",
-    )
-
-    assert users._available_model_options(settings) == [
-        {"id": "qwen", "label": "qwen"},
-        {"id": "silo-approved-v1", "label": "silo-approved-v1"},
-    ]
+@pytest.mark.parametrize("field", ["mcpEnabled", "customModelEnabled", "modelId"])
+def test_preference_payload_rejects_removed_user_capabilities(field: str) -> None:
+    with pytest.raises(ValueError, match="Prefer"):
+        users._parse_preference_updates({field: False})
 
 
 @pytest.mark.parametrize(

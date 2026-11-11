@@ -246,13 +246,7 @@ async def update_preferences(
     db: Connection = Depends(get_db),
 ) -> Any:
     try:
-        settings = load_settings()
-        updates = _parse_preference_updates(
-            payload,
-            approved_model_ids={
-                option["id"] for option in _available_model_options(settings)
-            },
-        )
+        updates = _parse_preference_updates(payload)
     except ValueError as error:
         return service_error_response(
             service_failure(str(error), 400), "Erro ao atualizar preferências"
@@ -875,23 +869,6 @@ def _delete_current_user_profile_image(db: Connection, user_id: str) -> dict[str
     return service_success({"imageUrl": _PROFILE_IMAGE_FALLBACK})
 
 
-def _available_model_options(settings: object | None = None) -> list[dict[str, str]]:
-    resolved_settings = settings if settings is not None else load_settings()
-    default_model = str(
-        getattr(getattr(resolved_settings, "vllm", None), "model", "")
-    ).strip()
-    custom_model = str(getattr(resolved_settings, "ai_custom_model", "")).strip()
-    custom_model_enabled = bool(
-        getattr(resolved_settings, "ai_custom_model_enabled", False)
-    )
-
-    models: list[dict[str, str]] = []
-    for model_id in (default_model, custom_model if custom_model_enabled else ""):
-        if model_id and model_id not in {option["id"] for option in models}:
-            models.append({"id": model_id, "label": model_id})
-    return models
-
-
 def _get_current_user_preferences(
     db: Connection, user_id: str, *, settings: object | None = None
 ) -> dict[str, object]:
@@ -901,21 +878,10 @@ def _get_current_user_preferences(
         .mappings()
         .first()
     )
-    resolved_settings = settings if settings is not None else load_settings()
-    available_models = _available_model_options(resolved_settings)
     serialized = serialize_legacy_row(row) if row is not None else {}
-    selected_model = serialized.get("modelId")
-    approved_model_ids = {option["id"] for option in available_models}
-    if selected_model not in approved_model_ids:
-        selected_model = available_models[0]["id"] if available_models else None
-
-    return {
-        "userPreferences": {
-            **serialized,
-            "modelId": selected_model,
-            "availableModels": available_models,
-        }
-    }
+    serialized.pop("modelId", None)
+    serialized.pop("availableModels", None)
+    return {"userPreferences": serialized}
 
 
 def _update_current_user_preferences(
@@ -933,21 +899,14 @@ def _update_current_user_preferences(
             "user_id": user_id,
             "chat_enabled": True,
             "ai_enabled": True,
-            "mcp_enabled": False,
-            "custom_model_enabled": False,
-            "model_id": None,
         }
         values = {
-            key: value
-            for key, value in {**values, **dict(updates)}.items()
-            if key in prefs_table.c
+            key: value for key, value in {**values, **dict(updates)}.items() if key in prefs_table.c
         }
         db.execute(insert(prefs_table).values(values))
     else:
         db.execute(
-            update(prefs_table)
-            .where(prefs_table.c.user_id == user_id)
-            .values(**dict(updates))
+            update(prefs_table).where(prefs_table.c.user_id == user_id).values(**dict(updates))
         )
     db.commit()
     return service_success(None)
@@ -956,14 +915,11 @@ def _update_current_user_preferences(
 _PREFERENCE_FIELDS: dict[str, str] = {
     "chatEnabled": "chat_enabled",
     "aiEnabled": "ai_enabled",
-    "mcpEnabled": "mcp_enabled",
-    "customModelEnabled": "custom_model_enabled",
-    "modelId": "model_id",
 }
 
 
 def _parse_preference_updates(
-    payload: Mapping[str, object], *, approved_model_ids: set[str] | frozenset[str] | None = None
+    payload: Mapping[str, object],
 ) -> dict[str, object]:
     if not payload:
         raise ValueError("Informe pelo menos uma preferência.")
@@ -977,14 +933,6 @@ def _parse_preference_updates(
         if public_name not in payload:
             continue
         value = payload[public_name]
-        if public_name == "modelId":
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError("modelId deve ser um modelo aprovado.")
-            model_id = value.strip()
-            if approved_model_ids is None or model_id not in approved_model_ids:
-                raise ValueError("Modelo de IA desconhecido.")
-            updates[physical_name] = model_id
-            continue
         if not isinstance(value, bool):
             raise ValueError(f"{public_name} deve ser booleano.")
         updates[physical_name] = value

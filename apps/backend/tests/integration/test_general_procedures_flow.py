@@ -31,9 +31,9 @@ def test_procedure_attachment_is_searchable_and_deleted_with_parent(tmp_path, mo
             pytest.skip("O banco de integração não possui um usuário para a fixture.")
 
         connection.execute(
-            legacy_tables["general_procedure"].delete().where(
-                legacy_tables["general_procedure"].c.id == procedure_id
-            )
+            legacy_tables["general_procedure"]
+            .delete()
+            .where(legacy_tables["general_procedure"].c.id == procedure_id)
         )
         connection.commit()
         created = procedure_portal.create_general_procedure(
@@ -74,9 +74,12 @@ def test_procedure_attachment_is_searchable_and_deleted_with_parent(tmp_path, mo
         deleted = procedure_portal.delete_general_procedure(connection, id=procedure_id)
         assert deleted["ok"] is True
         assert not (tmp_path / "procedures" / stored_filename).exists()
-        assert connection.execute(
-            select(legacy_tables["general_procedure_attachment"].c.id).where(
-                legacy_tables["general_procedure_attachment"].c.procedure_id == procedure_id
-            )
-        ).first() is None
+        assert (
+            connection.execute(
+                select(legacy_tables["general_procedure_attachment"].c.id).where(
+                    legacy_tables["general_procedure_attachment"].c.procedure_id == procedure_id
+                )
+            ).first()
+            is None
+        )
     engine.dispose()

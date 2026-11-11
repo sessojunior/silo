@@ -1513,19 +1513,26 @@ def test_product_portal_solutions_and_summary_paths(product_portal_connection) -
             id=_gamma_child_id,
         )
     )
-    remaining_gamma_after_reply_delete = connection.execute(
-        select(
-            tables["product_solution"].c.id,
-            tables["product_solution"].c.reply_id,
-        ).where(tables["product_solution"].c.product_problem_id == problem_gamma_id)
-    ).mappings().all()
+    remaining_gamma_after_reply_delete = (
+        connection.execute(
+            select(
+                tables["product_solution"].c.id,
+                tables["product_solution"].c.reply_id,
+            ).where(tables["product_solution"].c.product_problem_id == problem_gamma_id)
+        )
+        .mappings()
+        .all()
+    )
     remaining_gamma_ids = {row["id"] for row in remaining_gamma_after_reply_delete}
     assert remaining_gamma_ids == {_gamma_root_id, gamma_grandchild_id}
-    assert next(
-        row["reply_id"]
-        for row in remaining_gamma_after_reply_delete
-        if row["id"] == gamma_grandchild_id
-    ) == _gamma_root_id
+    assert (
+        next(
+            row["reply_id"]
+            for row in remaining_gamma_after_reply_delete
+            if row["id"] == gamma_grandchild_id
+        )
+        == _gamma_root_id
+    )
 
     missing_problem_delete = _call(connection, product_portal.delete_product_problem, "missing")
     assert missing_problem_delete["ok"] is False

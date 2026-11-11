@@ -13,8 +13,8 @@ from pydantic import ValidationError
 from sqlalchemy.engine import Connection
 from starlette.types import Receive
 
-from silo.ai.assistant_contracts import AiAssistantMessageRequestDto
 from silo.ai.assistant_capability_policy import AssistantDisabledError
+from silo.ai.assistant_contracts import AiAssistantMessageRequestDto
 from silo.ai.assistant_service import (
     AssistantMessageConflictError,
     AssistantStreamEvent,
@@ -213,6 +213,7 @@ async def post_message_stream(
             request_payload,
             request_id=_request_request_id(request),
         )
+
         async def next_event() -> AssistantStreamEvent:
             return await service_stream.__anext__()
 

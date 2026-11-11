@@ -54,3 +54,29 @@ def test_coverage_thresholds_rejects_low_coverage_and_missing_files(tmp_path: Pa
     )
 
     assert main([str(coverage_path)]) == 1
+
+
+def test_coverage_thresholds_uses_line_coverage_for_overall_total(tmp_path: Path) -> None:
+    coverage_path = tmp_path / "coverage.json"
+    _write_coverage_json(
+        coverage_path,
+        {
+            "totals": {"percent_covered": 50.0, "covered_lines": 95, "num_statements": 100},
+            "files": {
+                "apps/backend/src/silo/auth/oauth.py": {
+                    "summary": {"covered_lines": 95, "num_statements": 100}
+                },
+                "apps/backend/src/silo/api/dependencies.py": {
+                    "summary": {"covered_lines": 95, "num_statements": 100}
+                },
+                "apps/backend/src/silo/worker/processor.py": {
+                    "summary": {"covered_lines": 95, "num_statements": 100}
+                },
+                "apps/backend/src/silo/storage/uploads.py": {
+                    "summary": {"covered_lines": 95, "num_statements": 100}
+                },
+            },
+        },
+    )
+
+    assert main([str(coverage_path)]) == 0

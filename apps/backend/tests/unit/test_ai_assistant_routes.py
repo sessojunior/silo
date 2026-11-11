@@ -10,6 +10,7 @@ from starlette.requests import Request
 
 import silo.api.dependencies as dependencies_module
 import silo.api.routers.ai_assistant as ai_assistant_router
+from silo.ai.assistant_capability_policy import AssistantDisabledError
 from silo.ai.assistant_contracts import (
     AiAssistantArtifactDto,
     AiAssistantCitationDto,
@@ -24,7 +25,6 @@ from silo.ai.assistant_contracts import (
     AiAssistantThreadsResponseDto,
     AiAssistantThreadSummaryDto,
 )
-from silo.ai.assistant_capability_policy import AssistantDisabledError
 from silo.ai.assistant_service import AssistantStreamEvent
 from silo.api.dependencies import (
     CurrentUser,

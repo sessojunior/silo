@@ -20,6 +20,10 @@ from langgraph.runtime import Runtime
 from sqlalchemy import case, delete, insert, select, update
 from sqlalchemy.engine import Connection
 
+from silo.ai.assistant_capability_policy import (
+    AssistantDisabledError,
+    resolve_ai_capability_policy,
+)
 from silo.ai.assistant_contracts import (
     AI_ASSISTANT_SCOPES,
     AiAssistantArtifactDto,
@@ -41,10 +45,6 @@ from silo.ai.assistant_contracts import (
     AiAssistantVisualizationDto,
     AiAssistantVisualizationImageDto,
     AiAssistantVisualizationMermaidDto,
-)
-from silo.ai.assistant_capability_policy import (
-    AssistantDisabledError,
-    resolve_ai_capability_policy,
 )
 from silo.ai.assistant_registry import AgentRuntimeContext, AgentState
 from silo.ai.assistant_runtime import (
@@ -69,7 +69,6 @@ from silo.ai.assistant_tool_catalog import (
     execute_hybrid_tool_async,
     get_hybrid_tool_schemas,
 )
-from silo.ai.triage import NcmTriageRuntime, TriageDecision, TriageRoute, disabled_triage
 from silo.ai.assistant_tools import (
     AI_METRIC_VERSION,
     AI_RAG_THRESHOLD,
@@ -107,6 +106,13 @@ from silo.ai.observability_contract import (
     record_runtime_metric,
 )
 from silo.ai.ports import ChatMessage, ChatModelRuntime, ChatResponse, EmbeddingPort
+from silo.ai.triage import (
+    NcmTriageRuntime,
+    TriageDecision,
+    TriagePort,
+    TriageRoute,
+    disabled_triage,
+)
 from silo.api.dependencies import CurrentUser
 from silo.clock import SYSTEM_CLOCK, Clock
 from silo.config import Settings, load_settings
@@ -506,18 +512,15 @@ def delete_assistant_message(
     if message_row is None:
         raise AssistantThreadNotFoundError("Mensagem não encontrada.")
 
-    ordered_message_rows = (
-        connection.execute(
-            select(message_table.c.id)
-            .where(message_table.c.thread_id == thread_id)
-            .order_by(
-                message_table.c.created_at.asc(),
-                case((message_table.c.sender_type == "user", 0), else_=1).asc(),
-                message_table.c.id.asc(),
-            )
+    ordered_message_rows = connection.execute(
+        select(message_table.c.id)
+        .where(message_table.c.thread_id == thread_id)
+        .order_by(
+            message_table.c.created_at.asc(),
+            case((message_table.c.sender_type == "user", 0), else_=1).asc(),
+            message_table.c.id.asc(),
         )
-        .all()
-    )
+    ).all()
     ordered_message_ids = [str(row[0]) for row in ordered_message_rows]
     try:
         first_deleted_index = ordered_message_ids.index(str(message_row["id"]))
@@ -782,9 +785,7 @@ def _record_graph_runtime_metrics(
             "ai_graph_fallback_total", {**labels, "reason": "generation_fallback"}
         )
     if generation_status == "error":
-        record_runtime_metric(
-            "ai_graph_error_total", {**labels, "status": "error"}
-        )
+        record_runtime_metric("ai_graph_error_total", {**labels, "status": "error"})
     if bool(result.get("cache_hit")) or bool(safe_observability.get("cacheHit")):
         record_runtime_metric("ai_graph_cache_hit_total", labels)
 
@@ -1289,7 +1290,7 @@ def _question_is_out_of_scope(
 async def _get_triage_decision(
     question: str, runtime_context: AgentRuntimeContext
 ) -> TriageDecision:
-    triage = getattr(runtime_context, "triage", None)
+    triage: TriagePort | None = cast(TriagePort | None, getattr(runtime_context, "triage", None))
     if triage is None:
         return disabled_triage()
     try:
@@ -1461,8 +1462,7 @@ def _detect_date_range(question: str) -> dict[str, str]:
         end = current_month_start - timedelta(days=1)
         start = end.replace(day=1)
     elif any(
-        token in normalized
-        for token in ("este trimestre", "neste trimestre", "trimestre atual")
+        token in normalized for token in ("este trimestre", "neste trimestre", "trimestre atual")
     ):
         start = current_quarter_start
         end = end_date
@@ -2014,9 +2014,7 @@ async def _node_execute_required_data_tools(
                     [
                         (
                             "problemCategory",
-                            lambda connection: resolve_problem_categories(
-                                connection, category_id
-                            ),
+                            lambda connection: resolve_problem_categories(connection, category_id),
                         )
                     ],
                 )
@@ -2489,9 +2487,7 @@ async def _node_presentation_router(
     visualization: AiAssistantVisualizationDto | None = None
     artifact_result: dict[str, Any] | None = None
 
-    metric_result_kind = (
-        intent if intent in {"chart", "image", "mermaid", "audio", "pdf"} else None
-    )
+    metric_result_kind = intent if intent in {"chart", "image", "mermaid", "audio", "pdf"} else None
     try:
         if intent == "chart":
             visualization = _build_chart_visualization(scope, state, results)
@@ -2656,26 +2652,29 @@ async def _node_synthesize_once(
             elif hasattr(runtime.context.model_runtime, "complete_with_metadata"):
                 model_started_at = time.perf_counter()
                 try:
-                    response, telemetry = (
-                        await runtime.context.model_runtime.complete_with_metadata(
-                            messages,
-                            max_tokens=256,
-                            response_format={"type": "json_object"},
-                        )
+                    (
+                        response,
+                        telemetry,
+                    ) = await runtime.context.model_runtime.complete_with_metadata(
+                        messages,
+                        max_tokens=256,
+                        response_format={"type": "json_object"},
                     )
                 except Exception as structured_exc:
                     try:
-                        response, telemetry = (
-                            await runtime.context.model_runtime.complete_with_metadata(
+                        (
+                            response,
+                            telemetry,
+                        ) = await runtime.context.model_runtime.complete_with_metadata(
                             messages, max_tokens=256
-                            )
                         )
                     except TypeError as exc:
                         if "max_tokens" not in str(exc):
                             raise structured_exc from exc
-                        response, telemetry = (
-                            await runtime.context.model_runtime.complete_with_metadata(messages)
-                        )
+                        (
+                            response,
+                            telemetry,
+                        ) = await runtime.context.model_runtime.complete_with_metadata(messages)
                     except Exception as retry_exc:
                         raise structured_exc from retry_exc
                 _record_observability_event(
@@ -3248,9 +3247,7 @@ def _authorized_combined_results(state: AgentState) -> dict[str, Any]:
     return _combined_tool_results(filtered_state)
 
 
-def _knowledge_citations(
-    scope: str, results: dict[str, Any]
-) -> list[AiAssistantCitationDto]:
+def _knowledge_citations(scope: str, results: dict[str, Any]) -> list[AiAssistantCitationDto]:
     knowledge_result = results.get("knowledgeSearch")
     if not isinstance(knowledge_result, dict):
         return []
@@ -3399,9 +3396,7 @@ def _merge_hybrid_result(existing: object, result: object) -> object:
     ):
         incoming_items = []
     existing_items: list[Any] = (
-        cast(list[Any], existing.get("items"))
-        if isinstance(existing.get("items"), list)
-        else []
+        cast(list[Any], existing.get("items")) if isinstance(existing.get("items"), list) else []
     )
     merged_by_key: dict[tuple[str, str], dict[str, Any]] = {}
     for item in [*existing_items, *incoming_items]:
@@ -4122,9 +4117,7 @@ def _compact_synthesis_value(value: Any, *, depth: int = 0) -> Any:
             for key, item in list(value.items())[:40]
         }
     if isinstance(value, (list, tuple)):
-        compacted = [
-            _compact_synthesis_value(item, depth=depth + 1) for item in list(value)[:4]
-        ]
+        compacted = [_compact_synthesis_value(item, depth=depth + 1) for item in list(value)[:4]]
         if len(value) > 4:
             compacted.append({"_truncatedItems": len(value) - 4})
         return compacted

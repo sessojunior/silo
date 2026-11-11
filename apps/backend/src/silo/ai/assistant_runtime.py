@@ -181,14 +181,18 @@ class VLLMModelRuntime(ChatModelRuntime):
         self._model = self._create_model()
 
     def _create_model(self) -> ChatOpenAI:
-        return cast(Any, ChatOpenAI)(
-            model=self.settings.model,
-            base_url=self.settings.url,
-            api_key=VLLM_OPENAI_COMPAT_PLACEHOLDER,
-            temperature=0,
-            # O modelo CPU pequeno pode entrar em loop de JSON quando recebe
-            # espaço excessivo; 256 mantém respostas completas e limita a espera.
-            max_tokens=256,
+        model_factory = cast(Any, ChatOpenAI)
+        return cast(
+            ChatOpenAI,
+            model_factory(
+                model=self.settings.model,
+                base_url=self.settings.url,
+                api_key=VLLM_OPENAI_COMPAT_PLACEHOLDER,
+                temperature=0,
+                # O modelo CPU pequeno pode entrar em loop de JSON quando recebe
+                # espaço excessivo; 256 mantém respostas completas e limita a espera.
+                max_tokens=256,
+            ),
         )
 
     async def _recreate_model_after_failure(self, failed_model: object) -> None:
@@ -271,9 +275,8 @@ class VLLMModelRuntime(ChatModelRuntime):
                     elapsed_ms = int((time.perf_counter() - started_at) * 1000)
                     break
                 except Exception as exc:
-                    if (
-                        attempt >= MODEL_RECONNECT_ATTEMPTS
-                        or not _is_retryable_transport_error(exc)
+                    if attempt >= MODEL_RECONNECT_ATTEMPTS or not _is_retryable_transport_error(
+                        exc
                     ):
                         raise
                     await self._recreate_model_after_failure(failed_model)
@@ -315,9 +318,8 @@ class VLLMModelRuntime(ChatModelRuntime):
                         timeout=self._timeout_seconds(DEFAULT_CHAT_TIMEOUT_SECONDS),
                     )
                 except Exception as exc:
-                    if (
-                        attempt >= MODEL_RECONNECT_ATTEMPTS
-                        or not _is_retryable_transport_error(exc)
+                    if attempt >= MODEL_RECONNECT_ATTEMPTS or not _is_retryable_transport_error(
+                        exc
                     ):
                         raise
                     await self._recreate_model_after_failure(failed_model)

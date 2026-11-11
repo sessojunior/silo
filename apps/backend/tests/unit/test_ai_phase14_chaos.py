@@ -287,9 +287,7 @@ def test_runtime_metric_store_caps_label_series_with_overflow_bucket() -> None:
 
     counters = metrics.snapshot()["counters"]
     assert len(counters) == 3
-    assert {
-        tuple(sorted(metric["labels"].items())) for metric in counters
-    } == {
+    assert {tuple(sorted(metric["labels"].items())) for metric in counters} == {
         (("scope", "reports"),),
         (("scope", "projects"),),
         (("reason", "cardinality_limit"),),

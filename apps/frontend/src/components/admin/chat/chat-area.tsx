@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { useChat } from "@/context/chat-context";
 import { useChatMessages } from "@/hooks/use-chat-messages";
 import { ChatHeader } from "./chat-header";
@@ -22,6 +24,7 @@ export default function ChatArea({
   onToggleSidebar,
 }: ChatAreaProps) {
   const { sendMessage } = useChat();
+  const [isSending, setIsSending] = useState(false);
 
   const {
     // Estados
@@ -46,13 +49,18 @@ export default function ChatArea({
   } = useChatMessages({ activeTargetId, activeTargetType });
 
   // Enviar mensagem
-  const handleSendMessage = async (messageText: string) => {
+  const handleSendMessage = async (messageText: string, attachments?: File[]) => {
     if (!activeTargetId || !activeTargetType) return;
 
-    if (activeTargetType === "group") {
-      await sendMessage(messageText, activeTargetId, undefined);
-    } else if (activeTargetType === "user") {
-      await sendMessage(messageText, undefined, activeTargetId);
+    setIsSending(true);
+    try {
+      if (activeTargetType === "group") {
+        await sendMessage(messageText, activeTargetId, undefined, attachments);
+      } else if (activeTargetType === "user") {
+        await sendMessage(messageText, undefined, activeTargetId, attachments);
+      }
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -90,7 +98,7 @@ export default function ChatArea({
       {/* Input de Mensagem */}
       <MessageInput
         onSendMessage={handleSendMessage}
-        isSending={false} // TODO: Implementar estado de envio se necessário
+        isSending={isSending}
       />
     </div>
   );

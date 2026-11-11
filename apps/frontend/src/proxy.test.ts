@@ -56,3 +56,25 @@ it("blocks admin API routes without a session cookie", async () => {
     success: false,
   });
 });
+
+it("keeps chat multipart messages on the Route Handler path", async () => {
+  vi.stubEnv("API_URL", "http://api:4000");
+  vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "/silo");
+
+  const { NextRequest } = await import("next/server");
+  const { proxy } = await import("./proxy");
+
+  const request = new NextRequest("http://localhost/silo/api/admin/chat/messages", {
+    method: "POST",
+    headers: {
+      cookie: "silo_session=fixture-token",
+      "content-type": "multipart/form-data; boundary=fixture",
+    },
+    body: "--fixture--\r\n",
+  });
+
+  const response = await proxy(request);
+
+  expect(response.headers.get("x-middleware-next")).toBe("1");
+  expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+});

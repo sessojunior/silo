@@ -137,6 +137,43 @@ def test_upload_storage_helpers_cover_real_file_and_image_paths(
     )
     assert isinstance(delegated, uploads.StoredUpload)
 
+    chat_image = uploads.store_chat_file(
+        "photo.png",
+        image_buffer.getvalue(),
+        "image/png",
+    )
+    assert isinstance(chat_image, uploads.StoredUpload)
+    assert chat_image.filename.endswith(".webp")
+
+
+def test_chat_file_storage_preserves_safe_extension_and_rejects_unknown_types(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    uploads_root = tmp_path / "uploads"
+    uploads_root.mkdir()
+    monkeypatch.setattr(
+        uploads,
+        "load_settings",
+        lambda: SimpleNamespace(uploads_dir=uploads_root),
+    )
+
+    stored = uploads.store_chat_file(
+        "C:/fakepath/relatorio.pdf",
+        b"%PDF-1.7",
+        "application/pdf",
+    )
+
+    assert isinstance(stored, uploads.StoredUpload)
+    assert stored.original_name == "relatorio.pdf"
+    assert stored.filename.endswith(".pdf")
+    assert stored.url.startswith("/uploads/chat/")
+    assert (uploads_root / "chat" / stored.filename).read_bytes() == b"%PDF-1.7"
+
+    rejected = uploads.store_chat_file("script.html", b"<script>", "text/html")
+    assert isinstance(rejected, dict)
+    assert rejected["error"].startswith("Tipo de arquivo")
+
 
 def test_upload_storage_helpers_cover_delete_and_content_types(
     monkeypatch: pytest.MonkeyPatch,
@@ -162,6 +199,12 @@ def test_upload_storage_helpers_cover_delete_and_content_types(
     assert uploads.get_content_type_from_filename("file.jpg") == "image/jpeg"
     assert uploads.get_content_type_from_filename("file.gif") == "image/gif"
     assert uploads.get_content_type_from_filename("file.pdf") == "application/pdf"
+    assert uploads.get_content_type_from_filename("file.txt") == "text/plain"
+    assert uploads.get_content_type_from_filename("file.md") == "text/markdown"
+    assert uploads.get_content_type_from_filename("file.csv") == "text/csv"
+    assert uploads.get_content_type_from_filename("file.docx").startswith("application/")
+    assert uploads.get_content_type_from_filename("file.pptx").startswith("application/")
+    assert uploads.get_content_type_from_filename("file.xlsx").startswith("application/")
 
     assert uploads.delete_upload_file("reports", "keep.pdf") is True
     assert not keep_file.exists()
@@ -238,6 +281,10 @@ def test_upload_storage_helpers_reject_invalid_image_payloads(
         "error": "Erro ao processar imagem."
     }
 
+    assert uploads.store_chat_file(
+        "large.pdf", b"x" * (uploads.MAX_FILE_SIZE_BYTES + 1), "application/pdf"
+    ) == {"error": "Arquivo muito grande. MÃ¡ximo 4MB."}
+
 
 def test_upload_storage_helpers_return_error_when_image_write_fails(
     monkeypatch: pytest.MonkeyPatch,
@@ -262,6 +309,15 @@ def test_upload_storage_helpers_return_error_when_image_write_fails(
 
     assert uploads.store_image_as_webp("avatars", "avatar.png", image_buffer.getvalue()) == {
         "error": "Erro ao processar imagem."
+    }
+
+    monkeypatch.setattr(
+        uploads,
+        "write_upload_bytes",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("read only volume")),
+    )
+    assert uploads.store_chat_file("report.pdf", b"pdf", "application/pdf") == {
+        "error": "NÃ£o foi possÃ­vel salvar o arquivo."
     }
 
 

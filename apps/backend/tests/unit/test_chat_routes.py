@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 from datetime import datetime, timedelta
 from types import SimpleNamespace
@@ -158,6 +159,69 @@ def test_post_chat_message_returns_201_and_broadcasts_event(
     assert len(captured_events) == 1
     assert captured_events[0]["type"] == "chat.message.created"
     assert captured_events[0]["data"]["message"]["id"] == "message-1"
+
+
+def test_post_chat_message_accepts_multipart_attachment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    app.dependency_overrides[require_chat_access] = lambda: CurrentUser(
+        id="user-1",
+        email="user@example.com",
+        name="User One",
+    )
+    app.dependency_overrides[get_db] = _db_override
+
+    async def _broadcast(_request, _event):
+        return None
+
+    monkeypatch.setattr(chat_module, "_broadcast_chat_event", _broadcast)
+    monkeypatch.setattr(
+        chat_module,
+        "store_chat_file",
+        lambda original_name, _buffer, content_type: SimpleNamespace(
+            filename="stored-report.pdf",
+            original_name=original_name,
+            size=11,
+            url="/uploads/chat/stored-report.pdf",
+        ),
+    )
+
+    def create_message_stub(
+        _db,
+        sender_user_id,
+        content,
+        receiver_group_id=None,
+        receiver_user_id=None,
+        attachments=None,
+    ):
+        return {
+            "id": "message-with-file",
+            "content": content.strip(),
+            "sender_user_id": sender_user_id,
+            "sender_name": "User One",
+            "receiver_group_id": receiver_group_id,
+            "receiver_user_id": receiver_user_id,
+            "created_at": datetime(2026, 7, 23, 12, 0, 0),
+            "read_at": None,
+            "deleted_at": None,
+            "attachments": attachments or [],
+        }
+
+    monkeypatch.setattr(chat_module, "create_message", create_message_stub)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/chat/messages",
+            files={"files": ("report.pdf", io.BytesIO(b"%PDF-1.7"), "application/pdf")},
+            data={"content": "Arquivo", "receiverGroupId": "group-1"},
+        )
+
+    assert response.status_code == 201
+    payload = response.json()["data"]
+    assert payload["id"] == "message-with-file"
+    assert payload["attachments"][0]["name"] == "report.pdf"
+    assert payload["attachments"][0]["url"] == "/api/upload/serve/chat/stored-report.pdf"
 
 
 def test_chat_websocket_emits_presence_then_connected(

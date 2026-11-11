@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.engine import Connection
+from sqlalchemy.exc import SQLAlchemyError
 
 from silo.db.models import legacy_tables
 
@@ -50,9 +51,7 @@ def resolve_ai_capability_policy(
     try:
         row = (
             connection.execute(
-                select(preferences_table)
-                .where(preferences_table.c.user_id == user_id)
-                .limit(1)
+                select(preferences_table).where(preferences_table.c.user_id == user_id).limit(1)
             )
             .mappings()
             .first()
@@ -77,20 +76,12 @@ def resolve_ai_capability_policy(
 
     default_model = str(getattr(getattr(settings, "vllm", None), "model", "")).strip()
     approved_custom_model = str(getattr(settings, "ai_custom_model", "")).strip()
-    selected_model = str(_value(row, "model_id") or "").strip()
-    approved_models = {default_model}
-    if bool(getattr(settings, "ai_custom_model_enabled", False)) and approved_custom_model:
-        approved_models.add(approved_custom_model)
-    model_name = (
-        selected_model
-        if assistant_enabled and selected_model in approved_models
-        else default_model
-    )
     custom_model_enabled = (
-        bool(getattr(settings, "ai_custom_model_enabled", False))
+        assistant_enabled
+        and bool(getattr(settings, "ai_custom_model_enabled", False))
         and bool(approved_custom_model)
-        and model_name == approved_custom_model
     )
+    model_name = approved_custom_model if custom_model_enabled else default_model
 
     return AiCapabilityPolicy(
         assistant_enabled=assistant_enabled,
@@ -106,9 +97,3 @@ def _bool_value(row: object, key: str, *, default: bool) -> bool:
         return default
     value = row.get(key) if hasattr(row, "get") else None
     return value if isinstance(value, bool) else default
-
-
-def _value(row: object, key: str) -> object | None:
-    if row is None:
-        return None
-    return row.get(key) if hasattr(row, "get") else None

@@ -1150,6 +1150,7 @@ def list_product_solutions(problem_id: str, *, user_id: str | None = None) -> di
                 return candidate
             candidate = str(ancestor_id)
         return str(parent_id)
+
     users = _connection_select_rows(
         select(user_table).where(
             user_table.c.id.in_(tuple({str(row["user_id"]) for row in solutions}))
@@ -1625,7 +1626,5 @@ def _fire_and_forget(coro: Any) -> None:
         return
     task = loop.create_task(coro)
     task.add_done_callback(
-        lambda completed_task: None
-        if completed_task.cancelled()
-        else completed_task.exception()
+        lambda completed_task: None if completed_task.cancelled() else completed_task.exception()
     )

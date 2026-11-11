@@ -1,0 +1,27 @@
+services:
+  qwen:
+    image: ${QWEN_IMAGE:-vllm/vllm-openai:v0.29.0}
+    command:
+      - "--model"
+      - "${QWEN_MODEL:-Qwen/Qwen2.5-0.5B-Instruct}"
+      - "--served-model-name"
+      - "${QWEN_SERVED_MODEL:-qwen}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+      - "--max-model-len"
+      - "${QWEN_MAX_MODEL_LEN:-8192}"
+      - "--gpu-memory-utilization"
+      - "${QWEN_GPU_MEMORY_UTILIZATION:-0.70}"
+      - "--enable-prefix-caching"
+      - "--enable-auto-tool-choice"
+      - "--tool-call-parser"
+      - "hermes"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${QWEN_GPU_ID:-0}"]
+              capabilities: [gpu]

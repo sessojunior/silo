@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface DialogProps {
@@ -8,6 +8,19 @@ interface DialogProps {
   description?: string;
   children?: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+}
+
+const FOCUSABLE_SELECTOR =
+  'a[href],button,textarea,input,select,[tabindex]:not([tabindex="-1"])';
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  ).filter(
+    (element) =>
+      !element.hasAttribute("disabled") &&
+      element.getAttribute("aria-hidden") !== "true",
+  );
 }
 
 // Componente de modal genérico
@@ -21,7 +34,11 @@ export default function Dialog({
 }: DialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const previousOverflowRef = useRef("");
   const [mounted, setMounted] = useState(false);
+  const titleId = useId();
+  const descriptionId = useId();
 
   useEffect(() => {
     setMounted(true);
@@ -30,12 +47,58 @@ export default function Dialog({
   // Fecha ao pressionar ESC
   useEffect(() => {
     if (!open) return;
+    lastFocusedRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    previousOverflowRef.current = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflowRef.current;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+
+      const focusableElements = getFocusableElements(dialogRef.current);
+      if (focusableElements.length === 0) {
+        dialogRef.current.focus();
+        e.preventDefault();
+        return;
+      }
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (open && mounted && dialogRef.current) {
+      const focusableElements = getFocusableElements(dialogRef.current);
+      (focusableElements[0] ?? dialogRef.current).focus();
+    }
+    if (!open && lastFocusedRef.current) {
+      lastFocusedRef.current.focus();
+      lastFocusedRef.current = null;
+    }
+  }, [open, mounted]);
 
   // Fecha ao clicar fora
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -63,6 +126,8 @@ export default function Dialog({
       aria-modal="true"
       role="dialog"
       tabIndex={-1}
+      aria-labelledby={title ? titleId : undefined}
+      aria-describedby={description ? descriptionId : undefined}
     >
       <div
         ref={contentRef}
@@ -72,12 +137,18 @@ export default function Dialog({
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-700">
           <div className="min-w-0">
             {title && (
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              <h2
+                id={titleId}
+                className="text-lg font-semibold text-zinc-900 dark:text-zinc-100"
+              >
                 {title}
               </h2>
             )}
             {description && (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p
+                id={descriptionId}
+                className="text-sm text-zinc-600 dark:text-zinc-400"
+              >
                 {description}
               </p>
             )}

@@ -295,9 +295,7 @@ async def test_vllm_runtime_handles_100_concurrent_requests_with_bounded_pressur
     runtime._model = FastModel()
     results = await asyncio.gather(
         *(
-            runtime.complete_with_metadata(
-                [ChatMessage(role="user", content=f"request-{index}")]
-            )
+            runtime.complete_with_metadata([ChatMessage(role="user", content=f"request-{index}")])
             for index in range(100)
         )
     )

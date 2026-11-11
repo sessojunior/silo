@@ -4,6 +4,7 @@ import { errorResponse } from "@/lib/api-response";
 import { requireAuthUser } from "@/lib/auth/server";
 
 export const MAX_UPLOAD_REQUEST_BYTES = 5 * 1024 * 1024;
+export const MAX_CHAT_REQUEST_BYTES = 21 * 1024 * 1024;
 
 export class UploadBodyTooLargeError extends Error {}
 
@@ -47,14 +48,18 @@ export function mutationHeaders(request: Request) {
   return headers;
 }
 
-export async function forwardUpload(request: Request, apiPath: string) {
+export async function forwardMultipartRequest(
+  request: Request,
+  apiPath: string,
+  maxBytes = MAX_UPLOAD_REQUEST_BYTES,
+) {
   const auth = await requireAuthUser();
   if (!auth.ok) return auth.response;
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("multipart/form-data;")) {
     return errorResponse("Requisição deve ser multipart/form-data.", 415);
   }
   try {
-    const body = await readLimitedBody(request);
+    const body = await readLimitedBody(request, maxBytes);
     const upstream = await fetch(config.getApiUrl(apiPath), {
       method: "POST", headers: mutationHeaders(request), body,
       signal: AbortSignal.timeout(30_000),
@@ -71,3 +76,5 @@ export async function forwardUpload(request: Request, apiPath: string) {
     return errorResponse("Erro ao processar upload.", 502);
   }
 }
+
+export const forwardUpload = forwardMultipartRequest;

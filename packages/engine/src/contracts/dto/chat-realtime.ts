@@ -3,6 +3,14 @@ export const CHAT_REALTIME_PATH = "/api/chat/ws" as const;
 export type ChatConversationTargetType = "group" | "user";
 export type ChatPresenceStatus = "visible" | "invisible";
 
+export type ChatAttachmentDto = {
+  id: string | null;
+  name: string;
+  url: string;
+  contentType: string;
+  size: number;
+};
+
 export type ChatRealtimeMessageDto = {
   id: string;
   content: string;
@@ -14,6 +22,7 @@ export type ChatRealtimeMessageDto = {
   readAt: string | null;
   deletedAt: string | null;
   messageType: "groupMessage" | "userMessage";
+  attachments?: ChatAttachmentDto[];
 };
 
 export type ChatRealtimeEvent =

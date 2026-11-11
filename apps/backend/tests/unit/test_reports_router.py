@@ -50,10 +50,14 @@ async def test_reports_router_covers_success_and_error_branches(
             raise ValueError("bad period")
         return period
 
-    def availability_report_stub(db, _period):
+    def availability_report_stub(db, _period, product_id=None):
         if getattr(db, "boom", False):
             raise RuntimeError("availability boom")
-        return {"report": "availability", "too_large": getattr(db, "too_large", False)}
+        return {
+            "report": "availability",
+            "too_large": getattr(db, "too_large", False),
+            "productId": product_id,
+        }
 
     def problems_report_stub(db, _period, product_id, problem_category):
         if getattr(db, "boom", False):
@@ -118,12 +122,19 @@ async def test_reports_router_covers_success_and_error_branches(
 
     availability = _payload(
         await reports_router.availability_report(
-            _FakeRequest(query_params={"start": period["start"], "end": period["end"]}),
+            _FakeRequest(
+                query_params={
+                    "start": period["start"],
+                    "end": period["end"],
+                    "productId": "product-2",
+                }
+            ),
             SimpleNamespace(),
         )
     )
     assert availability["success"] is True
     assert availability["meta"]["sourceKind"] == "availability_report"
+    assert availability["data"]["productId"] == "product-2"
 
     invalid_period = _payload(
         await reports_router.availability_report(
@@ -143,7 +154,13 @@ async def test_reports_router_covers_success_and_error_branches(
 
     availability_pdf = _payload(
         await reports_router.availability_pdf(
-            _FakeRequest(body={"start": period["start"], "end": period["end"]}),
+            _FakeRequest(
+                body={
+                    "start": period["start"],
+                    "end": period["end"],
+                    "productId": "product-2",
+                }
+            ),
             SimpleNamespace(),
         )
     )
@@ -269,7 +286,7 @@ def test_reports_require_permission_and_disable_http_caching(
     monkeypatch.setattr(
         reports_router,
         "get_availability_report",
-        lambda _db, _period: {"report": "availability"},
+        lambda _db, _period, _product_id=None: {"report": "availability"},
     )
 
     with TestClient(app) as client:
@@ -295,7 +312,7 @@ def test_authorized_report_responses_are_not_cacheable(monkeypatch: pytest.Monke
     monkeypatch.setattr(
         reports_router,
         "get_availability_report",
-        lambda _db, _period: {"report": "availability"},
+        lambda _db, _period, _product_id=None: {"report": "availability"},
     )
 
     with TestClient(app) as client:

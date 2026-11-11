@@ -41,6 +41,7 @@ class _BlockingToolChatOpenAI(_BlockingToolModel):
         super().__init__()
         self.kwargs = kwargs
 
+
 # ── Fake ChatOpenAI ──────────────────────────────────────────────────────────
 
 
@@ -201,15 +202,15 @@ async def test_vllm_model_runtime_recreates_client_after_connection_failure() ->
 
 
 @pytest.mark.asyncio
-async def test_vllm_model_runtime_recreates_client_before_streaming_after_connection_failure(
-) -> None:
+async def test_vllm_model_runtime_recreates_client_before_streaming_after_connection_failure() -> (
+    None
+):
     _FailOnceChatOpenAI.instances = 0
     settings = VLLMSettings(url="http://vllm.local:8000/v1", model="m", embedding_model="emb")
     with patch.object(assistant_runtime, "ChatOpenAI", _FailOnceChatOpenAI):
         runtime = assistant_runtime.VLLMModelRuntime(settings)
         chunks = [
-            chunk
-            async for chunk in runtime.stream([ChatMessage(role="user", content="pergunta")])
+            chunk async for chunk in runtime.stream([ChatMessage(role="user", content="pergunta")])
         ]
 
     assert chunks == ["resposta após reconectar"]

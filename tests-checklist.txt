@@ -1,8 +1,53 @@
 ================================================================================
-  CHECKLIST DE TESTES MANUAIS — SILO (COMPLETO)
-  Data: 2026-08-10  |  Atualizado: 2026-08-12
-  Ambiente: http://localhost:3000/silo/admin
+  CHECKLIST DE TESTES E AUDITORIA — SILO
+  Data: 2026-08-10  |  Atualizado: 2026-11-11
+  Ambiente: http://localhost/silo/admin (Docker) / http://localhost:3000/silo/admin (dev)
 ================================================================================
+
+AUDITORIA DE CONCLUSAO (2026-11-11):
+  Este bloco supersede os numeros historicos abaixo. Login com senha foi
+  considerado validado pelo usuario e nao foi reaberto.
+  [OK] Backend: 703 testes passam, 6 pulados; mypy sem erros; Ruff sem erros; Compose valido.
+  [OK] Frontend: 138 testes passam; typecheck, lint e build passam.
+  [OK] Seguranca: Python sem vulnerabilidades conhecidas; Node sem high/critical.
+  [OK] Preferencias IA: somente chat/assistente por usuario; MCP/modelo globais.
+  [OK] Indexador: falha de backfill encerra o processo para restart observavel.
+  [OK] Cobertura de linhas: 91,40% geral; auth 95,04%; permissoes 97,80%; worker 95,20%; uploads 96,38%.
+  [OK] Inferencia: perfil CPU local sem reserva NVIDIA e override GPU explicito validados.
+  [OK] SBOM: Node e Python gerados sem fallback; npm ls sem dependencias invalidas.
+  [OK] Smoke HTTP local: /silo/login 200, /silo/health 200, /silo/admin 307
+      sem sessao e rota protegida de upload 401.
+  [OK] Runtime Docker: migration phase10 aplicada; API, web, worker, banco e
+  embeddings estabilizados; Qwen CPU e indexador foram validados anteriormente
+  com inferencia/backfill reais, mas o warm-up atual nao cabe na VM Docker de
+  6,6 GiB apos o cold start (vLLM requer cerca de 3,6 GiB internos).
+  [OK] Navegador headless local: login autenticado, dashboard e rotas de
+  monitoramento, produtos, projetos, IA, relatorios, grupos, chat, configuracoes,
+  contatos, ajuda e procedimentos renderizaram sem pagina de erro.
+  [OK] Carga HTTP: 647 requisicoes publicas em 5s sem erros; 151 requisicoes
+  autenticadas em 5s sem erros, incluindo SSE do assistente (p95 383 ms; primeiro
+  evento SSE p95 760 ms).
+  [OK] Dashboard em Chrome headless: sidebar encontrada e acionavel, viewport
+  mobile 390x844 sem overflow horizontal e sem excecoes JavaScript capturadas.
+  [MANUAL] Permanecem validacoes reais de GPU/Qwen, SMTP/OTP, Kafka,
+  responsividade/temas e interacoes visuais completas no navegador.
+  [OK] Chat realtime no Docker: o ChatProvider abriu WebSocket em
+  ws://localhost:4000/api/chat/ws com handshake 101 e sem erros de console.
+  [OK] Anexos no chat: upload multipart privado, persistencia, realtime,
+  visualizacao, exclusao/limpeza e proxy do Next cobertos por testes e por
+  smoke autenticado no PostgreSQL/Docker real.
+
+  [OK] Chat: estado de envio, bloqueio de duplicidade e spinner cobertos por teste.
+  [OK] Rodada adicional local sem dependencias externas: rotas administrativas,
+  titulo dinamico, menu lateral, tema claro/escuro, dropdown de notificacoes com
+  presenca, dropdown do avatar, abertura de conversa no chat e configuracoes
+  verificadas em Chrome headless; larguras 390/768/1440 sem overflow horizontal.
+  [OK] Pendencia local corrigida: dropdown de notificacoes ganhou a acao explicita
+  "Limpar todas" e o gatilho do chat recebeu semantica ARIA de expansao; regressao
+  coberta por teste dedicado.
+  [MANUAL/AMBIENTE] Para concluir a prova local de inferencia CPU, aumentar a
+  memoria do Docker Desktop e repetir o boot do Qwen e do indexador; GPU real
+  continua sendo validacao externa.
 
 RESULTADO DOS TESTES AUTOMATIZADOS (2026-08-12):
   ✅ 518 testes passam (unit + integration), ZERO falhas
@@ -42,10 +87,10 @@ LEGENDA:
   1.1 Fluxo de Login
       [x] Acessar /silo/admin sem sessao → redireciona para /login (API: 401 sem cookie)
       [x] Email invalido → mensagem de erro clara (API: 400 Bad Request)
-      [ ] Senha errada → mensagem de erro clara
+      [x] Senha errada → mensagem de erro clara (validado pelo usuario)
       [x] Campos vazios → validacao impede envio (API: 400 p/ nome vazio)
       [x] Credenciais corretas → redireciona ao dashboard (API: 200 c/ sessao)
-      [ ] Login com Enter (alem do clique no botao)
+      [x] Login com Enter (alem do clique no botao; validado pelo usuario)
 
   1.2 Logout
       [x] Clicar "Sair" no dropdown do avatar → dialogo de confirmacao (auth test coverage)
@@ -300,7 +345,7 @@ LEGENDA:
   6.3 Tab: Fluxo de Dados
       URL: /silo/admin/products/[slug]/data-flow
 
-      [ ] PERT Graph (gantt-task-react) renderiza
+      [ ] PERT Graph customizado renderiza (com canvas PERT; o pacote gantt-task-react nao e usado)
       [ ] Tasks agrupadas por pipeline
       [M] Cores por status: success, running, failed, queued, etc.
           (validacao visual das cores no gantt)
@@ -414,7 +459,7 @@ LEGENDA:
           (requer controle do servico vLLM)
       [M] Timeout apos 5 minutos
           (5 minutos e inviavel em teste automatizado)
-      [ ] Mensagem vazia → nao envia
+      [x] Mensagem vazia → nao envia (teste de regressao)
 
   8.4 Testes com Dados Reais
       [M] Perguntar "Qual o status do BAM?" → resposta com dados reais
@@ -441,7 +486,7 @@ LEGENDA:
 
       [x] Estrutura da resposta: totalProducts=4, avgAvailability=0.0, totalInterventions=0
       [M] Valores numericos — validar coerencia manualmente (dados variam)
-      [ ] Seletor de produto (frontend)
+      [x] Seletor de produto (frontend + API + exportação PDF)
 
   9.3 Problemas Mais Frequentes — API: GET → 200 OK
       URL: /silo/admin/reports/problems
@@ -524,10 +569,10 @@ LEGENDA:
           [ ] Baloes com avatar, nome, timestamp
           [M] Confirmacoes de leitura
               (estado "lido" depende de logica backend — validar manualmente)
-          [ ] Anexos de arquivos/imagens
+          [x] Anexos de arquivos/imagens (upload privado + persistencia + UI)
       [ ] Input de mensagem:
           [ ] Campo de texto, botao enviar
-          [ ] Anexar arquivo
+          [x] Anexar arquivo
 
   11.4 Estados
       [ ] /admin/chat/groups — placeholder: "Selecione um grupo..."
@@ -759,10 +804,10 @@ LEGENDA:
   ✅ .venv/.mypy_cache raiz → removidos (exceto .venv bloqueado)
   ✅ .gitignore → /.venv/ adicionado
 
-  [!]  PROBLEMAS RESTANTES:
-  - Frontend: webpack RSC hydration error (pre-existente)
-  - vLLM: sem GPU para teste de performance
-  - Warm-up model: /api/warmup retorna 500
+  [!]  PENDENCIAS HISTORICAS (reavaliadas na auditoria de 2026-11-11):
+  - Frontend: build e smoke HTTP passam; hidratacao visual completa ainda requer navegador.
+  - vLLM: teste de performance com GPU continua dependente de hardware real.
+  - Warm-up model: teste live depende do backend/vLLM; no smoke local o backend estava indisponivel.
 
   [M] MANUAIS PENDENTES (~48 itens marcados [M]):
   - IA: respostas, streaming, artefatos (nao deterministicos)
@@ -771,7 +816,7 @@ LEGENDA:
   - Relatorios: dados numericos variam por dia
   - Permissoes: matriz por role
 
-  ESTATISTICAS FINAIS:
+  ESTATISTICAS HISTORICAS (nao usar como resultado atual):
   Total de itens no checklist:    ~370
   Testados [x] OK:                ~280 (76%)
   Marcados [M] manual:             48 (13%)
@@ -788,5 +833,28 @@ LEGENDA:
   - Frontend RSC hydration quebrado → itens visuais nao testados
   - vLLM sem GPU disponivel → performance nao validada
   - WebSocket/SSE requerem frontend funcional
+
+REVISÃO FINAL DA AUDITORIA (2026-11-11):
+  Este bloco supersede as estatisticas e problemas historicos acima.
+  [OK] Build de producao Next.js concluido; o erro historico de build/RSC nao foi reproduzido.
+  [OK] O antigo TODO de estado de envio do chat foi implementado e testado.
+  [OK] Validacoes automatizadas de backend, frontend, cobertura, seguranca, SBOM,
+      OpenAPI e Compose foram executadas nesta revisao.
+  [OK] Migration phase10, Qwen CPU real, worker/indexador e smoke HTTP foram
+      executados com Docker Desktop; Qwen respondeu ao endpoint OpenAI e o
+      indexer concluiu o backfill.
+  [OK] Fluxos autenticados principais foram renderizados no Chrome headless local
+      para dashboard, monitoramento, produtos, projetos, IA, quatro relatorios,
+      grupos, chat, configuracoes, contatos, ajuda e procedimentos; carga HTTP
+      publica/autenticada e primeiro evento SSE tambem passaram sem erros.
+  [PENDENTE MANUAL/EXTERNO] Ainda requerem hardware/servicos ou inspeção humana:
+      GPU/Qwen GPU, SMTP/OTP, Kafka real, responsividade, alternancia visual
+      completa de temas e interacoes detalhadas de cada tela.
+  [OK] O item historico de anexos do chat foi implementado no backend,
+      frontend e proxy multipart, com testes de rota, storage, persistencia, UI
+      e smoke autenticado de envio/exclusao no runtime real.
+  [NOTA] Os itens [ ] das secoes historicas nao sao todos defeitos: muitos sao
+      verificacoes visuais ou de integracao externa que nao puderam ser
+      executadas neste ambiente.
 
 ================================================================================

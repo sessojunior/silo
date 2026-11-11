@@ -179,7 +179,9 @@ Embeddings usam a instância dedicada `http://embeddings:8000/v1`; o backend
 injeta essa URL automaticamente nos containers. Fora do Docker, use
 `VLLM_URL=http://localhost:8000/v1` e `VLLM_EMBEDDING_URL=http://localhost:8001/v1`.
 
-O Qwen fica no `docker-compose.inference.yml` e usa a GPU 0. O
+O Qwen fica no `docker-compose.inference.yml` em perfil CPU por padrão; para
+NVIDIA, use também o override `docker-compose.inference.gpu.yml`, que reserva a
+GPU 0. O
 `docker-compose.yml` e o `docker-compose.deploy.yml` mantêm o serviço de
 embeddings do SILO; no deploy, defina `SILO_VLLM_EMBED_GPU_ID=1` para usar a
 segunda GPU. Os embeddings, documentos e índices vetoriais continuam isolados

@@ -387,6 +387,17 @@ def test_session_helpers_cover_default_now_unknown_ip_and_insert_readback_failur
         )
         assert request_ip(request) == "unknown"
 
+        client_request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "headers": Headers({}).raw,
+                "client": ("10.0.0.7", 12345),
+            }
+        )
+        assert request_ip(client_request) == "10.0.0.7"
+
         monkeypatch.setattr(
             sessions_module,
             "_fetch_active_session_row",

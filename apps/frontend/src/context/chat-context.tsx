@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useUser } from "@/context/user-context";
-import { config } from "@/lib/config";
+import { config, isChatRealtimeOriginCompatible } from "@/lib/config";
 import { readApiResponse } from "@silo/engine/contracts/api-response";
 import type {
   AiAssistantCitationDto,
@@ -19,6 +19,7 @@ import type {
   AiAssistantVisualizationDto,
 } from "@silo/engine/contracts/dto/ai-assistant";
 import {
+  type ChatAttachmentDto,
   type ChatRealtimeClientMessage,
   type ChatRealtimeMessageDto,
   type ChatRealtimeServerMessage,
@@ -67,6 +68,15 @@ export type ChatMessage = {
   assistantVisualization?: AiAssistantVisualizationDto | null;
   assistantArtifacts?: AiAssistantArtifactDto[] | null;
   assistantThinking?: string | null;
+  attachments?: ChatAttachment[];
+};
+
+export type ChatAttachment = {
+  id: string | null;
+  name: string;
+  url: string;
+  contentType: string;
+  size: number;
 };
 
 export type PresenceStatus = "visible" | "invisible";
@@ -124,6 +134,7 @@ type ChatContextType = {
     content: string,
     receiverGroupId?: string,
     receiverUserId?: string,
+    attachments?: File[],
   ) => Promise<void>;
   markMessageAsRead: (messageId: string) => Promise<void>;
   markMessagesAsRead: (
@@ -172,6 +183,13 @@ const toChatMessage = (message: ChatRealtimeMessageDto): ChatMessage => ({
   readAt: message.readAt ? new Date(message.readAt) : null,
   deletedAt: message.deletedAt ? new Date(message.deletedAt) : null,
   messageType: message.messageType,
+  attachments: (message.attachments || []).map((attachment: ChatAttachmentDto) => ({
+    id: attachment.id,
+    name: attachment.name,
+    url: attachment.url,
+    contentType: attachment.contentType,
+    size: attachment.size,
+  })),
 });
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
@@ -328,7 +346,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (config.apiOrigin) {
       try {
         const apiOriginUrl = new URL(config.apiOrigin);
-        if (apiOriginUrl.origin !== window.location.origin) {
+        if (
+          !isChatRealtimeOriginCompatible(
+            apiOriginUrl.origin,
+            window.location.origin,
+          )
+        ) {
           if (!websocketDisabledLogged.current) {
             websocketDisabledLogged.current = true;
             console.info(
@@ -1055,19 +1078,30 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       content: string,
       receiverGroupId?: string,
       receiverUserId?: string,
+      attachments?: File[],
     ) => {
       try {
+        const hasAttachments = Boolean(attachments && attachments.length > 0);
+        const body = hasAttachments ? new FormData() : null;
+        if (body) {
+          body.append("content", content);
+          if (receiverGroupId) body.append("receiverGroupId", receiverGroupId);
+          if (receiverUserId) body.append("receiverUserId", receiverUserId);
+          attachments?.forEach((file) => body.append("files", file));
+        }
         const response = await fetch(
           config.getApiUrl("/api/admin/chat/messages"),
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            ...(body ? {} : { headers: { "Content-Type": "application/json" } }),
             credentials: "include",
-            body: JSON.stringify({
-              content,
-              receiverGroupId,
-              receiverUserId,
-            }),
+            body:
+              body ||
+              JSON.stringify({
+                content,
+                receiverGroupId,
+                receiverUserId,
+              }),
           },
         );
 

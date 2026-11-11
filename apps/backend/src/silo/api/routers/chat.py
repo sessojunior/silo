@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection, Engine
+from starlette.datastructures import UploadFile
+from starlette.formparsers import MultiPartException
 
 from silo.api.dependencies import (
     CurrentUser,
@@ -17,6 +19,11 @@ from silo.api.dependencies import (
     require_chat_access,
 )
 from silo.api.responses import build_success_payload, json_error_response
+from silo.api.upload_io import (
+    is_multipart_content_type,
+    parse_multipart_form,
+    read_upload_bytes,
+)
 from silo.auth.sessions import (
     extract_session_token_from_cookies,
     get_session_by_token,
@@ -27,6 +34,7 @@ from silo.db.serialization import serialize_legacy_value
 from silo.db.url import sqlalchemy_database_url
 from silo.realtime.chat import ChatRealtimeHub
 from silo.services.chat_service import (
+    CHAT_ATTACHMENT_MAX_COUNT,
     CHAT_CONVERSATION_TARGET_GROUP,
     CHAT_CONVERSATION_TARGET_USER,
     ChatServiceError,
@@ -45,6 +53,11 @@ from silo.services.chat_service import (
     touch_presence_on_connect,
     update_presence,
     update_presence_heartbeat,
+)
+from silo.storage.uploads import (
+    delete_upload_file,
+    get_content_type_from_filename,
+    store_chat_file,
 )
 
 logger = logging.getLogger(__name__)
@@ -140,7 +153,24 @@ def _chat_message_payload(
         "read_at": message.get("read_at"),
         "deleted_at": message.get("deleted_at"),
         "message_type": "groupMessage" if message.get("receiver_group_id") else "userMessage",
+        "attachments": [],
     }
+    for attachment in message.get("attachments") or []:
+        stored_filename = attachment.get("stored_filename")
+        if not isinstance(stored_filename, str) or not stored_filename:
+            continue
+        name = attachment.get("original_name") or attachment.get("name") or stored_filename
+        payload["attachments"].append(
+            {
+                "id": attachment.get("id"),
+                "name": str(name),
+                "url": attachment.get("url") or f"/api/upload/serve/chat/{stored_filename}",
+                "content_type": attachment.get("content_type")
+                or attachment.get("contentType")
+                or "application/octet-stream",
+                "size": int(attachment.get("size") or 0),
+            }
+        )
     if target_type is not None:
         payload["type"] = target_type
     return cast(dict[str, Any], serialize_legacy_value(payload))
@@ -156,6 +186,13 @@ def _serialized_mapping(value: object) -> dict[str, Any]:
 
 def _response_with_serialized_data(data: Any, *, message: str | None = None) -> Any:
     return build_success_payload(serialize_legacy_value(data), message=message)
+
+
+def _cleanup_chat_uploads(attachments: list[dict[str, Any]]) -> None:
+    for attachment in attachments:
+        filename = attachment.get("stored_filename")
+        if isinstance(filename, str) and filename:
+            delete_upload_file("chat", filename)
 
 
 @router.get("/messages")
@@ -232,26 +269,74 @@ async def post_message(
     current_user: ChatUser,
     db: ChatDb,
 ) -> Any:
+    stored_attachments: list[dict[str, Any]] = []
+    content: object = ""
+    receiver_group_id: object = None
+    receiver_user_id: object = None
     try:
-        body = _parse_json_body(await request.json())
-        content = body.get("content")
+        request_headers = getattr(request, "headers", None)
+        content_type = request_headers.get("content-type") if request_headers is not None else None
+        if is_multipart_content_type(content_type):
+            try:
+                form = await parse_multipart_form(
+                    request,
+                    max_files=CHAT_ATTACHMENT_MAX_COUNT,
+                    max_fields=8,
+                )
+            except MultiPartException as error:
+                raise ChatServiceError(
+                    "Envie no mÃ¡ximo 5 arquivos.", 400, field="files"
+                ) from error
+
+            content = form.get("content") or ""
+            receiver_group_id = form.get("receiverGroupId")
+            receiver_user_id = form.get("receiverUserId")
+            uploads = [
+                value
+                for field_name in ("files", "file")
+                for value in form.getlist(field_name)
+                if isinstance(value, UploadFile)
+            ]
+            if len(uploads) > CHAT_ATTACHMENT_MAX_COUNT:
+                raise ChatServiceError("Envie no mÃ¡ximo 5 arquivos.", 400, field="files")
+
+            for upload in uploads:
+                buffer = await read_upload_bytes(upload)
+                if buffer is None:
+                    raise ChatServiceError("Arquivo muito grande. MÃ¡ximo 4MB.", 400, field="files")
+                stored = store_chat_file(upload.filename or "arquivo", buffer, upload.content_type)
+                if isinstance(stored, dict):
+                    raise ChatServiceError(
+                        stored.get("error", "Arquivo invÃ¡lido."), 400, field="files"
+                    )
+                stored_attachments.append(
+                    {
+                        "original_name": stored.original_name,
+                        "stored_filename": stored.filename,
+                        "content_type": get_content_type_from_filename(stored.filename),
+                        "size": stored.size,
+                    }
+                )
+        else:
+            body = _parse_json_body(await request.json())
+            content = body.get("content")
+            receiver_group_id = body.get("receiverGroupId")
+            receiver_user_id = body.get("receiverUserId")
         if not isinstance(content, str):
             raise ChatServiceError("Conteúdo da mensagem é obrigatório", 400, field="content")
 
-        receiver_group_id = body.get("receiverGroupId")
-        receiver_user_id = body.get("receiverUserId")
         if receiver_group_id is not None and not isinstance(receiver_group_id, str):
             raise ChatServiceError("Dados inválidos.", 400, field="receiverGroupId")
         if receiver_user_id is not None and not isinstance(receiver_user_id, str):
             raise ChatServiceError("Dados inválidos.", 400, field="receiverUserId")
 
-        message = create_message(
-            db,
-            current_user.id,
-            content,
-            receiver_group_id=receiver_group_id,
-            receiver_user_id=receiver_user_id,
-        )
+        message_args: dict[str, Any] = {
+            "receiver_group_id": receiver_group_id,
+            "receiver_user_id": receiver_user_id,
+        }
+        if stored_attachments:
+            message_args["attachments"] = stored_attachments
+        message = create_message(db, current_user.id, content, **message_args)
 
         payload = _chat_message_payload(message)
         await _broadcast_chat_event(
@@ -266,8 +351,10 @@ async def post_message(
             content=build_success_payload(payload, message="Mensagem enviada com sucesso"),
         )
     except ChatServiceError as error:
+        _cleanup_chat_uploads(stored_attachments)
         return _chat_error_response(error)
     except Exception:
+        _cleanup_chat_uploads(stored_attachments)
         logger.exception(
             "Falha ao criar mensagem do chat",
             extra={"context": {"request_id": _request_request_id(request)}},
@@ -409,6 +496,7 @@ async def delete_message_route(
     try:
         parsed_message_id = _parse_uuid(messageId, field="messageId")
         result = delete_message(db, current_user.id, parsed_message_id)
+        _cleanup_chat_uploads(result.get("attachments") or [])
         await _broadcast_chat_event(
             request,
             {
@@ -773,10 +861,10 @@ async def websocket_chat(websocket: WebSocket) -> None:
                             {
                                 "type": "chat.presence.updated",
                                 "data": {
-                                "user_id": offline_presence["user_id"],
-                                "status": offline_presence["status"],
-                                "last_activity": offline_presence["last_activity"],
-                                "updated_at": offline_presence["updated_at"],
+                                    "user_id": offline_presence["user_id"],
+                                    "status": offline_presence["status"],
+                                    "last_activity": offline_presence["last_activity"],
+                                    "updated_at": offline_presence["updated_at"],
                                 },
                             }
                         ),

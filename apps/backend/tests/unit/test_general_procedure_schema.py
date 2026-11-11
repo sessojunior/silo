@@ -10,9 +10,7 @@ def test_general_procedure_tables_expose_searchable_procedure_and_attachment_met
     attachment = legacy_tables["general_procedure_attachment"]
     chunk = legacy_tables["general_procedure_attachment_chunk"]
 
-    assert {"id", "title", "content", "category", "active", "user_id"}.issubset(
-        procedure.c.keys()
-    )
+    assert {"id", "title", "content", "category", "active", "user_id"}.issubset(procedure.c.keys())
     assert {"id", "procedure_id", "kind", "original_name", "stored_filename"}.issubset(
         attachment.c.keys()
     )

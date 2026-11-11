@@ -36,7 +36,9 @@ services:
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
       VLLM_LOGGING_LEVEL: ${LOG_LEVEL:-INFO}
-      VLLM_CPU_KVCACHE_SPACE: ${VLLM_CPU_KVCACHE_SPACE:-1}
+      # Keep the dedicated CPU embedding process from consuming the memory
+      # budget needed by the local Qwen inference service.
+      VLLM_CPU_KVCACHE_SPACE: ${VLLM_CPU_KVCACHE_SPACE:-0.05}
     command:
       - "--model"
       - "${VLLM_EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}"
@@ -125,7 +127,7 @@ services:
       [
         "sh",
         "-c",
-        "while true; do python -m silo.ai.backfill_embeddings; sleep \"$${EMBEDDING_BACKFILL_INTERVAL_SECONDS}\"; done",
+        "while true; do if python -m silo.ai.backfill_embeddings; then sleep \"$${EMBEDDING_BACKFILL_INTERVAL_SECONDS}\"; else exit 1; fi; done",
       ]
     environment:
       SILO_ENV: ${SILO_ENV:-development}

@@ -23,16 +23,17 @@ SSE antes de alterar a interface.
 ## Preferencias, politica e triagem NCM
 
 As preferencias simples da aba `/admin/settings?tab=preferences` sao persistidas
-por usuario: `aiEnabled` (padrao `true`), `mcpEnabled` (padrao `false`) e
-`customModelEnabled` (padrao `false`). A preferencia do usuario nunca concede
-permissao por si so.
+por usuario: `chatEnabled` e `aiEnabled` (padrao `true`). MCP, ferramentas e
+modelo sao configuracoes globais aprovadas pelo backend; nao sao selecionaveis
+por usuario. A preferencia do usuario nunca concede permissao por si so.
 
 Antes de criar o runtime do assistente, o backend resolve a politica de
 capacidades usando a linha `user_preferences` e a configuracao global. O
 assistente desabilitado retorna HTTP 403 no endpoint JSON e um evento SSE
-`error`; MCP exige habilitacao global e ferramentas aprovadas; modelo
-personalizado exige um identificador aprovado. Sem capacidade aprovada, o
-modelo Qwen/vLLM configurado continua sendo o fallback.
+`error`; MCP exige habilitacao global e ferramentas aprovadas. O modelo
+personalizado, quando habilitado globalmente, e escolhido pela politica do
+backend. Sem capacidade aprovada, o modelo Qwen/vLLM configurado continua
+sendo o fallback.
 
 O NCM (Next-Concept Modeling) e um classificador rapido opcional antes da
 classificacao existente. Ele produz apenas uma rota (`simple`, `knowledge`,

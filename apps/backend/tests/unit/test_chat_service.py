@@ -8,6 +8,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Integer,
     MetaData,
     String,
     Table,
@@ -54,6 +55,17 @@ def _build_chat_tables(metadata: MetaData) -> dict[str, Table]:
             Column("read_at", DateTime, nullable=True),
             Column("deleted_at", DateTime, nullable=True),
             Column("updated_at", DateTime, nullable=False),
+        ),
+        "chat_message_attachment": Table(
+            "chat_message_attachment",
+            metadata,
+            Column("id", String, primary_key=True),
+            Column("message_id", String, nullable=False),
+            Column("original_name", String, nullable=False),
+            Column("stored_filename", String, nullable=False),
+            Column("content_type", String, nullable=False),
+            Column("size", Integer, nullable=False),
+            Column("created_at", DateTime, nullable=False),
         ),
         "chat_user_presence": Table(
             "chat_user_presence",
@@ -513,6 +525,53 @@ def test_chat_service_create_message_validation_and_success(
         ).all()
     ]
     assert set(inserted_ids) == {"message-created-1", "message-created-2"}
+
+
+def test_chat_service_persists_and_lists_message_attachments(
+    chat_db, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    connection, _tables = chat_db
+    message_ids = iter(["message-with-attachment", "attachment-1"])
+    monkeypatch.setattr(chat_service, "new_id", lambda: next(message_ids))
+
+    created = chat_service.create_message(
+        connection,
+        "user-1",
+        "Veja o arquivo",
+        receiver_group_id="group-1",
+        attachments=[
+            {
+                "original_name": "report.pdf",
+                "stored_filename": "stored-report.pdf",
+                "content_type": "application/pdf",
+                "size": 11,
+            }
+        ],
+    )
+
+    assert created["attachments"] == [
+        {
+            "id": "attachment-1",
+            "original_name": "report.pdf",
+            "stored_filename": "stored-report.pdf",
+            "content_type": "application/pdf",
+            "size": 11,
+        }
+    ]
+    listed = chat_service.list_messages(connection, "user-1", "group-1", None)
+    listed_message = next(item for item in listed["messages"] if item["id"] == created["id"])
+    assert listed_message["attachments"][0]["stored_filename"] == "stored-report.pdf"
+
+    deleted = chat_service.delete_message(connection, "user-1", created["id"])
+    assert deleted["attachments"][0]["original_name"] == "report.pdf"
+    assert (
+        connection.execute(
+            select(_tables["chat_message_attachment"]).where(
+                _tables["chat_message_attachment"].c.message_id == created["id"]
+            )
+        ).first()
+        is None
+    )
 
 
 def test_chat_service_read_and_delete_flows_cover_error_and_update_branches(chat_db) -> None:

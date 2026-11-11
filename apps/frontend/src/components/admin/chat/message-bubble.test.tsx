@@ -416,4 +416,41 @@ describe("message bubble assistant artifacts dedupe", () => {
     expect(screen.getAllByRole("button", { name: "Visualizar" })).toHaveLength(1);
     expect(screen.getByText("PDF legado")).toBeInTheDocument();
   });
+
+  it("renders chat attachments as private links", () => {
+    const message: ChatMessage = {
+      id: "22222222-2222-4222-8222-222222222222",
+      content: "Veja o arquivo",
+      senderUserId: "user-1",
+      senderName: "User One",
+      receiverGroupId: "group-1",
+      receiverUserId: null,
+      createdAt: new Date("2026-07-28T12:00:00Z"),
+      readAt: null,
+      deletedAt: null,
+      messageType: "groupMessage",
+      attachments: [
+        {
+          id: "attachment-1",
+          name: "report.pdf",
+          url: "/api/upload/serve/chat/report.pdf",
+          contentType: "application/pdf",
+          size: 2 * 1024 * 1024,
+        },
+      ],
+    };
+
+    render(
+      <MessageBubble
+        message={message}
+        isOwnMessage
+        showAvatar={false}
+        showAssistantFooter={false}
+      />,
+    );
+
+    const link = screen.getByRole("link", { name: /report\.pdf/ });
+    expect(link).toHaveAttribute("href", "/silo/api/upload/serve/chat/report.pdf");
+    expect(screen.getByTestId("chat-attachments")).toHaveTextContent("2.0 MB");
+  });
 });

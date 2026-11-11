@@ -65,6 +65,10 @@ export default function NotificationDropdown({
     onClose();
   };
 
+  const handleClearAll = () => {
+    clearUnreadMessages();
+  };
+
   // Navegar para todas as conversas
   const handleViewAllConversations = () => {
     onClose();
@@ -111,7 +115,18 @@ export default function NotificationDropdown({
               )}
             </div>
             <div className="flex items-center gap-2">
+              {totalUnread > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="rounded px-2 py-1 text-[11px] font-medium text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
+                  title="Limpar todas as notificações"
+                >
+                  Limpar todas
+                </button>
+              )}
               <button
+                type="button"
                 onClick={handleRefresh}
                 className="flex items-center justify-center size-8 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all duration-200"
                 title="Verificar novas mensagens"

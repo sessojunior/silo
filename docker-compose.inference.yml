@@ -2,7 +2,7 @@ name: inference
 
 services:
   qwen:
-    image: ${QWEN_IMAGE:-vllm/vllm-openai:v0.29.0}
+    image: ${SILO_VLLM_CPU_IMAGE:-vllm/vllm-openai-cpu:v0.29.0-x86_64}
     container_name: qwen
     networks:
       shared-inference:
@@ -24,10 +24,18 @@ services:
       - "--port"
       - "8000"
       - "--max-model-len"
-      - "${QWEN_MAX_MODEL_LEN:-8192}"
+      # Keep the CPU profile within the small local Docker memory budget.
+      # Use a separate variable so a GPU-oriented QWEN_MAX_MODEL_LEN in .env
+      # cannot accidentally make the local CPU profile exceed its budget.
+      - "${QWEN_CPU_MAX_MODEL_LEN:-2048}"
+      # vLLM reuses this flag for the fraction of host memory reserved by its
+      # CPU backend. Keep the local default below the 0.92 upstream default so
+      # Qwen can coexist with PostgreSQL, API, embeddings and the worker.
       - "--gpu-memory-utilization"
-      - "${QWEN_GPU_MEMORY_UTILIZATION:-0.70}"
-      - "--enable-prefix-caching"
+      - "${QWEN_CPU_MEMORY_UTILIZATION:-0.20}"
+      # Avoid the large CPU JIT warm-up peak in the constrained local profile.
+      - "--enforce-eager"
+      - "--no-enable-prefix-caching"
       - "--enable-auto-tool-choice"
       - "--tool-call-parser"
       - "hermes"
@@ -42,13 +50,6 @@ services:
       start_period: 120s
     mem_limit: "8g"
     cpus: "4.0"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["${QWEN_GPU_ID:-0}"]
-              capabilities: [gpu]
     restart: unless-stopped
 
 volumes:

@@ -39,8 +39,10 @@ async def availability_report(
     if isinstance(period, JSONResponse):
         return period
 
+    product_id = _optional_text(request.query_params.get("productId"))
+
     try:
-        data = get_availability_report(db, period)
+        data = get_availability_report(db, period, product_id)
         return build_success_payload(data, meta=get_availability_report_meta(period))
     except Exception:
         return json_error_response(500, "Erro interno")
@@ -55,8 +57,10 @@ async def availability_pdf(
     if isinstance(period, JSONResponse):
         return period
 
+    product_id = _optional_text(body.get("productId"))
+
     try:
-        data = get_availability_report(db, period)
+        data = get_availability_report(db, period, product_id)
         pdf = generate_pdf(
             report_type="availability",
             data=data,

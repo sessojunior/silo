@@ -28,8 +28,6 @@ type UserPreferences = {
   chatEnabled: boolean;
   showWelcome: boolean;
   aiEnabled?: boolean;
-  modelId?: string;
-  availableModels?: { id: string; label: string }[];
 };
 
 type UserContextState = {
@@ -401,11 +399,6 @@ describe("SettingsPage", () => {
         chatEnabled: false,
         showWelcome: true,
         aiEnabled: true,
-        modelId: "qwen",
-        availableModels: [
-          { id: "qwen", label: "Qwen padrão" },
-          { id: "silo-approved-v1", label: "Modelo aprovado" },
-        ],
       },
       updateUser: vi.fn(),
       updateUserProfile: vi.fn(),
@@ -464,11 +457,6 @@ describe("SettingsPage", () => {
         chatEnabled: true,
         showWelcome: true,
         aiEnabled: true,
-        modelId: "qwen",
-        availableModels: [
-          { id: "qwen", label: "Qwen padrão" },
-          { id: "silo-approved-v1", label: "Modelo aprovado" },
-        ],
       },
       updateUser: vi.fn(),
       updateUserProfile: vi.fn(),

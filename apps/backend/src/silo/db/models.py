@@ -212,9 +212,6 @@ TABLE_COLUMN_SPECS: tuple[TableColumnsSpec, ...] = (
             ("user_id", "text", False, True),
             ("chat_enabled", "boolean", False, True),
             ("ai_enabled", "boolean", False, True),
-            ("mcp_enabled", "boolean", False, True),
-            ("custom_model_enabled", "boolean", False, True),
-            ("model_id", "text", False, False),
         ),
     ),
     (
@@ -517,6 +514,18 @@ TABLE_COLUMN_SPECS: tuple[TableColumnsSpec, ...] = (
             ("updated_at", "timestamp", False, True),
             ("deleted_at", "timestamp", False, False),
             ("read_at", "timestamp", False, False),
+        ),
+    ),
+    (
+        "chat_message_attachment",
+        (
+            ("id", "uuid", True, True),
+            ("message_id", "uuid", False, True),
+            ("original_name", "text", False, True),
+            ("stored_filename", "text", False, True),
+            ("content_type", "text", False, True),
+            ("size", "integer", False, True),
+            ("created_at", "timestamp", False, True),
         ),
     ),
     (
@@ -913,6 +922,15 @@ FOREIGN_KEY_SPECS: dict[str, tuple[ForeignKeySpec, ...]] = {
             "cascade",
         ),
     ),
+    "chat_message_attachment": (
+        ForeignKeySpec(
+            "message_id",
+            "chat_message",
+            "id",
+            "chat_message_attachment_message_id_chat_message_id_fk",
+            "cascade",
+        ),
+    ),
     "chat_user_presence": (
         ForeignKeySpec(
             "user_id",
@@ -1152,6 +1170,11 @@ INDEX_SPECS: tuple[IndexSpec, ...] = (
     ),
     IndexSpec("idx_chat_message_unread_user", "chat_message", ("receiver_user_id", "read_at")),
     IndexSpec("idx_chat_message_sender", "chat_message", ("sender_user_id",)),
+    IndexSpec(
+        "idx_chat_message_attachment_message_id",
+        "chat_message_attachment",
+        ("message_id",),
+    ),
     IndexSpec("idx_ai_assistant_thread_user_id", "ai_assistant_thread", ("user_id",)),
     IndexSpec(
         "idx_ai_assistant_thread_last_message_at",
@@ -1390,8 +1413,6 @@ def _build_column_server_defaults() -> dict[tuple[str, str], str]:
         ("user", "is_active"): "false",
         ("user_preferences", "chat_enabled"): "true",
         ("user_preferences", "ai_enabled"): "true",
-        ("user_preferences", "mcp_enabled"): "false",
-        ("user_preferences", "custom_model_enabled"): "false",
         ("product", "available"): "true",
         ("product", "priority"): "'normal'",
         ("product", "turns"): """'["0","6","12","18"]'::jsonb""",

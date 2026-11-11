@@ -137,8 +137,7 @@ async def upload_procedure_attachment(
     content = await upload.read()
     original_name = str(getattr(upload, "filename", None) or "attachment")
     mime_type = str(
-        getattr(upload, "content_type", None)
-        or get_content_type_from_filename(original_name)
+        getattr(upload, "content_type", None) or get_content_type_from_filename(original_name)
     )
     result = create_general_procedure_attachment(
         db,

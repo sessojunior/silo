@@ -289,13 +289,13 @@ async def _backfill_manuals(
                 insert(chunk_table).values(
                     _with_embedding_metadata(
                         {
-                        "id": f"{manual['id']}_chunk_{chunk.index}",
-                        "product_manual_id": manual["id"],
-                        "product_id": manual["product_id"],
-                        "chunk_index": chunk.index,
-                        "content": chunk.content,
-                        "token_count": chunk.token_count,
-                        "embedding": list(embedding),
+                            "id": f"{manual['id']}_chunk_{chunk.index}",
+                            "product_manual_id": manual["id"],
+                            "product_id": manual["product_id"],
+                            "chunk_index": chunk.index,
+                            "content": chunk.content,
+                            "token_count": chunk.token_count,
+                            "embedding": list(embedding),
                         },
                         chunk.content,
                         embedding_model=embedding_model,

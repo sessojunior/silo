@@ -117,6 +117,11 @@ def require_upload_access(
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
     db: Annotated[Connection, Depends(get_db)],
 ) -> CurrentUser:
+    if kind == "chat":
+        if not get_chat_access_state(db, current_user.id).can_view_chat:
+            raise ForbiddenError()
+        return current_user
+
     resources = {
         "reports": "reports",
         "contacts": "contacts",

@@ -8,7 +8,8 @@ O SILO usa um Compose da aplicação e um Compose independente para o Qwen:
 
 | Arquivo | Uso | Build |
 |---|---|---|
-| `docker-compose.inference.yml` | Qwen compartilhado | Usa imagem vLLM e GPU |
+| `docker-compose.inference.yml` | Qwen compartilhado | Perfil CPU padrão |
+| `docker-compose.inference.gpu.yml` | Override do Qwen | Imagem CUDA e GPU NVIDIA |
 | `docker-compose.yml` | Desenvolvimento local | Constrói imagens (`build:`) |
 | `docker-compose.deploy.yml` | Produção | Usa imagem pronta (`image:`) |
 
@@ -55,8 +56,11 @@ migrate` recria o container.
 ### Comandos
 
 ```bash
-# Qwen compartilhado
+# Qwen compartilhado em CPU (desenvolvimento/local)
 docker compose -f docker-compose.inference.yml up -d
+
+# Qwen compartilhado em GPU (produção com NVIDIA Container Toolkit)
+docker compose -f docker-compose.inference.yml -f docker-compose.inference.gpu.yml up -d
 
 # Desenvolvimento do SILO
 docker compose up -d --build        # Subir stack
@@ -70,7 +74,7 @@ curl http://localhost:4000/health/live
 curl http://localhost:4000/health/ready
 
 # Produção
-docker compose -f docker-compose.inference.yml up -d
+docker compose -f docker-compose.inference.yml -f docker-compose.inference.gpu.yml up -d
 docker compose -f docker-compose.deploy.yml up -d
 docker compose -f docker-compose.deploy.yml down
 docker compose -f docker-compose.deploy.yml logs -f

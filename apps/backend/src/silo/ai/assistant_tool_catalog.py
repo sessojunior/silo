@@ -176,9 +176,7 @@ def execute_hybrid_tool(
 ) -> tuple[HybridToolSpec, Any]:
     if not isinstance(tool_context, AssistantToolContext):
         raise AssistantSecurityError("Contexto de ferramenta inválido.")
-    require_capability(
-        tool_context.security_policy, AssistantCapability.DATABASE_READ
-    )
+    require_capability(tool_context.security_policy, AssistantCapability.DATABASE_READ)
     read_gateway = tool_context.read_gateway
     if read_gateway is None:
         raise AssistantSecurityError("Gateway de leitura indisponível.")
@@ -205,9 +203,7 @@ async def execute_hybrid_tool_async(
     """Execute a gateway-backed read tool outside the event loop."""
     if not isinstance(tool_context, AssistantToolContext):
         raise AssistantSecurityError("Contexto de ferramenta inválido.")
-    require_capability(
-        tool_context.security_policy, AssistantCapability.DATABASE_READ
-    )
+    require_capability(tool_context.security_policy, AssistantCapability.DATABASE_READ)
     return await asyncio.to_thread(execute_hybrid_tool, tool_name, tool_context, state, args)
 
 

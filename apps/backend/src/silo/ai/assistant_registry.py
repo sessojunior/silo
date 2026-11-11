@@ -14,8 +14,8 @@ from sqlalchemy.engine import Connection
 from silo.ai.assistant_capability_policy import AiCapabilityPolicy
 from silo.ai.assistant_contracts import AiAssistantScope
 from silo.ai.assistant_security import AssistantSecurityPolicy
-from silo.ai.triage import TriagePort
 from silo.ai.ports import ChatModelRuntime, EmbeddingPort
+from silo.ai.triage import TriagePort
 from silo.api.dependencies import CurrentUser
 from silo.clock import SYSTEM_CLOCK, Clock
 from silo.config import Settings

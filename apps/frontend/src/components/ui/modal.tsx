@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, HTMLAttributes } from "react";
+import { useEffect, useId, useRef, useState, HTMLAttributes } from "react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -12,6 +12,19 @@ interface ModalProps extends HTMLAttributes<HTMLDivElement> {
   showFooter?: boolean;
   panelClassName?: string;
   bodyClassName?: string;
+}
+
+const FOCUSABLE_SELECTOR =
+  'a[href],button,textarea,input,select,[tabindex]:not([tabindex="-1"])';
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  ).filter(
+    (element) =>
+      !element.hasAttribute("disabled") &&
+      element.getAttribute("aria-hidden") !== "true",
+  );
 }
 
 export default function Modal({
@@ -27,12 +40,21 @@ export default function Modal({
 }: ModalProps) {
   const [visible, setVisible] = useState(false);
   const [shouldAnimateIn, setShouldAnimateIn] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const previousOverflowRef = useRef("");
+  const titleId = useId();
 
   useEffect(() => {
     let openTimeout: NodeJS.Timeout;
     let closeTimeout: NodeJS.Timeout;
 
     if (isOpen) {
+      lastFocusedRef.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      previousOverflowRef.current = document.body.style.overflow;
       setVisible(true);
       document.body.style.overflow = "hidden";
 
@@ -43,23 +65,60 @@ export default function Modal({
       setShouldAnimateIn(false);
       closeTimeout = setTimeout(() => {
         setVisible(false);
-        document.body.style.overflow = "auto";
+        document.body.style.overflow = previousOverflowRef.current;
       }, 300);
     }
 
     return () => {
       clearTimeout(openTimeout);
       clearTimeout(closeTimeout);
-      document.body.style.overflow = "auto";
+      if (isOpen) {
+        document.body.style.overflow = previousOverflowRef.current;
+      }
     };
   }, [isOpen]);
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    if (isOpen && visible && dialogRef.current) {
+      const focusableElements = getFocusableElements(dialogRef.current);
+      (focusableElements[0] ?? dialogRef.current).focus();
+      return;
+    }
+
+    if (!isOpen && lastFocusedRef.current) {
+      lastFocusedRef.current.focus();
+      lastFocusedRef.current = null;
+    }
+  }, [isOpen, visible]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isOpen) return;
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return;
+
+      const focusableElements = getFocusableElements(dialogRef.current);
+      if (focusableElements.length === 0) {
+        dialogRef.current.focus();
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
-    if (isOpen) window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
+    if (isOpen) document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!visible) return null;
@@ -74,6 +133,10 @@ export default function Modal({
           className,
         ),
       )}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={title ? titleId : undefined}
+      ref={dialogRef}
       {...props}
     >
       {/* Fundo escuro com fade */}
@@ -84,6 +147,7 @@ export default function Modal({
             shouldAnimateIn ? "opacity-100" : "opacity-0",
           ),
         )}
+        onClick={onClose}
       />
 
       {/* Container principal do modal */}
@@ -96,13 +160,17 @@ export default function Modal({
             panelClassName,
           ),
         )}
+        onClick={(event) => event.stopPropagation()}
       >
         {/* Cabeçalho */}
         <div className="flex items-center justify-between rounded-xl border-b border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
           <div className="flex gap-3">
             <span className="icon-[lucide--folder-git-2] size-6 shrink-0 text-zinc-400 dark:text-zinc-500" />
             {title && (
-              <h3 className="font-bold text-zinc-800 dark:text-zinc-100">
+              <h3
+                id={titleId}
+                className="font-bold text-zinc-800 dark:text-zinc-100"
+              >
                 {title}
               </h3>
             )}

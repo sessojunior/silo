@@ -50,9 +50,7 @@ async def upsert_problem_embedding(
         return EmbeddingWriteResult(status="failed", failed_count=1, errors=(str(exc),))
 
 
-async def upsert_solution_embedding(
-    solution_id: str, description: str
-) -> EmbeddingWriteResult:
+async def upsert_solution_embedding(solution_id: str, description: str) -> EmbeddingWriteResult:
     try:
         embedding = await generate_embedding(description)
         table = legacy_tables["product_solution"]
@@ -105,7 +103,7 @@ async def upsert_procedure_embedding(
 
 
 async def upsert_procedure_attachment_embeddings(
-    attachment_id: str, chunks: Iterable[Mapping[str, object]]
+    attachment_id: str, chunks: Iterable[Mapping[Any, object]]
 ) -> EmbeddingWriteResult:
     errors: list[str] = []
     generated_count = 0
@@ -118,14 +116,20 @@ async def upsert_procedure_attachment_embeddings(
             content = str(chunk.get("content") or "").strip()
             if not content:
                 continue
+            chunk_index = chunk.get("chunk_index")
+            token_count = chunk.get("token_count")
             chunk_values = {
                 "id": str(chunk.get("id") or f"{attachment_id}_chunk_{index}"),
                 "attachment_id": attachment_id,
-                "chunk_index": int(chunk.get("chunk_index") or index),
+                "chunk_index": int(chunk_index)
+                if isinstance(chunk_index, (str, int)) and chunk_index
+                else index,
                 "content": content,
                 "page_number": chunk.get("page_number"),
                 "slide_number": chunk.get("slide_number"),
-                "token_count": int(chunk.get("token_count") or 0),
+                "token_count": int(token_count)
+                if isinstance(token_count, (str, int)) and token_count
+                else 0,
             }
             try:
                 embedding = await generate_embedding(content)

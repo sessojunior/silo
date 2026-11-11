@@ -20,6 +20,7 @@ interface ReportFilters {
   dateRange: string;
   startDate?: Date;
   endDate?: Date;
+  productId?: string;
 }
 
 function getReportTitle(id: string): string {
@@ -324,6 +325,8 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           queryParams.append("startDate", formatDate(filters.startDate));
         if (filters.endDate)
           queryParams.append("endDate", formatDate(filters.endDate));
+        if (reportId === "availability" && filters.productId)
+          queryParams.append("productId", filters.productId);
 
         const apiUrl = `${config.getApiUrl(apiPath)}?${queryParams.toString()}`;
         const response = await fetch(apiUrl, {
@@ -434,6 +437,10 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
   }
 
   const reportData = isRecord(report.data) ? report.data : {};
+  const availabilityProducts =
+    report.type === "availability"
+      ? (report.data as AvailabilityReportData).products.map(({ id, name }) => ({ id, name }))
+      : undefined;
 
   return (
     <div className="w-full">
@@ -541,6 +548,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           reportType={report.type}
+          products={availabilityProducts}
           rightAction={
             <div className="flex items-center gap-2">
               <ExportPdfButton
@@ -549,6 +557,7 @@ export function ReportViewPage({ reportId }: ReportViewPageProps) {
                   dateRange: filters.dateRange,
                   startDate: filters.startDate ? formatDate(filters.startDate) : undefined,
                   endDate: filters.endDate ? formatDate(filters.endDate) : undefined,
+                  productId: report.type === "availability" ? filters.productId : undefined,
                 }}
               />
               <Button

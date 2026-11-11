@@ -92,14 +92,14 @@ def _validate_content(suffix: str, mime_type: str, content: bytes) -> None:
             raise ProcedureAttachmentStorageError("MIME incompatível com a extensão do arquivo.")
         return
 
-    expected = {
+    expected_mime = {
         ".pdf": "application/pdf",
         ".txt": "text/plain",
         ".md": "text/markdown",
         ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     }.get(suffix)
-    if expected is None or mime_type != expected:
+    if expected_mime is None or mime_type != expected_mime:
         raise ProcedureAttachmentStorageError("MIME incompatível com a extensão do arquivo.")
     if suffix == ".pdf" and not content.startswith(b"%PDF-"):
         raise ProcedureAttachmentStorageError("PDF inválido.")

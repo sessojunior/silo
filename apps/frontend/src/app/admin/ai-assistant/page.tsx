@@ -1090,8 +1090,9 @@ export default function AiAssistantPage() {
 
           <MessageInput
             key={selectedThreadId ?? "new-thread"}
-            onSendMessage={handleAssistantMessage}
+            onSendMessage={(message) => handleAssistantMessage(message)}
             isSending={isSending}
+            enableAttachments={false}
             placeholder="Pergunte sobre modelos, pendências, relatórios, problemas, soluções ou projetos do Silo..."
             autoFocus={Boolean(selectedThreadId)}
           />

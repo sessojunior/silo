@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Coroutine, Mapping
+from typing import Any
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.engine import Connection
@@ -37,7 +38,7 @@ def list_general_procedures(
     statement = select(procedure_table).order_by(
         procedure_table.c.updated_at.desc(), procedure_table.c.id.desc()
     )
-    filters = []
+    filters: list[Any] = []
     if active is not None:
         filters.append(procedure_table.c.active.is_(active))
     if search and search.strip():
@@ -95,9 +96,11 @@ def create_general_procedure(
     }
     db.execute(insert(procedure_table).values(row))
     db.commit()
-    created = db.execute(
-        select(procedure_table).where(procedure_table.c.id == procedure_id).limit(1)
-    ).mappings().first()
+    created = (
+        db.execute(select(procedure_table).where(procedure_table.c.id == procedure_id).limit(1))
+        .mappings()
+        .first()
+    )
     assert created is not None
     _schedule_embedding(
         lambda: upsert_procedure_embedding(
@@ -126,18 +129,22 @@ def update_general_procedure(
         return service_failure("Conteúdo é obrigatório.", 400, field="content")
 
     procedure_table = legacy_tables["general_procedure"]
-    updated = db.execute(
-        update(procedure_table)
-        .where(procedure_table.c.id == id)
-        .values(
-            title=normalized_title,
-            content=normalized_content,
-            category=required_text(category, "category"),
-            active=bool(active),
-            updated_at=now_naive(),
+    updated = (
+        db.execute(
+            update(procedure_table)
+            .where(procedure_table.c.id == id)
+            .values(
+                title=normalized_title,
+                content=normalized_content,
+                category=required_text(category, "category"),
+                active=bool(active),
+                updated_at=now_naive(),
+            )
+            .returning(procedure_table)
         )
-        .returning(procedure_table)
-    ).mappings().first()
+        .mappings()
+        .first()
+    )
     if updated is None:
         return service_failure("Procedimento não encontrado.", 404)
     db.commit()
@@ -158,9 +165,13 @@ def delete_general_procedure(db: Connection, *, id: str) -> dict[str, object]:
     if row is None:
         return service_failure("Procedimento não encontrado.", 404)
 
-    attachment_rows = db.execute(
-        select(attachment_table.c.stored_filename).where(attachment_table.c.procedure_id == id)
-    ).mappings().all()
+    attachment_rows = (
+        db.execute(
+            select(attachment_table.c.stored_filename).where(attachment_table.c.procedure_id == id)
+        )
+        .mappings()
+        .all()
+    )
     db.execute(delete(procedure_table).where(procedure_table.c.id == id))
     db.commit()
 
@@ -215,9 +226,11 @@ def create_general_procedure_attachment(
         delete_procedure_attachment_file(get_uploads_root(), stored.filename)
         raise
 
-    attachment = db.execute(
-        select(attachment_table).where(attachment_table.c.id == attachment_id).limit(1)
-    ).mappings().first()
+    attachment = (
+        db.execute(select(attachment_table).where(attachment_table.c.id == attachment_id).limit(1))
+        .mappings()
+        .first()
+    )
     assert attachment is not None
     return service_success({"attachment": _attachment_payload(attachment)})
 
@@ -227,9 +240,11 @@ def process_general_procedure_attachment(
 ) -> dict[str, object]:
     attachment_table = legacy_tables["general_procedure_attachment"]
     chunk_table = legacy_tables["general_procedure_attachment_chunk"]
-    attachment = db.execute(
-        select(attachment_table).where(attachment_table.c.id == attachment_id).limit(1)
-    ).mappings().first()
+    attachment = (
+        db.execute(select(attachment_table).where(attachment_table.c.id == attachment_id).limit(1))
+        .mappings()
+        .first()
+    )
     if attachment is None:
         return service_failure("Anexo não encontrado.", 404)
 
@@ -282,12 +297,12 @@ def process_general_procedure_attachment(
             .values(extraction_status="ready", extraction_error=None, updated_at=now_naive())
         )
         db.commit()
-        chunks = db.execute(
-            select(chunk_table).where(chunk_table.c.attachment_id == attachment_id)
-        ).mappings().all()
-        _schedule_embedding(
-            lambda: upsert_procedure_attachment_embeddings(attachment_id, chunks)
+        chunks = (
+            db.execute(select(chunk_table).where(chunk_table.c.attachment_id == attachment_id))
+            .mappings()
+            .all()
         )
+        _schedule_embedding(lambda: upsert_procedure_attachment_embeddings(attachment_id, chunks))
         return service_success(None)
     except Exception as exc:
         db.rollback()
@@ -306,9 +321,13 @@ def process_general_procedure_attachment(
 
 def delete_general_procedure_attachment(db: Connection, *, id: str) -> dict[str, object]:
     attachment_table = legacy_tables["general_procedure_attachment"]
-    row = db.execute(
-        select(attachment_table.c.stored_filename).where(attachment_table.c.id == id).limit(1)
-    ).mappings().first()
+    row = (
+        db.execute(
+            select(attachment_table.c.stored_filename).where(attachment_table.c.id == id).limit(1)
+        )
+        .mappings()
+        .first()
+    )
     if row is None:
         return service_failure("Anexo não encontrado.", 404)
     db.execute(delete(attachment_table).where(attachment_table.c.id == id))
@@ -317,31 +336,35 @@ def delete_general_procedure_attachment(db: Connection, *, id: str) -> dict[str,
     return service_success(None)
 
 
-def _procedure_payload(db: Connection, row: Mapping[str, object]) -> dict[str, object]:
+def _procedure_payload(db: Connection, row: Mapping[Any, object]) -> dict[str, object]:
     payload = serialize_legacy_row(row)
     attachment_table = legacy_tables["general_procedure_attachment"]
-    attachments = db.execute(
-        select(attachment_table)
-        .where(attachment_table.c.procedure_id == row["id"])
-        .order_by(attachment_table.c.sort_order.asc(), attachment_table.c.created_at.asc())
-    ).mappings().all()
+    attachments = (
+        db.execute(
+            select(attachment_table)
+            .where(attachment_table.c.procedure_id == row["id"])
+            .order_by(attachment_table.c.sort_order.asc(), attachment_table.c.created_at.asc())
+        )
+        .mappings()
+        .all()
+    )
     payload["attachments"] = [_attachment_payload(attachment) for attachment in attachments]
     return payload
 
 
-def _attachment_payload(row: Mapping[str, object]) -> dict[str, object]:
+def _attachment_payload(row: Mapping[Any, object]) -> dict[str, object]:
     payload = serialize_legacy_row(row)
     payload["url"] = f"/uploads/procedures/{row['stored_filename']}"
     return payload
 
 
-def _schedule_embedding(factory: Callable[[], object]) -> None:
+def _schedule_embedding(factory: Callable[[], Coroutine[Any, Any, object]]) -> None:
     """Start indexing without delaying the CRUD response."""
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         return
-    task = loop.create_task(factory())  # type: ignore[arg-type]
+    task: asyncio.Task[object] = loop.create_task(factory())
     task.add_done_callback(_log_embedding_failure)
 
 

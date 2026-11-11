@@ -101,15 +101,18 @@ def get_projects_report_meta(date_range: dict[str, str]) -> dict[str, object]:
 
 
 def get_availability_report(
-    connection: Connection, date_range: dict[str, str]
+    connection: Connection,
+    date_range: dict[str, str],
+    product_id: str | None = None,
 ) -> dict[str, object]:
     product_table = legacy_tables["product"]
     activity_table = legacy_tables["product_activity"]
 
+    product_query = select(product_table)
+    if product_id:
+        product_query = product_query.where(product_table.c.id == product_id)
     products = (
-        connection.execute(select(product_table).order_by(product_table.c.name.asc()))
-        .mappings()
-        .all()
+        connection.execute(product_query.order_by(product_table.c.name.asc())).mappings().all()
     )
     if not products:
         return {
@@ -133,9 +136,7 @@ def get_availability_report(
 
     activities_by_product: dict[str, list[dict[str, Any]]] = {}
     for activity in all_activities:
-        activities_by_product.setdefault(str(activity["product_id"]), []).append(
-            dict(activity)
-        )
+        activities_by_product.setdefault(str(activity["product_id"]), []).append(dict(activity))
 
     products_with_availability: list[dict[str, Any]] = []
     for product in products:

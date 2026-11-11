@@ -278,9 +278,10 @@ def test_fixture_api_catalog_reports_chat_assistant_and_websocket_routes() -> No
         assert pdf_response.headers["content-type"] == "application/pdf"
         assert len(pdf_response.content) > 0
         assert pdf_response.headers["content-length"] == str(len(pdf_response.content))
-        assert pdf_response.headers["x-content-sha256"] == hashlib.sha256(
-            pdf_response.content
-        ).hexdigest()
+        assert (
+            pdf_response.headers["x-content-sha256"]
+            == hashlib.sha256(pdf_response.content).hexdigest()
+        )
 
         image_response = client.get("/api/upload/serve/avatars/profile.png")
         assert image_response.status_code == 200

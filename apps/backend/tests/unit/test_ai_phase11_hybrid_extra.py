@@ -397,7 +397,8 @@ async def test_agentic_loop_aplica_limite_de_chamadas_e_timeout(
     assert runtime_model.calls == 1
     assert state["supplemental_results"] == {}
     assert any(
-        event["status"] == "timeout" for event in state["observability"]["toolCalls"]  # type: ignore[index]
+        event["status"] == "timeout"
+        for event in state["observability"]["toolCalls"]  # type: ignore[index]
     )
 
 

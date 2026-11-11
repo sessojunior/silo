@@ -47,17 +47,18 @@ def _normalize_path(path_value: str) -> str:
 
 
 def _summary_percent(summary: dict[str, object]) -> float:
+    covered_lines = float(summary.get("covered_lines", 0) or 0)
+    num_statements = float(summary.get("num_statements", 0) or 0)
+    if num_statements > 0:
+        return (covered_lines / num_statements) * 100.0
+
     if "percent_covered" in summary:
         try:
             return float(summary["percent_covered"])
         except (TypeError, ValueError):
             pass
 
-    covered_lines = float(summary.get("covered_lines", 0) or 0)
-    num_statements = float(summary.get("num_statements", 0) or 0)
-    if num_statements == 0:
-        return 100.0 if covered_lines == 0 else 0.0
-    return (covered_lines / num_statements) * 100.0
+    return 100.0 if covered_lines == 0 else 0.0
 
 
 def _collect_area_coverage(
@@ -90,7 +91,9 @@ def _format_percent(value: float) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Valida thresholds de cobertura do backend.")
+    parser = argparse.ArgumentParser(
+        description="Valida thresholds de cobertura de linhas do backend."
+    )
     parser.add_argument(
         "coverage_json",
         nargs="?",
@@ -146,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(
-        "coverage check: ok "
+        "coverage check: ok (line coverage) "
         f"(overall {_format_percent(overall_percent)}, "
         + ", ".join(
             f"{area.name} {_format_percent(_collect_area_coverage(files, area)[0])}"

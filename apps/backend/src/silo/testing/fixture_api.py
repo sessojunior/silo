@@ -281,10 +281,6 @@ class AuthUserRecord:
     def preferences_payload(self) -> dict[str, Any]:
         defaults = {
             "aiEnabled": True,
-            "mcpEnabled": False,
-            "customModelEnabled": False,
-            "modelId": "qwen",
-            "availableModels": [{"id": "qwen", "label": "qwen"}],
         }
         return {"userPreferences": {**defaults, **self.preferences}}
 
@@ -1499,9 +1495,7 @@ class FixtureState:
                 re.findall(r"[a-z0-9À-ÿ]+", str(source.get("text") or "").casefold())
             )
             lexical_score = len(prompt_terms & source_terms) / max(len(prompt_terms), 1)
-            vector_score = _cosine_similarity(
-                query_embedding, list(source.get("embedding") or [])
-            )
+            vector_score = _cosine_similarity(query_embedding, list(source.get("embedding") or []))
             score = round(min(0.99, (lexical_score * 0.65) + (vector_score * 0.35)), 4)
             candidates.append((score, source))
 
@@ -2011,9 +2005,6 @@ async def api_router(path: str, request: Request) -> Response:
         allowed = {
             "chatEnabled",
             "aiEnabled",
-            "mcpEnabled",
-            "customModelEnabled",
-            "modelId",
         }
         unknown = sorted(set(payload) - allowed)
         if unknown:
@@ -2021,11 +2012,6 @@ async def api_router(path: str, request: Request) -> Response:
         if not payload:
             return _error("Informe pelo menos uma preferência.", status=400)
         for key, value in payload.items():
-            if key == "modelId":
-                if not isinstance(value, str) or value != "qwen":
-                    return _error("Modelo de IA desconhecido.", status=400)
-                user.preferences[key] = value
-                continue
             if not isinstance(value, bool):
                 return _error(f"{key} deve ser booleano.", status=400)
             user.preferences[key] = value

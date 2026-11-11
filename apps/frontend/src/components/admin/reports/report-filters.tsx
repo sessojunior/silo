@@ -4,16 +4,23 @@ import type { ReactNode } from "react";
 import Select from "@/components/ui/select";
 import { formatDate, formatDateBR } from "@silo/engine/date";
 
-interface ReportFiltersType {
+export interface ReportFiltersType {
   dateRange: string;
   startDate?: Date;
   endDate?: Date;
+  productId?: string;
+}
+
+interface ReportProductOption {
+  id: string;
+  name: string;
 }
 
 interface ReportFiltersProps {
   filters: ReportFiltersType;
   onFiltersChange: (filters: ReportFiltersType) => void;
   reportType: "availability" | "problems" | "projects" | "executive";
+  products?: ReportProductOption[];
   rightAction?: ReactNode;
 }
 
@@ -21,6 +28,7 @@ export function ReportFilters({
   filters,
   onFiltersChange,
   reportType,
+  products = [],
   rightAction,
 }: ReportFiltersProps) {
   const handleFilterChange = (
@@ -118,6 +126,21 @@ export function ReportFilters({
               { label: "📅 Personalizado", value: "custom" },
             ]}
           />
+          {reportType === "availability" && products.length > 0 && (
+            <Select
+              name="productId"
+              selected={filters.productId ?? ""}
+              placeholder="Todos os produtos"
+              onChange={(value) => handleFilterChange("productId", value || undefined)}
+              options={[
+                { label: "Todos os produtos", value: "" },
+                ...products.map((product) => ({
+                  label: product.name,
+                  value: product.id,
+                })),
+              ]}
+            />
+          )}
           {rightAction}
         </div>
       </div>

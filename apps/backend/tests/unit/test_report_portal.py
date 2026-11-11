@@ -678,6 +678,14 @@ def test_report_portal_helpers_and_reports(report_connection) -> None:
     assert availability["totalInterventions"] == 3
     assert availability["products"][0]["status"] == "critical"
 
+    filtered_availability = report_portal.get_availability_report(
+        connection,
+        {"start": (date.fromisoformat(today) - timedelta(days=30)).isoformat(), "end": today},
+        product_id=ids.product_2,
+    )
+    assert filtered_availability["totalProducts"] == 1
+    assert [item["id"] for item in filtered_availability["products"]] == [ids.product_2]
+
     problems = report_portal.get_problems_report(
         connection,
         {"start": (date.fromisoformat(today) - timedelta(days=30)).isoformat(), "end": today},

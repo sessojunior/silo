@@ -6,16 +6,16 @@ requires-python = "==3.13.*"
 dependencies = [
     "aiosmtplib==5.1.2",
     "alembic==1.18.5",
-    "authlib==1.7.2",
+    "authlib==1.9.1",
     "bcrypt==5.0.0",
     "fastapi==0.139.2",
     "httpx==0.28.1",
     "langchain-core==1.4.9",
     "langchain-openai==1.1.14",
-    "langgraph==1.2.9",
+    "langgraph==1.2.14",
     "pgvector==0.5.0",
-    "pillow==12.3.0",
-    "pypdf==6.7.0",
+    "pillow==13.0.0",
+    "pypdf==6.21.4",
     "python-docx==1.2.0",
     "python-pptx==1.0.2",
     "psycopg[binary,pool]==3.3.4",
@@ -45,7 +45,7 @@ build-backend = "hatchling.build"
 packages = ["src/silo"]
 
 [tool.uv]
-exclude-newer = "2026-08-31T23:59:59Z"
+exclude-newer = "2026-11-10T23:59:59Z"
 
 [dependency-groups]
 dev = [
@@ -90,6 +90,7 @@ asyncio_mode = "auto"
 [tool.coverage.run]
 branch = true
 source = ["silo"]
+omit = ["*/silo/testing/*"]
 
 [tool.coverage.report]
 show_missing = true

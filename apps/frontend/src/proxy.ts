@@ -80,6 +80,16 @@ export async function proxy(req: NextRequest) {
       return NextResponse.next();
     }
 
+    // Mensagens com anexos precisam passar por um Route Handler para que o
+    // corpo multipart seja encaminhado sem ser descartado pelo rewrite.
+    if (
+      routePath === "/api/admin/chat/messages" &&
+      req.method === "POST" &&
+      req.headers.get("content-type")?.toLowerCase().startsWith("multipart/form-data")
+    ) {
+      return NextResponse.next();
+    }
+
     const apiPath = `/api/${routePath.slice("/api/admin/".length)}`;
     return rewriteToApi(apiPath, req.nextUrl.search);
   }

@@ -34,15 +34,14 @@ def test_preferences_procedure_context_and_triage_fallback_flow() -> None:
             json={
                 "chatEnabled": True,
                 "aiEnabled": True,
-                "mcpEnabled": False,
-                "customModelEnabled": True,
             },
         )
         assert saved.status_code == 200
         preferences = client.get("/api/admin/users/preferences").json()["data"]["userPreferences"]
         assert preferences["aiEnabled"] is True
-        assert preferences["mcpEnabled"] is False
-        assert preferences["customModelEnabled"] is True
+        assert "mcpEnabled" not in preferences
+        assert "customModelEnabled" not in preferences
+        assert "modelId" not in preferences
 
         state.knowledge_sources.append(
             {
@@ -50,7 +49,10 @@ def test_preferences_procedure_context_and_triage_fallback_flow() -> None:
                 "sourceId": "general-procedure-restart",
                 "scope": "general",
                 "title": "Procedimento geral de reinicio",
-                "text": "procedimento geral: reiniciar servico; pare o servico, valide os logs e reinicie o servico.",
+                "text": (
+                    "procedimento geral: reiniciar servico; pare o servico, valide os logs "
+                    "e reinicie o servico."
+                ),
                 "embedding": [],
             }
         )
@@ -60,7 +62,10 @@ def test_preferences_procedure_context_and_triage_fallback_flow() -> None:
         with client.stream(
             "POST",
             "/api/admin/ai-assistant/messages/stream",
-            json={"content": "procedimento geral reiniciar servico valide logs", "threadId": thread},
+            json={
+                "content": "procedimento geral reiniciar servico valide logs",
+                "threadId": thread,
+            },
             headers={"x-idempotency-key": "preferences-triage-flow"},
         ) as response:
             body = "".join(response.iter_text())
@@ -79,9 +84,9 @@ def test_disabled_user_preference_blocks_fixture_assistant_before_stream() -> No
     with TestClient(app) as client:
         assert client.post("/__test/reset").status_code == 200
         _login_admin(client)
-        assert client.put(
-            "/api/admin/users/preferences", json={"aiEnabled": False}
-        ).status_code == 200
+        assert (
+            client.put("/api/admin/users/preferences", json={"aiEnabled": False}).status_code == 200
+        )
 
         response = client.post(
             "/api/admin/ai-assistant/messages/stream",

@@ -79,14 +79,20 @@ AI_AGENT_MODE=hybrid
 > backend rodar **fora** do Docker.
 > Para acessar via localhost, mantenha `APP_URL_PROD=http://localhost` no `.env`
 > (esse valor é embutido na imagem do frontend no build).
-> **Qwen:** o modelo de linguagem fica no Compose compartilhado
-> `docker-compose.inference.yml` e usa a GPU 0. O serviço de embeddings continua
-> dentro da hierarquia do SILO.
+> **Qwen:** o Compose compartilhado usa CPU por padrão, para funcionar também em
+> máquinas sem GPU. Para NVIDIA, combine-o com
+> `docker-compose.inference.gpu.yml`; o serviço de embeddings continua dentro da
+> hierarquia do SILO. No perfil CPU, o padrão é `QWEN_CPU_MAX_MODEL_LEN=2048` e
+> `QWEN_CPU_MEMORY_UTILIZATION=0.20`, para o modelo coexistir com PostgreSQL,
+> embeddings, API e worker em uma máquina local limitada. O override GPU usa os
+> padrões maiores próprios do perfil NVIDIA.
 
 ### 3. Suba primeiro o modelo compartilhado
 
 ```bash
 docker compose -f docker-compose.inference.yml up -d
+# Com GPU NVIDIA, use os dois arquivos:
+# docker compose -f docker-compose.inference.yml -f docker-compose.inference.gpu.yml up -d
 ```
 
 ### 4. Suba a stack do SILO
@@ -230,7 +236,7 @@ Compose separado do Compose da aplicação SILO:
 | **Banco de dados** | Container PostgreSQL incluso | Banco externo (gerenciado separadamente) |
 | **Frontend** | Container `web` incluso | Servido por proxy/Nginx externo |
 | **Serviços** | `qwen` separado + db, embeddings, migrate, indexer, api, worker, web | `qwen` separado + embeddings, migrate, indexer, api, worker |
-| **Comando** | `docker compose -f docker-compose.inference.yml up -d` e `docker compose up -d --build` | `docker compose -f docker-compose.inference.yml up -d` e `docker compose -f docker-compose.deploy.yml up -d` |
+| **Comando** | `docker compose -f docker-compose.inference.yml up -d` e `docker compose up -d --build` | `docker compose -f docker-compose.inference.yml -f docker-compose.inference.gpu.yml up -d` e `docker compose -f docker-compose.deploy.yml up -d` |
 
 **Por que separar?** O deploy nunca deve compilar código no servidor — ele usa a imagem já testada e publicada. E o banco de produção precisa de backup, réplicas e monitoramento que um container simples não oferece. Já no desenvolvimento, tudo é self-contained para subir com um comando.
 
@@ -553,8 +559,9 @@ Com uma GPU NVIDIA, o vLLM entrega **10 a 20 vezes mais desempenho** que em CPU.
 
 ### Ativar GPU
 
-Use `docker-compose.inference.yml` em um servidor com NVIDIA Container
-Toolkit. O serviço compartilhado `qwen` reserva a GPU 0:
+Combine `docker-compose.inference.yml` com
+`docker-compose.inference.gpu.yml` em um servidor com NVIDIA Container Toolkit.
+O override GPU troca a imagem CPU pela imagem CUDA e reserva a GPU 0:
 
 ```yaml
 qwen:
@@ -582,9 +589,9 @@ O Qwen é compartilhado entre projetos pela rede `shared-inference`, mas os
 embeddings, os documentos e os índices vetoriais permanecem na hierarquia do
 SILO.
 
-No desenvolvimento CPU, mantenha `SILO_VLLM_CPU_IMAGE` e use
-`docker-compose.yml`; não troque essa variável por uma imagem CUDA sem também
-migrar para o compose de deploy.
+No desenvolvimento CPU, use apenas `docker-compose.inference.yml`; ele não
+declara reserva NVIDIA. Os scripts equivalentes são
+`npm run docker:inference:cpu:up` e `npm run docker:inference:gpu:up`.
 
 ### Escolhendo o modelo para sua GPU
 
@@ -620,6 +627,10 @@ Toda configuração fica no arquivo `.env` na raiz. Principais variáveis:
 | `SESSION_SECRET` | — | Segredo de sessão **(obrigatório)** |
 | `QWEN_MODEL` | `Qwen/Qwen2.5-0.5B-Instruct` | Modelo carregado pelo vLLM compartilhado |
 | `QWEN_SERVED_MODEL` | `qwen` | Nome usado pelas aplicações para chamar o modelo |
+| `QWEN_MAX_MODEL_LEN` | `8192` GPU | Janela máxima de tokens do modelo no override NVIDIA |
+| `QWEN_CPU_MAX_MODEL_LEN` | `2048` | Janela máxima de tokens do modelo no perfil CPU local |
+| `QWEN_CPU_MEMORY_UTILIZATION` | `0.20` | Fração da memória RAM reservada pelo vLLM CPU (0 a 1) |
+| `VLLM_CPU_KVCACHE_SPACE` | `0.05` | Espaço de cache KV do serviço de embeddings CPU, em GiB |
 | `VLLM_EMBEDDING_MODEL` | `BAAI/bge-base-en-v1.5` | Modelo para embeddings de 768 dimensões |
 | `QWEN_GPU_MEMORY_UTILIZATION` | `0.70` | Fração da VRAM reservada para o Qwen (0 a 1) |
 | `SILO_VLLM_EMBED_GPU_MEM_UTIL` | `0.20` | Fração da VRAM do embedding (0 a 1) |

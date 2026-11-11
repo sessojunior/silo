@@ -272,9 +272,7 @@ async def test_agent_exposes_only_policy_gateway_and_permission_to_tool(
         seen_contexts.append(tool_context)
         return SimpleNamespace(name=tool_name), {"items": [{"id": "manual-1"}]}
 
-    monkeypatch.setattr(
-        "silo.ai.assistant_service.execute_hybrid_tool_async", inspect_tool_context
-    )
+    monkeypatch.setattr("silo.ai.assistant_service.execute_hybrid_tool_async", inspect_tool_context)
     engine = create_engine("sqlite+pysqlite:///:memory:")
     with engine.connect() as connection:
         context = _build_runtime_context(

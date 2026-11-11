@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -22,6 +23,8 @@ from silo.api.dependencies import (
     require_admin,
     require_chat_access,
     require_permission,
+    require_recent_auth,
+    require_upload_access,
 )
 from silo.api.errors import ForbiddenError, UnauthenticatedError
 
@@ -463,3 +466,100 @@ def test_current_user_state_parser_handles_invalid_values() -> None:
     )
     assert user is not None
     assert user.is_active is False
+
+
+def test_protected_dependencies_cover_recent_auth_and_upload_access_branches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_user = CurrentUser(id="user-1")
+    request = SimpleNamespace(state=SimpleNamespace())
+
+    monkeypatch.setattr(dependencies_module, "extract_session_token", lambda _request: None)
+    with pytest.raises(UnauthenticatedError):
+        require_recent_auth(request, current_user, object())
+
+    monkeypatch.setattr(dependencies_module, "extract_session_token", lambda _request: "token")
+    monkeypatch.setattr(
+        dependencies_module,
+        "get_session_by_token",
+        lambda *_args, **_kwargs: SimpleNamespace(user_id="other-user"),
+    )
+    with pytest.raises(UnauthenticatedError):
+        require_recent_auth(request, current_user, object())
+
+    monkeypatch.setattr(
+        dependencies_module,
+        "get_session_by_token",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            user_id="user-1",
+            created_at=dependencies_module.legacy_local_now() - timedelta(minutes=11),
+        ),
+    )
+    with pytest.raises(ForbiddenError):
+        require_recent_auth(request, current_user, object())
+
+    monkeypatch.setattr(
+        dependencies_module,
+        "get_session_by_token",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            user_id="user-1",
+            created_at=dependencies_module.legacy_local_now() - timedelta(minutes=1),
+        ),
+    )
+    assert require_recent_auth(request, current_user, object()) == current_user
+
+    assert require_upload_access("unknown", current_user, object()) == current_user
+    non_admin = (UserGroupInfo(id="g-user", name="User", role="user"),)
+    monkeypatch.setattr(dependencies_module, "get_user_groups", lambda *_args: non_admin)
+    monkeypatch.setattr(
+        dependencies_module,
+        "get_permissions",
+        lambda *_args: {"reports": {"view"}},
+    )
+    assert require_upload_access("reports", current_user, object()) == current_user
+
+    monkeypatch.setattr(dependencies_module, "get_permissions", lambda *_args: {})
+    with pytest.raises(ForbiddenError):
+        require_upload_access("reports", current_user, object())
+
+    admin = (UserGroupInfo(id="g-admin", name="Admin", role="admin"),)
+    monkeypatch.setattr(dependencies_module, "get_user_groups", lambda *_args: admin)
+    assert require_upload_access("reports", current_user, object()) == current_user
+
+
+def test_snapshot_db_rolls_back_when_consumer_raises() -> None:
+    rollback_called = False
+
+    class _Transaction:
+        def rollback(self) -> None:
+            nonlocal rollback_called
+            rollback_called = True
+
+    class _Connection:
+        def begin(self) -> _Transaction:
+            return _Transaction()
+
+        def execute(self, _statement):
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+    class _Engine:
+        def connect(self) -> _Connection:
+            return _Connection()
+
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(db_engine=_Engine())))
+    generator = dependencies_module.get_snapshot_db(request)
+    next(generator)
+    with pytest.raises(RuntimeError, match="consumer failed"):
+        generator.throw(RuntimeError("consumer failed"))
+    assert rollback_called is True
+
+
+def test_current_user_state_parser_returns_existing_dataclass() -> None:
+    user = CurrentUser(id="user-1")
+    assert dependencies_module._current_user_from_state(user) is user

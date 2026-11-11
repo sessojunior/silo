@@ -88,11 +88,7 @@ def _lexical_fallback_order(
     order: list[Any] = []
     if terms:
         lexical_score = sum(
-            (
-                case((column.ilike(f"%{term}%"), 1), else_=0)
-                for term in terms
-                for column in columns
-            ),
+            (case((column.ilike(f"%{term}%"), 1), else_=0) for term in terms for column in columns),
             0,
         )
         order.append(cast(Any, lexical_score).desc())
@@ -1217,15 +1213,19 @@ def _search_knowledge_lexical_fallback(
     attachment_chunk_table = legacy_tables.get("general_procedure_attachment_chunk")
     candidates: list[dict[str, Any]] = []
 
-    for row in connection.execute(
-        select(help_table)
-        .order_by(
-            *_lexical_fallback_order(
-                [help_table.c.description], query, help_table.c.updated_at, help_table.c.id
+    for row in (
+        connection.execute(
+            select(help_table)
+            .order_by(
+                *_lexical_fallback_order(
+                    [help_table.c.description], query, help_table.c.updated_at, help_table.c.id
+                )
             )
+            .limit(candidate_limit)
         )
-        .limit(candidate_limit)
-    ).mappings().all():
+        .mappings()
+        .all()
+    ):
         candidates.extend(
             _score_knowledge_candidate(
                 query=query,
@@ -1239,15 +1239,19 @@ def _search_knowledge_lexical_fallback(
             )
         )
 
-    for row in connection.execute(
-        select(manual_table)
-        .order_by(
-            *_lexical_fallback_order(
-                [manual_table.c.content], query, manual_table.c.updated_at, manual_table.c.id
+    for row in (
+        connection.execute(
+            select(manual_table)
+            .order_by(
+                *_lexical_fallback_order(
+                    [manual_table.c.content], query, manual_table.c.updated_at, manual_table.c.id
+                )
             )
+            .limit(candidate_limit)
         )
-        .limit(candidate_limit)
-    ).mappings().all():
+        .mappings()
+        .all()
+    ):
         candidates.extend(
             _score_knowledge_candidate(
                 query=query,
@@ -1320,18 +1324,22 @@ def _search_knowledge_lexical_fallback(
     solution_embedding_column = getattr(solution_table.c, "embedding", None)
     if solution_embedding_column is not None:
         solution_columns.append(solution_embedding_column)
-    for row in connection.execute(
-        select(*solution_columns)
-        .order_by(
-            *_lexical_fallback_order(
-                [solution_table.c.description],
-                query,
-                solution_table.c.updated_at,
-                solution_table.c.id,
+    for row in (
+        connection.execute(
+            select(*solution_columns)
+            .order_by(
+                *_lexical_fallback_order(
+                    [solution_table.c.description],
+                    query,
+                    solution_table.c.updated_at,
+                    solution_table.c.id,
+                )
             )
+            .limit(candidate_limit)
         )
-        .limit(candidate_limit)
-    ).mappings().all():
+        .mappings()
+        .all()
+    ):
         candidates.extend(
             _score_knowledge_candidate(
                 query=query,
@@ -1346,23 +1354,27 @@ def _search_knowledge_lexical_fallback(
 
     if procedure_table is not None:
         try:
-            for row in connection.execute(
-                select(procedure_table)
-                .where(procedure_table.c.active.is_(True))
-                .order_by(
-                    *_lexical_fallback_order(
-                        [
-                            procedure_table.c.title,
-                            procedure_table.c.category,
-                            procedure_table.c.content,
-                        ],
-                        query,
-                        procedure_table.c.updated_at,
-                        procedure_table.c.id,
+            for row in (
+                connection.execute(
+                    select(procedure_table)
+                    .where(procedure_table.c.active.is_(True))
+                    .order_by(
+                        *_lexical_fallback_order(
+                            [
+                                procedure_table.c.title,
+                                procedure_table.c.category,
+                                procedure_table.c.content,
+                            ],
+                            query,
+                            procedure_table.c.updated_at,
+                            procedure_table.c.id,
+                        )
                     )
+                    .limit(candidate_limit)
                 )
-                .limit(candidate_limit)
-            ).mappings().all():
+                .mappings()
+                .all()
+            ):
                 content = " ".join(
                     str(part)
                     for part in (row.get("title"), row.get("category"), row.get("content"))
@@ -1392,43 +1404,45 @@ def _search_knowledge_lexical_fallback(
         and procedure_table is not None
     ):
         try:
-            for row in connection.execute(
-                select(
-                    attachment_chunk_table,
-                    attachment_table.c.original_name.label("attachment_name"),
-                    attachment_table.c.extraction_status,
-                    procedure_table.c.title.label("procedure_title"),
-                    procedure_table.c.active,
-                )
-                .select_from(
-                    attachment_chunk_table
-                    .join(
-                        attachment_table,
-                        attachment_table.c.id == attachment_chunk_table.c.attachment_id,
+            for row in (
+                connection.execute(
+                    select(
+                        attachment_chunk_table,
+                        attachment_table.c.original_name.label("attachment_name"),
+                        attachment_table.c.extraction_status,
+                        procedure_table.c.title.label("procedure_title"),
+                        procedure_table.c.active,
                     )
-                    .join(
-                        procedure_table,
-                        procedure_table.c.id == attachment_table.c.procedure_id,
+                    .select_from(
+                        attachment_chunk_table.join(
+                            attachment_table,
+                            attachment_table.c.id == attachment_chunk_table.c.attachment_id,
+                        ).join(
+                            procedure_table,
+                            procedure_table.c.id == attachment_table.c.procedure_id,
+                        )
                     )
-                )
-                .where(
-                    procedure_table.c.active.is_(True),
-                    attachment_table.c.extraction_status == "ready",
-                )
-                .order_by(
-                    *_lexical_fallback_order(
-                        [
-                            attachment_chunk_table.c.content,
-                            attachment_table.c.original_name,
-                            procedure_table.c.title,
-                        ],
-                        query,
-                        attachment_chunk_table.c.updated_at,
-                        attachment_chunk_table.c.id,
+                    .where(
+                        procedure_table.c.active.is_(True),
+                        attachment_table.c.extraction_status == "ready",
                     )
+                    .order_by(
+                        *_lexical_fallback_order(
+                            [
+                                attachment_chunk_table.c.content,
+                                attachment_table.c.original_name,
+                                procedure_table.c.title,
+                            ],
+                            query,
+                            attachment_chunk_table.c.updated_at,
+                            attachment_chunk_table.c.id,
+                        )
+                    )
+                    .limit(candidate_limit)
                 )
-                .limit(candidate_limit)
-            ).mappings().all():
+                .mappings()
+                .all()
+            ):
                 candidates.extend(
                     _score_knowledge_candidate(
                         query=query,
@@ -1495,14 +1509,14 @@ def _search_pgvector_candidates(
                 )
         vector = "[" + ",".join(format(float(value), ".9g") for value in query_embedding) + "]"
         candidate_limit = max(1, min(int(limit), AI_RAG_LIMIT)) * AI_RAG_CANDIDATE_MULTIPLIER
-        specs = (
+        specs: tuple[tuple[str, str], ...] = (
             (
                 "help",
                 f"""
                 SELECT id::text AS id, description AS content, NULL::text AS title,
                        NULL::text AS product_name, created_at, updated_at,
                        1 - (embedding <=> CAST(:query_embedding AS vector)) AS vector_similarity
-                FROM {table_names['help']}
+                FROM {table_names["help"]}
                 WHERE embedding IS NOT NULL
                 ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :candidate_limit
@@ -1515,7 +1529,7 @@ def _search_pgvector_candidates(
                        NULL::text AS product_name, product_id::text AS product_id,
                        created_at, updated_at,
                        1 - (embedding <=> CAST(:query_embedding AS vector)) AS vector_similarity
-                FROM {table_names['product_manual_chunk']}
+                FROM {table_names["product_manual_chunk"]}
                 WHERE embedding IS NOT NULL
                 ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :candidate_limit
@@ -1528,8 +1542,8 @@ def _search_pgvector_candidates(
                        product.name AS product_name, problem.created_at, problem.updated_at,
                        1 - (problem.embedding <=> CAST(:query_embedding AS vector))
                        AS vector_similarity
-                FROM {table_names['product_problem']} AS problem
-                JOIN {table_names['product']} AS product ON product.id = problem.product_id
+                FROM {table_names["product_problem"]} AS problem
+                JOIN {table_names["product"]} AS product ON product.id = problem.product_id
                 WHERE problem.embedding IS NOT NULL
                 ORDER BY problem.embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :candidate_limit
@@ -1541,7 +1555,7 @@ def _search_pgvector_candidates(
                 SELECT id::text AS id, description AS content, NULL::text AS title,
                        NULL::text AS product_name, created_at, updated_at,
                        1 - (embedding <=> CAST(:query_embedding AS vector)) AS vector_similarity
-                FROM {table_names['product_solution']}
+                FROM {table_names["product_solution"]}
                 WHERE embedding IS NOT NULL
                 ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :candidate_limit
@@ -1563,7 +1577,7 @@ def _search_pgvector_candidates(
                            gp.active,
                            1 - (gp.embedding <=> CAST(:query_embedding AS vector))
                            AS vector_similarity
-                    FROM {table_names['general_procedure']} AS gp
+                    FROM {table_names["general_procedure"]} AS gp
                     WHERE gp.active IS TRUE AND gp.embedding IS NOT NULL
                     ORDER BY gp.embedding <=> CAST(:query_embedding AS vector)
                     LIMIT :candidate_limit
@@ -1580,10 +1594,10 @@ def _search_pgvector_candidates(
                            chunk.created_at, chunk.updated_at,
                            1 - (chunk.embedding <=> CAST(:query_embedding AS vector))
                            AS vector_similarity
-                    FROM {table_names['general_procedure_attachment_chunk']} AS chunk
-                    JOIN {table_names['general_procedure_attachment']} AS attachment
+                    FROM {table_names["general_procedure_attachment_chunk"]} AS chunk
+                    JOIN {table_names["general_procedure_attachment"]} AS attachment
                       ON attachment.id = chunk.attachment_id
-                    JOIN {table_names['general_procedure']} AS gp
+                    JOIN {table_names["general_procedure"]} AS gp
                       ON gp.id = attachment.procedure_id
                     WHERE gp.active IS TRUE
                       AND attachment.extraction_status = 'ready'
@@ -1611,9 +1625,7 @@ def _search_pgvector_candidates(
                     extra: dict[str, Any] | None = {"productName": row.get("product_name")}
                 elif source == "procedure":
                     content = " ".join(
-                        part
-                        for part in (row.get("title"), row.get("content"))
-                        if part
+                        part for part in (row.get("title"), row.get("content")) if part
                     )
                     extra = {
                         "procedureTitle": row.get("title"),
@@ -1631,11 +1643,7 @@ def _search_pgvector_candidates(
                     }
                 else:
                     content = str(row.get("content") or row.get("description") or "")
-                    extra = (
-                        {"productId": row.get("product_id")}
-                        if source == "manual"
-                        else None
-                    )
+                    extra = {"productId": row.get("product_id")} if source == "manual" else None
                 candidates.extend(
                     _score_knowledge_candidate(
                         query=query,
@@ -1799,18 +1807,12 @@ def build_mermaid_diagram(
             project_label = _escape_mermaid(
                 project.get("name") or project.get("title") or project_id
             )
-            lines.append(
-                f'  projects --> {project_id}["{project_label}"]'
-            )
+            lines.append(f'  projects --> {project_id}["{project_label}"]')
             tasks = list(project.get("tasks", []))[:5]
             for task_index, task in enumerate(tasks, start=1):
                 task_id = f"{project_id}_t{task_index}"
-                task_label = _escape_mermaid(
-                    task.get("name") or task.get("title") or task_id
-                )
-                lines.append(
-                    f'  {project_id} --> {task_id}["{task_label}"]'
-                )
+                task_label = _escape_mermaid(task.get("name") or task.get("title") or task_id)
+                lines.append(f'  {project_id} --> {task_id}["{task_label}"]')
         diagram = "\n".join(lines)
     elif template_id == "run_status_flow":
         summary = dataset.get("didExecute") or {}
@@ -1831,9 +1833,7 @@ def build_mermaid_diagram(
             category_label = _escape_mermaid(
                 category.get("name") or category.get("title") or f"C{index}"
             )
-            lines.append(
-                f'  root --> c{index}["{category_label}"]'
-            )
+            lines.append(f'  root --> c{index}["{category_label}"]')
         diagram = "\n".join(lines)
     else:
         raise ValueError("Template Mermaid inválido.")
@@ -1850,7 +1850,7 @@ def render_summary_image(*, title: str, lines: Sequence[str]) -> dict[str, Any]:
     body_lines = "".join(
         f'<text x="24" y="{96 + index * 28}" '
         f'font-family="Inter, Arial, sans-serif" font-size="20" fill="#334155">'
-        f'{_escape_svg(line)}</text>'
+        f"{_escape_svg(line)}</text>"
         for index, line in enumerate(lines[:10])
     )
     svg = (

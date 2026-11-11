@@ -26,6 +26,7 @@ UploadKind = Literal[
     "projects",
     "reports",
     "procedures",
+    "chat",
 ]
 
 UPLOAD_KINDS: Final[tuple[UploadKind, ...]] = (
@@ -40,10 +41,27 @@ UPLOAD_KINDS: Final[tuple[UploadKind, ...]] = (
     "projects",
     "reports",
     "procedures",
+    "chat",
 )
 
 MAX_FILE_SIZE_BYTES: Final[int] = 4 * 1024 * 1024
 MAX_IMAGE_PIXELS: Final[int] = 24_000_000
+
+CHAT_ALLOWED_CONTENT_TYPES: Final[dict[str, frozenset[str]]] = {
+    "image/jpeg": frozenset({".jpg", ".jpeg"}),
+    "image/png": frozenset({".png"}),
+    "image/webp": frozenset({".webp"}),
+    "image/gif": frozenset({".gif"}),
+    "application/pdf": frozenset({".pdf"}),
+    "text/plain": frozenset({".txt"}),
+    "text/markdown": frozenset({".md", ".markdown"}),
+    "text/csv": frozenset({".csv"}),
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": frozenset({".docx"}),
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": frozenset({".xlsx"}),
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": frozenset(
+        {".pptx"}
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,12 +182,16 @@ def get_content_type_from_filename(filename: str) -> str:
         return "application/pdf"
     if ext == ".txt":
         return "text/plain"
-    if ext == ".md":
+    if ext in {".md", ".markdown"}:
         return "text/markdown"
+    if ext == ".csv":
+        return "text/csv"
     if ext == ".docx":
         return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     if ext == ".pptx":
         return "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    if ext == ".xlsx":
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return "application/octet-stream"
 
 
@@ -186,6 +208,63 @@ def create_webp_filename(original_name: str) -> str:
     prefix = str(int(datetime.now(UTC).timestamp() * 1000))
     name_part = f"{safe_base_name}-" if safe_base_name else ""
     return f"{prefix}-{name_part}{suffix}.webp"
+
+
+def create_file_filename(original_name: str) -> str:
+    """Create a collision-resistant filename while retaining a safe extension."""
+    normalized_name = Path(original_name.replace("\\", "/")).name
+    base_name = Path(normalized_name).stem
+    extension = Path(normalized_name).suffix.lower()
+    safe_base_name = re.sub(r"[^a-zA-Z0-9-_]", "", base_name)[:40]
+    suffix = os.urandom(6).hex()
+    prefix = str(int(datetime.now(UTC).timestamp() * 1000))
+    name_part = f"{safe_base_name}-" if safe_base_name else "file-"
+    return f"{prefix}-{name_part}{suffix}{extension}"
+
+
+def store_chat_file(
+    original_name: str,
+    buffer: bytes,
+    content_type: str | None,
+) -> StoredUpload | dict[str, str]:
+    """Store a private chat attachment without transforming its bytes."""
+    if len(buffer) > MAX_FILE_SIZE_BYTES:
+        return {"error": "Arquivo muito grande. MÃ¡ximo 4MB."}
+
+    normalized_name = Path(original_name.replace("\\", "/")).name
+    extension = Path(normalized_name).suffix.lower()
+    normalized_content_type = (content_type or "").split(";", maxsplit=1)[0].strip().lower()
+    if (
+        not normalized_name
+        or not extension
+        or normalized_content_type not in CHAT_ALLOWED_CONTENT_TYPES
+        or extension not in CHAT_ALLOWED_CONTENT_TYPES[normalized_content_type]
+    ):
+        return {"error": "Tipo de arquivo nÃ£o permitido."}
+
+    if normalized_content_type.startswith("image/"):
+        return store_image_as_webp(
+            "chat",
+            normalized_name,
+            buffer,
+            mode="inside",
+            max_width=1600,
+            max_height=1600,
+            quality=85,
+        )
+
+    filename = create_file_filename(normalized_name)
+    try:
+        stored = write_upload_bytes("chat", filename, buffer)
+    except OSError:
+        return {"error": "NÃ£o foi possÃ­vel salvar o arquivo."}
+
+    return StoredUpload(
+        filename=stored.filename,
+        original_name=normalized_name,
+        size=len(buffer),
+        url=stored.url,
+    )
 
 
 def store_image_as_webp(

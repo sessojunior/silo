@@ -68,9 +68,7 @@ class RuntimeMetricStore:
         self._lock = Lock()
         self._max_series_per_metric = max_series_per_metric
         self._counters: dict[tuple[str, tuple[tuple[str, str], ...]], float] = {}
-        self._observations: dict[
-            tuple[str, tuple[tuple[str, str], ...]], _HistogramState
-        ] = {}
+        self._observations: dict[tuple[str, tuple[tuple[str, str], ...]], _HistogramState] = {}
 
     def increment(
         self, name: str, labels: Mapping[str, object] | None = None, value: float = 1
@@ -122,9 +120,7 @@ class RuntimeMetricStore:
                     "count": state.count,
                     "sum": state.total,
                     "last": state.last,
-                    "buckets": {
-                        str(bound): state.buckets[bound] for bound in _HISTOGRAM_BUCKETS
-                    }
+                    "buckets": {str(bound): state.buckets[bound] for bound in _HISTOGRAM_BUCKETS}
                     | {"+Inf": state.count},
                 }
                 for (name, labels), state in sorted(self._observations.items())
@@ -190,11 +186,10 @@ def _safe_label_value(value: object) -> str:
 def _prometheus_sample(name: str, labels: Mapping[str, object], value: float) -> str:
     label_text = ""
     if labels:
-        rendered_labels = ",".join(
-            f'{key}="{value}"' for key, value in sorted(labels.items())
-        )
+        rendered_labels = ",".join(f'{key}="{value}"' for key, value in sorted(labels.items()))
         label_text = "{" + rendered_labels + "}"
     return f"{name}{label_text} {float(value):g}"
+
 
 OBSERVABILITY_ALERT_RULES: tuple[dict[str, Any], ...] = (
     {

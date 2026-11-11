@@ -393,7 +393,6 @@ async def test_agent_decide_executa_tool_hibrida_fora_do_event_loop(
     assert generated_embeddings == [(0.5,) * 768]
 
 
-
 @pytest.mark.asyncio
 async def test_synthesize_once_respeita_orcamento_de_prompt_sem_chamar_modelo() -> None:
     engine = create_engine("sqlite+pysqlite:///:memory:", future=True)

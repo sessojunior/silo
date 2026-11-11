@@ -172,3 +172,21 @@ export const config = {
   },
 
 };
+
+/**
+ * WebSocket cookies are valid across ports when the browser page and API use
+ * the same host and protocol. Docker exposes the web and API on different
+ * ports, so comparing full origins would incorrectly disable chat realtime.
+ */
+export function isChatRealtimeOriginCompatible(
+  apiOrigin: string,
+  pageOrigin: string,
+): boolean {
+  try {
+    const api = new URL(apiOrigin);
+    const page = new URL(pageOrigin);
+    return api.protocol === page.protocol && api.hostname === page.hostname;
+  } catch {
+    return false;
+  }
+}
